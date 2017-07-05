@@ -34,10 +34,10 @@ namespace net.vieapps.Components.Repository
 
 				// entities
 				assembly.GetTypes()
-					.Where(type => type.IsDefined(typeof(RepositoryEntityAttribute), false))
+					.Where(type => type.IsDefined(typeof(EntityAttribute), false))
 					.ForEach(type =>
 					{
-						RepositoryEntityDefinition.Register(type);
+						EntityDefinition.Register(type);
 					});
 			}
 			catch (ReflectionTypeLoadException ex)
@@ -90,8 +90,8 @@ namespace net.vieapps.Components.Repository
 			// update settings of data sources
 			foreach (XmlNode dataSourceNode in configurationHandler._section.SelectNodes("dataSources/dataSource"))
 			{
-				RepositoryDataSource dataSource = RepositoryDataSource.FromJson(configurationHandler.GetSettings(dataSourceNode));
-				RepositoryMediator.RepositoryDataSources.Add(dataSource.Name, dataSource);
+				DataSource dataSource = DataSource.FromJson(configurationHandler.GetSettings(dataSourceNode));
+				RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
 			}
 
 			// update settings of repositories
@@ -102,7 +102,7 @@ namespace net.vieapps.Components.Repository
 
 				// update repository entities
 				foreach (XmlNode repositoryEntityNode in repositoryNode.SelectNodes("entity"))
-					RepositoryEntityDefinition.Update(configurationHandler.GetSettings(repositoryEntityNode));
+					EntityDefinition.Update(configurationHandler.GetSettings(repositoryEntityNode));
 			}
 		}
 	}

@@ -370,9 +370,16 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Check ignored
-		internal static bool IsIgnored(this ObjectService.AttributeInfo attribute)
+		internal static bool IsIgnoredWhenSql(this ObjectService.AttributeInfo attribute)
 		{
-			var attrs = attribute.Info.GetCustomAttributes(typeof(IgnoreAttribute), true);
+			return attribute.Info.GetCustomAttributes(typeof(IgnoreWhenSqlAttribute), true).Length > 0
+				? true
+				: false;
+		}
+
+		internal static bool IsIgnoredWhenNoSql(this ObjectService.AttributeInfo attribute)
+		{
+			var attrs = attribute.Info.GetCustomAttributes(typeof(IgnoreWhenNoSqlAttribute), true);
 			if (attrs.Length > 0)
 				return true;
 
@@ -387,19 +394,26 @@ namespace net.vieapps.Components.Repository
 
 			return false;
 		}
+
+		internal static bool IsIgnored(this ObjectService.AttributeInfo attribute)
+		{
+			return attribute.Info.GetCustomAttributes(typeof(IgnoreAttribute), true).Length > 0
+				? true
+				: attribute.IsIgnoredWhenSql() || attribute.IsIgnoredWhenNoSql();
+		}
 		#endregion
 
-		#region Definitions
 #if DEBUG
-		public static Dictionary<string, RepositoryDataSource> RepositoryDataSources = new Dictionary<string, RepositoryDataSource>();
 		public static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
-		public static Dictionary<string, RepositoryEntityDefinition> RepositoryEntityDefinitions = new Dictionary<string, RepositoryEntityDefinition>();
+		public static Dictionary<string, RepositoryEntityDefinition> EntityDefinitions = new Dictionary<string, RepositoryEntityDefinition>();
+		public static Dictionary<string, RepositoryDataSource> DataSources = new Dictionary<string, RepositoryDataSource>();
 #else
-		internal static Dictionary<string, RepositoryDataSource> RepositoryDataSources = new Dictionary<string, RepositoryDataSource>();
 		internal static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
-		internal static Dictionary<string, RepositoryEntityDefinition> RepositoryEntityDefinitions = new Dictionary<string, RepositoryEntityDefinition>();
+		internal static Dictionary<string, EntityDefinition> EntityDefinitions = new Dictionary<string, EntityDefinition>();
+		internal static Dictionary<string, DataSource> DataSources = new Dictionary<string, DataSource>();
 #endif
 
+		#region Definitions
 		/// <summary>
 		/// Gets the repository definition that matched with the type
 		/// </summary>
@@ -417,11 +431,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="type"></param>
 		/// <returns></returns>
-		public static RepositoryEntityDefinition GetRepositoryEntityDefinition(Type type)
+		public static EntityDefinition GetEntityDefinition(Type type)
 		{
 			var name = type != null ? type.GetTypeName() : null;
-			return name != null && RepositoryMediator.RepositoryEntityDefinitions.ContainsKey(name)
-				? RepositoryMediator.RepositoryEntityDefinitions[name]
+			return name != null && RepositoryMediator.EntityDefinitions.ContainsKey(name)
+				? RepositoryMediator.EntityDefinitions[name]
 				: null;
 		}
 
@@ -430,9 +444,9 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
-		public static RepositoryEntityDefinition GetRepositoryEntityDefinition<T>() where T : class
+		public static EntityDefinition GetEntityDefinition<T>() where T : class
 		{
-			return RepositoryMediator.GetRepositoryEntityDefinition(typeof(T));
+			return RepositoryMediator.GetEntityDefinition(typeof(T));
 		}
 		#endregion
 
@@ -443,7 +457,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static RepositoryDataSource GetPrimaryDataSource(string aliasTypeName, RepositoryEntityDefinition definition)
+		public static DataSource GetPrimaryDataSource(string aliasTypeName, EntityDefinition definition)
 		{
 			var dataSource = definition.PrimaryDataSource;
 			if (dataSource == null)
@@ -466,7 +480,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static RepositoryDataSource GetPrimaryDataSource(RepositoryContext context)
+		public static DataSource GetPrimaryDataSource(RepositoryContext context)
 		{
 			return RepositoryMediator.GetPrimaryDataSource(context.AliasTypeName, context.EntityDefinition);
 		}
@@ -476,7 +490,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static RepositoryDataSource GetPrimaryDataSource(RepositoryEntityDefinition definition)
+		public static DataSource GetPrimaryDataSource(EntityDefinition definition)
 		{
 			return RepositoryMediator.GetPrimaryDataSource(null, definition);
 		}
@@ -487,9 +501,9 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <returns></returns>
-		public static RepositoryDataSource GetPrimaryDataSource<T>(string aliasTypeName)
+		public static DataSource GetPrimaryDataSource<T>(string aliasTypeName = null)
 		{
-			return RepositoryMediator.GetPrimaryDataSource(aliasTypeName, RepositoryMediator.GetRepositoryEntityDefinition(typeof(T)));
+			return RepositoryMediator.GetPrimaryDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 		}
 
 		/// <summary>
@@ -498,7 +512,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static RepositoryDataSource GetSecondaryDataSource(string aliasTypeName, RepositoryEntityDefinition definition)
+		public static DataSource GetSecondaryDataSource(string aliasTypeName, EntityDefinition definition)
 		{
 			var dataSource = definition.SecondaryDataSource;
 			if (dataSource == null)
@@ -518,7 +532,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static RepositoryDataSource GetSecondaryDataSource(RepositoryContext context)
+		public static DataSource GetSecondaryDataSource(RepositoryContext context)
 		{
 			return RepositoryMediator.GetSecondaryDataSource(context.AliasTypeName, context.EntityDefinition);
 		}
@@ -528,7 +542,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static RepositoryDataSource GetSecondaryDataSource(RepositoryEntityDefinition definition)
+		public static DataSource GetSecondaryDataSource(EntityDefinition definition)
 		{
 			return RepositoryMediator.GetSecondaryDataSource(null, definition);
 		}
@@ -539,9 +553,9 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <returns></returns>
-		public static RepositoryDataSource GetSecondaryDataSource<T>(string aliasTypeName)
+		public static DataSource GetSecondaryDataSource<T>(string aliasTypeName = null)
 		{
-			return RepositoryMediator.GetSecondaryDataSource(aliasTypeName, RepositoryMediator.GetRepositoryEntityDefinition(typeof(T)));
+			return RepositoryMediator.GetSecondaryDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 		}
 		#endregion
 
@@ -563,7 +577,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static ConnectionStringSettings GetConnectionStringSettings(RepositoryDataSource dataSource)
+		public static ConnectionStringSettings GetConnectionStringSettings(DataSource dataSource)
 		{
 			return dataSource != null
 				? RepositoryMediator.GetConnectionStringSettings(dataSource.ConnectionStringName)
@@ -575,7 +589,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static string GetConnectionString(RepositoryDataSource dataSource)
+		public static string GetConnectionString(DataSource dataSource)
 		{
 			var connectionStringSettings = RepositoryMediator.GetConnectionStringSettings(dataSource);
 			return connectionStringSettings != null
@@ -589,7 +603,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static string GetPrimaryConnectionString(string aliasTypeName, RepositoryEntityDefinition definition)
+		public static string GetPrimaryConnectionString(string aliasTypeName, EntityDefinition definition)
 		{
 			return RepositoryMediator.GetConnectionString(RepositoryMediator.GetPrimaryDataSource(aliasTypeName, definition));
 		}
@@ -599,7 +613,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static string GetPrimaryConnectionString(RepositoryEntityDefinition definition)
+		public static string GetPrimaryConnectionString(EntityDefinition definition)
 		{
 			return RepositoryMediator.GetPrimaryConnectionString(null, definition);
 		}
@@ -610,7 +624,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static string GetSecondaryConnectionString(string aliasTypeName, RepositoryEntityDefinition definition)
+		public static string GetSecondaryConnectionString(string aliasTypeName, EntityDefinition definition)
 		{
 			return RepositoryMediator.GetConnectionString(RepositoryMediator.GetSecondaryDataSource(aliasTypeName, definition));
 		}
@@ -620,14 +634,14 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static string GetSecondaryConnectionString(RepositoryEntityDefinition definition)
+		public static string GetSecondaryConnectionString(EntityDefinition definition)
 		{
 			return RepositoryMediator.GetSecondaryConnectionString(null, definition);
 		}
 		#endregion
 
 		#region Validate
-		internal static bool Validate(RepositoryEntityDefinition definition, Dictionary<string, object> stateData)
+		internal static bool Validate(EntityDefinition definition, Dictionary<string, object> stateData)
 		{
 			var changed = false;
 
@@ -673,7 +687,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Create;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// validate & re-update object
@@ -749,7 +763,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task CreateAsync<T>(RepositoryContext context, string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			context.Operation = RepositoryOperations.Create;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// validate & re-update object
@@ -830,7 +844,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Get;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// find
@@ -882,7 +896,7 @@ namespace net.vieapps.Components.Repository
 			if (callHandlers)
 			{
 				context.Operation = RepositoryOperations.Get;
-				context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				context.AliasTypeName = aliasTypeName;
 			}
 
@@ -970,7 +984,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Get;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// find
@@ -1024,7 +1038,7 @@ namespace net.vieapps.Components.Repository
 			if (callHandlers)
 			{
 				context.Operation = RepositoryOperations.Get;
-				context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				context.AliasTypeName = aliasTypeName;
 			}
 
@@ -1113,7 +1127,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Update;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// check state
@@ -1207,7 +1221,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Update;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// check state
@@ -1303,7 +1317,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Update;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// check state
@@ -1393,7 +1407,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Update;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// check state
@@ -1485,7 +1499,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Delete;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// check existing
@@ -1554,7 +1568,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Delete;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// check existing
@@ -1623,7 +1637,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Delete;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// delete
@@ -1671,7 +1685,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperations.Delete;
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// delete
@@ -1724,7 +1738,7 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -1868,7 +1882,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -2014,7 +2028,7 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Search<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -2158,7 +2172,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<T>> SearchAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -2301,7 +2315,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// count
@@ -2348,7 +2362,7 @@ namespace net.vieapps.Components.Repository
 		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// count
@@ -2396,7 +2410,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// count
@@ -2445,7 +2459,7 @@ namespace net.vieapps.Components.Repository
 		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// count

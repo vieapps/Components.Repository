@@ -167,7 +167,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
-		public static void Create<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, InsertOneOptions options = null) where T : class
+		public static void Create<T>(RepositoryContext context, DataSource dataSource, T @object, InsertOneOptions options = null) where T : class
 		{
 			RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Create(@object, options);
 		}
@@ -198,7 +198,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
-		public static Task CreateAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task CreateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).CreateAsync(@object, options, cancellationToken);
 		}
@@ -230,7 +230,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The filter-by expression for filtering</param>
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <returns></returns>
-		public static T Get<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null) where T : class
+		public static T Get<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Get(filter.GetNoSqlStatement(), sort != null ? sort.GetNoSqlStatement() : null);
 		}
@@ -257,7 +257,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="id">The string that presents identity</param>
 		/// <returns></returns>
-		public static T Get<T>(RepositoryContext context, RepositoryDataSource dataSource, string id) where T : class
+		public static T Get<T>(RepositoryContext context, DataSource dataSource, string id) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
 				? RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Get(id)
@@ -291,7 +291,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).GetAsync(filter.GetNoSqlStatement(), sort != null ? sort.GetNoSqlStatement() : null, cancellationToken);
 		}
@@ -320,7 +320,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The string that presents identity of the object that need to get</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).GetAsync(id, cancellationToken);
 		}
@@ -352,7 +352,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for updating</param>
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
-		public static ReplaceOneResult Replace<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, UpdateOptions options = null) where T : class
+		public static ReplaceOneResult Replace<T>(RepositoryContext context, DataSource dataSource, T @object, UpdateOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Replace(@object, options);
 		}
@@ -384,7 +384,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<ReplaceOneResult> ReplaceAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<ReplaceOneResult> ReplaceAsync<T>(RepositoryContext context, DataSource dataSource, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).ReplaceAsync(@object, options, cancellationToken);
 		}
@@ -489,7 +489,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attributes">The collection of attributes for updating individually</param>
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
-		public static void Update<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, List<string> attributes, UpdateOptions options = null) where T : class
+		public static void Update<T>(RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, UpdateOptions options = null) where T : class
 		{
 			RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Update(@object, attributes, options);
 		}
@@ -521,7 +521,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="update">The definition for updating</param>
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
-		public static UpdateResult Update<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, UpdateDefinition<T> update, UpdateOptions options = null) where T : class
+		public static UpdateResult Update<T>(RepositoryContext context, DataSource dataSource, T @object, UpdateDefinition<T> update, UpdateOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Update(@object, update, options);
 		}
@@ -608,7 +608,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task UpdateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).UpdateAsync(@object, attributes, options, cancellationToken);
 		}
@@ -643,7 +643,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<UpdateResult> UpdateAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<UpdateResult> UpdateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).UpdateAsync(@object, update, options, cancellationToken);
 		}
@@ -673,7 +673,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <returns></returns>
-		public static DeleteResult Delete<T>(RepositoryContext context, RepositoryDataSource dataSource, string id, DeleteOptions options = null) where T : class
+		public static DeleteResult Delete<T>(RepositoryContext context, DataSource dataSource, string id, DeleteOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Delete(id, options);
 		}
@@ -702,7 +702,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <returns></returns>
-		public static Task<DeleteResult> DeleteAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string id, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<DeleteResult> DeleteAsync<T>(RepositoryContext context, DataSource dataSource, string id, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).DeleteAsync(id, options, cancellationToken);
 		}
@@ -737,7 +737,7 @@ namespace net.vieapps.Components.Repository
 			return collection.DeleteMany(filter != null ? filter : Builders<T>.Filter.Empty, options);
 		}
 
-		internal static DeleteResult DeleteMany<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, DeleteOptions options = null) where T : class
+		internal static DeleteResult DeleteMany<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, DeleteOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).DeleteMany(filter.GetNoSqlStatement(), options);
 		}
@@ -756,7 +756,7 @@ namespace net.vieapps.Components.Repository
 			return collection.DeleteManyAsync(filter != null ? filter : Builders<T>.Filter.Empty, options, cancellationToken);
 		}
 
-		internal static Task<DeleteResult> DeleteManyAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		internal static Task<DeleteResult> DeleteManyAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).DeleteManyAsync(filter.GetNoSqlStatement(), options, cancellationToken);
 		}
@@ -815,7 +815,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="options">The options for finding</param>
 		/// <returns></returns>
-		public static List<BsonDocument> Select<T>(RepositoryContext context, RepositoryDataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
+		public static List<BsonDocument> Select<T>(RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Select(attributes, filter != null ? filter.GetNoSqlStatement() : null, sort != null ? sort.GetNoSqlStatement() : null, pageSize, pageNumber, options);
 		}
@@ -874,7 +874,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for finding</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<BsonDocument>> SelectAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<BsonDocument>> SelectAsync<T>(RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).SelectAsync(attributes, filter != null ? filter.GetNoSqlStatement() : null, sort != null ? sort.GetNoSqlStatement() : null, pageSize, pageNumber, options);
 		}
@@ -909,7 +909,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="options">The options for finding</param>
 		/// <returns></returns>
-		public static List<string> SelectIdentities<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
+		public static List<string> SelectIdentities<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).SelectIdentities(filter != null ? filter.GetNoSqlStatement() : null, sort != null ? sort.GetNoSqlStatement() : null, pageSize, pageNumber, options);
 		}
@@ -946,7 +946,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for finding</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<string>> SelectIdentitiesAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<string>> SelectIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).SelectIdentitiesAsync(filter != null ? filter.GetNoSqlStatement() : null, sort != null ? sort.GetNoSqlStatement() : null, pageSize, pageNumber, options);
 		}
@@ -991,7 +991,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="options">The options for finding</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
+		public static List<T> Find<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Find(filter != null ? filter.GetNoSqlStatement() : null, sort != null ? sort.GetNoSqlStatement() : null, pageSize, pageNumber, options);
 		}
@@ -1006,7 +1006,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="options">The options for finding</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, RepositoryDataSource dataSource, List<string> identities, SortBy<T> sort = null, FindOptions options = null) where T : class
+		public static List<T> Find<T>(RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, FindOptions options = null) where T : class
 		{
 			if (identities == null || identities.Count < 1)
 				return new List<T>();
@@ -1060,7 +1060,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for finding</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).FindAsync(filter != null ? filter.GetNoSqlStatement() : null, sort != null ? sort.GetNoSqlStatement() : null, pageSize, pageNumber, options, cancellationToken);
 		}
@@ -1076,7 +1076,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for finding</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, List<string> identities, SortBy<T> sort = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (identities == null || identities.Count < 1)
 				return Task.FromResult<List<T>>(new List<T>());
@@ -1196,7 +1196,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="options"></param>
 		/// <returns></returns>
-		public static List<T> Search<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
+		public static List<T> Search<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Search(query, filter != null ? filter.GetNoSqlStatement() : null, pageSize, pageNumber, options);
 		}
@@ -1281,7 +1281,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> SearchAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).SearchAsync(query, filter != null ? filter.GetNoSqlStatement() : null, pageSize, pageNumber, options, cancellationToken);
 		}
@@ -1332,7 +1332,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="options"></param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
+		public static List<string> SearchIdentities<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).SearchIdentities(query, filter != null ? filter.GetNoSqlStatement() : null, pageSize, pageNumber, options);
 		}
@@ -1384,7 +1384,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<string>> SearchIdentitiesAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<string>> SearchIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).SearchIdentitiesAsync(query, filter != null ? filter.GetNoSqlStatement() : null, pageSize, pageNumber, options, cancellationToken);
 		}
@@ -1400,7 +1400,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The filter-by expression for counting</param>
 		/// <param name="options">The options for counting</param>
 		/// <returns></returns>
-		public static long Count<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter = null, CountOptions options = null) where T : class
+		public static long Count<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter = null, CountOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Count(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty, options);
 		}
@@ -1432,7 +1432,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The filter-by expression for counting</param>
 		/// <param name="options">The options for counting</param>
 		/// <returns></returns>
-		public static long Count<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter = null, CountOptions options = null) where T : class
+		public static long Count<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter = null, CountOptions options = null) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).Count(query, filter != null ? filter.GetNoSqlStatement() : null, options);
 		}
@@ -1447,7 +1447,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for counting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).CountAsync(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty, options, cancellationToken);
 		}
@@ -1481,7 +1481,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for counting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter = null, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter = null, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(context, dataSource).CountAsync(query, filter != null ? filter.GetNoSqlStatement() : null, options, cancellationToken);
 		}

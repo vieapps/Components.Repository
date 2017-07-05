@@ -27,7 +27,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dataSource">The object that presents related information of a data source in SQL database</param>
 		/// <returns></returns>
-		public static DbProviderFactory GetProviderFactory(RepositoryDataSource dataSource)
+		public static DbProviderFactory GetProviderFactory(DataSource dataSource)
 		{
 			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryModes.SQL)
 				? RepositoryMediator.GetConnectionStringSettings(dataSource)
@@ -75,7 +75,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The object that presents related information of a data source in SQL database</param>
 		/// <param name="providerFactory">The object that presents information of a database provider factory</param>
 		/// <returns></returns>
-		public static DbConnection GetConnection(RepositoryDataSource dataSource, DbProviderFactory providerFactory = null)
+		public static DbConnection GetConnection(DataSource dataSource, DbProviderFactory providerFactory = null)
 		{		
 			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryModes.SQL)
 				? RepositoryMediator.GetConnectionStringSettings(dataSource)
@@ -200,7 +200,7 @@ namespace net.vieapps.Components.Repository
 		{
 			string columns = "", values = "";
 			var parameters = new List<DbParameter>();
-			var definition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			definition.Attributes.ForEach(attribute =>
 			{
 				columns += (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + ",";
@@ -226,7 +226,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object">The object for creating new instance in storage</param>
-		public static void Create<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object) where T : class
+		public static void Create<T>(RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
 			if (object.ReferenceEquals(@object, null))
 				throw new NullReferenceException("Cannot create new because the object is null");
@@ -249,7 +249,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task CreateAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task CreateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (object.ReferenceEquals(@object, null))
 				throw new NullReferenceException("Cannot create new because the object is null");
@@ -268,7 +268,7 @@ namespace net.vieapps.Components.Repository
 		static Tuple<string, List<DbParameter>> GenerateGettingInfo<T>(this string id, DbProviderFactory providerFactory, HashSet<string> included = null, HashSet<string> excluded = null) where T : class
 		{
 			var statement = "";
-			var definition = RepositoryMediator.GetRepositoryEntityDefinition<T>();
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			definition.Attributes.ForEach(attribute =>
 			{
 				if  ((included == null || included.Contains(attribute.Name)) && (excluded == null || !excluded.Contains(attribute.Name)))
@@ -294,7 +294,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The filter-by expression for filtering</param>
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <returns></returns>
-		public static T Get<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort) where T : class
+		public static T Get<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort) where T : class
 		{
 			return default(T);
 		}
@@ -307,7 +307,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="id">The string that presents identity</param>
 		/// <returns></returns>
-		public static T Get<T>(RepositoryContext context, RepositoryDataSource dataSource, string id) where T : class
+		public static T Get<T>(RepositoryContext context, DataSource dataSource, string id) where T : class
 		{
 			T @object = default(T);
 			if (string.IsNullOrEmpty(id))
@@ -337,7 +337,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<T>(default(T));
 		}
@@ -351,7 +351,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The string that presents identity</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<T> GetAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			T @object = default(T);
 			if (string.IsNullOrEmpty(id))
@@ -380,7 +380,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object">The object for updating</param>
-		public static void Replace<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object) where T : class
+		public static void Replace<T>(RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
 
 		}
@@ -394,7 +394,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task ReplaceAsync<T>(RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.CompletedTask;
 		}
@@ -409,7 +409,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object">The object for updating</param>
 		/// <param name="attributes">The collection of attributes for updating individually</param>
-		public static void Update<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, List<string> attributes) where T : class
+		public static void Update<T>(RepositoryContext context, DataSource dataSource, T @object, List<string> attributes) where T : class
 		{
 
 		}
@@ -424,7 +424,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attributes">The collection of attributes for updating individually</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, T @object, List<string> attributes, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task UpdateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.CompletedTask;
 		}
@@ -438,7 +438,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="id">The identity of the document of an object for deleting</param>
-		public static void Delete<T>(RepositoryContext context, RepositoryDataSource dataSource, string id) where T : class
+		public static void Delete<T>(RepositoryContext context, DataSource dataSource, string id) where T : class
 		{
 			
 		}
@@ -452,7 +452,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task DeleteAsync<T>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.CompletedTask;
 		}
@@ -464,7 +464,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter for deleting</param>
-		public static void DeleteMany<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter) where T : class
+		public static void DeleteMany<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter) where T : class
 		{
 
 		}
@@ -478,7 +478,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The filter for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task DeleteManyAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.CompletedTask;
 		}
@@ -497,7 +497,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <returns></returns>
-		public static List<DataRow> Select<T>(RepositoryContext context, RepositoryDataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
+		public static List<DataRow> Select<T>(RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
 		{
 			return new List<DataRow>();
 		}
@@ -515,7 +515,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<DataRow>> SelectAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<DataRow>> SelectAsync<T>(RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<List<DataRow>>(new List<DataRow>());
 		}
@@ -531,7 +531,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <returns></returns>
-		public static List<string> SelectIdentities<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
+		public static List<string> SelectIdentities<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
 		{
 			return SqlHelper.Select(context, dataSource, null, filter, sort, pageSize, pageNumber)
 				.Select(data => data["ID"] as string)
@@ -550,7 +550,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> SelectIdentitiesAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<string>> SelectIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return (await SqlHelper.SelectAsync(context, dataSource, null, filter, sort, pageSize, pageNumber))
 				.Select(data => data["ID"] as string)
@@ -570,7 +570,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
+		public static List<T> Find<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
 		{
 			return new List<T>();
 		}
@@ -584,7 +584,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="identities">The collection of identities for finding</param>
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, RepositoryDataSource dataSource, List<string> identities, SortBy<T> sort = null) where T : class
+		public static List<T> Find<T>(RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null) where T : class
 		{
 			if (identities == null || identities.Count < 1)
 				return new List<T>();
@@ -610,7 +610,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<List<T>>(new List<T>());
 		}
@@ -625,7 +625,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, List<string> identities, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (identities == null || identities.Count < 1)
 				return Task.FromResult<List<T>>(new List<T>());
@@ -652,7 +652,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
+		public static List<T> Search<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
 		{
 			return new List<T>();
 		}
@@ -669,7 +669,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> SearchAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<List<T>>(new List<T>());
 		}
@@ -685,7 +685,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
+		public static List<string> SearchIdentities<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
 		{
 			return new List<string>();
 		}
@@ -702,7 +702,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<string>> SearchIdentitiesAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<string>> SearchIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<List<string>>(new List<string>());
 		}
@@ -717,7 +717,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
 		/// <returns></returns>
-		public static long Count<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter) where T : class
+		public static long Count<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter) where T : class
 		{
 			return 0;
 		}
@@ -731,7 +731,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The filter-by expression for counting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<long>(0);
 		}
@@ -745,7 +745,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="query">The text query for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
 		/// <returns></returns>
-		public static long Count<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter) where T : class
+		public static long Count<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter) where T : class
 		{
 			return 0;
 		}
@@ -760,7 +760,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The filter-by expression for counting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, RepositoryDataSource dataSource, string query, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<long>(0);
 		}

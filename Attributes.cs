@@ -4,7 +4,7 @@ using net.vieapps.Components.Caching;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Specifies this class is repository (means this class is a module definition)
+	/// Specifies this class is a repository
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 	public class RepositoryAttribute : Attribute
@@ -26,12 +26,12 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
-	/// Specifies this class is repository entity (means this class is a content-type definition)
+	/// Specifies this class is an entity of a repository
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-	public class RepositoryEntityAttribute : Attribute
+	public class EntityAttribute : Attribute
 	{
-		public RepositoryEntityAttribute() {}
+		public EntityAttribute() {}
 
 		/// <summary>
 		/// Gets or sets the name of the SQL table 
@@ -66,7 +66,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this property is primary-key
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 	public class PrimaryKeyAttribute : Attribute
 	{
 		public PrimaryKeyAttribute()
@@ -148,6 +148,24 @@ namespace net.vieapps.Components.Repository
 
 	/// <summary>
 	/// Specifies this property is not map to a column in SQL table
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	public class IgnoreWhenSqlAttribute : Attribute
+	{
+		public IgnoreWhenSqlAttribute() { }
+	}
+
+	/// <summary>
+	/// Specifies this property is not map to an attribute in NoSQL collection
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	public class IgnoreWhenNoSqlAttribute : Attribute
+	{
+		public IgnoreWhenNoSqlAttribute() { }
+	}
+
+	/// <summary>
+	/// Specifies this property is not map to a column in SQL table and not map to an attribute in NoSQL collection
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 	public class IgnoreAttribute : Attribute

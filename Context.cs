@@ -44,7 +44,7 @@ namespace net.vieapps.Components.Repository
 #if DEBUG
 		public RepositoryEntityDefinition EntityDefinition { get; set; }
 #else
-		public RepositoryEntityDefinition EntityDefinition { get; internal set; }
+		public EntityDefinition EntityDefinition { get; internal set; }
 #endif
 
 		/// <summary>
@@ -418,7 +418,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static IMongoCollection<T> GetNoSqlCollection<T>(RepositoryContext context, RepositoryDataSource dataSource) where T : class
+		public static IMongoCollection<T> GetNoSqlCollection<T>(RepositoryContext context, DataSource dataSource) where T : class
 		{
 			return RepositoryContext.GetNoSqlCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, context.EntityDefinition.CollectionName);
 		}
@@ -434,7 +434,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The object that presents related information of a data source in SQL database</param>
 		/// <param name="providerFactory">The object that presents information of a database provider factory</param>
 		/// <returns></returns>
-		public DbConnection GetSqlConnection(RepositoryDataSource dataSource, DbProviderFactory providerFactory = null)
+		public DbConnection GetSqlConnection(DataSource dataSource, DbProviderFactory providerFactory = null)
 		{
 			if (dataSource == null)
 				return null;

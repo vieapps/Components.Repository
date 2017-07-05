@@ -34,9 +34,9 @@ namespace net.vieapps.Components.Repository
 		public abstract string ID { get; set; }
 
 		/// <summary>
-		/// Gets the collection of custom properties
+		/// Gets or sets the collection of custom properties
 		/// </summary>
-		[JsonIgnore, XmlIgnore]
+		[IgnoreWhenSql, JsonIgnore, XmlIgnore]
 		public Dictionary<string, object> CustomProperties { get; set; }
 
 		/// <summary>
@@ -102,6 +102,17 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="xml">The XML object that contains information</param>
 		public abstract void ParseXml(XContainer xml);
+
+		/// <summary>
+		/// Gest or sets value of a property by name
+		/// </summary>
+		/// <param name="name">The string that presents the name of a property</param>
+		/// <returns></returns>
+		internal protected virtual object this[string name]
+		{
+			get { return this.GetProperty(name); }
+			set { this.SetProperty(name, value); }
+		}
 	}
 
 	/// <summary>
@@ -1454,12 +1465,13 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Get/Set value of properties
+		#region Get/Set properties
 		/// <summary>
 		/// Gets the value of a specified property
 		/// </summary>
 		/// <param name="name">The name of the property</param>
-		/// <returns></returns>
+		/// <param name="value">The value of the property</param>
+		/// <returns>true if the property is getted; otherwise false;</returns>
 		public virtual bool TryGetProperty(string name, out object value)
 		{
 			value = null;
@@ -1498,6 +1510,13 @@ namespace net.vieapps.Components.Repository
 				: null;
 		}
 
+		/// <summary>
+		/// Gets the value of a specified property
+		/// </summary>
+		/// <typeparam name="TValue"></typeparam>
+		/// <param name="name">The name of the property</param>
+		/// <param name="value">The value of the property</param>
+		/// <returns>true if the property is getted; otherwise false;</returns>
 		public virtual bool TryGetProperty<TValue>(string name, out TValue value)
 		{
 			// assign default
@@ -1508,7 +1527,7 @@ namespace net.vieapps.Components.Repository
 			if (this.TryGetProperty(name, out theValue))
 			{
 				// get type
-				Type type = typeof(TValue);
+				var type = typeof(TValue);
 
 				// date-time
 				if (type.Equals(typeof(DateTime)) && !(theValue is DateTime))
@@ -1548,7 +1567,7 @@ namespace net.vieapps.Components.Repository
 		/// Gets the value of a specified property
 		/// </summary>
 		/// <param name="name">The name of the property</param>
-		/// <returns></returns>
+		/// <returns>true if the property is setted; otherwise false;</returns>
 		public virtual bool TrySetProperty(string name, object value)
 		{
 			value = null;
@@ -1585,17 +1604,6 @@ namespace net.vieapps.Components.Repository
 		public override void SetProperty(string name, object value)
 		{
 			this.TrySetProperty(name, value);
-		}
-
-		/// <summary>
-		/// Gest or sets value of a property/field by the specified name
-		/// </summary>
-		/// <param name="name">The string that presents the name of the property/field</param>
-		/// <returns></returns>
-		internal protected virtual object this[string name]
-		{
-			get { return this.GetProperty(name);}
-			set { this.SetProperty(name, value); }
 		}
 		#endregion
 

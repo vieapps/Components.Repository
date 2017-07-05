@@ -17,95 +17,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Information of a data source in the respository 
-	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
-	public class RepositoryDataSource
-	{
-		public RepositoryDataSource() {}
-
-		#region Properties
-		/// <summary>
-		/// Gets or sets the name of the data source
-		/// </summary>
-		public string Name { get; set; }
-		/// <summary>
-		/// Gets or sets the working mode
-		/// </summary>
-		public Repository.RepositoryModes Mode { get; set; }
-		/// <summary>
-		/// Gets or sets the name of the connection string (for working with database)
-		/// </summary>
-		public string ConnectionStringName { get; set; }
-		/// <summary>
-		/// Gets or sets the name of the database (for working with database)
-		/// </summary>
-		public string DatabaseName { get; set; }
-		/// <summary>
-		/// Gets or sets end-point of CRUD operations (for working with REST)
-		/// </summary>
-		public string CRUDEndPoint { get; set; }
-		/// <summary>
-		/// Gets or sets end-point of search operations (for working with REST)
-		/// </summary>
-		public string SearchEndPoint { get; set; }
-		/// <summary>
-		/// Gets or sets name of JSON Web Token parameter (for working with REST)
-		/// </summary>
-		public string TokenName { get; set; }
-		/// <summary>
-		/// Gets or sets place (Header or QueryString) of JSON Web Token parameter (for working with REST)
-		/// </summary>
-		public string TokenPlace { get; set; }
-		/// <summary>
-		/// Gets or sets URI of topic (for working with RPC using WAMP)
-		/// </summary>
-		public string TopicURI { get; set; }
-		#endregion
-
-		#region Parse
-		internal static RepositoryDataSource FromJson(JObject settings)
-		{
-			if (settings == null)
-				throw new ArgumentNullException("settings");
-			else if (settings["name"] == null)
-				throw new ArgumentNullException("name", "[name] attribute of settings");
-			else if (settings["mode"] == null)
-				throw new ArgumentNullException("mode", "[mode] attribute of settings");
-
-			// initialize
-			var dataSource = new RepositoryDataSource()
-			{
-				Name = (settings["name"] as JValue).Value as string,
-				Mode = (RepositoryModes)Enum.Parse(typeof(RepositoryModes), (settings["mode"] as JValue).Value as string)
-			};
-
-			// name of connection string (SQL and NoSQL)
-			if (dataSource.Mode.Equals(RepositoryModes.SQL) || dataSource.Mode.Equals(RepositoryModes.NoSQL))
-			{
-				if (settings["connectionStringName"] == null)
-					throw new ArgumentNullException("connectionStringName", "[connectionStringName] attribute of settings");
-				dataSource.ConnectionStringName = (settings["connectionStringName"] as JValue).Value as string;
-			}
-
-			// name of database (NoSQL)
-			if (dataSource.Mode.Equals(RepositoryModes.NoSQL))
-			{
-				if (settings["databaseName"] == null)
-					throw new ArgumentNullException("databaseName", "[databaseName] attribute of settings");
-				dataSource.DatabaseName = (settings["databaseName"] as JValue).Value as string;
-			}
-
-			return dataSource;
-		}
-		#endregion
-
-	}
-
-	//  --------------------------------------------------------------------------------------------
-
-	/// <summary>
-	/// Definition of a respository (means a module definition)
+	/// Definition of a respository
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
 	public class RepositoryDefinition
@@ -121,75 +33,61 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets type of the object for processing
 		/// </summary>
 		public Type Type { get; set; }
+
 		/// <summary>
 		/// Gets the name of the primary data source
 		/// </summary>
 		public string PrimaryDataSourceName { get; internal set; }
+
 		/// <summary>
 		/// Gets the name of the secondary data source
 		/// </summary>
 		public string SecondaryDataSourceName { get; internal set; }
+
 		/// <summary>
 		/// Gets the names of the all data-sources that available for sync
 		/// </summary>
 		public string SyncDataSourceNames { get; internal set; }
-		/// <summary>
-		/// Gets the identity of this module definition
-		/// </summary>
-		public string ID { get; internal set; }
-		/// <summary>
-		/// Gets the title of this module definition
-		/// </summary>
-		public string Title { get; internal set; }
-		/// <summary>
-		/// Gets the description of this module definition
-		/// </summary>
-		public string Description { get; internal set; }
-		/// <summary>
-		/// Gets state that specified this is alias of other repository (means alias of other module)
-		/// </summary>
-		public bool IsAlias { get; internal set; }
-		/// <summary>
-		/// Gets extra data of the definition
-		/// </summary>
-		public ExpandoObject ExtraData { get; internal set; }
+		#endregion
+
+		#region Properties [Helpers]
 		/// <summary>
 		/// Gets the primary data-source
 		/// </summary>
-		public RepositoryDataSource PrimaryDataSource
+		public DataSource PrimaryDataSource
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.PrimaryDataSourceName) && RepositoryMediator.RepositoryDataSources.ContainsKey(this.PrimaryDataSourceName)
-					? RepositoryMediator.RepositoryDataSources[this.PrimaryDataSourceName]
+				return !string.IsNullOrWhiteSpace(this.PrimaryDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.PrimaryDataSourceName)
+					? RepositoryMediator.DataSources[this.PrimaryDataSourceName]
 					: null;
 			}
 		}
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
-		public RepositoryDataSource SecondaryDataSource
+		public DataSource SecondaryDataSource
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.SecondaryDataSourceName) && RepositoryMediator.RepositoryDataSources.ContainsKey(this.SecondaryDataSourceName)
-					? RepositoryMediator.RepositoryDataSources[this.SecondaryDataSourceName]
+				return !string.IsNullOrWhiteSpace(this.SecondaryDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.SecondaryDataSourceName)
+					? RepositoryMediator.DataSources[this.SecondaryDataSourceName]
 					: null;
 			}
 		}
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
-		public List<RepositoryDataSource> SyncDataSources
+		public List<DataSource> SyncDataSources
 		{
 			get
 			{
 				if (string.IsNullOrWhiteSpace(this.SyncDataSourceNames))
-					return new List<RepositoryDataSource>();
+					return new List<DataSource>();
 				else
 				{
 					HashSet<string> dataSources = this.SyncDataSourceNames.ToHashSet(',');
-					return RepositoryMediator.RepositoryDataSources
+					return RepositoryMediator.DataSources
 						.Where(item => dataSources.Contains(item.Key))
 						.Select(item => item.Value)
 						.ToList();
@@ -199,16 +97,48 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the definitions of all entities
 		/// </summary>
-		public List<RepositoryEntityDefinition> EntityDefinitions
+		public List<EntityDefinition> EntityDefinitions
 		{
 			get
 			{
-				return RepositoryMediator.RepositoryEntityDefinitions
+				return RepositoryMediator.EntityDefinitions
 					.Where(item => item.Value.ParentName.Equals(this.Type.GetTypeName()))
 					.Select(item => item.Value)
 					.ToList();
 			}
 		}
+		#endregion
+
+		#region Properties [Module Definition]
+		/// <summary>
+		/// Gets the identity (in case this definition is used as a module definition)
+		/// </summary>
+		public string ID { get; internal set; }
+
+		/// <summary>
+		/// Gets the path to folder that contains all UI files (in case this definition is used as a module definition)
+		/// </summary>
+		public string Path { get; internal set; }
+
+		/// <summary>
+		/// Gets the title (in case this definition is used as a module definition)
+		/// </summary>
+		public string Title { get; internal set; }
+
+		/// <summary>
+		/// Gets the description (in case this definition is used as a module definition)
+		/// </summary>
+		public string Description { get; internal set; }
+
+		/// <summary>
+		/// Gets state that specified this is alias of other repository (means alias of other module in case this definition is used as a module definition)
+		/// </summary>
+		public bool IsAlias { get; internal set; }
+
+		/// <summary>
+		/// Gets extra data of the definition
+		/// </summary>
+		public ExpandoObject ExtraData { get; internal set; }
 		#endregion
 
 		#region Register
@@ -300,14 +230,14 @@ namespace net.vieapps.Components.Repository
 				: null;
 			if (string.IsNullOrEmpty(data))
 				throw new ArgumentNullException("primaryDataSource", "[primaryDataSource] attribute of settings");
-			else if (!RepositoryMediator.RepositoryDataSources.ContainsKey(data))
+			else if (!RepositoryMediator.DataSources.ContainsKey(data))
 				throw new ArgumentException("The data source named '" + data + "' is not available");
 			RepositoryMediator.RepositoryDefinitions[typeName].PrimaryDataSourceName = data;
 
 			data = settings["secondaryDataSource"] != null
 				? (settings["secondaryDataSource"] as JValue).Value as string
 				: null;
-			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.RepositoryDataSources.ContainsKey(data))
+			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.DataSources.ContainsKey(data))
 				data = null;
 			RepositoryMediator.RepositoryDefinitions[typeName].SecondaryDataSourceName = data;
 
@@ -324,7 +254,7 @@ namespace net.vieapps.Components.Repository
 					data = "";
 					names.ForEach(name =>
 					{
-						data += RepositoryMediator.RepositoryDataSources.ContainsKey(name)
+						data += RepositoryMediator.DataSources.ContainsKey(name)
 							? (!data.Equals("") ? "," : "") + name
 							: "";
 					});
@@ -339,12 +269,12 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Definition of a respository entity (means a content-type definition)
+	/// Definition of an entity in a respository
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
-	public class RepositoryEntityDefinition
+	public class EntityDefinition
 	{
-		public RepositoryEntityDefinition()
+		public EntityDefinition()
 		{
 			this.Attributes = new List<ObjectService.AttributeInfo>();
 			this.SortableAttributes = new List<string>() { "ID" };
@@ -356,102 +286,105 @@ namespace net.vieapps.Components.Repository
 		/// Gets the type of the object for processing
 		/// </summary>
 		public Type Type { get; internal set; }
+
 		/// <summary>
 		/// Gets the name of the primary data source
 		/// </summary>
 		public string PrimaryDataSourceName { get; internal set; }
+
 		/// <summary>
 		/// Gets the name of the secondary data source
 		/// </summary>
 		public string SecondaryDataSourceName { get; internal set; }
+
 		/// <summary>
 		/// Gets the names of the all data-sources that available for sync
 		/// </summary>
 		public string SyncDataSourceNames { get; internal set; }
+
 		/// <summary>
 		/// Gets or sets the name of the table in SQL database
 		/// </summary>
 		public string TableName { get; internal set; }
+
 		/// <summary>
 		/// Gets or sets the name of the collection in NoSQL database
 		/// </summary>
 		public string CollectionName { get; internal set; }
-		/// <summary>
-		/// Gets or sets the identity of this content-type definition
-		/// </summary>
-		public string ID { get; internal set; }
-		/// <summary>
-		/// Gets or sets the title (means name) of this content-type definition
-		/// </summary>
-		public string Title { get; internal set; }
-		/// <summary>
-		/// Gets or sets the description of this content-type definition
-		/// </summary>
-		public string Description { get; internal set; }
+
 		/// <summary>
 		/// Gets the type of a static class that contains information of the cache storage for processing caching data
 		/// </summary>
 		public Type CacheStorageType { get; internal set; }
+
 		/// <summary>
 		/// Gets the name of the object in the static class that contains information of the cache storage for processing caching data
 		/// </summary>
 		public string CacheStorageName { get; internal set; }
+		#endregion
+
+		#region Properties [Helpers]
 		/// <summary>
 		/// Gets the cache storage object for processing caching data of this entity
 		/// </summary>
 		public Caching.CacheManager CacheStorage { get; internal set; }
-		/// <summary>
-		/// Gets extra data of the definition
-		/// </summary>
-		public ExpandoObject ExtraData { get; internal set; }
+
 		/// <summary>
 		/// Gets the primary data-source
 		/// </summary>
-		public RepositoryDataSource PrimaryDataSource
+		public DataSource PrimaryDataSource
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.PrimaryDataSourceName) && RepositoryMediator.RepositoryDataSources.ContainsKey(this.PrimaryDataSourceName)
-					? RepositoryMediator.RepositoryDataSources[this.PrimaryDataSourceName]
+				return !string.IsNullOrWhiteSpace(this.PrimaryDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.PrimaryDataSourceName)
+					? RepositoryMediator.DataSources[this.PrimaryDataSourceName]
 					: null;
 			}
 		}
+
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
-		public RepositoryDataSource SecondaryDataSource
+		public DataSource SecondaryDataSource
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.SecondaryDataSourceName) && RepositoryMediator.RepositoryDataSources.ContainsKey(this.SecondaryDataSourceName)
-					? RepositoryMediator.RepositoryDataSources[this.SecondaryDataSourceName]
+				return !string.IsNullOrWhiteSpace(this.SecondaryDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.SecondaryDataSourceName)
+					? RepositoryMediator.DataSources[this.SecondaryDataSourceName]
 					: null;
 			}
 		}
+
 		/// <summary>
 		/// Gets the other data sources that are available for synchronizing
 		/// </summary>
-		public List<RepositoryDataSource> SyncDataSources
+		public List<DataSource> SyncDataSources
 		{
 			get
 			{
 				if (string.IsNullOrWhiteSpace(this.SyncDataSourceNames))
-					return new List<RepositoryDataSource>();
+					return new List<DataSource>();
 				else
 				{
 					HashSet<string> dataSources = this.SyncDataSourceNames.ToHashSet();
-					return RepositoryMediator.RepositoryDataSources
+					return RepositoryMediator.DataSources
 						.Where(item => dataSources.Contains(item.Key))
 						.Select(item => item.Value)
 						.ToList();
 				}
 			}
 		}
+
 		/// <summary>
 		/// Gets the collection of all attributes (properties and fields)
 		/// </summary>
 		public List<ObjectService.AttributeInfo> Attributes { get; internal set; }
+
 		internal string PrimaryKey { get; set; }
+
+		/// <summary>
+		/// Gets the information of the primary key
+		/// </summary>
 		public ObjectService.AttributeInfo PrimaryKeyInfo
 		{
 			get
@@ -459,11 +392,14 @@ namespace net.vieapps.Components.Repository
 				return this.Attributes.FirstOrDefault(attribute => attribute.Name.Equals(this.PrimaryKey));
 			}
 		}
+
 		/// <summary>
 		/// Gets the collection of sortable properties
 		/// </summary>
 		public List<string> SortableAttributes { get; internal set; }
+
 		internal string ParentName { get; set; }
+
 		/// <summary>
 		/// Gets the definitions of the parent (repository)
 		/// </summary>
@@ -476,20 +412,42 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Properties [Content-Type Definition]
+		/// <summary>
+		/// Gets or sets the identity of this content-type definition
+		/// </summary>
+		public string ID { get; internal set; }
+
+		/// <summary>
+		/// Gets or sets the title (means name) of this content-type definition
+		/// </summary>
+		public string Title { get; internal set; }
+
+		/// <summary>
+		/// Gets or sets the description of this content-type definition
+		/// </summary>
+		public string Description { get; internal set; }
+
+		/// <summary>
+		/// Gets extra data of the definition
+		/// </summary>
+		public ExpandoObject ExtraData { get; internal set; }
+		#endregion
+
 		#region Register
 		internal static void Register(Type type)
 		{
 			// check existed
-			if (RepositoryMediator.RepositoryEntityDefinitions.ContainsKey(type.GetTypeName()))
+			if (RepositoryMediator.EntityDefinitions.ContainsKey(type.GetTypeName()))
 				return;
 
 			// check table/collection name
-			var info = type.GetCustomAttributes(false).FirstOrDefault(attribute => attribute is RepositoryEntityAttribute) as RepositoryEntityAttribute;
+			var info = type.GetCustomAttributes(false).FirstOrDefault(attribute => attribute is EntityAttribute) as EntityAttribute;
 			if (string.IsNullOrWhiteSpace(info.TableName) && string.IsNullOrWhiteSpace(info.CollectionName))
 				throw new ArgumentException("The type [" + type.ToString() + "] must have name of SQL table or NoSQL collection");
 
 			// initialize
-			var definition = new RepositoryEntityDefinition()
+			var definition = new EntityDefinition()
 			{
 				Type = type,
 				TableName = info.TableName,
@@ -585,7 +543,7 @@ namespace net.vieapps.Components.Repository
 			});
 
 			// update into collection
-			RepositoryMediator.RepositoryEntityDefinitions.Add(type.GetTypeName(), definition);
+			RepositoryMediator.EntityDefinitions.Add(type.GetTypeName(), definition);
 		}
 		#endregion
 
@@ -604,23 +562,23 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			var typeName = type.GetTypeName();
-			if (!RepositoryMediator.RepositoryEntityDefinitions.ContainsKey(typeName))
+			if (!RepositoryMediator.EntityDefinitions.ContainsKey(typeName))
 				return;
 
 			// update
 			var data = settings["primaryDataSource"] != null
 				? (settings["primaryDataSource"] as JValue).Value as string
 				: null;
-			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.RepositoryDataSources.ContainsKey(data))
+			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.DataSources.ContainsKey(data))
 				data = null;
-			RepositoryMediator.RepositoryEntityDefinitions[typeName].PrimaryDataSourceName = data;
+			RepositoryMediator.EntityDefinitions[typeName].PrimaryDataSourceName = data;
 
 			data = settings["secondaryDataSource"] != null
 				? (settings["secondaryDataSource"] as JValue).Value as string
 				: null;
-			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.RepositoryDataSources.ContainsKey(data))
+			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.DataSources.ContainsKey(data))
 				data = null;
-			RepositoryMediator.RepositoryEntityDefinitions[typeName].SecondaryDataSourceName = data;
+			RepositoryMediator.EntityDefinitions[typeName].SecondaryDataSourceName = data;
 
 			data = settings["syncDataSources"] != null
 				? (settings["syncDataSources"] as JValue).Value as string
@@ -635,13 +593,13 @@ namespace net.vieapps.Components.Repository
 					data = "";
 					names.ForEach(name =>
 					{
-						data += RepositoryMediator.RepositoryDataSources.ContainsKey(name)
+						data += RepositoryMediator.DataSources.ContainsKey(name)
 							? (!data.Equals("") ? "," : "") + name
 							: "";
 					});
 				}
 			}
-			RepositoryMediator.RepositoryEntityDefinitions[typeName].SyncDataSourceNames = data;
+			RepositoryMediator.EntityDefinitions[typeName].SyncDataSourceNames = data;
 
 			// individual cache storage
 			if (settings["cacheRegion"] != null)
@@ -662,7 +620,7 @@ namespace net.vieapps.Components.Repository
 				var cacheActiveSynchronize = settings["cacheActiveSynchronize"] != null
 					? ((settings["cacheActiveSynchronize"] as JValue).Value as string).IsEquals("true")
 					: false;
-				RepositoryMediator.RepositoryEntityDefinitions[typeName].CacheStorage = new Caching.CacheManager(cacheRegion, cacheExpirationType.IsEquals("absolute") ? "Absolute" : "Sliding", cacheExpirationTime, cacheActiveSynchronize);
+				RepositoryMediator.EntityDefinitions[typeName].CacheStorage = new Caching.CacheManager(cacheRegion, cacheExpirationType.IsEquals("absolute") ? "Absolute" : "Sliding", cacheExpirationTime, cacheActiveSynchronize);
 			}
 		}
 
@@ -673,8 +631,79 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheStorage">The cache storage</param>
 		public void SetCacheStorage(Type type, Caching.CacheManager cacheStorage)
 		{
-			if (type != null && RepositoryMediator.RepositoryEntityDefinitions.ContainsKey(type.GetTypeName()))
-				RepositoryMediator.RepositoryEntityDefinitions[type.GetTypeName()].CacheStorage = cacheStorage;
+			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type.GetTypeName()))
+				RepositoryMediator.EntityDefinitions[type.GetTypeName()].CacheStorage = cacheStorage;
+		}
+		#endregion
+
+	}
+
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
+	/// Information of a data source in the respository 
+	/// </summary>
+	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
+	public class DataSource
+	{
+		public DataSource() { }
+
+		#region Properties
+		/// <summary>
+		/// Gets or sets the name of the data source
+		/// </summary>
+		public string Name { get; set; }
+
+		/// <summary>
+		/// Gets or sets the working mode
+		/// </summary>
+		public Repository.RepositoryModes Mode { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the connection string (for working with database)
+		/// </summary>
+		public string ConnectionStringName { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the database (for working with database)
+		/// </summary>
+		public string DatabaseName { get; set; }
+		#endregion
+
+		#region Parse
+		internal static DataSource FromJson(JObject settings)
+		{
+			if (settings == null)
+				throw new ArgumentNullException("settings");
+			else if (settings["name"] == null)
+				throw new ArgumentNullException("name", "[name] attribute of settings");
+			else if (settings["mode"] == null)
+				throw new ArgumentNullException("mode", "[mode] attribute of settings");
+
+			// initialize
+			var dataSource = new DataSource()
+			{
+				Name = (settings["name"] as JValue).Value as string,
+				Mode = (RepositoryModes)Enum.Parse(typeof(RepositoryModes), (settings["mode"] as JValue).Value as string)
+			};
+
+			// name of connection string (SQL and NoSQL)
+			if (dataSource.Mode.Equals(RepositoryModes.SQL) || dataSource.Mode.Equals(RepositoryModes.NoSQL))
+			{
+				if (settings["connectionStringName"] == null)
+					throw new ArgumentNullException("connectionStringName", "[connectionStringName] attribute of settings");
+				dataSource.ConnectionStringName = (settings["connectionStringName"] as JValue).Value as string;
+			}
+
+			// name of database (NoSQL)
+			if (dataSource.Mode.Equals(RepositoryModes.NoSQL))
+			{
+				if (settings["databaseName"] == null)
+					throw new ArgumentNullException("databaseName", "[databaseName] attribute of settings");
+				dataSource.DatabaseName = (settings["databaseName"] as JValue).Value as string;
+			}
+
+			return dataSource;
 		}
 		#endregion
 
