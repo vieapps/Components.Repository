@@ -20,51 +20,6 @@ using net.vieapps.Components.Utility;
 
 namespace net.vieapps.Components.Repository
 {
-
-	/// <summary>
-	/// Interface of all filter expressions
-	/// </summary>
-	public interface IFilterBy<T> where T : class
-	{
-		/// <summary>
-		/// Parses from XML
-		/// </summary>
-		/// <param name="element"></param>
-		void Parse(XElement element);
-
-		/// <summary>
-		/// Converts to XML
-		/// </summary>
-		/// <returns></returns>
-		XElement ToXml();
-
-		/// <summary>
-		/// Parses from JSON
-		/// </summary>
-		/// <param name="json"></param>
-		void Parse(JObject json);
-
-		/// <summary>
-		/// Converts to JSON
-		/// </summary>
-		/// <returns></returns>
-		JObject ToJson();
-
-		/// <summary>
-		/// Gets the statement of SQL
-		/// </summary>
-		/// <returns></returns>
-		Tuple<string, Dictionary<string, object>> GetSqlStatement();
-
-		/// <summary>
-		/// Gets the statement of No SQL
-		/// </summary>
-		/// <returns></returns>
-		FilterDefinition<T> GetNoSqlStatement();
-	}
-
-	// ------------------------------------------
-
 	/// <summary>
 	/// An expression for filtering using comparing operators
 	/// </summary>
@@ -73,20 +28,11 @@ namespace net.vieapps.Components.Repository
 	{
 
 		#region Constructors
-		public FilterBy() : this(CompareOperators.Equals) { }
-
-		public FilterBy(CompareOperators @operator) : this(@operator, null, null) { }
-
-		public FilterBy(CompareOperators @operator, string attribute, object value)
+		public FilterBy(CompareOperator @operator = CompareOperator.Equals, string attribute = null, object value = null)
 		{
 			this.Operator = @operator;
 			this.Attribute = attribute;
 			this.Value = value;
-		}
-
-		public FilterBy(XElement element)
-		{
-			this.Parse(element);
 		}
 
 		public FilterBy(JObject json)
@@ -98,7 +44,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the operator
 		/// </summary>
-		public CompareOperators Operator { get; set; }
+		public CompareOperator Operator { get; set; }
 
 		/// <summary>
 		/// Gets or sets the attribute for comparing/filtering
@@ -111,22 +57,12 @@ namespace net.vieapps.Components.Repository
 		public object Value { get; set; }
 
 		/// <summary>
-		/// Gets or sets the parent filtering expression
+		/// Gets the parent filtering expression
 		/// </summary>
 		[JsonIgnore, XmlIgnore]
-		public FilterBys<T> Parent { get; set; }
+		public FilterBys<T> Parent { get; internal set; }
 
-		#region Working with XML & JSON
-		public void Parse(XElement element)
-		{
-
-		}
-
-		public XElement ToXml()
-		{
-			return null;
-		}
-
+		#region Working with JSON
 		public void Parse(JObject json)
 		{
 
@@ -184,49 +120,49 @@ namespace net.vieapps.Components.Repository
 
 			switch (this.Operator)
 			{
-				case CompareOperators.Equals:
+				case CompareOperator.Equals:
 					return Builders<T>.Filter.Eq(this.Attribute, this.Value);
 
-				case CompareOperators.NotEquals:
+				case CompareOperator.NotEquals:
 					return Builders<T>.Filter.Ne(this.Attribute, this.Value);
 
-				case CompareOperators.LessThan:
+				case CompareOperator.LessThan:
 					return Builders<T>.Filter.Lt(this.Attribute, this.Value);
 
-				case CompareOperators.LessThanOrEquals:
+				case CompareOperator.LessThanOrEquals:
 					return Builders<T>.Filter.Lte(this.Attribute, this.Value);
 
-				case CompareOperators.Greater:
+				case CompareOperator.Greater:
 					return Builders<T>.Filter.Gt(this.Attribute, this.Value);
 
-				case CompareOperators.GreaterOrEquals:
+				case CompareOperator.GreaterOrEquals:
 					return Builders<T>.Filter.Gte(this.Attribute, this.Value);
 
-				case CompareOperators.Contains:
+				case CompareOperator.Contains:
 					return this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
 						? Builders<T>.Filter.Eq(this.Attribute, "")
 						: Builders<T>.Filter.Regex(this.Attribute, new BsonRegularExpression("/.*" + this.Value + ".*/"));
 
-				case CompareOperators.StartsWith:
+				case CompareOperator.StartsWith:
 					return this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
 						? Builders<T>.Filter.Eq(this.Attribute, "")
 						: Builders<T>.Filter.Regex(this.Attribute, new BsonRegularExpression("^" + this.Value));
 
-				case CompareOperators.EndsWith:
+				case CompareOperator.EndsWith:
 					return this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
 						? Builders<T>.Filter.Eq(this.Attribute, "")
 						: Builders<T>.Filter.Regex(this.Attribute, new BsonRegularExpression(this.Value + "$"));
 
-				case CompareOperators.IsNull:
+				case CompareOperator.IsNull:
 					return Builders<T>.Filter.Eq(this.Attribute, BsonNull.Value);
 
-				case CompareOperators.IsNotNull:
+				case CompareOperator.IsNotNull:
 					return Builders<T>.Filter.Ne(this.Attribute, BsonNull.Value);
 
-				case CompareOperators.IsEmpty:
+				case CompareOperator.IsEmpty:
 					return Builders<T>.Filter.Eq(this.Attribute, "");
 
-				case CompareOperators.IsNotEmpty:
+				case CompareOperator.IsNotEmpty:
 					return Builders<T>.Filter.Ne(this.Attribute, "");
 
 				default:
@@ -247,19 +183,10 @@ namespace net.vieapps.Components.Repository
 	{
 
 		#region Constructors
-		public FilterBys() : this(GroupOperators.And) { }
-
-		public FilterBys(GroupOperators @operator) : this(@operator, null) { }
-
-		public FilterBys(GroupOperators @operator, List<IFilterBy<T>> children)
+		public FilterBys(GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null)
 		{
 			this.Operator = @operator;
 			this.Children = children != null ? children : new List<IFilterBy<T>>();
-		}
-
-		public FilterBys(XElement element)
-		{
-			this.Parse(element);
 		}
 
 		public FilterBys(JObject json)
@@ -271,16 +198,16 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the operator
 		/// </summary>
-		public GroupOperators Operator { get; set; }
+		public GroupOperator Operator { get; set; }
 
 		/// <summary>
-		/// Gets or sets the parent filtering expression
+		/// Gets the parent filtering expression
 		/// </summary>
 		[JsonIgnore, XmlIgnore]
-		public FilterBys<T> Parent { get; set; }
+		public FilterBys<T> Parent { get; internal set; }
 
 		/// <summary>
-		/// Gets or sets the collection of children
+		/// Gets the collection of children
 		/// </summary>
 		public List<IFilterBy<T>> Children { get; internal set; }
 
@@ -294,17 +221,7 @@ namespace net.vieapps.Components.Repository
 				this.Children.Add(filter);
 		}
 
-		#region Working with XML & JSON
-		public void Parse(XElement element)
-		{
-			
-		}
-
-		public XElement ToXml()
-		{
-			return null;
-		}
-
+		#region Working with JSON
 		public void Parse(JObject json)
 		{
 
@@ -313,9 +230,9 @@ namespace net.vieapps.Components.Repository
 		public JObject ToJson()
 		{
 			var children = new JArray();
-			this.Children.ForEach((f) =>
+			this.Children.ForEach(child =>
 			{
-				children.Add(f.ToJson());
+				children.Add(child.ToJson());
 			});
 			return new JObject()
 			{
@@ -355,7 +272,7 @@ namespace net.vieapps.Components.Repository
 
 					if (data != null)
 					{
-						statement += (statement.Equals("") ? "" : this.Operator.Equals(GroupOperators.And) ? " AND " : " OR ") + data.Item1;
+						statement += (statement.Equals("") ? "" : this.Operator.Equals(GroupOperator.And) ? " AND " : " OR ") + data.Item1;
 						data.Item2.ForEach(p =>
 						{
 							parameters.Add(p.Key, p.Value);
@@ -397,7 +314,7 @@ namespace net.vieapps.Components.Repository
 					if (childFilter != null)
 						filter = filter == null
 							? childFilter
-							: this.Operator.Equals(GroupOperators.And) ? filter & childFilter : filter | childFilter;
+							: this.Operator.Equals(GroupOperator.And) ? filter & childFilter : filter | childFilter;
 				});
 
 			return filter;
@@ -433,7 +350,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBys<T> And<T>(IFilterBy<T> filter) where T : class
 		{
-			return new FilterBys<T>(GroupOperators.And, filter != null ? new List<IFilterBy<T>>() { filter } : null);
+			return new FilterBys<T>(GroupOperator.And, filter != null ? new List<IFilterBy<T>>() { filter } : null);
 		}
 
 		/// <summary>
@@ -444,7 +361,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBys<T> And<T>(List<IFilterBy<T>> children) where T : class
 		{
-			return new FilterBys<T>(GroupOperators.And, children);
+			return new FilterBys<T>(GroupOperator.And, children);
 		}
 
 		/// <summary>
@@ -465,7 +382,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBys<T> Or<T>(IFilterBy<T> filter) where T : class
 		{
-			return new FilterBys<T>(GroupOperators.Or, filter != null ? new List<IFilterBy<T>>() { filter } : null);
+			return new FilterBys<T>(GroupOperator.Or, filter != null ? new List<IFilterBy<T>>() { filter } : null);
 		}
 
 		/// <summary>
@@ -476,7 +393,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBys<T> Or<T>(List<IFilterBy<T>> children) where T : class
 		{
-			return new FilterBys<T>(GroupOperators.Or, children);
+			return new FilterBys<T>(GroupOperator.Or, children);
 		}
 		#endregion
 
@@ -490,7 +407,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> Equals<T>(string attribute, object value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.Equals, attribute, value);
+			return new FilterBy<T>(CompareOperator.Equals, attribute, value);
 		}
 
 		/// <summary>
@@ -502,7 +419,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> NotEquals<T>(string attribute, object value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.NotEquals, attribute, value);
+			return new FilterBy<T>(CompareOperator.NotEquals, attribute, value);
 		}
 
 		/// <summary>
@@ -514,7 +431,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> LessThan<T>(string attribute, object value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.LessThan, attribute, value);
+			return new FilterBy<T>(CompareOperator.LessThan, attribute, value);
 		}
 
 		/// <summary>
@@ -526,7 +443,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> LessThanOrEquals<T>(string attribute, object value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.LessThanOrEquals, attribute, value);
+			return new FilterBy<T>(CompareOperator.LessThanOrEquals, attribute, value);
 		}
 
 		/// <summary>
@@ -538,7 +455,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> Greater<T>(string attribute, object value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.Greater, attribute, value);
+			return new FilterBy<T>(CompareOperator.Greater, attribute, value);
 		}
 
 		/// <summary>
@@ -550,7 +467,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> GreaterOrEquals<T>(string attribute, object value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.GreaterOrEquals, attribute, value);
+			return new FilterBy<T>(CompareOperator.GreaterOrEquals, attribute, value);
 		}
 
 		/// <summary>
@@ -562,7 +479,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> Contains<T>(string attribute, object value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.Contains, attribute, value);
+			return new FilterBy<T>(CompareOperator.Contains, attribute, value);
 		}
 
 		/// <summary>
@@ -574,7 +491,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> StartsWith<T>(string attribute, string value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.StartsWith, attribute, value);
+			return new FilterBy<T>(CompareOperator.StartsWith, attribute, value);
 		}
 
 		/// <summary>
@@ -586,7 +503,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> EndsWith<T>(string attribute, string value) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.EndsWith, attribute, value);
+			return new FilterBy<T>(CompareOperator.EndsWith, attribute, value);
 		}
 
 		/// <summary>
@@ -597,7 +514,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> IsNull<T>(string attribute) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.IsNull, attribute, null);
+			return new FilterBy<T>(CompareOperator.IsNull, attribute, null);
 		}
 
 		/// <summary>
@@ -608,7 +525,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> IsNotNull<T>(string attribute) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.IsNotNull, attribute, null);
+			return new FilterBy<T>(CompareOperator.IsNotNull, attribute, null);
 		}
 
 		/// <summary>
@@ -619,7 +536,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> IsEmpty<T>(string attribute) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.IsEmpty, attribute, null);
+			return new FilterBy<T>(CompareOperator.IsEmpty, attribute, null);
 		}
 
 		/// <summary>
@@ -630,7 +547,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> IsNotEmpty<T>(string attribute) where T : class
 		{
-			return new FilterBy<T>(CompareOperators.IsNotEmpty, attribute, null);
+			return new FilterBy<T>(CompareOperator.IsNotEmpty, attribute, null);
 		}
 		#endregion
 
@@ -646,17 +563,10 @@ namespace net.vieapps.Components.Repository
 	{
 
 		#region Constructors
-		public SortBy(string attribute) : this(attribute, SortModes.Ascending) { }
-
-		public SortBy(string attribute, SortModes mode)
+		public SortBy(string attribute = null, SortMode mode = SortMode.Ascending)
 		{
 			this.Attribute = attribute;
 			this.Mode = mode;
-		}
-
-		public SortBy(XElement element)
-		{
-			this.Parse(element);
 		}
 
 		public SortBy(JObject json)
@@ -673,32 +583,14 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the mode for sorting
 		/// </summary>
-		public SortModes Mode { get; set; }
+		public SortMode Mode { get; set; }
 
 		/// <summary>
 		/// Gets or sets the next-sibling
 		/// </summary>
 		public SortBy<T> ThenBy { get; set; }
 
-		#region Working with XML & JSON
-		/// <summary>
-		/// Parses from XML
-		/// </summary>
-		/// <param name="element"></param>
-		public void Parse(XElement element)
-		{
-
-		}
-
-		/// <summary>
-		/// Converts to XML
-		/// </summary>
-		/// <returns></returns>
-		public XElement ToXml()
-		{
-			return null;
-		}
-
+		#region Working with JSON
 		/// <summary>
 		/// Parses from JSON
 		/// </summary>
@@ -746,7 +638,7 @@ namespace net.vieapps.Components.Repository
 				? this.ThenBy.GetSqlStatement()
 				: null;
 
-			return this.Attribute + (this.Mode.Equals(SortModes.Ascending) ? " ASC" : " DESC") + (!string.IsNullOrWhiteSpace(next) ? ", " + next : "");
+			return this.Attribute + (this.Mode.Equals(SortMode.Ascending) ? " ASC" : " DESC") + (!string.IsNullOrWhiteSpace(next) ? ", " + next : "");
 		}
 		#endregion
 
@@ -771,10 +663,10 @@ namespace net.vieapps.Components.Repository
 				return null;
 
 			var sort = previous != null
-				? this.Mode.Equals(SortModes.Ascending)
+				? this.Mode.Equals(SortMode.Ascending)
 					? previous.Ascending(this.Attribute)
 					: previous.Descending(this.Attribute)
-				: this.Mode.Equals(SortModes.Ascending)
+				: this.Mode.Equals(SortMode.Ascending)
 					? Builders<T>.Sort.Ascending(this.Attribute)
 					: Builders<T>.Sort.Descending(this.Attribute);
 
@@ -800,7 +692,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public static SortBy<T> Ascending<T>(string attribute) where T : class
 		{
-			return new SortBy<T>(attribute, SortModes.Ascending);
+			return new SortBy<T>(attribute, SortMode.Ascending);
 		}
 
 		/// <summary>
@@ -808,7 +700,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public static SortBy<T> ThenByAscending<T>(this SortBy<T> sort, string attribute) where T : class
 		{
-			sort.ThenBy = new SortBy<T>(attribute, SortModes.Ascending);
+			sort.ThenBy = new SortBy<T>(attribute, SortMode.Ascending);
 			return sort;
 		}
 		#endregion
@@ -819,7 +711,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public static SortBy<T> Descending<T>(string attribute) where T : class
 		{
-			return new SortBy<T>(attribute, SortModes.Descending);
+			return new SortBy<T>(attribute, SortMode.Descending);
 		}
 
 		/// <summary>
@@ -827,7 +719,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public static SortBy<T> ThenByDescending<T>(this SortBy<T> sort, string attribute) where T : class
 		{
-			sort.ThenBy = new SortBy<T>(attribute, SortModes.Descending);
+			sort.ThenBy = new SortBy<T>(attribute, SortMode.Descending);
 			return sort;
 		}
 		#endregion

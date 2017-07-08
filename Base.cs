@@ -21,7 +21,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Based-class for a repository
+	/// Base class of an entity in the a repository
 	/// </summary>
 	[Serializable]
 	public abstract class RepositoryBase
@@ -31,19 +31,25 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		[BsonId(IdGenerator = typeof(IdentityGenerator))]
 		[PrimaryKey(MaxLength = 32)]
-		public abstract string ID { get; set; }
-
-		/// <summary>
-		/// Gets or sets the collection of custom properties
-		/// </summary>
-		[IgnoreWhenSql, JsonIgnore, XmlIgnore]
-		public Dictionary<string, object> CustomProperties { get; set; }
+		public virtual string ID { get; set; }
 
 		/// <summary>
 		/// Gets the score while searching
 		/// </summary>
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		public double? SearchScore { get; set; }
+		public virtual double? SearchScore { get; set; }
+
+		#region Methods
+		/// <summary>
+		/// Gest or sets value of a property by name
+		/// </summary>
+		/// <param name="name">The string that presents the name of a property</param>
+		/// <returns></returns>
+		protected virtual object this[string name]
+		{
+			get { return this.GetProperty(name); }
+			set { this.SetProperty(name, value); }
+		}
 
 		/// <summary>
 		/// Gets the value of a specified property
@@ -62,9 +68,9 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Serializes this object to JSON object
 		/// </summary>
-		/// <param name="addTypeOfCustomProperties">true to add type of all custom properties (named with surfix '$Type')</param>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (named with surfix '$Type')</param>
 		/// <returns></returns>
-		public abstract JObject ToJson(bool addTypeOfCustomProperties);
+		public abstract JObject ToJson(bool addTypeOfExtendedProperties);
 
 		/// <summary>
 		/// Serializes this object to JSON object
@@ -84,9 +90,9 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Serializes this object to XML object
 		/// </summary>
-		/// <param name="addTypeOfCustomProperties">true to add type of all custom properties (attribute named '$type')</param>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (attribute named '$type')</param>
 		/// <returns></returns>
-		public abstract XElement ToXml(bool addTypeOfCustomProperties);
+		public abstract XElement ToXml(bool addTypeOfExtendedProperties);
 
 		/// <summary>
 		/// Serializes this object to XML object
@@ -102,21 +108,14 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="xml">The XML object that contains information</param>
 		public abstract void ParseXml(XContainer xml);
+		#endregion
 
-		/// <summary>
-		/// Gest or sets value of a property by name
-		/// </summary>
-		/// <param name="name">The string that presents the name of a property</param>
-		/// <returns></returns>
-		internal protected virtual object this[string name]
-		{
-			get { return this.GetProperty(name); }
-			set { this.SetProperty(name, value); }
-		}
 	}
 
+	//  --------------------------------------------------------------------------------------------
+
 	/// <summary>
-	/// Based-class for a repository with helper methods to perform CRUD operations, count, find, and full-text query search
+	/// Base class of an entity of a repository with helper methods to perform CRUD operations, count, find, and query (full-text search)
 	/// </summary>
 	[Serializable]
 	[DebuggerDisplay("ID = {ID}, Type = {typeof(T).FullName}")]
@@ -170,7 +169,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Create(RepositoryContext context, string aliasTypeName)
+		protected virtual void Create(RepositoryContext context, string aliasTypeName)
 		{
 			RepositoryBase<T>.Create<T>(context, aliasTypeName, this as T);
 		}
@@ -179,7 +178,7 @@ namespace net.vieapps.Components.Repository
 		/// Creates new the instance of this object
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Create(string aliasTypeName = null)
+		protected virtual void Create(string aliasTypeName = null)
 		{
 			RepositoryBase<T>.Create<T>(aliasTypeName, this as T);
 		}
@@ -238,7 +237,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		internal protected virtual Task CreateAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task CreateAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return RepositoryBase<T>.CreateAsync<T>(context, aliasTypeName, this as T);
 		}
@@ -249,7 +248,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		internal protected virtual Task CreateAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task CreateAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return RepositoryBase<T>.CreateAsync<T>(aliasTypeName, this as T, cancellationToken);
 		}
@@ -260,10 +259,32 @@ namespace net.vieapps.Components.Repository
 		/// Gets an object (the first matched with the filter)
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter or null</returns>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static TEntity Get<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null) where TEntity : class
+		{
+			try
+			{
+				return RepositoryMediator.Get<TEntity>(aliasTypeName, filter, sort);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static TEntity Get<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null) where TEntity : class
 		{
 			return RepositoryMediator.Get<TEntity>(aliasTypeName, filter, sort);
@@ -275,7 +296,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter or null</returns>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static TEntity Get<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null) where TEntity : class
 		{
 			return RepositoryBase<T>.Get<TEntity>(null, filter, sort);
@@ -287,7 +308,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter or null</returns>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static T Get(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null)
 		{
 			return RepositoryBase<T>.Get<T>(aliasTypeName, filter, sort);
@@ -298,7 +319,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter or null</returns>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static T Get(IFilterBy<T> filter, SortBy<T> sort = null)
 		{
 			return RepositoryBase<T>.Get(null, filter, sort);
@@ -357,7 +378,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Get(RepositoryContext context, string aliasTypeName)
+		protected virtual void Get(RepositoryContext context, string aliasTypeName)
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
 			{
@@ -371,7 +392,7 @@ namespace net.vieapps.Components.Repository
 		/// Gets the instance of this object
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Get(string aliasTypeName = null)
+		protected virtual void Get(string aliasTypeName = null)
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
 			{
@@ -385,13 +406,37 @@ namespace net.vieapps.Components.Repository
 		/// Gets an object (the first matched with the filter)
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter or null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null) where TEntity : class
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.GetAsync<TEntity>(aliasTypeName, filter, sort);
+			try
+			{
+				return RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, filter, sort, cancellationToken);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				return Task.FromException<TEntity>(ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.GetAsync<TEntity>(aliasTypeName, filter, sort, cancellationToken);
 		}
 
 		/// <summary>
@@ -400,10 +445,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter or null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null) where TEntity : class
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<TEntity> GetAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.GetAsync<TEntity>(null, filter, sort);
+			return RepositoryBase<T>.GetAsync<TEntity>(null, filter, sort, cancellationToken);
 		}
 
 		/// <summary>
@@ -412,10 +458,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter or null</returns>
-		public static Task<T> GetAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null)
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<T> GetAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.GetAsync<T>(aliasTypeName, filter, sort);
+			return RepositoryBase<T>.GetAsync<T>(aliasTypeName, filter, sort, cancellationToken);
 		}
 
 		/// <summary>
@@ -423,10 +470,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter or null</returns>
-		public static Task<T> GetAsync(IFilterBy<T> filter, SortBy<T> sort = null)
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<T> GetAsync(IFilterBy<T> filter, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.GetAsync(null, filter, sort);
+			return RepositoryBase<T>.GetAsync(null, filter, sort, cancellationToken);
 		}
 
 		/// <summary>
@@ -436,13 +484,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
 				return !string.IsNullOrWhiteSpace(id)
-					? RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id)
+					? RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id, true, cancellationToken)
 					: null;
 			}
 			catch (Exception ex)
@@ -458,11 +507,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, string id) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.GetAsync<TEntity>(aliasTypeName, id)
+				? RepositoryMediator.GetAsync<TEntity>(aliasTypeName, id, cancellationToken)
 				: null;
 		}
 
@@ -471,10 +521,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(string id) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.GetAsync<TEntity>(null, id);
+			return RepositoryBase<T>.GetAsync<TEntity>(null, id, cancellationToken);
 		}
 
 		/// <summary>
@@ -482,26 +533,35 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual async Task GetAsync(RepositoryContext context, string aliasTypeName)
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected virtual async Task GetAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
-			{
-				var instance = await RepositoryBase<T>.GetAsync<T>(context, aliasTypeName, this.ID);
-				if (instance != null)
-					this.CopyFrom(instance);
-			}
+				try
+				{
+					var instance = await RepositoryBase<T>.GetAsync<T>(context, aliasTypeName, this.ID, cancellationToken);
+					if (instance != null)
+						this.CopyFrom(instance);
+				}
+				catch (Exception ex)
+				{
+					context.Exception = ex;
+					throw ex;
+				}
 		}
 
 		/// <summary>
 		/// Gets the instance of this object
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		internal protected virtual async Task GetAsync(string aliasTypeName = null)
+		protected virtual async Task GetAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
 			{
-				var instance = await RepositoryBase<T>.GetAsync<T>(aliasTypeName, this.ID);
+				var instance = await RepositoryBase<T>.GetAsync<T>(aliasTypeName, this.ID, cancellationToken);
 				if (instance != null)
 					this.CopyFrom(instance);
 			}
@@ -555,7 +615,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Replace(RepositoryContext context, string aliasTypeName)
+		protected virtual void Replace(RepositoryContext context, string aliasTypeName)
 		{
 			RepositoryBase<T>.Replace<T>(context, aliasTypeName, this as T);
 		}
@@ -564,7 +624,7 @@ namespace net.vieapps.Components.Repository
 		/// Updates the instance of this object (using replace method)
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Replace(string aliasTypeName = null)
+		protected virtual void Replace(string aliasTypeName = null)
 		{
 			RepositoryBase<T>.Replace<T>(aliasTypeName, this as T);
 		}
@@ -618,7 +678,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual Task ReplaceAsync(RepositoryContext context, string aliasTypeName)
+		protected virtual Task ReplaceAsync(RepositoryContext context, string aliasTypeName)
 		{
 			return RepositoryBase<T>.ReplaceAsync<T>(context, aliasTypeName, this as T);
 		}
@@ -628,7 +688,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <returns></returns>
-		internal protected virtual Task ReplaceAsync(string aliasTypeName = null)
+		protected virtual Task ReplaceAsync(string aliasTypeName = null)
 		{
 			return RepositoryBase<T>.ReplaceAsync<T>(aliasTypeName, this as T);
 		}
@@ -681,7 +741,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Update(RepositoryContext context, string aliasTypeName)
+		protected virtual void Update(RepositoryContext context, string aliasTypeName)
 		{
 			RepositoryBase<T>.Update<T>(context, aliasTypeName, this as T);
 		}
@@ -690,7 +750,7 @@ namespace net.vieapps.Components.Repository
 		/// Updates the instance of this object (only update changed attributes)
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Update(string aliasTypeName = null)
+		protected virtual void Update(string aliasTypeName = null)
 		{
 			RepositoryBase<T>.Update<T>(aliasTypeName, this as T);
 		}
@@ -744,7 +804,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual Task UpdateAsync(RepositoryContext context, string aliasTypeName)
+		protected virtual Task UpdateAsync(RepositoryContext context, string aliasTypeName)
 		{
 			return RepositoryBase<T>.UpdateAsync<T>(context, aliasTypeName, this as T);
 		}
@@ -754,7 +814,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <returns></returns>
-		internal protected virtual Task UpdateAsync(string aliasTypeName = null)
+		protected virtual Task UpdateAsync(string aliasTypeName = null)
 		{
 			return RepositoryBase<T>.UpdateAsync<T>(aliasTypeName, this as T);
 		}
@@ -807,7 +867,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Delete(RepositoryContext context, string aliasTypeName)
+		protected virtual void Delete(RepositoryContext context, string aliasTypeName)
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
 				RepositoryBase<T>.Delete<T>(context, aliasTypeName, this.ID);
@@ -817,7 +877,7 @@ namespace net.vieapps.Components.Repository
 		/// Deletes the instance of this object
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual void Delete(string aliasTypeName = null)
+		protected virtual void Delete(string aliasTypeName = null)
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
 				RepositoryBase<T>.Delete<T>(aliasTypeName, this.ID);
@@ -872,7 +932,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual Task DeleteAsync(RepositoryContext context, string aliasTypeName)
+		protected virtual Task DeleteAsync(RepositoryContext context, string aliasTypeName)
 		{
 			return !string.IsNullOrWhiteSpace(this.ID)
 				? RepositoryBase<T>.DeleteAsync<T>(context, aliasTypeName, this.ID)
@@ -883,7 +943,7 @@ namespace net.vieapps.Components.Repository
 		/// Deletes the instance of this object
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		internal protected virtual Task DeleteAsync(string aliasTypeName = null)
+		protected virtual Task DeleteAsync(string aliasTypeName = null)
 		{
 			return !string.IsNullOrWhiteSpace(this.ID)
 				? RepositoryBase<T>.DeleteAsync<T>(aliasTypeName, this.ID)
@@ -937,7 +997,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
-		internal protected static void DeleteMany(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter)
+		protected static void DeleteMany(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter)
 		{
 			RepositoryBase<T>.DeleteMany<T>(context, aliasTypeName, filter);
 		}
@@ -947,7 +1007,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
-		internal protected static void DeleteMany(string aliasTypeName, IFilterBy<T> filter)
+		protected static void DeleteMany(string aliasTypeName, IFilterBy<T> filter)
 		{
 			RepositoryBase<T>.DeleteMany<T>(aliasTypeName, filter);
 		}
@@ -956,7 +1016,7 @@ namespace net.vieapps.Components.Repository
 		/// Deletes many objects that matched with the filter
 		/// </summary>
 		/// <param name="filter">The expression for filtering objects</param>
-		internal protected static void DeleteMany(IFilterBy<T> filter)
+		protected static void DeleteMany(IFilterBy<T> filter)
 		{
 			RepositoryBase<T>.DeleteMany(null, filter);
 		}
@@ -1012,7 +1072,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <returns></returns>
-		internal protected static Task DeleteManyAsync(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter)
+		protected static Task DeleteManyAsync(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter)
 		{
 			return RepositoryBase<T>.DeleteManyAsync<T>(context, aliasTypeName, filter);
 		}
@@ -1023,7 +1083,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <returns></returns>
-		internal protected static Task DeleteManyAsync(string aliasTypeName, IFilterBy<T> filter)
+		protected static Task DeleteManyAsync(string aliasTypeName, IFilterBy<T> filter)
 		{
 			return RepositoryBase<T>.DeleteManyAsync<T>(aliasTypeName, filter);
 		}
@@ -1033,7 +1093,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <returns></returns>
-		internal protected static Task DeleteManyAsync(IFilterBy<T> filter)
+		protected static Task DeleteManyAsync(IFilterBy<T> filter)
 		{
 			return RepositoryBase<T>.DeleteManyAsync(null, filter);
 		}
@@ -1483,9 +1543,9 @@ namespace net.vieapps.Components.Repository
 					value = (this as T).GetAttributeValue(name);
 					return true;
 				}
-				else if (this.CustomProperties != null && this.CustomProperties.ContainsKey(name))
+				else if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.ContainsKey(name))
 				{
-					value = this.CustomProperties[name];
+					value = (this as IBusinessEntity).ExtendedProperties[name];
 					return true;
 				}
 				else
@@ -1522,27 +1582,11 @@ namespace net.vieapps.Components.Repository
 			// assign default
 			value = default(TValue);
 
-			// get value & normalize
+			// get value & cast
 			object theValue = null;
 			if (this.TryGetProperty(name, out theValue))
 			{
-				// get type
-				var type = typeof(TValue);
-
-				// date-time
-				if (type.Equals(typeof(DateTime)) && !(theValue is DateTime))
-					theValue = Convert.ToDateTime(theValue);
-
-				// long -> int
-				else if (theValue is long && (type.Equals(typeof(int)) || type.Equals(typeof(int?))))
-					theValue = Convert.ToInt32(theValue);
-
-				// double -> decimal
-				else if (theValue is double && (type.Equals(typeof(decimal)) || type.Equals(typeof(decimal?))))
-					theValue = Convert.ToDecimal(theValue);
-
-				// cast the value & return state
-				value = (TValue)theValue;
+				value = theValue != null ? theValue.CastType<TValue>() : default(TValue);
 				return true;
 			}
 
@@ -1579,12 +1623,12 @@ namespace net.vieapps.Components.Repository
 					(this as T).SetAttributeValue(attributes[name], value, true);
 					return true;
 				}
-				else if (this.CustomProperties != null)
+				else if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null)
 				{
-					if (this.CustomProperties.ContainsKey(name))
-						this.CustomProperties[name] = value;
+					if ((this as IBusinessEntity).ExtendedProperties.ContainsKey(name))
+						(this as IBusinessEntity).ExtendedProperties[name] = value;
 					else
-						this.CustomProperties.Add(name, value);
+						(this as IBusinessEntity).ExtendedProperties.Add(name, value);
 					return true;
 				}
 				else
@@ -1607,24 +1651,26 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region JSON conversions
+		#region JSON/XML conversions
 		/// <summary>
 		/// Serializes this object to JSON object
 		/// </summary>
-		/// <param name="addTypeOfCustomProperties">true to add type of all custom properties (named with surfix '$Type')</param>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (named with surfix '$Type')</param>
 		/// <returns></returns>
-		public override JObject ToJson(bool addTypeOfCustomProperties)
+		public override JObject ToJson(bool addTypeOfExtendedProperties = false)
 		{
 			var json = (this as T).ToJson();
-			if (this.CustomProperties != null && this.CustomProperties.Count > 0)
-				this.CustomProperties.ForEach(property =>
+			if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
+				(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
 				{
 					Type type = property.Value != null
 						? property.Value.GetType()
 						: null;
-					if (addTypeOfCustomProperties && type != null)
+
+					if (addTypeOfExtendedProperties && type != null)
 						json.Add(new JProperty(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
-					json.Add(new JProperty(property.Key, type == null || type.IsPrimitiveType() ? property.Value : property.Value is RepositoryBase ? (property.Value as RepositoryBase).ToJson(addTypeOfCustomProperties) : property.Value.ToJson()));
+
+					json.Add(new JProperty(property.Key, type == null || type.IsPrimitiveType() ? property.Value : property.Value is RepositoryBase ? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties) : property.Value.ToJson()));
 				});
 			return json;
 		}
@@ -1635,29 +1681,34 @@ namespace net.vieapps.Components.Repository
 		/// <param name="json">The JSON object that contains information</param>
 		public override void ParseJson(JObject json)
 		{
-			this.CopyFrom(RepositoryMediator.FromJson<T>(json));
+			if (json != null)
+				this.CopyFrom(json);
 		}
-		#endregion
 
-		#region XML conversions
 		/// <summary>
 		/// Serializes this object to XML object
 		/// </summary>
-		/// <param name="addTypeOfCustomProperties">true to add type of all custom properties (attribute named '$type')</param>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (attribute named '$type')</param>
 		/// <returns></returns>
-		public override XElement ToXml(bool addTypeOfCustomProperties)
+		public override XElement ToXml(bool addTypeOfExtendedProperties)
 		{
 			var xml = (this as T).ToXml();
-			if (this.CustomProperties != null && this.CustomProperties.Count > 0)
-				this.CustomProperties.ForEach(property =>
+			if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
+				(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
 				{
 					Type type = property.Value != null
 						? property.Value.GetType()
 						: null;
-					var element = addTypeOfCustomProperties && type != null
-						? new XElement(property.Key, new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()))
-						: new XElement(property.Key);
-					element.SetValue(type == null || type.IsPrimitiveType() ? property.Value : property.Value is RepositoryBase ? (property.Value as RepositoryBase).ToJson(addTypeOfCustomProperties) : property.Value.ToJson());
+
+					var value = type == null || type.IsPrimitiveType()
+						? property.Value
+						: property.Value is RepositoryBase
+							? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties)
+							: property.Value.ToXml();
+
+					var element = addTypeOfExtendedProperties && type != null
+						? new XElement(XName.Get(property.Key), new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()), value)
+						: new XElement(XName.Get(property.Key), value);
 					xml.Add(element);
 				});
 			return xml;
@@ -1669,217 +1720,81 @@ namespace net.vieapps.Components.Repository
 		/// <param name="xml">The XML object that contains information</param>
 		public override void ParseXml(XContainer xml)
 		{
-			this.CopyFrom(RepositoryMediator.FromXml<T>(xml));
+			if (xml != null)
+				this.CopyFrom(xml.FromXml<T>());
+		}
+		#endregion
+
+		#region Extended properties/methods [IBussineEntity]
+		/// <summary>
+		/// Gets or sets the title
+		/// </summary>
+		[Property(MaxLength = 250)]
+		public virtual string Title { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		[Property(MaxLength = 32)]
+		public virtual string SystemID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		[Property(MaxLength = 32)]
+		public virtual string RepositoryID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		[Property(MaxLength = 32)]
+		public virtual string EntityID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the collection of extended properties
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		public virtual Dictionary<string, object> ExtendedProperties { get; set; }
+
+		/// <summary>
+		/// Gets the business entity that marks as parent of this object
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public virtual IBusinessEntity Parent { get; }
+
+		/// <summary>
+		/// Gets or sets the original working permissions
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		public virtual AccessPermissions OriginalPermissions { get; set; }
+
+		/// <summary>
+		/// The combined permissions
+		/// </summary>
+		[NonSerialized]
+		protected AccessPermissions Permissions = null;
+
+		/// <summary>
+		/// Gets the actual working permissions (mean the combined permissions)
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public virtual AccessPermissions WorkingPermissions
+		{
+			get
+			{
+				if (this.Permissions == null)
+					this.Permissions = RepositoryMediator.Combine(this.OriginalPermissions, this.Parent != null ? this.Parent.WorkingPermissions : null);
+				return this.Permissions;
+			}
 		}
 		#endregion
 
 	}
 
-	#region Interfaces of event-handler
-	/// <summary>
-	/// Called before creating new instance of object
-	/// </summary>
-	public interface IPreCreateHandler
-	{
-		/// <summary>
-		/// Fires before creating new instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by synchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object to create new instance</param>
-		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		bool OnPreCreate(RepositoryContext context, object @object);
-
-		/// <summary>
-		/// Fires before creating new instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object to create new instance</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		Task<bool> OnPreCreateAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
-	}
-
-	/// <summary>
-	/// Called after creating new instance of object successful
-	/// </summary>
-	public interface IPostCreateHandler
-	{
-		/// <summary>
-		/// Fires after creating new instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by synchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object that instance is created successful</param>
-		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
-		/// </remarks>
-		void OnPostCreate(RepositoryContext context, object @object);
-
-		/// <summary>
-		/// Fires after creating new instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object that instance is created successful</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
-		/// </remarks>
-		/// <returns></returns>
-		Task OnPostCreateAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
-	}
-
-	/// <summary>
-	/// Called before getting (loading) instance of object
-	/// </summary>
-	public interface IPreGetHandler
-	{
-		/// <summary>
-		/// Fires before getting instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by synchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="id">The string that presents object's identity to get instance</param>
-		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		bool OnPreGet(RepositoryContext context, string id);
-
-		/// <summary>
-		/// Fires before getting instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="id">The string that presents object's identity to get instance</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		Task<bool> OnPreGetAsync(RepositoryContext context, string id, CancellationToken cancellationToken);
-	}
-
-	/// <summary>
-	/// Called after getting instance of object successful
-	/// </summary>
-	public interface IPostGetHandler
-	{
-		/// <summary>
-		/// Fires after getting instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by synchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object that instance is getted successful</param>
-		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
-		/// </remarks>
-		void OnPostGet(RepositoryContext context, object @object);
-
-		/// <summary>
-		/// Fires after getting instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object that instance is getted successful</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
-		/// </remarks>
-		/// <returns></returns>
-		Task OnPostGetAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
-	}
-
-	/// <summary>
-	/// Called before updating instance of object
-	/// </summary>
-	public interface IPreUpdateHandler
-	{
-		/// <summary>
-		/// Fires before updating instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by synchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object to update instance</param>
-		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		bool OnPreUpdate(RepositoryContext context, object @object);
-
-		/// <summary>
-		/// Fires before updating instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object to update instance</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		Task<bool> OnPreUpdateAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
-	}
-
-	/// <summary>
-	/// Called after updating instance of object successful
-	/// </summary>
-	public interface IPostUpdateHandler
-	{
-		/// <summary>
-		/// Fires after updating instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by synchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object that instance is getted successful</param>
-		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
-		/// </remarks>
-		void OnPostUpdate(RepositoryContext context, object @object);
-
-		/// <summary>
-		/// Fires after updating instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object that instance is getted successful</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
-		/// </remarks>
-		/// <returns></returns>
-		Task OnPostUpdateAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
-	}
-
-	/// <summary>
-	/// Called before deleting instance of object
-	/// </summary>
-	public interface IPreDeleteHandler
-	{
-		/// <summary>
-		/// Fires before delete instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by synchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object to delete instance</param>
-		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		bool OnPreDelete(RepositoryContext context, object @object);
-
-		/// <summary>
-		/// Fires before deleting instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object to delete instance</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		Task<bool> OnPreDeleteAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
-	}
-
-	/// <summary>
-	/// Called after deleting instance of object successful
-	/// </summary>
-	public interface IPostDeleteHandler
-	{
-		/// <summary>
-		/// Fires after deleting instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by synchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object that instance is deleted successful</param>
-		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
-		/// </remarks>
-		void OnPostDelete(RepositoryContext context, object @object);
-
-		/// <summary>
-		/// Fires after deleting instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
-		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="object">The object that instance is deleted successful</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
-		/// </remarks>
-		/// <returns></returns>
-		Task OnPostDeleteAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
-	}
-	#endregion
+	//  --------------------------------------------------------------------------------------------
 
 	#region Identity generator (for working with MongoDB)
 	/// <summary>

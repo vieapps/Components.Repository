@@ -9,18 +9,30 @@ namespace net.vieapps.Components.Repository
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 	public class RepositoryAttribute : Attribute
 	{
-		public RepositoryAttribute() {}
+		public RepositoryAttribute() { }
 
 		/// <summary>
-		/// Gets or sets the identity of this module definition
+		/// Gets or sets the type of a class that implements interfaces of event handlers
+		/// </summary>
+		public Type EventHandlers { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity (in case this repository is defined as a module definition)
 		/// </summary>
 		public string ID { get; set; }
+
 		/// <summary>
-		/// Gets or sets the title of this module definition
+		/// Gets or sets the path to folder that contains all UI files (in case this repository is defined as a module definition)
+		/// </summary>
+		public string Path { get; set; }
+
+		/// <summary>
+		/// Gets or sets the title (in case this repository is defined as a module definition)
 		/// </summary>
 		public string Title { get; set; }
+
 		/// <summary>
-		/// Gets or sets the description of this module definition
+		/// Gets or sets the description (in case this repository is defined as a module definition)
 		/// </summary>
 		public string Description { get; set; }
 	}
@@ -37,28 +49,34 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the name of the SQL table 
 		/// </summary>
 		public string TableName { get; set; }
+
 		/// <summary>
 		/// Gets or sets the name of the NoSQL collection
 		/// </summary>
 		public string CollectionName { get; set; }
+
 		/// <summary>
 		/// Gets or sets the identity of this content-type definition
 		/// </summary>
 		public string ID { get; set; }
+
 		/// <summary>
 		/// Gets or sets the title (means name) of this content-type definition
 		/// </summary>
 		public string Title { get; set; }
+
 		/// <summary>
 		/// Gets or sets the description of this content-type definition
 		/// </summary>
 		public string Description { get; set; }
+
 		/// <summary>
-		/// Gets or Sets the type of a static class that contains information of the cache storage for processing caching data
+		/// Gets or sets the type of a static class that contains information of the cache storage for processing caching data
 		/// </summary>
 		public Type CacheStorageType { get; set; }
+
 		/// <summary>
-		/// Gets or Sets the name of the object in the static class that contains information of the cache storage for processing caching data
+		/// Gets or sets the name of the object in the static class that contains information of the cache storage for processing caching data
 		/// </summary>
 		public string CacheStorageName { get; set; }
 	}
@@ -101,14 +119,17 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the name of the column in SQL table
 		/// </summary>
 		public string Column { get; set; }
+
 		/// <summary>
 		/// Gets or sets state that specified this property is required (not allow nullable value - default is false)
 		/// </summary>
 		public bool NotNull { get; set; }
+
 		/// <summary>
 		/// Gets or sets max-length (of the string property)
 		/// </summary>
 		public int MaxLength { get; set; }
+
 		/// <summary>
 		/// Gets or sets state that specified this string property is use CLOB (character of large object) - default is false
 		/// </summary>
@@ -132,14 +153,17 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the name of the column in SQL table
 		/// </summary>
 		public string Column { get; set; }
+
 		/// <summary>
 		/// Gets or sets state that specified this property is required (not allow nullable value - default is false)
 		/// </summary>
 		public bool NotNull { get; set; }
+
 		/// <summary>
 		/// Gets or sets max-length (of the string field)
 		/// </summary>
 		public int MaxLength { get; set; }
+
 		/// <summary>
 		/// Gets or sets state that specified this string property is use CLOB (character of large object) - default is false
 		/// </summary>
@@ -189,20 +213,6 @@ namespace net.vieapps.Components.Repository
 	public class DateTimeStringAttribute : Attribute
 	{
 		public DateTimeStringAttribute() { }
-	}
-
-	/// <summary>
-	/// Specifies this property is storing-bag of extended properties (means the object is got custom properties while running)
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Property)]
-	public class ExtendedAttribute : Attribute
-	{
-		public ExtendedAttribute() { }
-
-		/// <summary>
-		/// Gets or sets the name of the SQL table that stores value of extended properties (default is T_Data_Custom)
-		/// </summary>
-		public string TableName { get; set; }
 	}
 
 }

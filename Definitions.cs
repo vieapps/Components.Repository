@@ -2,14 +2,18 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Xml;
 using System.Linq;
 using System.Reflection;
 using System.Diagnostics;
 using System.Dynamic;
+using System.Data;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Serialization;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using MongoDB.Bson.Serialization.Attributes;
 
 using net.vieapps.Components.Utility;
 #endregion
@@ -25,14 +29,20 @@ namespace net.vieapps.Components.Repository
 		public RepositoryDefinition()
 		{
 			this.IsAlias = false;
-			this.ExtraData = new ExpandoObject();
+			this.ExtraSettings = new Dictionary<string, object>();
+			this.RuntimeRepositories = new Dictionary<string, IRepository>();
 		}
 
 		#region Properties
 		/// <summary>
-		/// Gets or sets type of the object for processing
+		/// Gets the type of a class that responsibility of the repository
 		/// </summary>
-		public Type Type { get; set; }
+		public Type Type { get; internal set; }
+
+		/// <summary>
+		/// Gets the type of a class that responsibility to process all event handlers of the repository
+		/// </summary>
+		public Type EventHandlers { get; internal set; }
 
 		/// <summary>
 		/// Gets the name of the primary data source
@@ -48,6 +58,16 @@ namespace net.vieapps.Components.Repository
 		/// Gets the names of the all data-sources that available for sync
 		/// </summary>
 		public string SyncDataSourceNames { get; internal set; }
+
+		/// <summary>
+		/// Gets that state that specified this repository is an alias of other repository
+		/// </summary>
+		public bool IsAlias { get; internal set; }
+
+		/// <summary>
+		/// Gets the extra-settings of the repository
+		/// </summary>
+		public Dictionary<string, object> ExtraSettings { get; internal set; }
 		#endregion
 
 		#region Properties [Helpers]
@@ -131,14 +151,9 @@ namespace net.vieapps.Components.Repository
 		public string Description { get; internal set; }
 
 		/// <summary>
-		/// Gets state that specified this is alias of other repository (means alias of other module in case this definition is used as a module definition)
+		/// Gets the collection of business repositories at run-time (means business modules at run-time)
 		/// </summary>
-		public bool IsAlias { get; internal set; }
-
-		/// <summary>
-		/// Gets extra data of the definition
-		/// </summary>
-		public ExpandoObject ExtraData { get; internal set; }
+		public Dictionary<string, IRepository> RuntimeRepositories { get; internal set; }
 		#endregion
 
 		#region Register
@@ -148,16 +163,17 @@ namespace net.vieapps.Components.Repository
 			if (RepositoryMediator.RepositoryDefinitions.ContainsKey(type.GetTypeName()))
 				return;
 
-			// check table/collection name
+			// initialize
 			var info = type.GetCustomAttributes(false)
 				.Where(attribute => attribute is RepositoryAttribute)
 				.ToList()[0] as RepositoryAttribute;
 
-			// initialize
 			var definition = new RepositoryDefinition()
 			{
 				Type = type,
+				EventHandlers = info.EventHandlers,
 				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
+				Path = !string.IsNullOrWhiteSpace(info.Path) ? info.Path : "",
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
 				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
 			};
@@ -217,7 +233,7 @@ namespace net.vieapps.Components.Repository
 
 				RepositoryMediator.RepositoryDefinitions.Add(typeName, RepositoryMediator.RepositoryDefinitions[type.GetTypeName()].Clone());
 				RepositoryMediator.RepositoryDefinitions[typeName].IsAlias = true;
-				RepositoryMediator.RepositoryDefinitions[typeName].ExtraData = RepositoryMediator.RepositoryDefinitions[type.GetTypeName()].ExtraData;
+				RepositoryMediator.RepositoryDefinitions[typeName].ExtraSettings = RepositoryMediator.RepositoryDefinitions[type.GetTypeName()].ExtraSettings;
 			}
 
 			// check existing
@@ -278,7 +294,8 @@ namespace net.vieapps.Components.Repository
 		{
 			this.Attributes = new List<ObjectService.AttributeInfo>();
 			this.SortableAttributes = new List<string>() { "ID" };
-			this.ExtraData = new ExpandoObject();
+			this.ExtraSettings = new Dictionary<string, object>();
+			this.RuntimeEntities = new Dictionary<string, IRepositoryEntity>();
 		}
 
 		#region Properties
@@ -321,6 +338,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the name of the object in the static class that contains information of the cache storage for processing caching data
 		/// </summary>
 		public string CacheStorageName { get; internal set; }
+
+		/// <summary>
+		/// Gets extra settings of of the entity definition
+		/// </summary>
+		public Dictionary<string, object> ExtraSettings { get; internal set; }
 		#endregion
 
 		#region Properties [Helpers]
@@ -429,9 +451,9 @@ namespace net.vieapps.Components.Repository
 		public string Description { get; internal set; }
 
 		/// <summary>
-		/// Gets extra data of the definition
+		/// Gets the collection of business entities at run-time (means business conten-types at run-time)
 		/// </summary>
-		public ExpandoObject ExtraData { get; internal set; }
+		public Dictionary<string, IRepositoryEntity> RuntimeEntities { get; internal set; }
 		#endregion
 
 		#region Register
@@ -641,72 +663,469 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Information of a data source in the respository 
+	/// Information of a definition of extended property in a respository 
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
-	public class DataSource
+	public sealed class ExtendedPropertyDefinition
 	{
-		public DataSource() { }
+
+		public ExtendedPropertyDefinition(JObject json = null)
+		{
+			this.Name = "";
+			this.Mode = ExtendedPropertyMode.Text;
+			this.Column = "";
+			this.DefaultValue = "";
+			this.DefaultValueFormula = "";
+
+			if (json != null)
+				this.CopyFrom(json);
+		}
 
 		#region Properties
 		/// <summary>
-		/// Gets or sets the name of the data source
+		/// Gets or sets the name
 		/// </summary>
 		public string Name { get; set; }
 
 		/// <summary>
-		/// Gets or sets the working mode
+		/// Gets or sets the mode
 		/// </summary>
-		public Repository.RepositoryModes Mode { get; set; }
+		public ExtendedPropertyMode Mode { get; set; }
 
 		/// <summary>
-		/// Gets or sets the name of the connection string (for working with database)
+		/// Gets or sets the name of column for storing data (when repository mode is SQL)
 		/// </summary>
-		public string ConnectionStringName { get; set; }
+		public string Column { get; set; }
 
 		/// <summary>
-		/// Gets or sets the name of the database (for working with database)
+		/// Gets or sets the default value
 		/// </summary>
-		public string DatabaseName { get; set; }
+		public string DefaultValue { get; set; }
+
+		/// <summary>
+		/// Gets or sets the formula for computing default value
+		/// </summary>
+		public string DefaultValueFormula { get; set; }
 		#endregion
 
-		#region Parse
-		internal static DataSource FromJson(JObject settings)
+		#region Properties [Helper]
+		/// <summary>
+		/// Gets the type of this property
+		/// </summary>
+		[JsonIgnore, BsonIgnore, XmlIgnore]
+		internal Type Type
 		{
-			if (settings == null)
-				throw new ArgumentNullException("settings");
-			else if (settings["name"] == null)
-				throw new ArgumentNullException("name", "[name] attribute of settings");
-			else if (settings["mode"] == null)
-				throw new ArgumentNullException("mode", "[mode] attribute of settings");
-
-			// initialize
-			var dataSource = new DataSource()
+			get
 			{
-				Name = (settings["name"] as JValue).Value as string,
-				Mode = (RepositoryModes)Enum.Parse(typeof(RepositoryModes), (settings["mode"] as JValue).Value as string)
-			};
+				switch (this.Mode)
+				{
+					case ExtendedPropertyMode.YesNo:
+						return typeof(int);
 
-			// name of connection string (SQL and NoSQL)
-			if (dataSource.Mode.Equals(RepositoryModes.SQL) || dataSource.Mode.Equals(RepositoryModes.NoSQL))
-			{
-				if (settings["connectionStringName"] == null)
-					throw new ArgumentNullException("connectionStringName", "[connectionStringName] attribute of settings");
-				dataSource.ConnectionStringName = (settings["connectionStringName"] as JValue).Value as string;
+					case ExtendedPropertyMode.Number:
+						return typeof(long);
+
+					case ExtendedPropertyMode.Decimal:
+						return typeof(decimal);
+
+					case ExtendedPropertyMode.DateTime:
+						return typeof(DateTime);
+				}
+				return typeof(string);
 			}
+		}
 
-			// name of database (NoSQL)
-			if (dataSource.Mode.Equals(RepositoryModes.NoSQL))
+		/// <summary>
+		/// Gets the database-type of this property
+		/// </summary>
+		[JsonIgnore, BsonIgnore, XmlIgnore]
+		internal DbType DbType
+		{
+			get
 			{
-				if (settings["databaseName"] == null)
-					throw new ArgumentNullException("databaseName", "[databaseName] attribute of settings");
-				dataSource.DatabaseName = (settings["databaseName"] as JValue).Value as string;
-			}
+				switch (this.Mode)
+				{
+					case ExtendedPropertyMode.YesNo:
+						return SqlHelper.DbTypes[typeof(int)];
 
-			return dataSource;
+					case ExtendedPropertyMode.Number:
+						return SqlHelper.DbTypes[typeof(long)];
+
+					case ExtendedPropertyMode.Decimal:
+						return SqlHelper.DbTypes[typeof(decimal)];
+
+					case ExtendedPropertyMode.DateTime:
+						return DbType.AnsiString;
+				}
+				return SqlHelper.DbTypes[typeof(string)];
+			}
 		}
 		#endregion
 
+		#region Parse XML (backward compatible)
+		/*
+		public void Parse(XElement element)
+		{
+			try
+			{
+				var node = element.Element(XName.Get("Mode"));
+				var mode = node != null ? node.Value : "";
+
+				node = element.Element(XName.Get("Name"));
+				this.Name = node != null ? node.Value : this.Name;
+
+				node = element.Element(XName.Get("Column"));
+				this.Column = node != null ? node.Value : this.Column;
+
+				node = element.Element(XName.Get("DefaultValue"));
+				this.DefaultValue = node != null ? node.Value : this.DefaultValue;
+
+				node = element.Element(XName.Get("Label"));
+				this.UI.Label = node != null ? node.Value : this.UI.Label;
+
+				node = element.Element(XName.Get("Description"));
+				this.UI.Description = node != null ? node.Value : this.UI.Description;
+
+				node = element.Element(XName.Get("Required"));
+				this.UI.Required = node != null ? node.Value.IsEquals("true") : this.UI.Required;
+
+				node = element.Element(XName.Get("MaxLength"));
+				this.UI.MaxLength = node != null ? node.Value.CastType<int>() : this.UI.MaxLength;
+
+				switch (mode)
+				{
+					// text
+					case "0":
+					case "1":
+						this.Mode = CustomPropertyMode.Text;
+						this.UI.AllowMultiple = mode.Equals("1");
+						break;
+
+					// text (large)
+					case "2":
+						this.Mode = CustomPropertyMode.LargeText;
+						this.UI.UseAsTextEditor = true;
+						node = element.Element(XName.Get("TextEditorWidth"));
+						this.UI.TextEditorWidth = node != null ? node.Value : this.UI.TextEditorWidth;
+						node = element.Element(XName.Get("TextEditorHeight"));
+						this.UI.TextEditorHeight = node != null ? node.Value : this.UI.TextEditorHeight;
+						break;
+
+					// yes/no
+					case "3":
+						this.Mode = CustomPropertyMode.YesNo;
+						this.DefaultValue = "Yes";
+						this.UI.PredefinedValues = "Yes\nNo";
+						break;
+
+					// choice
+					case "4":
+					case "5":
+						this.Mode = CustomPropertyMode.Choice;
+						this.UI.AllowMultiple = mode.Equals("5");
+						node = element.Element(XName.Get("ChoiceStyle"));
+						if (mode.Equals("4"))
+							this.UI.Format = node != null && node.Value.Equals("0") ? "Radio" : "Select";
+						else
+							this.UI.Format = node != null && node.Value.Equals("0") ? "Checkbox" : "Listbox";
+						node = element.Element(XName.Get("ChoiceValues"));
+						this.UI.PredefinedValues = node != null ? node.Value : this.UI.PredefinedValues;
+						break;
+
+					// date-time
+					case "6":
+						this.Mode = CustomPropertyMode.DateTime;
+						node = element.Element(XName.Get("DateTimeValueFormat"));
+						this.UI.Format = node != null ? node.Value : "dd/MM/yyyy";
+						break;
+
+					// number (integer)
+					case "7":
+					case "8":
+						this.Mode = CustomPropertyMode.Number;
+						node = element.Element(XName.Get("NumberMinValue"));
+						this.UI.MinValue = node != null && node.Value.CastType<int>() > -1 ? node.Value.CastType<int>().ToString() : this.UI.MinValue;
+						node = element.Element(XName.Get("NumberMaxValue"));
+						this.UI.MaxValue = node != null && node.Value.CastType<int>() > -1 ? node.Value.CastType<int>().ToString() : this.UI.MaxValue;
+						node = element.Element(XName.Get("DisplayFormat"));
+						this.UI.Format = node != null ? node.Value : this.UI.Format;
+						break;
+
+					// number (decimal)
+					case "9":
+						this.Mode = CustomPropertyMode.Decimal;
+						node = element.Element(XName.Get("DisplayFormat"));
+						this.UI.Format = node != null ? node.Value : this.UI.Format;
+						break;
+
+					// hyper-link
+					case "10":
+						this.Mode = CustomPropertyMode.HyperLink;
+						break;
+
+					// look-up
+					case "11":
+						this.Mode = CustomPropertyMode.Lookup;
+						node = element.Element(XName.Get("LookupModuleId"));
+						this.UI.LookupRepositoryID = node != null ? node.Value : this.UI.LookupRepositoryID;
+						node = element.Element(XName.Get("LookupContentTypeId"));
+						this.UI.LookupEntityID = node != null ? node.Value : this.UI.LookupEntityID;
+						node = element.Element(XName.Get("LookupColumn"));
+						this.UI.LookupProperty = node != null ? node.Value : this.UI.LookupProperty;
+						node = element.Element(XName.Get("LookupMultiple"));
+						this.UI.AllowMultiple = node != null ? node.Value.IsEquals("true") : this.UI.AllowMultiple;
+						break;
+
+					// user
+					case "12":
+						this.Mode = CustomPropertyMode.User;
+						node = element.Element(XName.Get("LookupMultiple"));
+						this.UI.AllowMultiple = node != null ? node.Value.IsEquals("true") : this.UI.AllowMultiple;
+						break;
+
+					default:
+						this.Mode = CustomPropertyMode.Text;
+						this.UI.MaxLength = 250;
+						this.UI.UseAsTextEditor = true;
+						break;
+				}
+			}
+			catch { }
+		}
+		*/
+		#endregion
+
+		#region Methods [Static]
+		static HashSet<string> ReservedWords = "ID,ExtendedProperties,Add,External,Procedure,All,Fetch,Public,Alter,File,RaisError,And,FillFactor,Read,Any,For,ReadText,As,Foreign,ReConfigure,Asc,FreeText,References,Authorization,FreeTextTable,Replication,Backup,From,Restore,Begin,Full,Restrict,Between,Function,Return,Break,Goto,Revert,Browse,Grant,Revoke,Bulk,Group,Right,By,Having,Rollback,Cascade,Holdlock,Rowcount,Case,Identity,RowGuidCol,Check,Identity,Insert,Rule,Checkpoint,Identitycol,Save,Close,If,Schema,Clustered,In,SecurityAudit,Coalesce,Index,Select,Collate,Inner,SemanticKeyPhraseTable,Column,SemanticSimilarityDetailsTable,Commit,Intersect,SemanticSimilarityTable,Compute,Into,Session,User,Constraint,Is,Set,Contains,Join,Setuser,ContainsTable,Key,Shutdown,Continue,Kill,Some,Convert,Left,Statistics,Create,Like,System,Cross,Lineno,Table,Current,Load,TableSample,Current_Date,Current_Time,Current_Timestamp,Merge,TextSize,National,Then,NoCheck,To,Current_User,NonClustered,Top,Cursor,Not,Tran,Database,Null,Transaction,Dbcc,NullIf,Trigger,Deallocate,Of,Truncate,Declare,Off,Try_Convert,Default,Offsets,Tsequal,Delete,On,Union,Deny,Open,Unique,Desc,OpenDataSource,Unpivot,Disk,Openquery,Update,Distinct,OpenRowset,UpdateText,Distributed,OpenXml,Use,Double,Option,User,Drop,Or,Values,Dump,Order,Varying,Else,Outer,View,End,Over,Waitfor,Errlvl,Percent,When,Escape,Pivot,Where,Except,Plan,While,Exec,Precision,With,Execute,Primary,Exists,Print,WriteText,Exit,Proc".ToLower().ToHashSet();
+
+		/// <summary>
+		/// Validates the name of a custom property definition
+		/// </summary>
+		/// <param name="name">The string that presents name of a custom property</param>
+		/// <remarks>An exception will be thrown if the name is invalid</remarks>
+		public static void Validate(string name)
+		{
+			if (string.IsNullOrWhiteSpace(name))
+				throw new ArgumentNullException("name", "The name is null or empty");
+
+			var validName = name.GetANSIUri().Replace("-", "");
+			if (!validName.Equals(name))
+				throw new InformationInvalidException("The name is contains one or more invalid characters (like space, -, +, ...)");
+
+			if (name.ToUpper()[0] < 'A' || name.ToUpper()[0] > 'Z')
+				throw new InformationInvalidException("The name must starts with a letter");
+
+			if (ExtendedPropertyDefinition.ReservedWords.Contains(name.ToLower()))
+				throw new InformationInvalidException("The name is system reserved word");
+		}
+
+		/// <summary>
+		/// Validates the name of a custom property definition
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="name">The string that presents name of a custom property</param>
+		/// <remarks>An exception will be thrown if the name is invalid</remarks>
+		public static void Validate<T>(string name) where T : class
+		{
+			ExtendedPropertyDefinition.Validate(name);
+			var attributes = RepositoryMediator.GetEntityDefinition<T>().Type.GetProperties().ToDictionary(info => info.Name.ToLower(), info => info.Name);
+			if (attributes.ContainsKey(name.ToLower()))
+				throw new InformationInvalidException("The name is existed");
+		}
+		#endregion
+
+		public override string ToString()
+		{
+			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
+		}
+
 	}
 
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
+	/// UI definition for working with a custom property in a respository 
+	/// </summary>
+	[Serializable]
+	public sealed class ExtendedUIDefinition
+	{
+
+		public ExtendedUIDefinition(JObject json = null)
+		{
+			this.Controls = new List<ExtendedUIControlDefinition>();
+			this.EditXslt = "";
+			this.ListXslt = "";
+			this.ViewXslt = "";
+
+			if (json != null)
+				this.CopyFrom(json);
+		}
+
+		#region Properties
+		public List<ExtendedUIControlDefinition> Controls { get; set; }
+
+		public string EditXslt { get; set; }
+
+		public string ListXslt { get; set; }
+
+		public string ViewXslt { get; set; }
+		#endregion
+
+		public override string ToString()
+		{
+			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
+		}
+
+	}
+
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
+	/// UI definition of a custom property in a respository 
+	/// </summary>
+	[Serializable, DebuggerDisplay("Name = {Name}")]
+	public sealed class ExtendedUIControlDefinition
+	{
+
+		public ExtendedUIControlDefinition(JObject json = null)
+		{
+			this.Name = "";
+			this.Label = "";
+			this.PlaceHolder = "";
+			this.Description = "";
+			this.CssClass = "";
+			this.CssMinWidth = "";
+			this.CssMinHeight = "";
+			this.MaxLength = 0;
+			this.MinValue = "";
+			this.MaxValue = "";
+			this.UseAsTextEditor = false;
+			this.TextEditorWidth = "";
+			this.TextEditorHeight = "";
+			this.Format = "";
+			this.PredefinedValues = "";
+			this.LookupRepositoryID = "";
+			this.LookupEntityID = "";
+			this.LookupProperty = "";
+			this.Shown = true;
+			this.Required = false;
+			this.AllowMultiple = false;
+
+			if (json != null)
+				this.CopyFrom(json);
+		}
+
+		#region Properties
+		/// <summary>
+		/// Gets or sets the name
+		/// </summary>
+		public string Name { get; set; }
+
+		/// <summary>
+		/// Gets or sets the label
+		/// </summary>
+		public string Label { get; set; }
+
+		/// <summary>
+		/// Gets or sets the place-holder
+		/// </summary>
+		public string PlaceHolder { get; set; }
+
+		/// <summary>
+		/// Gets or sets the description
+		/// </summary>
+		public string Description { get; set; }
+
+		/// <summary>
+		/// Gets or sets the CSS class name
+		/// </summary>
+		public string CssClass { get; set; }
+
+		/// <summary>
+		/// Gets or sets the CSS min-width
+		/// </summary>
+		public string CssMinWidth { get; set; }
+
+		/// <summary>
+		/// Gets or sets the CSS min-height
+		/// </summary>
+		public string CssMinHeight { get; set; }
+
+		/// <summary>
+		/// Gets or sets the max-length of input control or max-length of text (when the property is text)
+		/// </summary>
+		public int MaxLength { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that mark this property is use text-editor (when the property is large text)
+		/// </summary>
+		public bool UseAsTextEditor { get; set; }
+
+		/// <summary>
+		/// Gets or sets the width of text-editor (when the property is large text and marks to use text editor)
+		/// </summary>
+		public string TextEditorWidth { get; set; }
+
+		/// <summary>
+		/// Gets or sets the height of text-editor (when the property is large text and marks to use text editor)
+		/// </summary>
+		public string TextEditorHeight { get; set; }
+
+		/// <summary>
+		/// Gets or sets the minimum value (when the property is number or date-time)
+		/// </summary>
+		public string MinValue { get; set; }
+
+		/// <summary>
+		/// Gets or sets the maximum value (when the property is number or date-time)
+		/// </summary>
+		public string MaxValue { get; set; }
+
+		/// <summary>
+		/// Gets or sets the displaying format (when the property is number/date-time or choice)
+		/// </summary>
+		public string Format { get; set; }
+
+		/// <summary>
+		/// Gets or sets the pre-defined values (when the property is choice) - seperated by new line (LF)
+		/// </summary>
+		public string PredefinedValues { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business repository (when the property is lookup)
+		/// </summary>
+		public string LookupRepositoryID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business entity (when the property is lookup)
+		/// </summary>
+		public string LookupEntityID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of business entity's property for displaying (when the property is lookup)
+		/// </summary>
+		public string LookupProperty { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that mark this property is shown for inputing
+		/// </summary>
+		public bool Shown { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that mark this property is required
+		/// </summary>
+		public bool Required { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that allow multiple values (when the property is text, choice or lookup)
+		/// </summary>
+		public bool AllowMultiple { get; set; }
+		#endregion
+
+		public override string ToString()
+		{
+			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
+		}
+
+	}
 }

@@ -29,7 +29,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DbProviderFactory GetProviderFactory(DataSource dataSource)
 		{
-			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryModes.SQL)
+			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
 				? RepositoryMediator.GetConnectionStringSettings(dataSource)
 				: null;
 			return connectionStringSettings != null && !string.IsNullOrEmpty(connectionStringSettings.ProviderName)
@@ -77,7 +77,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DbConnection GetConnection(DataSource dataSource, DbProviderFactory providerFactory = null)
 		{		
-			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryModes.SQL)
+			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
 				? RepositoryMediator.GetConnectionStringSettings(dataSource)
 				: null;
 			return SqlHelper.GetConnection(providerFactory != null ? providerFactory : SqlHelper.GetProviderFactory(dataSource), connectionStringSettings != null ? connectionStringSettings.ConnectionString : null);
@@ -120,56 +120,43 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Helpers
-		static Dictionary<Type, DbType> TypeMaps = null;
-
-		/// <summary>
-		/// Gets the collection of database types
-		/// </summary>
-		public static Dictionary<Type, DbType> DbTypes
+		internal static Dictionary<Type, DbType> DbTypes = new Dictionary<Type, DbType>()
 		{
-			get
-			{
-				if (SqlHelper.TypeMaps == null)
-					SqlHelper.TypeMaps = new Dictionary<Type, DbType>()
-					{
-						{ typeof(byte), DbType.Byte },
-						{ typeof(sbyte), DbType.SByte },
-						{ typeof(short), DbType.Int16 },
-						{ typeof(ushort), DbType.UInt16 },
-						{ typeof(int), DbType.Int32 },
-						{ typeof(uint), DbType.UInt32 },
-						{ typeof(long), DbType.Int64 },
-						{ typeof(ulong), DbType.UInt64 },
-						{ typeof(float), DbType.Single },
-						{ typeof(double), DbType.Double },
-						{ typeof(decimal), DbType.Decimal },
-						{ typeof(bool), DbType.Boolean },
-						{ typeof(string), DbType.String },
-						{ typeof(char), DbType.StringFixedLength },
-						{ typeof(Guid), DbType.Guid },
-						{ typeof(DateTime), DbType.DateTime },
-						{ typeof(DateTimeOffset), DbType.DateTimeOffset },
-						{ typeof(byte[]), DbType.Binary },
-						{ typeof(byte?), DbType.Byte },
-						{ typeof(sbyte?), DbType.SByte },
-						{ typeof(short?), DbType.Int16 },
-						{ typeof(ushort?), DbType.UInt16 },
-						{ typeof(int?), DbType.Int32 },
-						{ typeof(uint?), DbType.UInt32 },
-						{ typeof(long?), DbType.Int64 },
-						{ typeof(ulong?), DbType.UInt64 },
-						{ typeof(float?), DbType.Single },
-						{ typeof(double?), DbType.Double },
-						{ typeof(decimal?), DbType.Decimal },
-						{ typeof(bool?), DbType.Boolean },
-						{ typeof(char?), DbType.StringFixedLength },
-						{ typeof(Guid?), DbType.Guid },
-						{ typeof(DateTime?), DbType.DateTime },
-						{ typeof(DateTimeOffset?), DbType.DateTimeOffset },
-					};
-				return SqlHelper.TypeMaps;
-			}
-		}
+			{ typeof(byte), DbType.Byte },
+			{ typeof(sbyte), DbType.SByte },
+			{ typeof(short), DbType.Int16 },
+			{ typeof(ushort), DbType.UInt16 },
+			{ typeof(int), DbType.Int32 },
+			{ typeof(uint), DbType.UInt32 },
+			{ typeof(long), DbType.Int64 },
+			{ typeof(ulong), DbType.UInt64 },
+			{ typeof(float), DbType.Single },
+			{ typeof(double), DbType.Double },
+			{ typeof(decimal), DbType.Decimal },
+			{ typeof(bool), DbType.Boolean },
+			{ typeof(string), DbType.String },
+			{ typeof(char), DbType.StringFixedLength },
+			{ typeof(Guid), DbType.Guid },
+			{ typeof(DateTime), DbType.DateTime },
+			{ typeof(DateTimeOffset), DbType.DateTimeOffset },
+			{ typeof(byte[]), DbType.Binary },
+			{ typeof(byte?), DbType.Byte },
+			{ typeof(sbyte?), DbType.SByte },
+			{ typeof(short?), DbType.Int16 },
+			{ typeof(ushort?), DbType.UInt16 },
+			{ typeof(int?), DbType.Int32 },
+			{ typeof(uint?), DbType.UInt32 },
+			{ typeof(long?), DbType.Int64 },
+			{ typeof(ulong?), DbType.UInt64 },
+			{ typeof(float?), DbType.Single },
+			{ typeof(double?), DbType.Double },
+			{ typeof(decimal?), DbType.Decimal },
+			{ typeof(bool?), DbType.Boolean },
+			{ typeof(char?), DbType.StringFixedLength },
+			{ typeof(Guid?), DbType.Guid },
+			{ typeof(DateTime?), DbType.DateTime },
+			{ typeof(DateTimeOffset?), DbType.DateTimeOffset },
+		};
 
 		static DbType GetDbType(this ObjectService.AttributeInfo attribute)
 		{

@@ -17,7 +17,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Repository working context for holding the transaction and state data while processing
+	/// Working context for holding the transaction and state while processing
 	/// </summary>
 	[DebuggerDisplay("Operation = {Operation}, Type = {EntityDefinition.Type.FullName}")]
 	public class RepositoryContext : IDisposable
@@ -33,16 +33,16 @@ namespace net.vieapps.Components.Repository
 		/// Gets the operation of the context
 		/// </summary>
 #if DEBUG
-		public RepositoryOperations Operation { get; set; }
+		public RepositoryOperation Operation { get; set; }
 #else
-		public RepositoryOperations Operation { get; internal set; }
+		public RepositoryOperation Operation { get; internal set; }
 #endif
 
 		/// <summary>
 		/// Gets the entity definition of the context
 		/// </summary>
 #if DEBUG
-		public RepositoryEntityDefinition EntityDefinition { get; set; }
+		public EntityDefinition EntityDefinition { get; set; }
 #else
 		public EntityDefinition EntityDefinition { get; internal set; }
 #endif
@@ -129,7 +129,7 @@ namespace net.vieapps.Components.Repository
 		void Initialize()
 		{
 			this.ID = Utility.Utility.GetUUID();
-			this.Operation = RepositoryOperations.Query;
+			this.Operation = RepositoryOperation.Query;
 			this.PreviousStateData = new Dictionary<string, Dictionary<string, object>>();
 			this.CurrentStateData = new Dictionary<string, Dictionary<string, object>>();
 		}
@@ -442,7 +442,7 @@ namespace net.vieapps.Components.Repository
 			else if (this.SqlConnection != null && this.SqlConnectionStringName != null && this.SqlConnectionStringName.Equals(dataSource.ConnectionStringName))
 				return this.SqlConnection;
 
-			this.SqlConnection = dataSource != null && dataSource.Mode.Equals(RepositoryModes.SQL)
+			this.SqlConnection = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
 				? SqlHelper.GetConnection(dataSource, providerFactory)
 				: null;
 

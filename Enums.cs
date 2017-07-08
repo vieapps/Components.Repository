@@ -3,7 +3,7 @@
 namespace net.vieapps.Components.Repository
 {
 	[Serializable]
-	public enum RepositoryModes
+	public enum RepositoryMode
 	{
 		/// <summary>
 		/// Specifies to use SQL database (SQL Server, MySQL, Oracle, ...)
@@ -13,11 +13,13 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Specifies to use NoSQL database (MongoDB)
 		/// </summary>
-		NoSQL,
+		NoSQL
 	}
 
+	//  --------------------------------------------------------------------------------------------
+
 	[Serializable]
-	public enum RepositoryOperations
+	public enum RepositoryOperation
 	{
 		/// <summary>
 		/// Create/Add new object
@@ -41,100 +43,163 @@ namespace net.vieapps.Components.Repository
 		Query
 	}
 
+	//  --------------------------------------------------------------------------------------------
+
 	[Serializable]
-	public enum GroupOperators
+	public enum GroupOperator
 	{
 		/// <summary>
 		/// Group all filter-by expression with AND operator
 		/// </summary>
-		And = 0,
+		And,
 
 		/// <summary>
 		/// Group all filter-by expression with OR operator
 		/// </summary>
-		Or = 1,
+		Or
 	}
 
+	//  --------------------------------------------------------------------------------------------
+
 	[Serializable]
-	public enum CompareOperators
+	public enum CompareOperator
 	{
 		/// <summary>
 		/// Equals operator (==)
 		/// </summary>
-		Equals = 0,
+		Equals,
 
 		/// <summary>
 		/// Not equals operator (!=)
 		/// </summary>
-		NotEquals = 1,
+		NotEquals,
 
 		/// <summary>
 		/// Less than operator (&lt;)
 		/// </summary>
-		LessThan = 2,
+		LessThan,
 
 		/// <summary>
 		/// Less than or equals operator (&lt;=)
 		/// </summary>
-		LessThanOrEquals = 3,
+		LessThanOrEquals,
 
 		/// <summary>
 		/// Greater operator (&gt;)
 		/// </summary>
-		Greater = 4,
+		Greater,
 
 		/// <summary>
 		/// Greater or equals operator (&gt;=)
 		/// </summary>
-		GreaterOrEquals = 5,
+		GreaterOrEquals,
 
 		/// <summary>
 		/// Contains operator (LIKE in SQL, RegEx in NoSQL)
 		/// </summary>
-		Contains = 6,
+		Contains,
 
 		/// <summary>
 		/// Starts with operator (means starts with sub-string)
 		/// </summary>
-		StartsWith = 7,
+		StartsWith,
 
 		/// <summary>
 		/// Ends with operator (means ends with sub-string)
 		/// </summary>
-		EndsWith = 8,
+		EndsWith,
 
 		/// <summary>
 		/// Is null operator (IS NULL in SQL)
 		/// </summary>
-		IsNull = 9,
+		IsNull,
 
 		/// <summary>
 		/// Is not null operator (IS NOT NULL in SQL)
 		/// </summary>
-		IsNotNull = 10,
+		IsNotNull,
 
 		/// <summary>
 		/// Is empty operator (=='')
 		/// </summary>
-		IsEmpty = 11,
+		IsEmpty,
 
 		/// <summary>
 		/// Is not empty operator (!='')
 		/// </summary>
-		IsNotEmpty = 12,
+		IsNotEmpty
 	}
 
+	//  --------------------------------------------------------------------------------------------
+
 	[Serializable]
-	public enum SortModes
+	public enum SortMode
 	{
 		/// <summary>
 		/// Ascending sort
 		/// </summary>
-		Ascending = 0,
+		Ascending,
 
 		/// <summary>
 		/// Descending sort
 		/// </summary>
-		Descending = 1
+		Descending
 	}
+
+	//  --------------------------------------------------------------------------------------------
+
+	[Serializable]
+	public enum ExtendedPropertyMode
+	{
+		/// <summary>
+		/// Unicode text
+		/// </summary>
+		Text,
+
+		/// <summary>
+		/// Large (CLOB) unicode text
+		/// </summary>
+		LargeText,
+
+		/// <summary>
+		/// Yes/No (boolean)
+		/// </summary>
+		YesNo,
+
+		/// <summary>
+		/// Choice from the pre-defined values
+		/// </summary>
+		Choice,
+
+		/// <summary>
+		/// Date Time
+		/// </summary>
+		DateTime,
+
+		/// <summary>
+		/// Integer number
+		/// </summary>
+		Number,
+
+		/// <summary>
+		/// Decimal number
+		/// </summary>
+		Decimal,
+
+		/// <summary>
+		/// Hyper-link (http://)
+		/// </summary>
+		HyperLink,
+
+		/// <summary>
+		/// Lookup (contains comma seperated value of identites)
+		/// </summary>
+		Lookup,
+
+		/// <summary>
+		/// User information (contains comma seperated value of identites)
+		/// </summary>
+		User
+	}
+
 }

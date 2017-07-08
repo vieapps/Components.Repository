@@ -27,7 +27,7 @@ namespace net.vieapps.Components.Repository
 	public static class RepositoryMediator
 	{
 
-		#region Caching
+		#region Caching extension methods
 		/// <summary>
 		/// Gets the identity/primary-key of the entity object
 		/// </summary>
@@ -119,7 +119,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="objects">The collection of objects</param>
-		public static Task SetAsync<T>(this CacheManager cacheStorage, List<T> objects) where T : class
+		public static Task SetAsync<T>(this CacheManager cacheStorage, IEnumerable<T> objects) where T : class
 		{
 			return !object.ReferenceEquals(objects, null)
 				? cacheStorage.SetAsync(objects.ToDictionary(o => o.GetCacheKey()))
@@ -343,56 +343,31 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Collection
+		#region Collection extension methods
 		/// <summary>
 		/// Adds an object into this collection
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dictionary"></param>
 		/// <param name="object"></param>
-		public static void Add<T>(this Dictionary<string, T> dictionary, T @object) where T : RepositoryBase
+		public static void Add<T>(this IDictionary<string, T> dictionary, T @object) where T : RepositoryBase
 		{
 			if (!dictionary.ContainsKey(@object.ID))
 				dictionary.Add(@object.ID, @object);
 		}
-
-		/// <summary>
-		/// Adds an object into this collection
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="collection"></param>
-		/// <param name="object"></param>
-		public static void Add<T>(this Collection<string, T> collection, T @object) where T : RepositoryBase
-		{
-			if (!collection.ContainsKey(@object.ID))
-				collection.Add(@object.ID, @object);
-		}
 		#endregion
 
-		#region Check ignored
+		#region Repository attribute extension methods
 		internal static bool IsIgnoredWhenSql(this ObjectService.AttributeInfo attribute)
 		{
-			return attribute.Info.GetCustomAttributes(typeof(IgnoreWhenSqlAttribute), true).Length > 0
-				? true
-				: false;
+			return attribute.Info.GetCustomAttributes(typeof(IgnoreWhenSqlAttribute), true).Length > 0;
 		}
 
 		internal static bool IsIgnoredWhenNoSql(this ObjectService.AttributeInfo attribute)
 		{
-			var attrs = attribute.Info.GetCustomAttributes(typeof(IgnoreWhenNoSqlAttribute), true);
-			if (attrs.Length > 0)
-				return true;
-
-			// check ignore with settings of MongoDB
-			attrs = attribute.Info.GetCustomAttributes(typeof(MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute), true);
-			if (attrs.Length > 0)
-				return true;
-
-			attrs = attribute.Info.GetCustomAttributes(typeof(MongoDB.Bson.Serialization.Attributes.BsonIgnoreIfNullAttribute), true);
-			if (attrs.Length > 0)
-				return true;
-
-			return false;
+			return attribute.Info.GetCustomAttributes(typeof(IgnoreWhenNoSqlAttribute), true).Length > 0
+				? true
+				: attribute.Info.GetCustomAttributes(typeof(MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute), true).Length > 0;
 		}
 
 		internal static bool IsIgnored(this ObjectService.AttributeInfo attribute)
@@ -405,8 +380,8 @@ namespace net.vieapps.Components.Repository
 
 #if DEBUG
 		public static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
-		public static Dictionary<string, RepositoryEntityDefinition> EntityDefinitions = new Dictionary<string, RepositoryEntityDefinition>();
-		public static Dictionary<string, RepositoryDataSource> DataSources = new Dictionary<string, RepositoryDataSource>();
+		public static Dictionary<string, EntityDefinition> EntityDefinitions = new Dictionary<string, EntityDefinition>();
+		public static Dictionary<string, DataSource> DataSources = new Dictionary<string, DataSource>();
 #else
 		internal static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
 		internal static Dictionary<string, EntityDefinition> EntityDefinitions = new Dictionary<string, EntityDefinition>();
@@ -655,9 +630,9 @@ namespace net.vieapps.Components.Repository
 				if (object.ReferenceEquals(value, null))
 				{
 					if (attribute.Name.Equals(definition.PrimaryKey))
-						throw new InformationRequiredException("The primary-key value is required");
+						throw new InformationRequiredException("The value of the primary-key is required");
 					else if (attribute.NotNull)
-						throw new InformationRequiredException("The " + (attribute.IsPublic ? "property" : "attribute") + " named '" + attribute.Name + "' is required (doesn't allow null)");
+						throw new InformationRequiredException("The value of the " + (attribute.IsPublic ? "property" : "attribute") + " named '" + attribute.Name + "' is required (doesn't allow null)");
 				}
 
 				else if (attribute.Type.IsStringType() && !attribute.IsCLOB)
@@ -686,7 +661,7 @@ namespace net.vieapps.Components.Repository
 		public static void Create<T>(RepositoryContext context, string aliasTypeName, T @object) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Create;
+			context.Operation = RepositoryOperation.Create;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
@@ -710,9 +685,9 @@ namespace net.vieapps.Components.Repository
 
 			// create
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				NoSqlHelper.Create<T>(context, primaryDataSource, @object);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				SqlHelper.Create<T>(context, primaryDataSource, @object);
 
 			// update in cache storage
@@ -762,7 +737,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task CreateAsync<T>(RepositoryContext context, string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			context.Operation = RepositoryOperations.Create;
+			context.Operation = RepositoryOperation.Create;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
@@ -786,9 +761,9 @@ namespace net.vieapps.Components.Repository
 
 			// create
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				await NoSqlHelper.CreateAsync<T>(context, primaryDataSource, @object, null, cancellationToken);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				await SqlHelper.CreateAsync<T>(context, primaryDataSource, @object, cancellationToken);
 
 			// update in cache storage
@@ -843,15 +818,15 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Get;
+			context.Operation = RepositoryOperation.Get;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// find
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 				? NoSqlHelper.Get<T>(context, primaryDataSource, filter, sort)
-				: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 					? SqlHelper.Get<T>(context, primaryDataSource, filter, sort)
 					: null;
 		}
@@ -895,7 +870,7 @@ namespace net.vieapps.Components.Repository
 			// prepare
 			if (callHandlers)
 			{
-				context.Operation = RepositoryOperations.Get;
+				context.Operation = RepositoryOperation.Get;
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				context.AliasTypeName = aliasTypeName;
 			}
@@ -918,9 +893,9 @@ namespace net.vieapps.Components.Repository
 			if (object.ReferenceEquals(@object, null))
 			{
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-				@object = primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? NoSqlHelper.Get<T>(context, primaryDataSource, id)
-					: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 						? SqlHelper.Get<T>(context, primaryDataSource, id)
 						: null;
 
@@ -983,15 +958,15 @@ namespace net.vieapps.Components.Repository
 		public static Task<T> GetAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Get;
+			context.Operation = RepositoryOperation.Get;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// find
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 				? NoSqlHelper.GetAsync<T>(context, primaryDataSource, filter, sort, cancellationToken)
-				: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 					? SqlHelper.GetAsync<T>(context, primaryDataSource, filter, sort)
 					: Task.FromResult<T>(null);
 		}
@@ -1037,7 +1012,7 @@ namespace net.vieapps.Components.Repository
 			// prepare
 			if (callHandlers)
 			{
-				context.Operation = RepositoryOperations.Get;
+				context.Operation = RepositoryOperation.Get;
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				context.AliasTypeName = aliasTypeName;
 			}
@@ -1061,9 +1036,9 @@ namespace net.vieapps.Components.Repository
 			{
 				// load from primary data source
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-				@object = primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? await NoSqlHelper.GetAsync<T>(context, primaryDataSource, id, cancellationToken)
-					: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 						? await SqlHelper.GetAsync<T>(context, primaryDataSource, id, cancellationToken)
 						: null;
 
@@ -1126,7 +1101,7 @@ namespace net.vieapps.Components.Repository
 		public static void Replace<T>(RepositoryContext context, string aliasTypeName, T @object) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Update;
+			context.Operation = RepositoryOperation.Update;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
@@ -1167,9 +1142,9 @@ namespace net.vieapps.Components.Repository
 
 			// update
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				NoSqlHelper.Replace<T>(context, primaryDataSource, @object);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				SqlHelper.Replace<T>(context, primaryDataSource, @object);
 
 			// update into cache storage
@@ -1220,7 +1195,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task ReplaceAsync<T>(RepositoryContext context, string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Update;
+			context.Operation = RepositoryOperation.Update;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
@@ -1261,9 +1236,9 @@ namespace net.vieapps.Components.Repository
 
 			// update
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				await NoSqlHelper.ReplaceAsync<T>(context, primaryDataSource, @object, null, cancellationToken);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				await SqlHelper.ReplaceAsync<T>(context, primaryDataSource, @object, cancellationToken);
 
 			// update into cache storage
@@ -1316,7 +1291,7 @@ namespace net.vieapps.Components.Repository
 		public static void Update<T>(RepositoryContext context, string aliasTypeName, T @object) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Update;
+			context.Operation = RepositoryOperation.Update;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
@@ -1353,9 +1328,9 @@ namespace net.vieapps.Components.Repository
 
 			// update
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				NoSqlHelper.Update<T>(context, primaryDataSource, @object, dirtyAttributes.ToList());
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				SqlHelper.Update<T>(context, primaryDataSource, @object, dirtyAttributes.ToList());
 
 			// update into cache storage
@@ -1406,7 +1381,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task UpdateAsync<T>(RepositoryContext context, string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Update;
+			context.Operation = RepositoryOperation.Update;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
@@ -1443,9 +1418,9 @@ namespace net.vieapps.Components.Repository
 
 			// update
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				await NoSqlHelper.UpdateAsync<T>(context, primaryDataSource, @object, dirtyAttributes.ToList(), null, cancellationToken);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				await SqlHelper.UpdateAsync<T>(context, primaryDataSource, @object, dirtyAttributes.ToList(), cancellationToken);
 
 			// update into cache storage
@@ -1498,7 +1473,7 @@ namespace net.vieapps.Components.Repository
 		public static void Delete<T>(RepositoryContext context, string aliasTypeName, string id) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Delete;
+			context.Operation = RepositoryOperation.Delete;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
@@ -1514,9 +1489,9 @@ namespace net.vieapps.Components.Repository
 
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				NoSqlHelper.Delete<T>(context, primaryDataSource, id);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				SqlHelper.Delete<T>(context, primaryDataSource, id);
 
 			// remove from cache storage
@@ -1567,7 +1542,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task DeleteAsync<T>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Delete;
+			context.Operation = RepositoryOperation.Delete;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
@@ -1583,9 +1558,9 @@ namespace net.vieapps.Components.Repository
 
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				await NoSqlHelper.DeleteAsync<T>(context, primaryDataSource, id, null, cancellationToken);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				await SqlHelper.DeleteAsync<T>(context, primaryDataSource, id, cancellationToken);
 
 			// remove from cache storage
@@ -1636,15 +1611,15 @@ namespace net.vieapps.Components.Repository
 		public static void DeleteMany<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Delete;
+			context.Operation = RepositoryOperation.Delete;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				NoSqlHelper.DeleteMany<T>(context, primaryDataSource, filter);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				SqlHelper.DeleteMany<T>(context, primaryDataSource, filter);
 
 			// TO DO: sync to other data sources
@@ -1684,15 +1659,15 @@ namespace net.vieapps.Components.Repository
 		public static async Task DeleteManyAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.Operation = RepositoryOperations.Delete;
+			context.Operation = RepositoryOperation.Delete;
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
 
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			if (primaryDataSource.Mode.Equals(RepositoryModes.NoSQL))
+			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
 				await NoSqlHelper.DeleteManyAsync<T>(context, primaryDataSource, filter, null, cancellationToken);
-			else if (primaryDataSource.Mode.Equals(RepositoryModes.SQL))
+			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
 				await SqlHelper.DeleteManyAsync<T>(context, primaryDataSource, filter, cancellationToken);
 
 			// TO DO: sync to other data sources
@@ -1758,9 +1733,9 @@ namespace net.vieapps.Components.Repository
 			// find identities
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
-				: primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? NoSqlHelper.SelectIdentities<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
-					: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 						? SqlHelper.SelectIdentities<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
 						: new List<string>();
 
@@ -1796,9 +1771,9 @@ namespace net.vieapps.Components.Repository
 					identities = identities.Except(ids).ToList();
 					if (identities.Count > 0)
 					{
-						var missing = primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 							? NoSqlHelper.Find<T>(context, primaryDataSource, identities, sort)
-							: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 								? SqlHelper.Find<T>(context, primaryDataSource, identities, sort)
 								: new List<T>();
 
@@ -1822,9 +1797,9 @@ namespace net.vieapps.Components.Repository
 			if (objects == null)
 			{
 				objects = identities == null || identities.Count > 0
-					? primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? NoSqlHelper.Find<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
-						: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 							? SqlHelper.Find<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
 							: new List<T>()
 					: new List<T>();
@@ -1902,9 +1877,9 @@ namespace net.vieapps.Components.Repository
 			// find identities
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
-				: primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? await NoSqlHelper.SelectIdentitiesAsync<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
-					: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 						? await SqlHelper.SelectIdentitiesAsync<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
 						: new List<string>();
 
@@ -1940,9 +1915,9 @@ namespace net.vieapps.Components.Repository
 					identities = identities.Except(ids).ToList();
 					if (identities.Count > 0)
 					{
-						var missing = primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 							? await NoSqlHelper.FindAsync<T>(context, primaryDataSource, identities, sort)
-							: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 								? await SqlHelper.FindAsync<T>(context, primaryDataSource, identities, sort)
 								: new List<T>();
 
@@ -1966,9 +1941,9 @@ namespace net.vieapps.Components.Repository
 			if (objects == null)
 			{
 				objects = identities == null || identities.Count > 0
-					? primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? await NoSqlHelper.FindAsync<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
-						: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 							? await SqlHelper.FindAsync<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
 							: new List<T>()
 					: new List<T>();
@@ -2048,9 +2023,9 @@ namespace net.vieapps.Components.Repository
 			// search identities
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
-				: primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? NoSqlHelper.SearchIdentities<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
-					: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 						? SqlHelper.SearchIdentities<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
 						: new List<string>();
 
@@ -2086,9 +2061,9 @@ namespace net.vieapps.Components.Repository
 					identities = identities.Except(ids).ToList();
 					if (identities.Count > 0)
 					{
-						var missing = primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 							? NoSqlHelper.Find<T>(context, primaryDataSource, identities)
-							: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 								? SqlHelper.Find<T>(context, primaryDataSource, identities)
 								: new List<T>();
 
@@ -2112,9 +2087,9 @@ namespace net.vieapps.Components.Repository
 			if (objects == null)
 			{
 				objects = identities == null || identities.Count > 0
-					? primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? NoSqlHelper.Search<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
-						: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 							? SqlHelper.Search<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
 							: new List<T>()
 					: new List<T>();
@@ -2192,9 +2167,9 @@ namespace net.vieapps.Components.Repository
 			// search identities
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
-				: primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? await NoSqlHelper.SearchIdentitiesAsync<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
-					: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 						? await SqlHelper.SearchIdentitiesAsync<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
 						: new List<string>();
 
@@ -2230,9 +2205,9 @@ namespace net.vieapps.Components.Repository
 					identities = identities.Except(ids).ToList();
 					if (identities.Count > 0)
 					{
-						var missing = primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 							? await NoSqlHelper.FindAsync<T>(context, primaryDataSource, identities)
-							: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 								? await SqlHelper.FindAsync<T>(context, primaryDataSource, identities)
 								: new List<T>();
 
@@ -2256,9 +2231,9 @@ namespace net.vieapps.Components.Repository
 			if (objects == null)
 			{
 				objects = identities == null || identities.Count > 0
-					? primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? await NoSqlHelper.SearchAsync<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
-						: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 							? await SqlHelper.SearchAsync<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
 							: new List<T>()
 					: new List<T>();
@@ -2320,9 +2295,9 @@ namespace net.vieapps.Components.Repository
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 				? NoSqlHelper.Count<T>(context, primaryDataSource, filter != null ? filter : Filters.And<T>())
-				: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 					? SqlHelper.Count<T>(context, primaryDataSource, filter)
 					: 0;
 		}
@@ -2367,9 +2342,9 @@ namespace net.vieapps.Components.Repository
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 				? NoSqlHelper.CountAsync<T>(context, primaryDataSource, filter != null ? filter : Filters.And<T>(), null, cancellationToken)
-				: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 					? SqlHelper.CountAsync<T>(context, primaryDataSource, filter, cancellationToken)
 					: Task.FromResult<long>(0);
 		}
@@ -2415,9 +2390,9 @@ namespace net.vieapps.Components.Repository
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 				? NoSqlHelper.Count<T>(context, primaryDataSource, query, filter)
-				: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 					? SqlHelper.Count<T>(context, primaryDataSource, query, filter)
 					: 0;
 		}
@@ -2464,9 +2439,9 @@ namespace net.vieapps.Components.Repository
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryModes.NoSQL)
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 				? NoSqlHelper.CountAsync<T>(context, primaryDataSource, query, filter, null, cancellationToken)
-				: primaryDataSource.Mode.Equals(RepositoryModes.SQL)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 					? SqlHelper.CountAsync<T>(context, primaryDataSource, query, filter, cancellationToken)
 					: Task.FromResult<long>(0);
 		}
@@ -2521,98 +2496,522 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region JSON conversions
-		/// <summary>
-		/// Serializes the object to JSON object
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="object">The object to serialize</param>
-		/// <param name="onCompleted">The callback on completed</param>
-		/// <returns></returns>
-		public static JObject ToJson<T>(T @object, Action<T, JObject> onCompleted = null) where T : class
-		{
-			var json = @object.ToJson<T>();
-			if (onCompleted != null)
-				onCompleted(@object, json);
-			return json;
-		}
-
-		/// <summary>
-		/// Creates (Deserializes) an object from the JSON object
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="json">The JSON object that contains information</param>
-		/// <param name="onCompleted">The callback on completed</param>
-		/// <returns></returns>
-		public static T FromJson<T>(JToken json, Action<T, JToken> onCompleted = null) where T : class
-		{
-			var @object = json != null
-				? json.FromJson<T>()
-				: null;
-			if (onCompleted != null)
-				onCompleted(@object, json);
-			return @object;
-		}
-
+		#region JSON/XML conversions
 		/// <summary>
 		/// Serializes the collection of objects to an array of JSON objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
 		/// <returns></returns>
-		public static JArray ToJArray<T>(List<T> objects) where T : class
+		public static JArray ToJsonArray<T>(this List<T> objects, bool addTypeOfExtendedProperties = false) where T : class
 		{
 			var array = new JArray();
 			if (objects != null)
-				objects.ForEach(@object => {
-					array.Add(@object is RepositoryBase ? (@object as RepositoryBase).ToJson() : @object.ToJson());
+				objects.ForEach(@object =>
+				{
+					array.Add(@object is RepositoryBase
+							? addTypeOfExtendedProperties
+								? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties)
+								: (@object as RepositoryBase).ToJson()
+							: @object.ToJson()
+						);
 				});
 			return array;
 		}
 
 		/// <summary>
-		/// Serializes the collection of objects to an array of JSON objects
+		/// Serializes the collection of objects to a JSON object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
 		/// <returns></returns>
-		public static JArray ToJsonArray<T>(this List<T> objects) where T : class
+		public static JObject ToJsonObject<T>(this List<T> objects, bool addTypeOfExtendedProperties = false) where T : class
 		{
-			return RepositoryMediator.ToJArray(objects);
+			var json = new JObject();
+			objects.ForEach(@object =>
+			{
+				json.Add(new JProperty(
+						@object.GetEntityID(),
+						@object is RepositoryBase
+							? addTypeOfExtendedProperties
+								? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties)
+								: (@object as RepositoryBase).ToJson()
+							: @object.ToJson())
+					);
+			});
+			return json;
+		}
+
+		/// <summary>
+		/// Serializes the collection of objects to XML
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objects">The object to serialize</param>
+		/// <param name="name">The string that presents name of root tag, null to use default</param>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
+		/// <returns></returns>
+		public static XElement ToXML<T>(this List<T> objects, string name = null, bool addTypeOfExtendedProperties = false) where T : class
+		{
+			var xml = new XElement(XName.Get(string.IsNullOrWhiteSpace(name) ? typeof(T).GetTypeName(true) : name));
+			if (objects != null)
+				objects.ForEach(@object => {
+					xml.Add(
+							@object is RepositoryBase
+								? addTypeOfExtendedProperties
+									? (@object as RepositoryBase).ToXml(addTypeOfExtendedProperties)
+									: (@object as RepositoryBase).ToXml()
+								: @object.ToXml()
+						);
+				});
+			return xml;
 		}
 		#endregion
 
-		#region XML conversions
+		#region Access permissions
 		/// <summary>
-		/// Serializes the object to XML object
+		/// Normalizes the access permissions of an business entity
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="object">The object to serialize</param>
-		/// <param name="onCompleted">The callback on completed</param>
+		/// <param name="object"></param>
 		/// <returns></returns>
-		public static XElement ToXml<T>(T @object, Action<T, XElement> onCompleted = null) where T : class
+		public static AccessPermissions Normalize(this AccessPermissions @object)
 		{
-			var xml = @object.ToXml<T>();
-			if (onCompleted != null)
-				onCompleted(@object, xml);
-			return xml;
+			if (@object == null)
+				return null;
+
+			var permissions = new AccessPermissions();
+
+			if (AccessPermissions.IsEmpty(@object.DownloadableRoles, @object.DownloadableUsers))
+				permissions.DownloadableRoles = permissions.DownloadableUsers = null;
+			else
+			{
+				permissions.DownloadableRoles = @object.DownloadableRoles;
+				permissions.DownloadableUsers = @object.DownloadableUsers;
+			}
+
+			if (AccessPermissions.IsEmpty(@object.ViewableRoles, @object.ViewableUsers))
+				permissions.ViewableRoles = permissions.ViewableUsers = null;
+			else
+			{
+				permissions.ViewableRoles = @object.ViewableRoles;
+				permissions.ViewableUsers = @object.ViewableUsers;
+			}
+
+			if (AccessPermissions.IsEmpty(@object.ContributiveRoles, @object.ContributiveUsers))
+				permissions.ContributiveRoles = permissions.ContributiveUsers = null;
+			else
+			{
+				permissions.ContributiveRoles = @object.ContributiveRoles;
+				permissions.ContributiveUsers = @object.ContributiveUsers;
+			}
+
+			if (AccessPermissions.IsEmpty(@object.EditableRoles, @object.EditableUsers))
+				permissions.EditableRoles = permissions.EditableUsers = null;
+			else
+			{
+				permissions.EditableRoles = @object.EditableRoles;
+				permissions.EditableUsers = @object.EditableUsers;
+			}
+
+			if (AccessPermissions.IsEmpty(@object.ModerateRoles, @object.ModerateUsers))
+				permissions.ModerateRoles = permissions.ModerateUsers = null;
+			else
+			{
+				permissions.ModerateRoles = @object.ModerateRoles;
+				permissions.ModerateUsers = @object.ModerateUsers;
+			}
+
+			if (AccessPermissions.IsEmpty(@object.AdministrativeRoles, @object.AdministrativeUsers))
+				permissions.AdministrativeRoles = permissions.AdministrativeUsers = null;
+			else
+			{
+				permissions.AdministrativeRoles = @object.AdministrativeRoles;
+				permissions.AdministrativeUsers = @object.AdministrativeUsers;
+			}
+
+			if (AccessPermissions.IsEmpty(permissions.DownloadableRoles, permissions.DownloadableUsers)
+				&& AccessPermissions.IsEmpty(permissions.ViewableRoles, permissions.ViewableUsers)
+				&& AccessPermissions.IsEmpty(permissions.ContributiveRoles, permissions.ContributiveUsers)
+				&& AccessPermissions.IsEmpty(permissions.EditableRoles, permissions.EditableUsers)
+				&& AccessPermissions.IsEmpty(permissions.ModerateRoles, permissions.ModerateUsers)
+				&& AccessPermissions.IsEmpty(permissions.AdministrativeRoles, permissions.AdministrativeUsers))
+				permissions = null;
+
+			return permissions;
 		}
 
 		/// <summary>
-		/// Creates (Deserializes) an object from the XML object
+		/// Combines the original permissions of a business entity with parent permissions
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="xml">The XML object that contains information</param>
-		/// <param name="onCompleted">The callback on completed</param>
+		/// <param name="originalPermissions"></param>
+		/// <param name="parentPermissions"></param>
 		/// <returns></returns>
-		public static T FromXml<T>(XContainer xml, Action<T, XContainer> onCompleted = null) where T : class
+		public static AccessPermissions Combine(this AccessPermissions originalPermissions, AccessPermissions parentPermissions)
 		{
-			var @object = xml != null
-				? xml.FromXml<T>()
-				: null;
-			if (onCompleted != null)
-				onCompleted(@object, xml);
-			return @object;
+			if (originalPermissions == null && parentPermissions == null)
+				return null;
+
+			var permissions = new AccessPermissions();
+
+			if (originalPermissions != null && AccessPermissions.IsNotEmpty(originalPermissions.DownloadableRoles, originalPermissions.DownloadableUsers))
+			{
+				permissions.DownloadableRoles = originalPermissions.DownloadableRoles;
+				permissions.DownloadableUsers = originalPermissions.DownloadableUsers;
+			}
+			else if (parentPermissions != null)
+			{
+				permissions.DownloadableRoles = parentPermissions.DownloadableRoles;
+				permissions.DownloadableUsers = parentPermissions.DownloadableUsers;
+			}
+
+			if (originalPermissions != null && AccessPermissions.IsNotEmpty(originalPermissions.ViewableRoles, originalPermissions.ViewableUsers))
+			{
+				permissions.ViewableRoles = originalPermissions.ViewableRoles;
+				permissions.ViewableUsers = originalPermissions.ViewableUsers;
+			}
+			else if (parentPermissions != null)
+			{
+				permissions.ViewableRoles = parentPermissions.ViewableRoles;
+				permissions.ViewableUsers = parentPermissions.ViewableUsers;
+			}
+
+			if (originalPermissions != null && AccessPermissions.IsNotEmpty(originalPermissions.ContributiveRoles, originalPermissions.ContributiveUsers))
+			{
+				permissions.ContributiveRoles = originalPermissions.ContributiveRoles;
+				permissions.ContributiveUsers = originalPermissions.ContributiveUsers;
+			}
+			else if (parentPermissions != null)
+			{
+				permissions.ContributiveRoles = parentPermissions.ContributiveRoles;
+				permissions.ContributiveUsers = parentPermissions.ContributiveUsers;
+			}
+
+			if (originalPermissions != null && AccessPermissions.IsNotEmpty(originalPermissions.EditableRoles, originalPermissions.EditableUsers))
+			{
+				permissions.EditableRoles = originalPermissions.EditableRoles;
+				permissions.EditableUsers = originalPermissions.EditableUsers;
+			}
+			else if (parentPermissions != null)
+			{
+				permissions.EditableRoles = parentPermissions.EditableRoles;
+				permissions.EditableUsers = parentPermissions.EditableUsers;
+			}
+
+			if (originalPermissions != null && AccessPermissions.IsNotEmpty(originalPermissions.ModerateRoles, originalPermissions.ModerateUsers))
+			{
+				permissions.ModerateRoles = originalPermissions.ModerateRoles;
+				permissions.ModerateUsers = originalPermissions.ModerateUsers;
+			}
+			else if (parentPermissions != null)
+			{
+				permissions.ModerateRoles = parentPermissions.ModerateRoles;
+				permissions.ModerateUsers = parentPermissions.ModerateUsers;
+			}
+
+			if (originalPermissions != null && AccessPermissions.IsNotEmpty(originalPermissions.AdministrativeRoles, originalPermissions.AdministrativeUsers))
+			{
+				permissions.AdministrativeRoles = originalPermissions.AdministrativeRoles;
+				permissions.AdministrativeUsers = originalPermissions.AdministrativeUsers;
+			}
+			else if (parentPermissions != null)
+			{
+				permissions.AdministrativeRoles = parentPermissions.AdministrativeRoles;
+				permissions.AdministrativeUsers = parentPermissions.AdministrativeUsers;
+			}
+
+			if (AccessPermissions.IsEmpty(permissions.DownloadableRoles, permissions.DownloadableUsers)
+				&& AccessPermissions.IsEmpty(permissions.ViewableRoles, permissions.ViewableUsers)
+				&& AccessPermissions.IsEmpty(permissions.ContributiveRoles, permissions.ContributiveUsers)
+				&& AccessPermissions.IsEmpty(permissions.EditableRoles, permissions.EditableUsers)
+				&& AccessPermissions.IsEmpty(permissions.ModerateRoles, permissions.ModerateUsers)
+				&& AccessPermissions.IsEmpty(permissions.AdministrativeRoles, permissions.AdministrativeUsers))
+				permissions = null;
+
+			return permissions;
+		}
+
+		/// <summary>
+		/// Determines an user can manage (means the user can act like an administrator)
+		/// </summary>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <param name="originalPermissions">The object that presents original permissions</param>
+		/// <param name="parentPermissions">The object that presents parent permissions</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanManage(string userID, IEnumerable<string> userRoles, AccessPermissions originalPermissions, AccessPermissions parentPermissions = null)
+		{
+			if (string.IsNullOrWhiteSpace(userID))
+				return false;
+
+			var can = originalPermissions != null && originalPermissions.AdministrativeUsers != null && originalPermissions.AdministrativeUsers.Contains(userID.ToLower());
+			if (!can && userRoles != null && originalPermissions != null && originalPermissions.AdministrativeRoles != null)
+				can = originalPermissions.AdministrativeRoles.Intersect(userRoles).Count() > 0;
+
+			if (!can && parentPermissions != null)
+			{
+				can = parentPermissions.AdministrativeUsers != null && parentPermissions.AdministrativeUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && parentPermissions.AdministrativeRoles != null)
+					can = parentPermissions.AdministrativeRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			return can;
+		}
+
+		/// <summary>
+		/// Determines an user can manage (means the user can act like an administrator) on this business entity
+		/// </summary>
+		/// <param name="object">The business entity</param>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanManage(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
+		{
+			return RepositoryMediator.CanManage(userID, userRoles, @object.OriginalPermissions)
+				? true
+				: @object.Parent != null
+					? RepositoryMediator.CanManage(userID, userRoles, @object.Parent.WorkingPermissions)
+					: false;
+		}
+
+		/// <summary>
+		/// Determines an user can moderate (means the user can act like a moderator)
+		/// </summary>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <param name="originalPermissions">The object that presents original permissions</param>
+		/// <param name="parentPermissions">The object that presents parent permissions</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanModerate(string userID, IEnumerable<string> userRoles, AccessPermissions originalPermissions, AccessPermissions parentPermissions = null)
+		{
+			if (string.IsNullOrWhiteSpace(userID))
+				return false;
+
+			var can = RepositoryMediator.CanManage(userID, userRoles, originalPermissions, parentPermissions);
+
+			if (!can && originalPermissions != null)
+			{
+				can = originalPermissions.ModerateUsers != null && originalPermissions.ModerateUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && originalPermissions != null && originalPermissions.ModerateRoles != null)
+					can = originalPermissions.ModerateRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			if (!can && parentPermissions != null)
+			{
+				can = parentPermissions.ModerateUsers != null && parentPermissions.ModerateUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && parentPermissions.ModerateRoles != null)
+					can = parentPermissions.ModerateRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			return can;
+		}
+
+		/// <summary>
+		/// Determines an user can moderate (means the user can act like a moderator) on this business entity
+		/// </summary>
+		/// <param name="object">The business entity</param>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanModerate(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
+		{
+			return RepositoryMediator.CanModerate(userID, userRoles, @object.OriginalPermissions)
+				? true
+				: @object.Parent != null
+					? RepositoryMediator.CanModerate(userID, userRoles, @object.Parent.WorkingPermissions)
+					: false;
+		}
+
+		/// <summary>
+		/// Determines an user can edit (means the user can act like an editor)
+		/// </summary>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <param name="originalPermissions">The object that presents original permissions</param>
+		/// <param name="parentPermissions">The object that presents parent permissions</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanEdit(string userID, IEnumerable<string> userRoles, AccessPermissions originalPermissions, AccessPermissions parentPermissions = null)
+		{
+			if (string.IsNullOrWhiteSpace(userID))
+				return false;
+
+			var can = RepositoryMediator.CanModerate(userID, userRoles, originalPermissions, parentPermissions);
+
+			if (!can && originalPermissions != null)
+			{
+				can = originalPermissions.EditableUsers != null && originalPermissions.EditableUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && originalPermissions != null && originalPermissions.EditableRoles != null)
+					can = originalPermissions.EditableRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			if (!can && parentPermissions != null)
+			{
+				can = parentPermissions.EditableUsers != null && parentPermissions.EditableUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && parentPermissions.EditableRoles != null)
+					can = parentPermissions.EditableRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			return can;
+		}
+
+		/// <summary>
+		/// Determines an user can edit (means the user can act like an editor) on this business entity
+		/// </summary>
+		/// <param name="object">The business entity</param>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanEdit(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
+		{
+			return RepositoryMediator.CanEdit(userID, userRoles, @object.OriginalPermissions)
+				? true
+				: @object.Parent != null
+					? RepositoryMediator.CanEdit(userID, userRoles, @object.Parent.WorkingPermissions)
+					: false;
+		}
+
+		/// <summary>
+		/// Determines an user can contribute (means the user can act like a contributor)
+		/// </summary>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <param name="originalPermissions">The object that presents original permissions</param>
+		/// <param name="parentPermissions">The object that presents parent permissions</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanContribute(string userID, IEnumerable<string> userRoles, AccessPermissions originalPermissions, AccessPermissions parentPermissions = null)
+		{
+			if (string.IsNullOrWhiteSpace(userID))
+				return false;
+
+			var can = RepositoryMediator.CanEdit(userID, userRoles, originalPermissions, parentPermissions);
+
+			if (!can && originalPermissions != null)
+			{
+				can = originalPermissions.ContributiveUsers != null && originalPermissions.ContributiveUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && originalPermissions != null && originalPermissions.ContributiveRoles != null)
+					can = originalPermissions.ContributiveRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			if (!can && parentPermissions != null)
+			{
+				can = parentPermissions.ContributiveUsers != null && parentPermissions.ContributiveUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && parentPermissions.ContributiveRoles != null)
+					can = parentPermissions.ContributiveRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			return can;
+		}
+
+		/// <summary>
+		/// Determines an user can contribute (means the user can act like a contributor) on this business entity
+		/// </summary>
+		/// <param name="object">The business entity</param>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanContribute(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
+		{
+			return RepositoryMediator.CanContribute(userID, userRoles, @object.OriginalPermissions)
+				? true
+				: @object.Parent != null
+					? RepositoryMediator.CanContribute(userID, userRoles, @object.Parent.WorkingPermissions)
+					: false;
+		}
+
+		/// <summary>
+		/// Determines an user can view (means the user can act like a viewer)
+		/// </summary>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <param name="originalPermissions">The object that presents original permissions</param>
+		/// <param name="parentPermissions">The object that presents parent permissions</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanView(string userID, IEnumerable<string> userRoles, AccessPermissions originalPermissions, AccessPermissions parentPermissions = null)
+		{
+			if (string.IsNullOrWhiteSpace(userID))
+				return false;
+
+			var can = RepositoryMediator.CanContribute(userID, userRoles, originalPermissions, parentPermissions);
+
+			if (!can && originalPermissions != null)
+			{
+				can = originalPermissions.ViewableUsers != null && originalPermissions.ViewableUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && originalPermissions != null && originalPermissions.ViewableRoles != null)
+					can = originalPermissions.ViewableRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			if (!can && parentPermissions != null)
+			{
+				can = parentPermissions.ViewableUsers != null && parentPermissions.ViewableUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && parentPermissions.ViewableRoles != null)
+					can = parentPermissions.ViewableRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			return can;
+		}
+
+		/// <summary>
+		/// Determines an user can view (means the user can act like a viewer) on this business entity
+		/// </summary>
+		/// <param name="object">The business entity</param>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanView(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
+		{
+			return RepositoryMediator.CanView(userID, userRoles, @object.OriginalPermissions)
+				? true
+				: @object.Parent != null
+					? RepositoryMediator.CanView(userID, userRoles, @object.Parent.WorkingPermissions)
+					: false;
+		}
+
+		/// <summary>
+		/// Determines an user can download (means the user can act like a downloader/viewer)
+		/// </summary>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <param name="originalPermissions">The object that presents original permissions</param>
+		/// <param name="parentPermissions">The object that presents parent permissions</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanDownload(string userID, IEnumerable<string> userRoles, AccessPermissions originalPermissions, AccessPermissions parentPermissions = null)
+		{
+			if (string.IsNullOrWhiteSpace(userID))
+				return false;
+
+			var can = (originalPermissions == null || AccessPermissions.IsEmpty(originalPermissions.DownloadableUsers, originalPermissions.DownloadableRoles))
+				&& (parentPermissions == null || AccessPermissions.IsEmpty(parentPermissions.DownloadableUsers, parentPermissions.DownloadableRoles))
+				? RepositoryMediator.CanView(userID, userRoles, originalPermissions, parentPermissions)
+				: false;
+
+			if (!can && originalPermissions != null)
+			{
+				can = originalPermissions.DownloadableUsers != null && originalPermissions.DownloadableUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && originalPermissions != null && originalPermissions.DownloadableRoles != null)
+					can = originalPermissions.DownloadableRoles.Intersect(userRoles).Count() > 0;
+			}
+
+			if (!can && parentPermissions != null)
+			{
+				can = parentPermissions.DownloadableUsers != null && parentPermissions.DownloadableUsers.Contains(userID.ToLower());
+				if (!can && userRoles != null && parentPermissions.DownloadableRoles != null)
+					can = parentPermissions.DownloadableRoles.Intersect(userRoles).Count() > 0;
+			}
+
+
+			return can;
+		}
+
+		/// <summary>
+		/// Determines an user can download (means the user can act like a downloader/viewer)
+		/// </summary>
+		/// <param name="object">The business entity</param>
+		/// <param name="userID">The string that presents the identity of an user</param>
+		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
+		/// <returns>true if the user got right; otherwise false</returns>
+		public static bool CanDownload(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
+		{
+			return RepositoryMediator.CanDownload(userID, userRoles, @object.OriginalPermissions, @object.Parent != null ? @object.Parent.WorkingPermissions : null);
 		}
 		#endregion
 

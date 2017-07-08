@@ -63,47 +63,49 @@ namespace net.vieapps.Components.Repository
 		/// Initializes all types in assemblies
 		/// </summary>
 		/// <param name="assemblies">The collection of assemblies</param>
-		public static void Initialize(IEnumerable<Assembly> assemblies)
-		{
-			assemblies.ForEach(assembly =>
-			{
-				RepositoryStarter.Initialize(assembly);
-			});
-		}
-
-		/// <summary>
-		/// Initializes all types of all assemblies in the current app domain (so please call this method one time only)
-		/// </summary>
-		public static void Initialize()
+		/// <param name="updateConfigFromDisc">true to update other settings from configuration file on the disc</param>
+		public static void Initialize(IEnumerable<Assembly> assemblies, bool updateConfigFromDisc = true)
 		{
 			// initialize & register all types
-			AppDomain.CurrentDomain.GetAssemblies().ForEach(assembly =>
+			assemblies.ForEach(assembly =>
 			{
 				RepositoryStarter.Initialize(assembly);
 			});
 
 			// read configuration and update
-			var configurationHandler = ConfigurationManager.GetSection("net.vieapps.repositories") as ConfigurationSectionHandler;
-			if (configurationHandler == null)
+			var config = ConfigurationManager.GetSection("net.vieapps.repositories") as ConfigurationSectionHandler;
+			if (config != null)
+			{
+				// update settings of data sources
+				foreach (XmlNode dataSourceNode in config._section.SelectNodes("dataSources/dataSource"))
+				{
+					var dataSource = DataSource.FromJson(config.GetSettings(dataSourceNode));
+					if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
+						RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
+				}
+
+				// update settings of repositories
+				foreach (XmlNode repositoryNode in config._section.SelectNodes("repository"))
+				{
+					// update repository
+					RepositoryDefinition.Update(config.GetSettings(repositoryNode));
+
+					// update repository entities
+					foreach (XmlNode repositoryEntityNode in repositoryNode.SelectNodes("entity"))
+						EntityDefinition.Update(config.GetSettings(repositoryEntityNode));
+				}
+			}
+			else if (updateConfigFromDisc)
 				throw new ConfigurationErrorsException("Cannot find the configuration section named 'net.vieapps.repositories' in the configuration file");
+		}
 
-			// update settings of data sources
-			foreach (XmlNode dataSourceNode in configurationHandler._section.SelectNodes("dataSources/dataSource"))
-			{
-				DataSource dataSource = DataSource.FromJson(configurationHandler.GetSettings(dataSourceNode));
-				RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
-			}
-
-			// update settings of repositories
-			foreach (XmlNode repositoryNode in configurationHandler._section.SelectNodes("repository"))
-			{
-				// update repository
-				RepositoryDefinition.Update(configurationHandler.GetSettings(repositoryNode));
-
-				// update repository entities
-				foreach (XmlNode repositoryEntityNode in repositoryNode.SelectNodes("entity"))
-					EntityDefinition.Update(configurationHandler.GetSettings(repositoryEntityNode));
-			}
+		/// <summary>
+		/// Initializes all types of all assemblies of the current app
+		/// </summary>
+		/// <param name="selector">The function to select assemblies to initialize</param>
+		public static void Initialize(Func<IEnumerable<Assembly>> selector = null)
+		{
+			RepositoryStarter.Initialize(selector != null ? selector() : AppDomain.CurrentDomain.GetAssemblies());
 		}
 	}
 
