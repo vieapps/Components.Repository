@@ -26,18 +26,20 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public abstract class RepositoryBase
 	{
+
+		#region Properties
 		/// <summary>
 		/// Gets or sets the object identity (primary-key)
 		/// </summary>
-		[BsonId(IdGenerator = typeof(IdentityGenerator))]
-		[PrimaryKey(MaxLength = 32)]
+		[BsonId(IdGenerator = typeof(IdentityGenerator)), PrimaryKey(MaxLength = 32)]
 		public virtual string ID { get; set; }
 
 		/// <summary>
 		/// Gets the score while searching
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Ignore]
 		public virtual double? SearchScore { get; set; }
+		#endregion
 
 		#region Methods
 		/// <summary>
@@ -66,14 +68,14 @@ namespace net.vieapps.Components.Repository
 		public abstract void SetProperty(string name, object value);
 
 		/// <summary>
-		/// Serializes this object to JSON object
+		/// Serializes this object to JSON
 		/// </summary>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (named with surfix '$Type')</param>
 		/// <returns></returns>
 		public abstract JObject ToJson(bool addTypeOfExtendedProperties);
 
 		/// <summary>
-		/// Serializes this object to JSON object
+		/// Serializes this object to JSON
 		/// </summary>
 		/// <returns></returns>
 		public virtual JObject ToJson()
@@ -82,20 +84,20 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Parses the JSON object and copy values into this object
+		/// Parses the JSON and copy values into this object
 		/// </summary>
 		/// <param name="json">The JSON object that contains information</param>
 		public abstract void ParseJson(JObject json);
 
 		/// <summary>
-		/// Serializes this object to XML object
+		/// Serializes this object to XML
 		/// </summary>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (attribute named '$type')</param>
 		/// <returns></returns>
 		public abstract XElement ToXml(bool addTypeOfExtendedProperties);
 
 		/// <summary>
-		/// Serializes this object to XML object
+		/// Serializes this object to XML
 		/// </summary>
 		/// <returns></returns>
 		public virtual XElement ToXml()
@@ -104,7 +106,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Parses the XML object and copy values into this object
+		/// Parses the XML and copy values into this object
 		/// </summary>
 		/// <param name="xml">The XML object that contains information</param>
 		public abstract void ParseXml(XContainer xml);
@@ -117,8 +119,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Base class of an entity of a repository with helper methods to perform CRUD operations, count, find, and query (full-text search)
 	/// </summary>
-	[Serializable]
-	[DebuggerDisplay("ID = {ID}, Type = {typeof(T).FullName}")]
+	[Serializable, DebuggerDisplay("ID = {ID}, Type = {typeof(T).FullName}")]
 	public abstract class RepositoryBase<T> : RepositoryBase where T : class
 	{
 
@@ -1586,7 +1587,7 @@ namespace net.vieapps.Components.Repository
 			object theValue = null;
 			if (this.TryGetProperty(name, out theValue))
 			{
-				value = theValue != null ? theValue.CastType<TValue>() : default(TValue);
+				value = theValue != null ? theValue.CastAs<TValue>() : default(TValue);
 				return true;
 			}
 
@@ -1620,7 +1621,7 @@ namespace net.vieapps.Components.Repository
 			{
 				if (attributes.ContainsKey(name))
 				{
-					(this as T).SetAttributeValue(attributes[name], value, true);
+					this.SetAttributeValue(attributes[name], value, true);
 					return true;
 				}
 				else if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null)
@@ -1659,7 +1660,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public override JObject ToJson(bool addTypeOfExtendedProperties = false)
 		{
-			var json = (this as T).ToJson();
+			var json = (this as T).ToJson() as JObject;
 			if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
 				(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
 				{
@@ -1725,50 +1726,47 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Extended properties/methods [IBussineEntity]
+		#region Properties & Methods of IBussineEntity
 		/// <summary>
 		/// Gets or sets the title
 		/// </summary>
-		[Property(MaxLength = 250)]
+		[BsonIgnoreIfNull, Property(MaxLength = 250), IgnoreIfNull]
 		public virtual string Title { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		[Property(MaxLength = 32)]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull]
 		public virtual string SystemID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		[Property(MaxLength = 32)]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull]
 		public virtual string RepositoryID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		[Property(MaxLength = 32)]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull]
 		public virtual string EntityID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the collection of extended properties
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Ignore]
 		public virtual Dictionary<string, object> ExtendedProperties { get; set; }
 
 		/// <summary>
 		/// Gets the business entity that marks as parent of this object
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
 		public virtual IBusinessEntity Parent { get; }
 
 		/// <summary>
 		/// Gets or sets the original working permissions
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, AsJson]
 		public virtual AccessPermissions OriginalPermissions { get; set; }
 
 		/// <summary>
@@ -1780,7 +1778,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the actual working permissions (mean the combined permissions)
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
 		public virtual AccessPermissions WorkingPermissions
 		{
 			get

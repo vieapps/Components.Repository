@@ -122,52 +122,52 @@ namespace net.vieapps.Components.Repository
 		#region Helpers
 		internal static Dictionary<Type, DbType> DbTypes = new Dictionary<Type, DbType>()
 		{
-			{ typeof(byte), DbType.Byte },
-			{ typeof(sbyte), DbType.SByte },
-			{ typeof(short), DbType.Int16 },
-			{ typeof(ushort), DbType.UInt16 },
-			{ typeof(int), DbType.Int32 },
-			{ typeof(uint), DbType.UInt32 },
-			{ typeof(long), DbType.Int64 },
-			{ typeof(ulong), DbType.UInt64 },
-			{ typeof(float), DbType.Single },
-			{ typeof(double), DbType.Double },
-			{ typeof(decimal), DbType.Decimal },
-			{ typeof(bool), DbType.Boolean },
-			{ typeof(string), DbType.String },
-			{ typeof(char), DbType.StringFixedLength },
+			{ typeof(String), DbType.String },
+			{ typeof(Byte[]), DbType.Binary },
+			{ typeof(Byte), DbType.Byte },
+			{ typeof(SByte), DbType.SByte },
+			{ typeof(Int16), DbType.Int16 },
+			{ typeof(UInt16), DbType.UInt16 },
+			{ typeof(Int32), DbType.Int32 },
+			{ typeof(UInt32), DbType.UInt32 },
+			{ typeof(Int64), DbType.Int64 },
+			{ typeof(UInt64), DbType.UInt64 },
+			{ typeof(Single), DbType.Single },
+			{ typeof(Double), DbType.Double },
+			{ typeof(Decimal), DbType.Decimal },
+			{ typeof(Boolean), DbType.Boolean },
+			{ typeof(Char), DbType.StringFixedLength },
 			{ typeof(Guid), DbType.Guid },
 			{ typeof(DateTime), DbType.DateTime },
 			{ typeof(DateTimeOffset), DbType.DateTimeOffset },
-			{ typeof(byte[]), DbType.Binary },
-			{ typeof(byte?), DbType.Byte },
-			{ typeof(sbyte?), DbType.SByte },
-			{ typeof(short?), DbType.Int16 },
-			{ typeof(ushort?), DbType.UInt16 },
-			{ typeof(int?), DbType.Int32 },
-			{ typeof(uint?), DbType.UInt32 },
-			{ typeof(long?), DbType.Int64 },
-			{ typeof(ulong?), DbType.UInt64 },
-			{ typeof(float?), DbType.Single },
-			{ typeof(double?), DbType.Double },
-			{ typeof(decimal?), DbType.Decimal },
-			{ typeof(bool?), DbType.Boolean },
-			{ typeof(char?), DbType.StringFixedLength },
+			{ typeof(Byte?), DbType.Byte },
+			{ typeof(SByte?), DbType.SByte },
+			{ typeof(Int16?), DbType.Int16 },
+			{ typeof(UInt16?), DbType.UInt16 },
+			{ typeof(Int32?), DbType.Int32 },
+			{ typeof(UInt32?), DbType.UInt32 },
+			{ typeof(Int64?), DbType.Int64 },
+			{ typeof(UInt64?), DbType.UInt64 },
+			{ typeof(Single?), DbType.Single },
+			{ typeof(Double?), DbType.Double },
+			{ typeof(Decimal?), DbType.Decimal },
+			{ typeof(Boolean?), DbType.Boolean },
+			{ typeof(Char?), DbType.StringFixedLength },
 			{ typeof(Guid?), DbType.Guid },
 			{ typeof(DateTime?), DbType.DateTime },
 			{ typeof(DateTimeOffset?), DbType.DateTimeOffset },
 		};
 
-		static DbType GetDbType(this ObjectService.AttributeInfo attribute)
+		internal static DbType GetDbType(this ObjectService.AttributeInfo attribute)
 		{
-			return attribute.Type.IsDateTimeType() && attribute.IsDateTimeString
+			return attribute.IsStoredAsString()
 				? DbType.AnsiStringFixedLength
 				: attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))
 					? DbType.AnsiStringFixedLength
 					: SqlHelper.DbTypes[attribute.Type];
 		}
 
-		static T Copy<T>(this DbDataReader reader, Dictionary<string, ObjectService.AttributeInfo> attributes) where T : class
+		internal static T Copy<T>(this DbDataReader reader, Dictionary<string, ObjectService.AttributeInfo> attributes) where T : class
 		{
 			T @object = Activator.CreateInstance<T>();
 			for (var index = 0; index < reader.FieldCount; index++)
@@ -180,28 +180,111 @@ namespace net.vieapps.Components.Repository
 			}
 			return @object;
 		}
+
+		internal static bool IsGotExtendedProperties<T>(this T @object) where T : class
+		{
+			if (!(@object is IBusinessEntity))
+				return false;
+
+			else if (string.IsNullOrWhiteSpace((@object as IBusinessEntity).EntityID))
+				return false;
+
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			if (definition == null || definition.RuntimeEntities == null)
+				return false;
+
+			var attributes = definition.RuntimeEntities.ContainsKey((@object as IBusinessEntity).EntityID)
+				? definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions
+				: null;
+			return attributes != null && attributes.Count > 0;
+		}
 		#endregion
 
 		#region Create
-		static Tuple<string, List<DbParameter>> GenerateCreatingInfo<T>(this T @object, DbProviderFactory providerFactory) where T : class
+		static Tuple<string, List<DbParameter>> GetCreateOriginalInfo<T>(this T @object, DbProviderFactory providerFactory) where T : class
 		{
 			string columns = "", values = "";
 			var parameters = new List<DbParameter>();
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			definition.Attributes.ForEach(attribute =>
+			foreach(var attribute in definition.Attributes)
 			{
+				var value = @object.GetAttributeValue(attribute.Name);
+				if (value == null && attribute.IsIgnoredIfNull())
+					continue;
+
 				columns += (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + ",";
 				values += "@" + attribute.Name + ",";
 
 				var parameter = providerFactory.CreateParameter();
 				parameter.ParameterName = "@" + attribute.Name;
-				parameter.Value = @object.GetAttributeValue(attribute.Name);
-				parameter.DbType = attribute.GetDbType();
+				if (attribute.IsStoredAsJson())
+				{
+					parameter.DbType = DbType.String;
+					parameter.Value = value.ToJson().ToString(Newtonsoft.Json.Formatting.None);
+				}
+				else
+				{
+					parameter.DbType = attribute.GetDbType();
+					parameter.Value = attribute.IsStoredAsString()
+						? ((DateTime)value).ToDTString()
+						: value;
+				}
 				parameters.Add(parameter);
-			});
+			}
 
 			return new Tuple<string, List<DbParameter>>(
 					"INSERT INTO " + definition.TableName + " (" + columns.Left(columns.Length - 1) + ") VALUES (" + values.Left(values.Length - 1) + ")", 
+					parameters
+				);
+		}
+
+		static Tuple<string, List<DbParameter>> GetCreateExtendedInfo<T>(this T @object, DbProviderFactory providerFactory) where T : class
+		{
+			string columns = "ID,SystemID,RepositoryID,EntityID", values = "@ID,@SystemID,@RepositoryID,@EntityID";
+			var parameters = new List<DbParameter>();
+
+			var parameter = providerFactory.CreateParameter();
+			parameter.ParameterName = "@ID";
+			parameter.Value = (@object as IBusinessEntity).ID;
+			parameter.DbType = DbType.StringFixedLength;
+			parameters.Add(parameter);
+
+			parameter = providerFactory.CreateParameter();
+			parameter.ParameterName = "@SystemID";
+			parameter.Value = (@object as IBusinessEntity).SystemID;
+			parameter.DbType = DbType.StringFixedLength;
+			parameters.Add(parameter);
+
+			parameter = providerFactory.CreateParameter();
+			parameter.ParameterName = "@RepositoryID";
+			parameter.Value = (@object as IBusinessEntity).RepositoryID;
+			parameter.DbType = DbType.StringFixedLength;
+			parameters.Add(parameter);
+
+			parameter = providerFactory.CreateParameter();
+			parameter.ParameterName = "@EntityID";
+			parameter.Value = (@object as IBusinessEntity).EntityID;
+			parameter.DbType = DbType.StringFixedLength;
+			parameters.Add(parameter);
+
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			var attributes = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
+			foreach (var attribute in attributes)
+			{
+				columns += attribute.Column + ",";
+				values += "@" + attribute.Name + ",";
+
+				parameter = providerFactory.CreateParameter();
+				parameter.ParameterName = "@" + attribute.Name;
+				parameter.DbType = attribute.DbType;
+				parameter.Value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
+					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
+					: attribute.GetDefaultValue();
+				parameters.Add(parameter);
+			}
+
+			return new Tuple<string, List<DbParameter>>(
+					"INSERT INTO " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " (" + columns.Left(columns.Length - 1) + ") VALUES (" + values.Left(values.Length - 1) + ")",
 					parameters
 				);
 		}
@@ -221,9 +304,14 @@ namespace net.vieapps.Components.Repository
 			DbProviderFactory providerFactory = SqlHelper.GetProviderFactory(dataSource);
 			using (var connection = context.GetSqlConnection(dataSource, providerFactory))
 			{
-				var command = @object.GenerateCreatingInfo(providerFactory).CreateCommand(connection);
 				connection.Open();
+				var command = @object.GetCreateOriginalInfo(providerFactory).CreateCommand(connection);
 				command.ExecuteNonQuery();
+				if (@object.IsGotExtendedProperties())
+				{
+					command = @object.GetCreateExtendedInfo(providerFactory).CreateCommand(connection);
+					command.ExecuteNonQuery();
+				}
 			}
 		}
 
@@ -244,9 +332,14 @@ namespace net.vieapps.Components.Repository
 			DbProviderFactory providerFactory = SqlHelper.GetProviderFactory(dataSource);
 			using (var connection = context.GetSqlConnection(dataSource, providerFactory))
 			{
-				var command = @object.GenerateCreatingInfo(providerFactory).CreateCommand(connection);
 				await connection.OpenAsync(cancellationToken);
+				var command = @object.GetCreateOriginalInfo(providerFactory).CreateCommand(connection);
 				await command.ExecuteNonQueryAsync(cancellationToken);
+				if (@object.IsGotExtendedProperties())
+				{
+					command = @object.GetCreateExtendedInfo(providerFactory).CreateCommand(connection);
+					await command.ExecuteNonQueryAsync(cancellationToken);
+				}
 			}
 		}
 		#endregion

@@ -26,358 +26,6 @@ namespace net.vieapps.Components.Repository
 	/// </summary>
 	public static class RepositoryMediator
 	{
-
-		#region Caching extension methods
-		/// <summary>
-		/// Gets the identity/primary-key of the entity object
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="entity">The entity object (usually is object of sub-class of <see cref="RepositoryBase">RepositoryBase</see>)</param>
-		/// <returns></returns>
-		public static string GetEntityID<T>(this T entity) where T : class
-		{
-			var identity = entity is RepositoryBase
-				? (entity as RepositoryBase).ID
-				: entity.GetAttributeValue("ID") as string;
-			return !string.IsNullOrWhiteSpace(identity)
-				? identity
-				: entity.GetAttributeValue("Id") as string;
-		}
-
-		/// <summary>
-		/// Gets a key for working with caching storage
-		/// The key is combination of objects' type name (just name only), hashtag, and object identity (ID/Id - if object has no attribute named 'ID/Id', the hash code will be used)
-		/// Ex: the object type is net.vieapps.data.Article, got attribute named ID with value '12345', then the cached-key is 'Article#12345'
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="object">The object for generating key from</param>
-		/// <param name="useFullTypeName">true to use full type name, false to use just name (last element) only</param>
-		/// <returns>The string that present a key</returns>
-		public static string GetCacheKey<T>(this T @object, bool useFullTypeName = false) where T : class
-		{
-			var key = @object.GetEntityID();
-			if (string.IsNullOrWhiteSpace(key))
-				key = @object.GetHashCode().ToString();
-			return @object.GetType().GetTypeName(!useFullTypeName) + "#" + key;
-		}
-
-		/// <summary>
-		/// Gets a key for working with caching storage
-		/// The key is combination of objects' type name (just name only), hashtag, and object identity (ID/Id - if object has no attribute named 'ID/Id', the hash code will be used)
-		/// Ex: the object type is net.vieapps.data.Article, the identity value value is '12345', then the cached-key is 'Article#12345'
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="identity">The string that presents identity of an object</param>
-		/// <param name="useFullTypeName">true to use full type name, false to use just name (last element) only</param>
-		/// <returns>The string that present a key</returns>
-		public static string GetCacheKey<T>(this string identity, bool useFullTypeName = false) where T : class
-		{
-			return typeof(T).GetTypeName(!useFullTypeName) + "#" + identity.Trim().ToLower();
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		public static bool Set<T>(this CacheManager cacheStorage, T @object) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.Set(@object.GetCacheKey(), @object)
-				: false;
-		}
-
-		/// <summary>
-		/// Adds the collection of objects into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="objects">The collection of objects</param>
-		public static void Set<T>(this CacheManager cacheStorage, List<T> objects) where T : class
-		{
-			if (!object.ReferenceEquals(objects, null))
-				cacheStorage.Set(objects.ToDictionary(o => o.GetCacheKey()));
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		public static Task<bool> SetAsync<T>(this CacheManager cacheStorage, T @object) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.SetAsync(@object.GetCacheKey(), @object)
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
-		/// Adds the collection of objects into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="objects">The collection of objects</param>
-		public static Task SetAsync<T>(this CacheManager cacheStorage, IEnumerable<T> objects) where T : class
-		{
-			return !object.ReferenceEquals(objects, null)
-				? cacheStorage.SetAsync(objects.ToDictionary(o => o.GetCacheKey()))
-				: Task.CompletedTask;
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage as absolute expire item
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static bool SetAbsolute<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.SetAbsolute(@object.GetCacheKey(), @object, expirationTime)
-				: false;
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage as absolute expire item
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The identity of an object</param>
-		/// <param name="value">The value</param>
-		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static bool SetAbsolute<T>(this CacheManager cacheStorage, string identity, object value, int expirationTime = 0) where T : class
-		{
-			return !object.ReferenceEquals(identity, null)
-				? cacheStorage.SetAbsolute(identity.GetCacheKey<T>(), value, expirationTime)
-				: false;
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage as absolute expire item
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static Task<bool> SetAbsoluteAsync<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.SetAbsoluteAsync(@object.GetCacheKey(), @object, expirationTime)
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage as absolute expire item
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The identity of an object</param>
-		/// <param name="value">The value</param>
-		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static Task<bool> SetAbsoluteAsync<T>(this CacheManager cacheStorage, string identity, object value, int expirationTime = 0) where T : class
-		{
-			return !object.ReferenceEquals(identity, null)
-				? cacheStorage.SetAbsoluteAsync(identity.GetCacheKey<T>(), value, expirationTime)
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage (when its no cached)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		public static bool SetIfNotExists<T>(this CacheManager cacheStorage, T @object) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.SetIfNotExists(@object.GetCacheKey(), @object)
-				: false;
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage (when its no cached)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		public static Task<bool> SetIfNotExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.SetIfNotExistsAsync(@object.GetCacheKey(), @object)
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage (when its cached, means replace an existed item)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		public static bool SetIfAlreadyExists<T>(this CacheManager cacheStorage, T @object) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.SetIfAlreadyExists(@object.GetCacheKey(), @object)
-				: false;
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage (when its cached, means replace an existed item)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		public static Task<bool> SetIfAlreadyExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.SetIfAlreadyExistsAsync(@object.GetCacheKey(), @object)
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
-		/// Gets an object from cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The string that presents identity of object need to get</param>
-		/// <returns></returns>
-		public static T Get<T>(this CacheManager cacheStorage, string identity) where T : class
-		{
-			return !string.IsNullOrWhiteSpace(identity)
-				? cacheStorage.Get<T>(identity.GetCacheKey<T>())
-				: null;
-		}
-
-		/// <summary>
-		/// Gets an object from cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The string that presents identity of object need to get</param>
-		/// <returns></returns>
-		public static Task<T> GetAsync<T>(this CacheManager cacheStorage, string identity) where T : class
-		{
-			return !string.IsNullOrWhiteSpace(identity)
-				? cacheStorage.GetAsync<T>(identity.GetCacheKey<T>())
-				: Task.FromResult<T>(null);
-		}
-
-		/// <summary>
-		/// Removes a cached object from cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object need to delete from cache storage</param>
-		public static bool Remove<T>(this CacheManager cacheStorage, T @object) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.Remove(@object.GetCacheKey())
-				: false;
-		}
-
-		/// <summary>
-		/// Removes a cached object from cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The string that presents identity of object need to delete</param>
-		public static bool Remove<T>(this CacheManager cacheStorage, string identity) where T : class
-		{
-			return !string.IsNullOrWhiteSpace(identity)
-				? cacheStorage.Remove(identity.GetCacheKey<T>())
-				: false;
-		}
-
-		/// <summary>
-		/// Remove a cached object from cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object need to delete from cache storage</param>
-		public static Task<bool> RemoveAsync<T>(this CacheManager cacheStorage, T @object) where T : class
-		{
-			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.RemoveAsync(@object.GetCacheKey())
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
-		/// Removes a cached object from cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The string that presents identity of object need to delete</param>
-		public static Task<bool> RemoveAsync<T>(this CacheManager cacheStorage, string identity) where T : class
-		{
-			return !string.IsNullOrWhiteSpace(identity)
-				? cacheStorage.RemoveAsync(identity.GetCacheKey<T>())
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
-		/// Checks existing of a cached object in cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The string that presents identity of object</param>
-		public static bool Exists<T>(this CacheManager cacheStorage, string identity) where T : class
-		{
-			return !string.IsNullOrWhiteSpace(identity)
-				? cacheStorage.Exists(identity.GetCacheKey<T>())
-				: false;
-		}
-
-		/// <summary>
-		/// Checks existing of a cached object in cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The string that presents identity of object</param>
-		public static Task<bool> ExistsAsync<T>(this CacheManager cacheStorage, string identity) where T : class
-		{
-			return !string.IsNullOrWhiteSpace(identity)
-				? cacheStorage.ExistsAsync(identity.GetCacheKey<T>())
-				: Task.FromResult<bool>(false);
-		}
-		#endregion
-
-		#region Collection extension methods
-		/// <summary>
-		/// Adds an object into this collection
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dictionary"></param>
-		/// <param name="object"></param>
-		public static void Add<T>(this IDictionary<string, T> dictionary, T @object) where T : RepositoryBase
-		{
-			if (!dictionary.ContainsKey(@object.ID))
-				dictionary.Add(@object.ID, @object);
-		}
-		#endregion
-
-		#region Repository attribute extension methods
-		internal static bool IsIgnoredWhenSql(this ObjectService.AttributeInfo attribute)
-		{
-			return attribute.Info.GetCustomAttributes(typeof(IgnoreWhenSqlAttribute), true).Length > 0;
-		}
-
-		internal static bool IsIgnoredWhenNoSql(this ObjectService.AttributeInfo attribute)
-		{
-			return attribute.Info.GetCustomAttributes(typeof(IgnoreWhenNoSqlAttribute), true).Length > 0
-				? true
-				: attribute.Info.GetCustomAttributes(typeof(MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute), true).Length > 0;
-		}
-
-		internal static bool IsIgnored(this ObjectService.AttributeInfo attribute)
-		{
-			return attribute.Info.GetCustomAttributes(typeof(IgnoreAttribute), true).Length > 0
-				? true
-				: attribute.IsIgnoredWhenSql() || attribute.IsIgnoredWhenNoSql();
-		}
-		#endregion
-
 #if DEBUG
 		public static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
 		public static Dictionary<string, EntityDefinition> EntityDefinitions = new Dictionary<string, EntityDefinition>();
@@ -439,7 +87,7 @@ namespace net.vieapps.Components.Repository
 			{
 				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
 					? RepositoryMediator.GetRepositoryDefinition(aliasTypeName)
-					: definition.Parent;
+					: definition.RepositoryDefinition;
 
 				if (parent != null)
 					dataSource = parent.PrimaryDataSource;
@@ -494,7 +142,7 @@ namespace net.vieapps.Components.Repository
 			{
 				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
 					? RepositoryMediator.GetRepositoryDefinition(aliasTypeName)
-					: definition.Parent;
+					: definition.RepositoryDefinition;
 
 				if (parent != null)
 					dataSource = parent.SecondaryDataSource;
@@ -2569,7 +2217,347 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Access permissions
+		#region Caching extension methods
+		/// <summary>
+		/// Gets the identity/primary-key of the entity object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="entity">The entity object (usually is object of sub-class of <see cref="RepositoryBase">RepositoryBase</see>)</param>
+		/// <returns></returns>
+		public static string GetEntityID<T>(this T entity) where T : class
+		{
+			var identity = entity is RepositoryBase
+				? (entity as RepositoryBase).ID
+				: entity.GetAttributeValue("ID") as string;
+			return !string.IsNullOrWhiteSpace(identity)
+				? identity
+				: entity.GetAttributeValue("Id") as string;
+		}
+
+		/// <summary>
+		/// Gets a key for working with caching storage
+		/// The key is combination of objects' type name (just name only), hashtag, and object identity (ID/Id - if object has no attribute named 'ID/Id', the hash code will be used)
+		/// Ex: the object type is net.vieapps.data.Article, got attribute named ID with value '12345', then the cached-key is 'Article#12345'
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object">The object for generating key from</param>
+		/// <param name="useFullTypeName">true to use full type name, false to use just name (last element) only</param>
+		/// <returns>The string that present a key</returns>
+		public static string GetCacheKey<T>(this T @object, bool useFullTypeName = false) where T : class
+		{
+			var key = @object.GetEntityID();
+			if (string.IsNullOrWhiteSpace(key))
+				key = @object.GetHashCode().ToString();
+			return @object.GetType().GetTypeName(!useFullTypeName) + "#" + key;
+		}
+
+		/// <summary>
+		/// Gets a key for working with caching storage
+		/// The key is combination of objects' type name (just name only), hashtag, and object identity (ID/Id - if object has no attribute named 'ID/Id', the hash code will be used)
+		/// Ex: the object type is net.vieapps.data.Article, the identity value value is '12345', then the cached-key is 'Article#12345'
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="identity">The string that presents identity of an object</param>
+		/// <param name="useFullTypeName">true to use full type name, false to use just name (last element) only</param>
+		/// <returns>The string that present a key</returns>
+		public static string GetCacheKey<T>(this string identity, bool useFullTypeName = false) where T : class
+		{
+			return typeof(T).GetTypeName(!useFullTypeName) + "#" + identity.Trim().ToLower();
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object</param>
+		public static bool Set<T>(this CacheManager cacheStorage, T @object) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.Set(@object.GetCacheKey(), @object)
+				: false;
+		}
+
+		/// <summary>
+		/// Adds the collection of objects into cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="objects">The collection of objects</param>
+		public static void Set<T>(this CacheManager cacheStorage, List<T> objects) where T : class
+		{
+			if (!object.ReferenceEquals(objects, null))
+				cacheStorage.Set(objects.ToDictionary(o => o.GetCacheKey()));
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object</param>
+		public static Task<bool> SetAsync<T>(this CacheManager cacheStorage, T @object) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.SetAsync(@object.GetCacheKey(), @object)
+				: Task.FromResult<bool>(false);
+		}
+
+		/// <summary>
+		/// Adds the collection of objects into cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="objects">The collection of objects</param>
+		public static Task SetAsync<T>(this CacheManager cacheStorage, IEnumerable<T> objects) where T : class
+		{
+			return !object.ReferenceEquals(objects, null)
+				? cacheStorage.SetAsync(objects.ToDictionary(o => o.GetCacheKey()))
+				: Task.CompletedTask;
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage as absolute expire item
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object</param>
+		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
+		public static bool SetAbsolute<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.SetAbsolute(@object.GetCacheKey(), @object, expirationTime)
+				: false;
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage as absolute expire item
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="identity">The identity of an object</param>
+		/// <param name="value">The value</param>
+		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
+		public static bool SetAbsolute<T>(this CacheManager cacheStorage, string identity, object value, int expirationTime = 0) where T : class
+		{
+			return !object.ReferenceEquals(identity, null)
+				? cacheStorage.SetAbsolute(identity.GetCacheKey<T>(), value, expirationTime)
+				: false;
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage as absolute expire item
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object</param>
+		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
+		public static Task<bool> SetAbsoluteAsync<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.SetAbsoluteAsync(@object.GetCacheKey(), @object, expirationTime)
+				: Task.FromResult<bool>(false);
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage as absolute expire item
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="identity">The identity of an object</param>
+		/// <param name="value">The value</param>
+		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
+		public static Task<bool> SetAbsoluteAsync<T>(this CacheManager cacheStorage, string identity, object value, int expirationTime = 0) where T : class
+		{
+			return !object.ReferenceEquals(identity, null)
+				? cacheStorage.SetAbsoluteAsync(identity.GetCacheKey<T>(), value, expirationTime)
+				: Task.FromResult<bool>(false);
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage (when its no cached)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object</param>
+		public static bool SetIfNotExists<T>(this CacheManager cacheStorage, T @object) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.SetIfNotExists(@object.GetCacheKey(), @object)
+				: false;
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage (when its no cached)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object</param>
+		public static Task<bool> SetIfNotExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.SetIfNotExistsAsync(@object.GetCacheKey(), @object)
+				: Task.FromResult<bool>(false);
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage (when its cached, means replace an existed item)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object</param>
+		public static bool SetIfAlreadyExists<T>(this CacheManager cacheStorage, T @object) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.SetIfAlreadyExists(@object.GetCacheKey(), @object)
+				: false;
+		}
+
+		/// <summary>
+		/// Adds an object into cache storage (when its cached, means replace an existed item)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object</param>
+		public static Task<bool> SetIfAlreadyExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.SetIfAlreadyExistsAsync(@object.GetCacheKey(), @object)
+				: Task.FromResult<bool>(false);
+		}
+
+		/// <summary>
+		/// Gets an object from cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="identity">The string that presents identity of object need to get</param>
+		/// <returns></returns>
+		public static T Get<T>(this CacheManager cacheStorage, string identity) where T : class
+		{
+			return !string.IsNullOrWhiteSpace(identity)
+				? cacheStorage.Get<T>(identity.GetCacheKey<T>())
+				: null;
+		}
+
+		/// <summary>
+		/// Gets an object from cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="identity">The string that presents identity of object need to get</param>
+		/// <returns></returns>
+		public static Task<T> GetAsync<T>(this CacheManager cacheStorage, string identity) where T : class
+		{
+			return !string.IsNullOrWhiteSpace(identity)
+				? cacheStorage.GetAsync<T>(identity.GetCacheKey<T>())
+				: Task.FromResult<T>(null);
+		}
+
+		/// <summary>
+		/// Removes a cached object from cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object need to delete from cache storage</param>
+		public static bool Remove<T>(this CacheManager cacheStorage, T @object) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.Remove(@object.GetCacheKey())
+				: false;
+		}
+
+		/// <summary>
+		/// Removes a cached object from cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="identity">The string that presents identity of object need to delete</param>
+		public static bool Remove<T>(this CacheManager cacheStorage, string identity) where T : class
+		{
+			return !string.IsNullOrWhiteSpace(identity)
+				? cacheStorage.Remove(identity.GetCacheKey<T>())
+				: false;
+		}
+
+		/// <summary>
+		/// Remove a cached object from cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="object">The object need to delete from cache storage</param>
+		public static Task<bool> RemoveAsync<T>(this CacheManager cacheStorage, T @object) where T : class
+		{
+			return !object.ReferenceEquals(@object, null)
+				? cacheStorage.RemoveAsync(@object.GetCacheKey())
+				: Task.FromResult<bool>(false);
+		}
+
+		/// <summary>
+		/// Removes a cached object from cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="identity">The string that presents identity of object need to delete</param>
+		public static Task<bool> RemoveAsync<T>(this CacheManager cacheStorage, string identity) where T : class
+		{
+			return !string.IsNullOrWhiteSpace(identity)
+				? cacheStorage.RemoveAsync(identity.GetCacheKey<T>())
+				: Task.FromResult<bool>(false);
+		}
+
+		/// <summary>
+		/// Checks existing of a cached object in cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="identity">The string that presents identity of object</param>
+		public static bool Exists<T>(this CacheManager cacheStorage, string identity) where T : class
+		{
+			return !string.IsNullOrWhiteSpace(identity)
+				? cacheStorage.Exists(identity.GetCacheKey<T>())
+				: false;
+		}
+
+		/// <summary>
+		/// Checks existing of a cached object in cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cacheStorage">The cache storage</param>
+		/// <param name="identity">The string that presents identity of object</param>
+		public static Task<bool> ExistsAsync<T>(this CacheManager cacheStorage, string identity) where T : class
+		{
+			return !string.IsNullOrWhiteSpace(identity)
+				? cacheStorage.ExistsAsync(identity.GetCacheKey<T>())
+				: Task.FromResult<bool>(false);
+		}
+		#endregion
+
+		#region Attribute extension methods
+		internal static bool IsIgnored(this ObjectService.AttributeInfo attribute)
+		{
+			return attribute.Info.GetCustomAttributes(typeof(IgnoreAttribute), true).Length > 0
+				? true
+				: attribute.Info.GetCustomAttributes(typeof(MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute), true).Length > 0;
+		}
+
+		internal static bool IsIgnoredIfNull(this ObjectService.AttributeInfo attribute)
+		{
+			return attribute.Info.GetCustomAttributes(typeof(IgnoreIfNullAttribute), true).Length > 0;
+		}
+
+		internal static bool IsStoredAsJson(this ObjectService.AttributeInfo attribute)
+		{
+			return attribute.Type.IsClassType() && attribute.Info.GetCustomAttributes(typeof(AsJsonAttribute), true).Length > 0;
+		}
+
+		internal static bool IsStoredAsString(this ObjectService.AttributeInfo attribute)
+		{
+			return attribute.Type.IsDateTimeType() && attribute.Info.GetCustomAttributes(typeof(AsStringAttribute), true).Length > 0;
+		}
+		#endregion
+
+		#region Permission extension methods
 		/// <summary>
 		/// Normalizes the access permissions of an business entity
 		/// </summary>
@@ -3015,7 +3003,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Helper for working with logs
+		#region [Logs]
 		static string LogsPath = null;
 
 		static async Task WriteLogs(string filePath, List<string> logs, Exception ex)

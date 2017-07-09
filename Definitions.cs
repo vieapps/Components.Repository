@@ -122,7 +122,7 @@ namespace net.vieapps.Components.Repository
 			get
 			{
 				return RepositoryMediator.EntityDefinitions
-					.Where(item => item.Value.ParentName.Equals(this.Type.GetTypeName()))
+					.Where(item => item.Value.RepositoryTypeName.Equals(this.Type.GetTypeName()))
 					.Select(item => item.Value)
 					.ToList();
 			}
@@ -131,24 +131,29 @@ namespace net.vieapps.Components.Repository
 
 		#region Properties [Module Definition]
 		/// <summary>
-		/// Gets the identity (in case this definition is used as a module definition)
+		/// Gets the identity (when this object is defined as a module definition)
 		/// </summary>
 		public string ID { get; internal set; }
 
 		/// <summary>
-		/// Gets the path to folder that contains all UI files (in case this definition is used as a module definition)
+		/// Gets the path to folder that contains all UI files (when this object is defined as a module definition)
 		/// </summary>
 		public string Path { get; internal set; }
 
 		/// <summary>
-		/// Gets the title (in case this definition is used as a module definition)
+		/// Gets the title (when this object is defined as a module definition)
 		/// </summary>
 		public string Title { get; internal set; }
 
 		/// <summary>
-		/// Gets the description (in case this definition is used as a module definition)
+		/// Gets the description (when this object is defined as a module definition)
 		/// </summary>
 		public string Description { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the SQL table for storing extended properties, default is 'T_Data_Extended_Properties' (when this object is defined as a module definition)
+		/// </summary>
+		public string ExtendedPropertiesTableName { get; internal set; }
 
 		/// <summary>
 		/// Gets the collection of business repositories at run-time (means business modules at run-time)
@@ -176,7 +181,13 @@ namespace net.vieapps.Components.Repository
 				Path = !string.IsNullOrWhiteSpace(info.Path) ? info.Path : "",
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
 				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
+				ExtendedPropertiesTableName = !string.IsNullOrWhiteSpace(info.ExtendedPropertiesTableName) ? info.ExtendedPropertiesTableName : "T_Data_Extended_Properties"
 			};
+
+			// check type of event-handlers
+			definition.EventHandlers = definition.EventHandlers != null && definition.EventHandlers.CreateInstance() != null
+				? definition.EventHandlers
+				: null;
 
 			// update into collection
 			RepositoryMediator.RepositoryDefinitions.Add(type.GetTypeName(), definition);
@@ -295,6 +306,10 @@ namespace net.vieapps.Components.Repository
 			this.Attributes = new List<ObjectService.AttributeInfo>();
 			this.SortableAttributes = new List<string>() { "ID" };
 			this.ExtraSettings = new Dictionary<string, object>();
+			this.MultipleIntances = false;
+			this.Extendable = false;
+			this.Searchable = true;
+			this.MultipleParentAssociates = false;
 			this.RuntimeEntities = new Dictionary<string, IRepositoryEntity>();
 		}
 
@@ -420,35 +435,95 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public List<string> SortableAttributes { get; internal set; }
 
-		internal string ParentName { get; set; }
+		internal string RepositoryTypeName { get; set; }
 
 		/// <summary>
-		/// Gets the definitions of the parent (repository)
+		/// Gets the repository definition of this defintion
 		/// </summary>
-		public RepositoryDefinition Parent
+		public RepositoryDefinition RepositoryDefinition
 		{
 			get
 			{
-				return RepositoryMediator.GetRepositoryDefinition(this.ParentName);
+				return RepositoryMediator.GetRepositoryDefinition(this.RepositoryTypeName);
 			}
 		}
 		#endregion
 
 		#region Properties [Content-Type Definition]
 		/// <summary>
-		/// Gets or sets the identity of this content-type definition
+		/// Gets the identity (when this object is defined as a content-type definition)
 		/// </summary>
 		public string ID { get; internal set; }
 
 		/// <summary>
-		/// Gets or sets the title (means name) of this content-type definition
+		/// Gets the title (when this object is defined as a content-type definition)
 		/// </summary>
 		public string Title { get; internal set; }
 
 		/// <summary>
-		/// Gets or sets the description of this content-type definition
+		/// Gets the description (when this object is defined as a content-type definition)
 		/// </summary>
 		public string Description { get; internal set; }
+
+		/// <summary>
+		/// Gets the state that allow to use multiple instances, default is false (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool MultipleIntances { get; internal set; }
+
+		/// <summary>
+		/// Gets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool Extendable { get; internal set; }
+
+		/// <summary>
+		/// Gets the state that specifies this entity is able to search using global method, default is true (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool Searchable { get; internal set; }
+
+		/// <summary>
+		/// Gets the type of parent entity definition (when this object is defined as a content-type definition)
+		/// </summary>
+		public Type ParentType { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the property that use to associate with parent object (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ParentAssociatedProperty { get; internal set; }
+
+		/// <summary>
+		/// Gets the state that specifies this entity had multiple associates with parent object, default is false (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool MultipleParentAssociates { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the property that use to store the information of multiple associates with parent, mus be List or HashSet (when this object is defined as a content-type definition)
+		/// </summary>
+		public string MultipleParentAssociatesProperty { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the SQL table that use to store the information of multiple associates with parent (when this object is defined as a content-type definition)
+		/// </summary>
+		public string MultipleParentAssociatesTable { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the column of SQL table that use to map the associate with parent (when this object is defined as a content-type definition)
+		/// </summary>
+		public string MultipleParentAssociatesMapColumn { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the column of SQL table that use to link the associate with this entity (when this object is defined as a content-type definition)
+		/// </summary>
+		public string MultipleParentAssociatesLinkColumn { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the property to use as short-name (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ShortnameProperty { get; internal set; }
+
+		/// <summary>
+		/// Gets the type of a class that use to generate navigator menu (when this object is defined as a content-type definition)
+		/// </summary>
+		public Type NavigatorType { get; internal set; }
 
 		/// <summary>
 		/// Gets the collection of business entities at run-time (means business conten-types at run-time)
@@ -474,11 +549,16 @@ namespace net.vieapps.Components.Repository
 				Type = type,
 				TableName = info.TableName,
 				CollectionName = info.CollectionName,
+				CacheStorageType = info.CacheStorageType,
+				CacheStorageName = info.CacheStorageName,
 				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
 				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
-				CacheStorageType = info.CacheStorageType,
-				CacheStorageName = info.CacheStorageName
+				MultipleIntances = info.MultipleIntances,
+				Extendable = info.Extendable,
+				Searchable = info.Searchable,
+				ParentType = info.ParentType,
+				NavigatorType = info.NavigatorType
 			};
 
 			// set cache storage
@@ -490,7 +570,7 @@ namespace net.vieapps.Components.Repository
 					: null;
 			}
 
-			// parent (module definition)
+			// parent (repository)
 			var parent = type.BaseType;
 			var grandparent = parent.BaseType;
 			while (grandparent.BaseType != null && grandparent.BaseType != typeof(object) && grandparent.BaseType != typeof(RepositoryBase))
@@ -498,12 +578,13 @@ namespace net.vieapps.Components.Repository
 				parent = parent.BaseType;
 				grandparent = parent.BaseType;
 			}
-			definition.ParentName = parent.GetTypeName();
-			definition.ParentName = definition.ParentName.Left(definition.ParentName.IndexOf("[")) + definition.ParentName.Substring(definition.ParentName.IndexOf("]") + 2);
+			definition.RepositoryTypeName = parent.GetTypeName();
+			definition.RepositoryTypeName = definition.RepositoryTypeName.Left(definition.RepositoryTypeName.IndexOf("[")) + definition.RepositoryTypeName.Substring(definition.RepositoryTypeName.IndexOf("]") + 2);
 
 			// public properties
 			var numberOfKeys = 0;
-			ObjectService.GetProperties(type).ForEach(attribute =>
+			var properties = ObjectService.GetProperties(type);
+			properties.ForEach(attribute =>
 			{
 				if (!attribute.IsIgnored())
 				{
@@ -515,7 +596,6 @@ namespace net.vieapps.Components.Repository
 						attribute.NotNull = true;
 						attribute.MaxLength = (attributes[0] as PrimaryKeyAttribute).MaxLength;
 						attribute.IsCLOB = false;
-						attribute.IsDateTimeString = false;
 
 						definition.PrimaryKey = attribute.Name;
 						numberOfKeys += attributes.Length;
@@ -530,9 +610,6 @@ namespace net.vieapps.Components.Repository
 						attribute.MaxLength = (attributes[0] as PropertyAttribute).MaxLength;
 						attribute.IsCLOB = (attributes[0] as PropertyAttribute).IsCLOB;
 					}
-
-					// date-time string
-					attribute.IsDateTimeString = attribute.Info.GetCustomAttributes(typeof(DateTimeStringAttribute), true).Length > 0;
 
 					// sortable
 					attributes = attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true);
@@ -550,7 +627,7 @@ namespace net.vieapps.Components.Repository
 			else if (numberOfKeys > 1)
 				throw new ArgumentException("The type [" + type.ToString() + "] has multiple primary-keys");
 
-			// private attributes (fields)
+			// fields
 			ObjectService.GetFields(type).ForEach(attribute =>
 			{
 				var attributes = attribute.Info.GetCustomAttributes(typeof(FieldAttribute), false);
@@ -563,6 +640,60 @@ namespace net.vieapps.Components.Repository
 					definition.Attributes.Add(attribute);
 				}
 			});
+
+			// parent (entity)
+			var parentEntity = definition.ParentType != null
+				? definition.ParentType.CreateInstance()
+				: null;
+
+			if (parentEntity != null)
+			{
+				var property = string.IsNullOrWhiteSpace(info.ParentAssociatedProperty)
+					? null
+					: properties.FirstOrDefault(p => p.Name.Equals(info.ParentAssociatedProperty));
+				definition.ParentAssociatedProperty = property != null
+					? info.ParentAssociatedProperty
+					: "";
+
+				if (!string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty))
+				{
+					definition.MultipleParentAssociates = info.MultipleParentAssociates;
+
+					property = string.IsNullOrWhiteSpace(info.MultipleParentAssociatesProperty)
+						? null
+						: properties.FirstOrDefault(p => p.Name.Equals(info.MultipleParentAssociatesProperty));
+					definition.MultipleParentAssociatesProperty = property != null && property.Type.IsGenericListOrHashSet()
+						? info.MultipleParentAssociatesProperty
+						: "";
+
+					definition.MultipleParentAssociatesTable = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesTable)
+						? info.MultipleParentAssociatesTable
+						: "";
+
+					if (!string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable))
+					{
+						definition.MultipleParentAssociatesMapColumn = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesMapColumn)
+							? info.MultipleParentAssociatesMapColumn
+							: "";
+
+						definition.MultipleParentAssociatesLinkColumn = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesLinkColumn)
+							? info.MultipleParentAssociatesLinkColumn
+							: "";
+					}
+				}
+			}
+			else
+				definition.ParentType = null;
+
+			// shortname
+			definition.ShortnameProperty = !string.IsNullOrWhiteSpace(info.ShortnameProperty) && properties.FirstOrDefault(p => p.Name.Equals(info.ShortnameProperty)) != null
+				? info.ShortnameProperty
+				: "";
+
+			// navigator
+			definition.NavigatorType = definition.NavigatorType != null && definition.NavigatorType.CreateInstance() != null
+				? definition.NavigatorType
+				: null;
 
 			// update into collection
 			RepositoryMediator.EntityDefinitions.Add(type.GetTypeName(), definition);
@@ -895,8 +1026,8 @@ namespace net.vieapps.Components.Repository
 		*/
 		#endregion
 
-		#region Methods [Static]
-		static HashSet<string> ReservedWords = "ID,ExtendedProperties,Add,External,Procedure,All,Fetch,Public,Alter,File,RaisError,And,FillFactor,Read,Any,For,ReadText,As,Foreign,ReConfigure,Asc,FreeText,References,Authorization,FreeTextTable,Replication,Backup,From,Restore,Begin,Full,Restrict,Between,Function,Return,Break,Goto,Revert,Browse,Grant,Revoke,Bulk,Group,Right,By,Having,Rollback,Cascade,Holdlock,Rowcount,Case,Identity,RowGuidCol,Check,Identity,Insert,Rule,Checkpoint,Identitycol,Save,Close,If,Schema,Clustered,In,SecurityAudit,Coalesce,Index,Select,Collate,Inner,SemanticKeyPhraseTable,Column,SemanticSimilarityDetailsTable,Commit,Intersect,SemanticSimilarityTable,Compute,Into,Session,User,Constraint,Is,Set,Contains,Join,Setuser,ContainsTable,Key,Shutdown,Continue,Kill,Some,Convert,Left,Statistics,Create,Like,System,Cross,Lineno,Table,Current,Load,TableSample,Current_Date,Current_Time,Current_Timestamp,Merge,TextSize,National,Then,NoCheck,To,Current_User,NonClustered,Top,Cursor,Not,Tran,Database,Null,Transaction,Dbcc,NullIf,Trigger,Deallocate,Of,Truncate,Declare,Off,Try_Convert,Default,Offsets,Tsequal,Delete,On,Union,Deny,Open,Unique,Desc,OpenDataSource,Unpivot,Disk,Openquery,Update,Distinct,OpenRowset,UpdateText,Distributed,OpenXml,Use,Double,Option,User,Drop,Or,Values,Dump,Order,Varying,Else,Outer,View,End,Over,Waitfor,Errlvl,Percent,When,Escape,Pivot,Where,Except,Plan,While,Exec,Precision,With,Execute,Primary,Exists,Print,WriteText,Exit,Proc".ToLower().ToHashSet();
+		#region Name validation
+		static HashSet<string> ReservedWords = "ExtendedProperties,Add,External,Procedure,All,Fetch,Public,Alter,File,RaisError,And,FillFactor,Read,Any,For,ReadText,As,Foreign,ReConfigure,Asc,FreeText,References,Authorization,FreeTextTable,Replication,Backup,From,Restore,Begin,Full,Restrict,Between,Function,Return,Break,Goto,Revert,Browse,Grant,Revoke,Bulk,Group,Right,By,Having,Rollback,Cascade,Holdlock,Rowcount,Case,Identity,RowGuidCol,Check,Identity,Insert,Rule,Checkpoint,Identitycol,Save,Close,If,Schema,Clustered,In,SecurityAudit,Coalesce,Index,Select,Collate,Inner,SemanticKeyPhraseTable,Column,SemanticSimilarityDetailsTable,Commit,Intersect,SemanticSimilarityTable,Compute,Into,Session,User,Constraint,Is,Set,Contains,Join,Setuser,ContainsTable,Key,Shutdown,Continue,Kill,Some,Convert,Left,Statistics,Create,Like,System,Cross,Lineno,Table,Current,Load,TableSample,Current_Date,Current_Time,Current_Timestamp,Merge,TextSize,National,Then,NoCheck,To,Current_User,NonClustered,Top,Cursor,Not,Tran,Database,Null,Transaction,Dbcc,NullIf,Trigger,Deallocate,Of,Truncate,Declare,Off,Try_Convert,Default,Offsets,Tsequal,Delete,On,Union,Deny,Open,Unique,Desc,OpenDataSource,Unpivot,Disk,Openquery,Update,Distinct,OpenRowset,UpdateText,Distributed,OpenXml,Use,Double,Option,User,Drop,Or,Values,Dump,Order,Varying,Else,Outer,View,End,Over,Waitfor,Errlvl,Percent,When,Escape,Pivot,Where,Except,Plan,While,Exec,Precision,With,Execute,Primary,Exists,Print,WriteText,Exit,Proc".ToLower().ToHashSet();
 
 		/// <summary>
 		/// Validates the name of a custom property definition
@@ -928,11 +1059,16 @@ namespace net.vieapps.Components.Repository
 		public static void Validate<T>(string name) where T : class
 		{
 			ExtendedPropertyDefinition.Validate(name);
-			var attributes = RepositoryMediator.GetEntityDefinition<T>().Type.GetProperties().ToDictionary(info => info.Name.ToLower(), info => info.Name);
+			var attributes = ObjectService.GetProperties(RepositoryMediator.GetEntityDefinition<T>().Type).ToDictionary(info => info.Name.ToLower(), info => info.Name);
 			if (attributes.ContainsKey(name.ToLower()))
-				throw new InformationInvalidException("The name is existed");
+				throw new InformationInvalidException("The name is already used");
 		}
 		#endregion
+
+		public object GetDefaultValue()
+		{
+			return null;
+		}
 
 		public override string ToString()
 		{

@@ -17,24 +17,29 @@ namespace net.vieapps.Components.Repository
 		public Type EventHandlers { get; set; }
 
 		/// <summary>
-		/// Gets or sets the identity (in case this repository is defined as a module definition)
+		/// Gets or sets the identity (when this object is defined as a module definition)
 		/// </summary>
 		public string ID { get; set; }
 
 		/// <summary>
-		/// Gets or sets the path to folder that contains all UI files (in case this repository is defined as a module definition)
+		/// Gets or sets the path to folder that contains all UI files (when this object is defined as a module definition)
 		/// </summary>
 		public string Path { get; set; }
 
 		/// <summary>
-		/// Gets or sets the title (in case this repository is defined as a module definition)
+		/// Gets or sets the title (when this object is defined as a module definition)
 		/// </summary>
 		public string Title { get; set; }
 
 		/// <summary>
-		/// Gets or sets the description (in case this repository is defined as a module definition)
+		/// Gets or sets the description (when this object is defined as a module definition)
 		/// </summary>
 		public string Description { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the SQL table for storing extended properties, default is 'T_Data_Extended_Properties' (when this object is defined as a module definition)
+		/// </summary>
+		public string ExtendedPropertiesTableName { get; set; }
 	}
 
 	/// <summary>
@@ -43,7 +48,13 @@ namespace net.vieapps.Components.Repository
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 	public class EntityAttribute : Attribute
 	{
-		public EntityAttribute() {}
+		public EntityAttribute()
+		{
+			this.MultipleIntances = false;
+			this.Extendable = false;
+			this.Searchable = true;
+			this.MultipleParentAssociates = false;
+		}
 
 		/// <summary>
 		/// Gets or sets the name of the SQL table 
@@ -56,21 +67,6 @@ namespace net.vieapps.Components.Repository
 		public string CollectionName { get; set; }
 
 		/// <summary>
-		/// Gets or sets the identity of this content-type definition
-		/// </summary>
-		public string ID { get; set; }
-
-		/// <summary>
-		/// Gets or sets the title (means name) of this content-type definition
-		/// </summary>
-		public string Title { get; set; }
-
-		/// <summary>
-		/// Gets or sets the description of this content-type definition
-		/// </summary>
-		public string Description { get; set; }
-
-		/// <summary>
 		/// Gets or sets the type of a static class that contains information of the cache storage for processing caching data
 		/// </summary>
 		public Type CacheStorageType { get; set; }
@@ -79,6 +75,81 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the name of the object in the static class that contains information of the cache storage for processing caching data
 		/// </summary>
 		public string CacheStorageName { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the title (when this object is defined as a content-type definition)
+		/// </summary>
+		public string Title { get; set; }
+
+		/// <summary>
+		/// Gets or sets the description (when this object is defined as a content-type definition)
+		/// </summary>
+		public string Description { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that allow to use multiple instances, default is false (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool MultipleIntances { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool Extendable { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that specifies this entity is able to search using global method, default is true (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool Searchable { get; set; }
+
+		/// <summary>
+		/// Gets or sets the type of parent entity definition (when this object is defined as a content-type definition)
+		/// </summary>
+		public Type ParentType { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the property that use to associate with parent object (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ParentAssociatedProperty { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that specifies this entity had multiple associates with parent object, default is false (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool MultipleParentAssociates { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the property that use to store the information of multiple associates with parent, mus be List or HashSet (when this object is defined as a content-type definition)
+		/// </summary>
+		public string MultipleParentAssociatesProperty { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the SQL table that use to store the information of multiple associates with parent (when this object is defined as a content-type definition)
+		/// </summary>
+		public string MultipleParentAssociatesTable { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the column of SQL table that use to map the associate with parent (when this object is defined as a content-type definition)
+		/// </summary>
+		public string MultipleParentAssociatesMapColumn { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the column of SQL table that use to link the associate with this entity (when this object is defined as a content-type definition)
+		/// </summary>
+		public string MultipleParentAssociatesLinkColumn { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the property to use as short-name (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ShortnameProperty { get; set; }
+
+		/// <summary>
+		/// Gets or sets the type of a class that use to generate navigator menu (when this object is defined as a content-type definition)
+		/// </summary>
+		public Type NavigatorType { get; set; }
 	}
 
 	/// <summary>
@@ -96,6 +167,7 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the name of the column in SQL table 
 		/// </summary>
 		public string Column { get; set; }
+
 		/// <summary>
 		/// Gets or sets max-length (of the string property)
 		/// </summary>
@@ -171,30 +243,21 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
-	/// Specifies this property is not map to a column in SQL table
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-	public class IgnoreWhenSqlAttribute : Attribute
-	{
-		public IgnoreWhenSqlAttribute() { }
-	}
-
-	/// <summary>
-	/// Specifies this property is not map to an attribute in NoSQL collection
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-	public class IgnoreWhenNoSqlAttribute : Attribute
-	{
-		public IgnoreWhenNoSqlAttribute() { }
-	}
-
-	/// <summary>
-	/// Specifies this property is not map to a column in SQL table and not map to an attribute in NoSQL collection
+	/// Specifies this property is ignore
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 	public class IgnoreAttribute : Attribute
 	{
 		public IgnoreAttribute() { }
+	}
+
+	/// <summary>
+	/// Specifies this property is ignore if null
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	public class IgnoreIfNullAttribute : Attribute
+	{
+		public IgnoreIfNullAttribute() { }
 	}
 
 	/// <summary>
@@ -207,12 +270,21 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
-	/// Specifies this date-time property will be stored in SQL as string with format 'yyyy/MM/dd HH:mm:ss'
+	/// Specifies this date-time property will be stored in SQL as a string with format 'yyyy/MM/dd HH:mm:ss'
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]
-	public class DateTimeStringAttribute : Attribute
+	public class AsStringAttribute : Attribute
 	{
-		public DateTimeStringAttribute() { }
+		public AsStringAttribute() { }
+	}
+
+	/// <summary>
+	/// Specifies this property will be stored in SQL as a CLOB string in JSON format
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property)]
+	public class AsJsonAttribute : Attribute
+	{
+		public AsJsonAttribute() { }
 	}
 
 }
