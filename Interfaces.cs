@@ -161,13 +161,13 @@ namespace net.vieapps.Components.Repository
 	public interface IFilterBy<T> where T : class
 	{
 		/// <summary>
-		/// Parses from JSON
+		/// Parses the expression from JSON
 		/// </summary>
 		/// <param name="json"></param>
 		void Parse(JObject json);
 
 		/// <summary>
-		/// Converts to JSON
+		/// Converts the expression to JSON
 		/// </summary>
 		/// <returns></returns>
 		JObject ToJson();

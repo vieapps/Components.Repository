@@ -257,76 +257,6 @@ namespace net.vieapps.Components.Repository
 
 		#region Get
 		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static TEntity Get<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null) where TEntity : class
-		{
-			try
-			{
-				return RepositoryMediator.Get<TEntity>(aliasTypeName, filter, sort);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw ex;
-			}
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static TEntity Get<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null) where TEntity : class
-		{
-			return RepositoryMediator.Get<TEntity>(aliasTypeName, filter, sort);
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static TEntity Get<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null) where TEntity : class
-		{
-			return RepositoryBase<T>.Get<TEntity>(null, filter, sort);
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static T Get(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null)
-		{
-			return RepositoryBase<T>.Get<T>(aliasTypeName, filter, sort);
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static T Get(IFilterBy<T> filter, SortBy<T> sort = null)
-		{
-			return RepositoryBase<T>.Get(null, filter, sort);
-		}
-
-		/// <summary>
 		/// Gets an object
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
@@ -401,81 +331,6 @@ namespace net.vieapps.Components.Repository
 				if (instance != null)
 					this.CopyFrom(instance);
 			}
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
-		{
-			try
-			{
-				return RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, filter, sort, cancellationToken);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				return Task.FromException<TEntity>(ex);
-			}
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
-		{
-			return RepositoryMediator.GetAsync<TEntity>(aliasTypeName, filter, sort, cancellationToken);
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
-		{
-			return RepositoryBase<T>.GetAsync<TEntity>(null, filter, sort, cancellationToken);
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<T> GetAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken))
-		{
-			return RepositoryBase<T>.GetAsync<T>(aliasTypeName, filter, sort, cancellationToken);
-		}
-
-		/// <summary>
-		/// Gets an object (the first matched with the filter)
-		/// </summary>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<T> GetAsync(IFilterBy<T> filter, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken))
-		{
-			return RepositoryBase<T>.GetAsync(null, filter, sort, cancellationToken);
 		}
 
 		/// <summary>
@@ -569,6 +424,163 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Get (first match)
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static TEntity Get<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null) where TEntity : class
+		{
+			try
+			{
+				return RepositoryMediator.Get<TEntity>(aliasTypeName, filter, sort, businessEntityID);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static TEntity Get<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null) where TEntity : class
+		{
+			return RepositoryMediator.Get<TEntity>(aliasTypeName, filter, sort, businessEntityID);
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static TEntity Get<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null) where TEntity : class
+		{
+			return RepositoryBase<T>.Get<TEntity>(null, filter, sort, businessEntityID);
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static T Get(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null)
+		{
+			return RepositoryBase<T>.Get<T>(aliasTypeName, filter, sort, businessEntityID);
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static T Get(IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null)
+		{
+			return RepositoryBase<T>.Get(null, filter, sort, businessEntityID);
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				return RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				return Task.FromException<TEntity>(ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.GetAsync<TEntity>(aliasTypeName, filter, sort, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<TEntity> GetAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.GetAsync<TEntity>(null, filter, sort, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<T> GetAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.GetAsync<T>(aliasTypeName, filter, sort, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static Task<T> GetAsync(IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.GetAsync(null, filter, sort, businessEntityID, cancellationToken);
+		}
+		#endregion
+
 		#region Replace
 		/// <summary>
 		/// Updates an object (using replace method)
@@ -637,12 +649,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.ReplaceAsync<TEntity>(context, aliasTypeName, @object);
+				return RepositoryMediator.ReplaceAsync<TEntity>(context, aliasTypeName, @object, cancellationToken);
 			}
 			catch (Exception ex)
 			{
@@ -657,10 +670,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(string aliasTypeName, TEntity @object) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.ReplaceAsync<TEntity>(aliasTypeName, @object);
+			return RepositoryMediator.ReplaceAsync<TEntity>(aliasTypeName, @object, cancellationToken);
 		}
 
 		/// <summary>
@@ -668,30 +682,33 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(TEntity @object) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.ReplaceAsync<TEntity>(null, @object);
+			return RepositoryBase<T>.ReplaceAsync<TEntity>(null, @object, cancellationToken);
 		}
 
 		/// <summary>
 		/// Updates the instance of this object (using replace method)
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		protected virtual Task ReplaceAsync(RepositoryContext context, string aliasTypeName)
+		protected virtual Task ReplaceAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.ReplaceAsync<T>(context, aliasTypeName, this as T);
+			return RepositoryBase<T>.ReplaceAsync<T>(context, aliasTypeName, this as T, cancellationToken);
 		}
 
 		/// <summary>
 		/// Updates the instance of this object (using replace method)
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task ReplaceAsync(string aliasTypeName = null)
+		protected virtual Task ReplaceAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.ReplaceAsync<T>(aliasTypeName, this as T);
+			return RepositoryBase<T>.ReplaceAsync<T>(aliasTypeName, this as T, cancellationToken);
 		}
 		#endregion
 
@@ -763,12 +780,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object) where TEntity : class
+		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.UpdateAsync<TEntity>(context, aliasTypeName, @object);
+				return RepositoryMediator.UpdateAsync<TEntity>(context, aliasTypeName, @object, cancellationToken);
 			}
 			catch (Exception ex)
 			{
@@ -783,10 +801,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(string aliasTypeName, TEntity @object) where TEntity : class
+		public static Task UpdateAsync<TEntity>(string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.UpdateAsync<TEntity>(aliasTypeName, @object);
+			return RepositoryMediator.UpdateAsync<TEntity>(aliasTypeName, @object, cancellationToken);
 		}
 
 		/// <summary>
@@ -794,10 +813,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(TEntity @object) where TEntity : class
+		public static Task UpdateAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.UpdateAsync<TEntity>(null, @object);
+			return RepositoryBase<T>.UpdateAsync<TEntity>(null, @object, cancellationToken);
 		}
 
 		/// <summary>
@@ -805,19 +825,22 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		protected virtual Task UpdateAsync(RepositoryContext context, string aliasTypeName)
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected virtual Task UpdateAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.UpdateAsync<T>(context, aliasTypeName, this as T);
+			return RepositoryBase<T>.UpdateAsync<T>(context, aliasTypeName, this as T, cancellationToken);
 		}
 
 		/// <summary>
 		/// Updates the instance of this object (only update changed attributes)
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task UpdateAsync(string aliasTypeName = null)
+		protected virtual Task UpdateAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.UpdateAsync<T>(aliasTypeName, this as T);
+			return RepositoryBase<T>.UpdateAsync<T>(aliasTypeName, this as T, cancellationToken);
 		}
 		#endregion
 
@@ -891,12 +914,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id) where TEntity : class
+		public static Task DeleteAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.DeleteAsync<TEntity>(context, aliasTypeName, id);
+				return RepositoryMediator.DeleteAsync<TEntity>(context, aliasTypeName, id, cancellationToken);
 			}
 			catch (Exception ex)
 			{
@@ -911,10 +935,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<TEntity>(string aliasTypeName, string id) where TEntity : class
+		public static Task DeleteAsync<TEntity>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.DeleteAsync<TEntity>(aliasTypeName, id);
+			return RepositoryMediator.DeleteAsync<TEntity>(aliasTypeName, id, cancellationToken);
 		}
 
 		/// <summary>
@@ -922,10 +947,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<TEntity>(string id) where TEntity : class
+		public static Task DeleteAsync<TEntity>(string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.DeleteAsync<TEntity>(null, id);
+			return RepositoryBase<T>.DeleteAsync<TEntity>(null, id, cancellationToken);
 		}
 
 		/// <summary>
@@ -933,10 +959,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		protected virtual Task DeleteAsync(RepositoryContext context, string aliasTypeName)
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected virtual Task DeleteAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return !string.IsNullOrWhiteSpace(this.ID)
-				? RepositoryBase<T>.DeleteAsync<T>(context, aliasTypeName, this.ID)
+				? RepositoryBase<T>.DeleteAsync<T>(context, aliasTypeName, this.ID, cancellationToken)
 				: Task.FromException(new ArgumentNullException("ID", "The identity of the object is null or empty"));
 		}
 
@@ -944,13 +972,17 @@ namespace net.vieapps.Components.Repository
 		/// Deletes the instance of this object
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		protected virtual Task DeleteAsync(string aliasTypeName = null)
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected virtual Task DeleteAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return !string.IsNullOrWhiteSpace(this.ID)
-				? RepositoryBase<T>.DeleteAsync<T>(aliasTypeName, this.ID)
+				? RepositoryBase<T>.DeleteAsync<T>(aliasTypeName, this.ID, cancellationToken)
 				: Task.FromException(new ArgumentNullException("ID", "The identity of the object is null or empty"));
 		}
+		#endregion
 
+		#region Delete (many)
 		/// <summary>
 		/// Deletes many objects that matched with the filter
 		/// </summary>
@@ -958,11 +990,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
-		public static void DeleteMany<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter) where TEntity : class
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
 		{
 			try
 			{
-				RepositoryMediator.DeleteMany<TEntity>(context, aliasTypeName, filter);
+				RepositoryMediator.DeleteMany<TEntity>(context, aliasTypeName, filter, businessEntityID);
 			}
 			catch (Exception ex)
 			{
@@ -977,9 +1010,10 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
-		public static void DeleteMany<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter) where TEntity : class
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
 		{
-			RepositoryMediator.DeleteMany<TEntity>(aliasTypeName, filter);
+			RepositoryMediator.DeleteMany<TEntity>(aliasTypeName, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -987,9 +1021,10 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="filter">The expression for filtering objects</param>
-		public static void DeleteMany<TEntity>(IFilterBy<TEntity> filter) where TEntity : class
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
 		{
-			RepositoryBase<T>.DeleteMany<TEntity>(null, filter);
+			RepositoryBase<T>.DeleteMany<TEntity>(null, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -998,9 +1033,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
-		protected static void DeleteMany(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter)
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		protected static void DeleteMany(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null)
 		{
-			RepositoryBase<T>.DeleteMany<T>(context, aliasTypeName, filter);
+			RepositoryBase<T>.DeleteMany<T>(context, aliasTypeName, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -1008,18 +1044,20 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
-		protected static void DeleteMany(string aliasTypeName, IFilterBy<T> filter)
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		protected static void DeleteMany(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null)
 		{
-			RepositoryBase<T>.DeleteMany<T>(aliasTypeName, filter);
+			RepositoryBase<T>.DeleteMany<T>(aliasTypeName, filter, businessEntityID);
 		}
 
 		/// <summary>
 		/// Deletes many objects that matched with the filter
 		/// </summary>
 		/// <param name="filter">The expression for filtering objects</param>
-		protected static void DeleteMany(IFilterBy<T> filter)
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		protected static void DeleteMany(IFilterBy<T> filter, string businessEntityID = null)
 		{
-			RepositoryBase<T>.DeleteMany(null, filter);
+			RepositoryBase<T>.DeleteMany(null, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -1029,12 +1067,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter) where TEntity : class
+		public static Task DeleteManyAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.DeleteManyAsync<TEntity>(context, aliasTypeName, filter);
+				return RepositoryMediator.DeleteManyAsync<TEntity>(context, aliasTypeName, filter, businessEntityID, cancellationToken);
 			}
 			catch (Exception ex)
 			{
@@ -1049,10 +1089,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter) where TEntity : class
+		public static Task DeleteManyAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.DeleteManyAsync<TEntity>(aliasTypeName, filter);
+			return RepositoryMediator.DeleteManyAsync<TEntity>(aliasTypeName, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1060,10 +1102,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<TEntity>(IFilterBy<TEntity> filter) where TEntity : class
+		public static Task DeleteManyAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.DeleteManyAsync<TEntity>(null, filter);
+			return RepositoryBase<T>.DeleteManyAsync<TEntity>(null, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1072,10 +1116,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected static Task DeleteManyAsync(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter)
+		protected static Task DeleteManyAsync(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.DeleteManyAsync<T>(context, aliasTypeName, filter);
+			return RepositoryBase<T>.DeleteManyAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1083,20 +1129,24 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected static Task DeleteManyAsync(string aliasTypeName, IFilterBy<T> filter)
+		protected static Task DeleteManyAsync(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.DeleteManyAsync<T>(aliasTypeName, filter);
+			return RepositoryBase<T>.DeleteManyAsync<T>(aliasTypeName, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
 		/// Deletes many objects that matched with the filter
 		/// </summary>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected static Task DeleteManyAsync(IFilterBy<T> filter)
+		protected static Task DeleteManyAsync(IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.DeleteManyAsync(null, filter);
+			return RepositoryBase<T>.DeleteManyAsync(null, filter, businessEntityID, cancellationToken);
 		}
 		#endregion
 
@@ -1110,10 +1160,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Find<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber) where TEntity : class
+		public static List<TEntity> Find<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null) where TEntity : class
 		{
-			return RepositoryMediator.Find<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber);
+			return RepositoryMediator.Find<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID);
 		}
 
 		/// <summary>
@@ -1124,10 +1175,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Find<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber) where TEntity : class
+		public static List<TEntity> Find<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null) where TEntity : class
 		{
-			return RepositoryBase<T>.Find<TEntity>(null, filter, sort, pageSize, pageNumber);
+			return RepositoryBase<T>.Find<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID);
 		}
 
 		/// <summary>
@@ -1138,10 +1190,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<T> Find(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber)
+		public static List<T> Find(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null)
 		{
-			return RepositoryBase<T>.Find<T>(aliasTypeName, filter, sort, pageSize, pageNumber);
+			return RepositoryBase<T>.Find<T>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID);
 		}
 
 		/// <summary>
@@ -1151,10 +1204,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<T> Find(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber)
+		public static List<T> Find(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null)
 		{
-			return RepositoryBase<T>.Find(null, filter, sort, pageSize, pageNumber);
+			return RepositoryBase<T>.Find(null, filter, sort, pageSize, pageNumber, businessEntityID);
 		}
 
 		/// <summary>
@@ -1166,10 +1220,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber) where TEntity : class
+		public static Task<List<TEntity>> FindAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.FindAsync<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber);
+			return RepositoryMediator.FindAsync<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1180,10 +1236,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber) where TEntity : class
+		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.FindAsync<TEntity>(null, filter, sort, pageSize, pageNumber);
+			return RepositoryBase<T>.FindAsync<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1194,10 +1252,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> FindAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber)
+		public static Task<List<T>> FindAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.FindAsync<T>(aliasTypeName, filter, sort, pageSize, pageNumber);
+			return RepositoryBase<T>.FindAsync<T>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1207,10 +1267,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber)
+		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.FindAsync(null, filter, sort, pageSize, pageNumber);
+			return RepositoryBase<T>.FindAsync(null, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
 		#endregion
 

@@ -189,16 +189,25 @@ namespace net.vieapps.Components.Repository
 
 			var stateData = new Dictionary<string, object>();
 
+			// standard properties
 			@object.GetProperties().ForEach(attribute =>
 			{
 				if (!attribute.IsIgnored() && attribute.CanRead && attribute.CanWrite)
 					stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
 			});
 
+			// standard fields
 			@object.GetFields().ForEach(attribute =>
 			{
 				stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
 			});
+
+			// extended properties
+			if (@object is IBusinessEntity && (@object as IBusinessEntity).ExtendedProperties != null)
+				(@object as IBusinessEntity).ExtendedProperties.ForEach(info =>
+				{
+					stateData.Add("ExtendedProperties." + info.Key, info.Value);
+				});
 
 			return stateData;
 		}
@@ -327,111 +336,15 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Helper for working with NoSQL (MongoDB)
-		internal static Dictionary<string, IMongoClient> NoSqlConnections = new Dictionary<string, IMongoClient>();
-		internal static Dictionary<string, IMongoDatabase> NoSqlDatabases = new Dictionary<string, IMongoDatabase>();
-		internal static Dictionary<string, object> NoSqlCollections = new Dictionary<string, object>();
-
-		/// <summary>
-		/// Gets a connection of NoSQL database (MongoDB client)
-		/// </summary>
-		/// <param name="connectionString">The string that presents the connection string</param>
-		/// <returns></returns>
-		public static IMongoClient GetNoSqlConnection(string connectionString)
-		{
-			var key = connectionString.Trim().ToLower().GetMD5();
-			var connection = RepositoryContext.NoSqlConnections.ContainsKey(key) ? RepositoryContext.NoSqlConnections[key] : null;
-			if (connection == null)
-			{
-				connection = NoSqlHelper.GetClient(connectionString);
-				if (connection != null)
-					try
-					{
-						if (RepositoryContext.NoSqlConnections.ContainsKey(key))
-							RepositoryContext.NoSqlConnections[key] = connection;
-						else
-							RepositoryContext.NoSqlConnections.Add(key, connection);
-					}
-					catch { }
-			}
-			return connection;
-		}
-
-		/// <summary>
-		/// Gets a NoSQL database (MongoDB database)
-		/// </summary>
-		/// <param name="connectionString">The string that presents the connection string</param>
-		/// <param name="databaseName">The string that presents name of database</param>
-		/// <returns></returns>
-		public static IMongoDatabase GetNoSqlDatabase(string connectionString, string databaseName)
-		{
-			var key = (databaseName.Trim() + "@" + connectionString.Trim()).ToLower().GetMD5();
-			var database = RepositoryContext.NoSqlDatabases.ContainsKey(key) ? RepositoryContext.NoSqlDatabases[key] : null;
-			if (database == null)
-			{
-				database = NoSqlHelper.GetDatabase(RepositoryContext.GetNoSqlConnection(connectionString), databaseName);
-				if (database != null)
-					try
-					{
-						if (RepositoryContext.NoSqlDatabases.ContainsKey(key))
-							RepositoryContext.NoSqlDatabases[key] = database;
-						else
-							RepositoryContext.NoSqlDatabases.Add(key, database);
-					}
-					catch { }
-			}
-			return database;
-		}
-
-		/// <summary>
-		/// Gets a collection in NoSQL database (MongoDB collection)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="connectionString">The string that presents the connection string</param>
-		/// <param name="databaseName">The string that presents name of database</param>
-		/// <param name="collectionName">The string that presents name of collection</param>
-		/// <returns></returns>
-		public static IMongoCollection<T> GetNoSqlCollection<T>(string connectionString, string databaseName, string collectionName) where T : class
-		{
-			var key = (collectionName.Trim() + "@" + databaseName.Trim() + "#" + connectionString.Trim()).ToLower().GetMD5();
-			var collection = RepositoryContext.NoSqlCollections.ContainsKey(key) ? RepositoryContext.NoSqlCollections[key] as IMongoCollection<T> : null;
-			if (collection == null)
-			{
-				collection = NoSqlHelper.GetCollection<T>(RepositoryContext.GetNoSqlDatabase(connectionString, databaseName), collectionName);
-				if (collection != null)
-					try
-					{
-						if (RepositoryContext.NoSqlCollections.ContainsKey(key))
-							RepositoryContext.NoSqlCollections[key] = collection;
-						else
-							RepositoryContext.NoSqlCollections.Add(key, collection);
-					}
-					catch { }
-			}
-			return collection;
-		}
-
-		/// <summary>
-		/// Gets a collection in NoSQL database (MongoDB collection)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The working context</param>
-		/// <param name="dataSource">The data source</param>
-		/// <returns></returns>
-		public static IMongoCollection<T> GetNoSqlCollection<T>(RepositoryContext context, DataSource dataSource) where T : class
-		{
-			return RepositoryContext.GetNoSqlCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, context.EntityDefinition.CollectionName);
-		}
-		#endregion
-
-		#region Helper for working with SQL
+		#region Get SQL connection && No SQL collection
 		internal string SqlConnectionStringName { get; set; }
+
 		internal DbConnection SqlConnection { get; set; }
 
 		/// <summary>
 		/// Gets the connection of SQL database of a specified data-source
 		/// </summary>
-		/// <param name="dataSource">The object that presents related information of a data source in SQL database</param>
+		/// <param name="dataSource">The object that presents related information of a data source of SQL database</param>
 		/// <param name="providerFactory">The object that presents information of a database provider factory</param>
 		/// <returns></returns>
 		public DbConnection GetSqlConnection(DataSource dataSource, DbProviderFactory providerFactory = null)
@@ -450,6 +363,29 @@ namespace net.vieapps.Components.Repository
 				this.SqlConnectionStringName = dataSource.ConnectionStringName;
 
 			return this.SqlConnection;
+		}
+
+		/// <summary>
+		/// Gets the No SQL collection of a specified data-source
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The object that presents related information of a data source of No SQL database</param>
+		/// <returns></returns>
+		public IMongoCollection<T> GetNoSqlCollection<T>(DataSource dataSource) where T : class
+		{
+			return dataSource != null && dataSource.Mode.Equals(RepositoryMode.NoSQL)
+				? this.GetCollection<T>(dataSource)
+				: null;
+		}
+
+		/// <summary>
+		/// Gets the No SQL collection of the primary data-source
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		public IMongoCollection<T> GetNoSqlCollection<T>() where T : class
+		{
+			return this.GetNoSqlCollection<T>(RepositoryMediator.GetPrimaryDataSource(RepositoryMediator.GetEntityDefinition<T>()));
 		}
 		#endregion
 

@@ -851,18 +851,18 @@ namespace net.vieapps.Components.Repository
 				switch (this.Mode)
 				{
 					case ExtendedPropertyMode.YesNo:
-						return typeof(int);
+						return typeof(Int32);
 
 					case ExtendedPropertyMode.Number:
-						return typeof(long);
+						return typeof(Int64);
 
 					case ExtendedPropertyMode.Decimal:
-						return typeof(decimal);
+						return typeof(Decimal);
 
 					case ExtendedPropertyMode.DateTime:
 						return typeof(DateTime);
 				}
-				return typeof(string);
+				return typeof(String);
 			}
 		}
 
@@ -877,18 +877,18 @@ namespace net.vieapps.Components.Repository
 				switch (this.Mode)
 				{
 					case ExtendedPropertyMode.YesNo:
-						return SqlHelper.DbTypes[typeof(int)];
+						return SqlHelper.DbTypes[typeof(Int32)];
 
 					case ExtendedPropertyMode.Number:
-						return SqlHelper.DbTypes[typeof(long)];
+						return SqlHelper.DbTypes[typeof(Int64)];
 
 					case ExtendedPropertyMode.Decimal:
-						return SqlHelper.DbTypes[typeof(decimal)];
+						return SqlHelper.DbTypes[typeof(Decimal)];
 
 					case ExtendedPropertyMode.DateTime:
 						return DbType.AnsiString;
 				}
-				return SqlHelper.DbTypes[typeof(string)];
+				return SqlHelper.DbTypes[typeof(String)];
 			}
 		}
 		#endregion
@@ -1065,6 +1065,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Helper methods
 		public object GetDefaultValue()
 		{
 			return null;
@@ -1074,6 +1075,7 @@ namespace net.vieapps.Components.Repository
 		{
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 		}
+		#endregion
 
 	}
 

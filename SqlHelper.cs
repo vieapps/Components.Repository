@@ -9,6 +9,9 @@ using System.Configuration;
 using System.Data;
 using System.Data.Common;
 
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using net.vieapps.Components.Caching;
 using net.vieapps.Components.Utility;
 #endregion
@@ -48,7 +51,7 @@ namespace net.vieapps.Components.Repository
 		{
 			if (existingConnection == null)
 				return null;
-			var connection = Activator.CreateInstance(existingConnection.GetType()) as DbConnection;
+			var connection = existingConnection.GetType().CreateInstance() as DbConnection;
 			connection.ConnectionString = existingConnection.ConnectionString;
 			return connection;
 		}
@@ -119,7 +122,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Helpers
+		#region DbTypes
 		internal static Dictionary<Type, DbType> DbTypes = new Dictionary<Type, DbType>()
 		{
 			{ typeof(String), DbType.String },
@@ -166,42 +169,10 @@ namespace net.vieapps.Components.Repository
 					? DbType.AnsiStringFixedLength
 					: SqlHelper.DbTypes[attribute.Type];
 		}
-
-		internal static T Copy<T>(this DbDataReader reader, Dictionary<string, ObjectService.AttributeInfo> attributes) where T : class
-		{
-			T @object = Activator.CreateInstance<T>();
-			for (var index = 0; index < reader.FieldCount; index++)
-			{
-				var name = reader.GetName(index);
-				if (@object is RepositoryBase)
-					(@object as RepositoryBase).SetProperty(name, reader[index]);
-				else if (attributes.ContainsKey(name))
-					@object.SetAttributeValue(attributes[name], reader[index], true);
-			}
-			return @object;
-		}
-
-		internal static bool IsGotExtendedProperties<T>(this T @object) where T : class
-		{
-			if (!(@object is IBusinessEntity))
-				return false;
-
-			else if (string.IsNullOrWhiteSpace((@object as IBusinessEntity).EntityID))
-				return false;
-
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			if (definition == null || definition.RuntimeEntities == null)
-				return false;
-
-			var attributes = definition.RuntimeEntities.ContainsKey((@object as IBusinessEntity).EntityID)
-				? definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions
-				: null;
-			return attributes != null && attributes.Count > 0;
-		}
 		#endregion
 
 		#region Create
-		static Tuple<string, List<DbParameter>> GetCreateOriginalInfo<T>(this T @object, DbProviderFactory providerFactory) where T : class
+		static Tuple<string, List<DbParameter>> PrepareCreateOrigin<T>(this T @object, DbProviderFactory providerFactory) where T : class
 		{
 			string columns = "", values = "";
 			var parameters = new List<DbParameter>();
@@ -238,9 +209,10 @@ namespace net.vieapps.Components.Repository
 				);
 		}
 
-		static Tuple<string, List<DbParameter>> GetCreateExtendedInfo<T>(this T @object, DbProviderFactory providerFactory) where T : class
+		static Tuple<string, List<DbParameter>> PrepareCreateExtent<T>(this T @object, DbProviderFactory providerFactory) where T : class
 		{
-			string columns = "ID,SystemID,RepositoryID,EntityID", values = "@ID,@SystemID,@RepositoryID,@EntityID";
+			var columns = "ID,SystemID,RepositoryID,EntityID";
+			var values = "@ID,@SystemID,@RepositoryID,@EntityID";
 			var parameters = new List<DbParameter>();
 
 			var parameter = providerFactory.CreateParameter();
@@ -274,12 +246,16 @@ namespace net.vieapps.Components.Repository
 				columns += attribute.Column + ",";
 				values += "@" + attribute.Name + ",";
 
+				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
+					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
+					: attribute.GetDefaultValue();
+
 				parameter = providerFactory.CreateParameter();
 				parameter.ParameterName = "@" + attribute.Name;
 				parameter.DbType = attribute.DbType;
-				parameter.Value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
-					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
-					: attribute.GetDefaultValue();
+				parameter.Value = attribute.Type.Equals(typeof(DateTime))
+					? ((DateTime)value).ToDTString()
+					: value;
 				parameters.Add(parameter);
 			}
 
@@ -296,20 +272,22 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object">The object for creating new instance in storage</param>
-		public static void Create<T>(RepositoryContext context, DataSource dataSource, T @object) where T : class
+		public static void Create<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
 			if (object.ReferenceEquals(@object, null))
 				throw new NullReferenceException("Cannot create new because the object is null");
 
-			DbProviderFactory providerFactory = SqlHelper.GetProviderFactory(dataSource);
+			var providerFactory = SqlHelper.GetProviderFactory(dataSource);
 			using (var connection = context.GetSqlConnection(dataSource, providerFactory))
 			{
 				connection.Open();
-				var command = @object.GetCreateOriginalInfo(providerFactory).CreateCommand(connection);
+
+				var command = @object.PrepareCreateOrigin(providerFactory).CreateCommand(connection);
 				command.ExecuteNonQuery();
+
 				if (@object.IsGotExtendedProperties())
 				{
-					command = @object.GetCreateExtendedInfo(providerFactory).CreateCommand(connection);
+					command = @object.PrepareCreateExtent(providerFactory).CreateCommand(connection);
 					command.ExecuteNonQuery();
 				}
 			}
@@ -324,20 +302,22 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task CreateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task CreateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (object.ReferenceEquals(@object, null))
 				throw new NullReferenceException("Cannot create new because the object is null");
 
-			DbProviderFactory providerFactory = SqlHelper.GetProviderFactory(dataSource);
+			var providerFactory = SqlHelper.GetProviderFactory(dataSource);
 			using (var connection = context.GetSqlConnection(dataSource, providerFactory))
 			{
 				await connection.OpenAsync(cancellationToken);
-				var command = @object.GetCreateOriginalInfo(providerFactory).CreateCommand(connection);
+
+				var command = @object.PrepareCreateOrigin(providerFactory).CreateCommand(connection);
 				await command.ExecuteNonQueryAsync(cancellationToken);
+
 				if (@object.IsGotExtendedProperties())
 				{
-					command = @object.GetCreateExtendedInfo(providerFactory).CreateCommand(connection);
+					command = @object.PrepareCreateExtent(providerFactory).CreateCommand(connection);
 					await command.ExecuteNonQueryAsync(cancellationToken);
 				}
 			}
@@ -345,26 +325,194 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Get
-		static Tuple<string, List<DbParameter>> GenerateGettingInfo<T>(this string id, DbProviderFactory providerFactory, HashSet<string> included = null, HashSet<string> excluded = null) where T : class
+		static Tuple<string, List<DbParameter>> PrepareGetOrigin<T>(this T @object, string id, DbProviderFactory providerFactory) where T : class
 		{
 			var statement = "";
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			definition.Attributes.ForEach(attribute =>
+			foreach (var attribute in definition.Attributes)
 			{
-				if  ((included == null || included.Contains(attribute.Name)) && (excluded == null || !excluded.Contains(attribute.Name)))
-					statement += (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + ",";
-			});
+				if (attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) == null)
+					continue;
+
+				statement += "Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + ",";
+			};
 
 			if (statement.Equals(""))
 				return null;
 
-			var info = Filters.Equals<T>(definition.PrimaryKey, id).GetSqlStatement();
-			return new Tuple<string, List<DbParameter>>(
-					"SELECT TOP 1 " + statement.Left(statement.Length - 1) + " FROM " + definition.TableName + " WHERE " + info.Item1,
-					new List<DbParameter>() { info.Item2.First().CreateParameter(providerFactory) }
-				);
+			var info = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
+			return new Tuple<string, List<DbParameter>>
+			(
+				"SELECT TOP 1 " + statement.Left(statement.Length - 1) + " FROM " + definition.TableName + " AS Origin WHERE " + info.Item1,
+				new List<DbParameter>()
+				{
+					info.Item2.First().CreateParameter(providerFactory)
+				}
+			);
 		}
 
+		static Tuple<string, List<DbParameter>> PrepareGetExtent<T>(this T @object, string id, DbProviderFactory providerFactory, List<ExtendedPropertyDefinition> extendedProperties) where T : class
+		{
+			var statement = "Origin.ID";
+			foreach (var attribute in extendedProperties)
+				statement += "Origin." + attribute.Column + " AS " + attribute.Name + ",";
+
+			var info = Filters<T>.Equals("ID", id).GetSqlStatement();
+			return new Tuple<string, List<DbParameter>>
+			(
+				"SELECT TOP 1 " + statement.Left(statement.Length - 1) + " FROM " + RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName + " AS Origin WHERE " + info.Item1,
+				new List<DbParameter>()
+				{
+					info.Item2.First().CreateParameter(providerFactory)
+				}
+			);
+		}
+
+		static T Copy<T>(this T @object, DbDataReader reader, Dictionary<string, ObjectService.AttributeInfo> standardProperties) where T : class
+		{
+			@object = @object != null
+				? @object
+				: ObjectService.CreateInstance<T>();
+
+			for (var index = 0; index < reader.FieldCount; index++)
+			{
+				var name = reader.GetName(index);
+				if (!standardProperties.ContainsKey(name))
+					continue;
+
+				var attribute = standardProperties[name];
+				var value = reader[index];
+				if (value != null)
+				{
+					if (attribute.Type.IsDateTimeType() && attribute.IsStoredAsString())
+						value = DateTime.Parse(value as string);
+					else if (attribute.IsStoredAsJson())
+					{
+						var json = (value as string).StartsWith("[")
+							? JArray.Parse(value as string) as JToken
+							: JObject.Parse(value as string) as JToken;
+						value = (new JsonSerializer()).Deserialize(new JTokenReader(json), attribute.Type);
+					}
+				}
+
+				@object.SetAttributeValue(attribute, value, true);
+			}
+
+			return @object;
+		}
+
+		static T Copy<T>(this T @object, DbDataReader reader, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		{
+			@object = @object != null
+				? @object
+				: ObjectService.CreateInstance<T>();
+
+			if ((@object as IBusinessEntity).ExtendedProperties == null)
+				(@object as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
+
+			for (var index = 0; index < reader.FieldCount; index++)
+			{
+				var name = reader.GetName(index);
+				if (!extendedProperties.ContainsKey(name))
+					continue;
+
+				var attribute = extendedProperties[name];
+				var value = reader[index];
+				if (value != null && attribute.Type.IsDateTimeType())
+					value = DateTime.Parse(value as string);
+
+				if ((@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name))
+					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value.CastAs(attribute.Type);
+				else
+					(@object as IBusinessEntity).ExtendedProperties.Add(attribute.Name, value.CastAs(attribute.Type));
+			}
+
+			return @object;
+		}
+
+		/// <summary>
+		/// Gets the record and construct an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="id">The string that presents identity</param>
+		/// <returns></returns>
+		public static T Get<T>(this RepositoryContext context, DataSource dataSource, string id) where T : class
+		{
+			if (string.IsNullOrEmpty(id))
+				return default(T);
+
+			var @object = ObjectService.CreateInstance<T>();
+			var providerFactory = SqlHelper.GetProviderFactory(dataSource);
+			using (var connection = context.GetSqlConnection(dataSource, providerFactory))
+			{
+				connection.Open();
+
+				var command = @object.PrepareGetOrigin<T>(id, providerFactory).CreateCommand(connection);
+				using (var reader = command.ExecuteReader())
+				{
+					if (reader.Read())
+						@object = @object.Copy<T>(reader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name));
+				}
+
+				if (@object.IsGotExtendedProperties())
+				{
+					var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
+					command = @object.PrepareGetExtent<T>(id, providerFactory, extendedProperties).CreateCommand(connection);
+					using (var reader = command.ExecuteReader())
+					{
+						if (reader.Read())
+							@object = @object.Copy<T>(reader, extendedProperties.ToDictionary(attribute => attribute.Name));
+					}
+				}
+			}
+			return @object;
+		}
+
+		/// <summary>
+		/// Gets the record and construct an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="id">The string that presents identity</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			if (string.IsNullOrEmpty(id))
+				return default(T);
+
+			var @object = ObjectService.CreateInstance<T>();
+			var providerFactory = SqlHelper.GetProviderFactory(dataSource);
+			using (var connection = context.GetSqlConnection(dataSource, providerFactory))
+			{
+				await connection.OpenAsync(cancellationToken);
+
+				var command = @object.PrepareGetOrigin<T>(id, providerFactory).CreateCommand(connection);
+				using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+				{
+					if (await reader.ReadAsync(cancellationToken))
+						@object = @object.Copy<T>(reader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name));
+				}
+
+				if (@object.IsGotExtendedProperties())
+				{
+					var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
+					command = @object.PrepareGetExtent<T>(id, providerFactory, extendedProperties).CreateCommand(connection);
+					using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+					{
+						if (await reader.ReadAsync(cancellationToken))
+							@object = @object.Copy<T>(reader, extendedProperties.ToDictionary(attribute => attribute.Name));
+					}
+				}
+			}
+			return @object;
+		}
+		#endregion
+
+		#region Get (first match)
 		/// <summary>
 		/// Finds the first record that matched with the filter and construc an object
 		/// </summary>
@@ -373,41 +521,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter-by expression for filtering</param>
 		/// <param name="sort">The order-by expression for ordering</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static T Get<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort) where T : class
+		public static T Get<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null) where T : class
 		{
 			return default(T);
 		}
 
 		/// <summary>
-		/// Gets the record and construct an object
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The working context</param>
-		/// <param name="dataSource">The data source</param>
-		/// <param name="id">The string that presents identity</param>
-		/// <returns></returns>
-		public static T Get<T>(RepositoryContext context, DataSource dataSource, string id) where T : class
-		{
-			T @object = default(T);
-			if (string.IsNullOrEmpty(id))
-				return @object;
-
-			DbProviderFactory providerFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, providerFactory))
-			{
-				var command = id.GenerateGettingInfo<T>(providerFactory).CreateCommand(connection);
-				connection.Open();
-				using (var reader = command.ExecuteReader())
-				{
-					if (reader.Read())
-						@object = reader.Copy<T>(context.EntityDefinition.Attributes.ToDictionary(a => a.Name));
-				}
-			}
-			return @object;
-		}
-
-		/// <summary>
 		/// Finds the first record that matched with the filter and construc an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -415,40 +536,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter-by expression for filtering</param>
 		/// <param name="sort">The order-by expression for ordering</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<T>(default(T));
-		}
-
-		/// <summary>
-		/// Gets the record and construct an object
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The working context</param>
-		/// <param name="dataSource">The data source</param>
-		/// <param name="id">The string that presents identity</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			T @object = default(T);
-			if (string.IsNullOrEmpty(id))
-				return @object;
-
-			DbProviderFactory providerFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, providerFactory))
-			{
-				var command = id.GenerateGettingInfo<T>(providerFactory).CreateCommand(connection);
-				await connection.OpenAsync(cancellationToken);
-				using (var reader = await command.ExecuteReaderAsync(cancellationToken))
-				{
-					if (await reader.ReadAsync(cancellationToken))
-						@object = reader.Copy<T>(context.EntityDefinition.Attributes.ToDictionary(a => a.Name));
-				}
-			}
-			return @object;
 		}
 		#endregion
 
@@ -460,7 +553,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object">The object for updating</param>
-		public static void Replace<T>(RepositoryContext context, DataSource dataSource, T @object) where T : class
+		public static void Replace<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
 
 		}
@@ -474,7 +567,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<T>(RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.CompletedTask;
 		}
@@ -489,7 +582,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object">The object for updating</param>
 		/// <param name="attributes">The collection of attributes for updating individually</param>
-		public static void Update<T>(RepositoryContext context, DataSource dataSource, T @object, List<string> attributes) where T : class
+		public static void Update<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes) where T : class
 		{
 
 		}
@@ -504,7 +597,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attributes">The collection of attributes for updating individually</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.CompletedTask;
 		}
@@ -518,9 +611,21 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="id">The identity of the document of an object for deleting</param>
-		public static void Delete<T>(RepositoryContext context, DataSource dataSource, string id) where T : class
+		public static void Delete<T>(this RepositoryContext context, DataSource dataSource, string id) where T : class
 		{
 			
+		}
+
+		/// <summary>
+		/// Delete the record of an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="object">The object to delete</param>
+		public static void Delete<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
+		{
+
 		}
 
 		/// <summary>
@@ -532,11 +637,27 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<T>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.CompletedTask;
 		}
 
+		/// <summary>
+		/// Delete the record of an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="object">The object to delete</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return Task.CompletedTask;
+		}
+		#endregion
+
+		#region Delete (many)
 		/// <summary>
 		/// Delete the record of the objects
 		/// </summary>
@@ -544,7 +665,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter for deleting</param>
-		public static void DeleteMany<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter) where T : class
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 
 		}
@@ -557,8 +679,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.CompletedTask;
 		}
@@ -576,8 +699,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<DataRow> Select<T>(RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
+		public static List<DataRow> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			return new List<DataRow>();
 		}
@@ -593,15 +717,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<DataRow>> SelectAsync<T>(RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<List<DataRow>>(new List<DataRow>());
 		}
+		#endregion
 
+		#region Select (identities)
 		/// <summary>
-		/// Finds all the matched documents and return the collection of identity attributes
+		/// Finds all the matched records and return the collection of identity attributes
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -610,8 +737,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<string> SelectIdentities<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
+		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			return SqlHelper.Select(context, dataSource, null, filter, sort, pageSize, pageNumber)
 				.Select(data => data["ID"] as string)
@@ -628,9 +756,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> SelectIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return (await SqlHelper.SelectAsync(context, dataSource, null, filter, sort, pageSize, pageNumber))
 				.Select(data => data["ID"] as string)
@@ -649,33 +778,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
+		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			return new List<T>();
-		}
-
-		/// <summary>
-		/// Finds the records and construct the collection of objects that specified by identity
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The working context</param>
-		/// <param name="dataSource">The data source</param>
-		/// <param name="identities">The collection of identities for finding</param>
-		/// <param name="sort">The order-by expression for ordering</param>
-		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null) where T : class
-		{
-			if (identities == null || identities.Count < 1)
-				return new List<T>();
-
-			var filter = Filters.Or<T>();
-			identities.ForEach(id =>
-			{
-				filter.Add(Filters.Equals<T>("ID", id));
-			});
-
-			return SqlHelper.Find(context, dataSource, filter, sort, 0, 1);
 		}
 
 		/// <summary>
@@ -688,11 +795,38 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<List<T>>(new List<T>());
+		}
+		#endregion
+
+		#region Find (by identities)
+		/// <summary>
+		/// Finds the records and construct the collection of objects that specified by identity
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="identities">The collection of identities for finding</param>
+		/// <param name="sort">The order-by expression for ordering</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns></returns>
+		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null) where T : class
+		{
+			if (identities == null || identities.Count < 1)
+				return new List<T>();
+
+			var filter = Filters<T>.Or();
+			identities.ForEach(id =>
+			{
+				filter.Add(Filters<T>.Equals("ID", id));
+			});
+
+			return SqlHelper.Find(context, dataSource, filter, sort, 0, 1);
 		}
 
 		/// <summary>
@@ -703,20 +837,21 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="identities">The collection of identities for finding</param>
 		/// <param name="sort">The order-by expression for ordering</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (identities == null || identities.Count < 1)
 				return Task.FromResult<List<T>>(new List<T>());
 
-			var filter = Filters.Or<T>();
+			var filter = Filters<T>.Or();
 			identities.ForEach(id =>
 			{
-				filter.Add(Filters.Equals<T>("ID", id));
+				filter.Add(Filters<T>.Equals("ID", id));
 			});
 
-			return SqlHelper.FindAsync(context, dataSource, filter, sort, 0, 1, cancellationToken);
+			return SqlHelper.FindAsync(context, dataSource, filter, sort, 0, 1, businessEntityID, cancellationToken);
 		}
 		#endregion
 
@@ -731,8 +866,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
+		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			return new List<T>();
 		}
@@ -747,9 +883,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<List<T>>(new List<T>());
 		}
@@ -764,8 +901,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
+		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			return new List<string>();
 		}
@@ -780,9 +918,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<string>> SearchIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<List<string>>(new List<string>());
 		}
@@ -796,8 +935,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static long Count<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter) where T : class
+		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			return 0;
 		}
@@ -809,13 +949,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<long>(0);
 		}
+		#endregion
 
+		#region Count (by query)
 		/// <summary>
 		/// Counts the number of all matched records
 		/// </summary>
@@ -824,8 +967,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="query">The text query for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static long Count<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter) where T : class
+		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			return 0;
 		}
@@ -838,9 +982,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="query">The text query for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return Task.FromResult<long>(0);
 		}

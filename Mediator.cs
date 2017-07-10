@@ -268,6 +268,7 @@ namespace net.vieapps.Components.Repository
 		{
 			var changed = false;
 
+			// standard properties
 			foreach (var attribute in definition.Attributes)
 			{
 				if (!attribute.CanRead || !attribute.CanWrite)
@@ -293,6 +294,8 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 			}
+
+			// extended attribute
 
 			return changed;
 		}
@@ -320,7 +323,10 @@ namespace net.vieapps.Components.Repository
 				// re-update object
 				currentState.ForEach(data =>
 				{
-					@object.SetAttributeValue(data.Key, data.Value);
+					if (data.Key.StartsWith("ExtendedProperties."))
+						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+					else
+						@object.SetAttributeValue(data.Key, data.Value);
 				});
 
 				// update state
@@ -334,9 +340,9 @@ namespace net.vieapps.Components.Repository
 			// create
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				NoSqlHelper.Create<T>(context, primaryDataSource, @object);
+				context.Create<T>(primaryDataSource, @object);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				SqlHelper.Create<T>(context, primaryDataSource, @object);
+				context.Create<T>(primaryDataSource, @object);
 
 			// update in cache storage
 			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
@@ -396,7 +402,10 @@ namespace net.vieapps.Components.Repository
 				// re-update object
 				currentState.ForEach(data =>
 				{
-					@object.SetAttributeValue(data.Key, data.Value);
+					if (data.Key.StartsWith("ExtendedProperties."))
+						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+					else
+						@object.SetAttributeValue(data.Key, data.Value);
 				});
 
 				// update state
@@ -410,9 +419,9 @@ namespace net.vieapps.Components.Repository
 			// create
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await NoSqlHelper.CreateAsync<T>(context, primaryDataSource, @object, null, cancellationToken);
+				await context.CreateAsync<T>(primaryDataSource, @object, null, cancellationToken);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await SqlHelper.CreateAsync<T>(context, primaryDataSource, @object, cancellationToken);
+				await context.CreateAsync<T>(primaryDataSource, @object, cancellationToken);
 
 			// update in cache storage
 			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
@@ -455,55 +464,6 @@ namespace net.vieapps.Components.Repository
 
 		#region Get
 		/// <summary>
-		/// Finds the first instance of object that matched with the filter
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="sort">Sort expression</param>
-		/// <returns></returns>
-		public static T Get<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null) where T : class
-		{
-			// prepare
-			context.Operation = RepositoryOperation.Get;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			context.AliasTypeName = aliasTypeName;
-
-			// find
-			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? NoSqlHelper.Get<T>(context, primaryDataSource, filter, sort)
-				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? SqlHelper.Get<T>(context, primaryDataSource, filter, sort)
-					: null;
-		}
-
-		/// <summary>
-		/// Finds the first instance of object that matched with the filter
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="sort">Sort expression</param>
-		/// <returns></returns>
-		public static T Get<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				try
-				{
-					return RepositoryMediator.Get<T>(context, aliasTypeName, filter, sort);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
-				}
-			}
-		}
-
-		/// <summary>
 		/// Gets the instance of a object from repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -529,7 +489,7 @@ namespace net.vieapps.Components.Repository
 
 			// get cached object
 			var @object = processCache && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
-				? Get<T>(context.EntityDefinition.CacheStorage, id)
+				? context.EntityDefinition.CacheStorage.Fetch<T>(id)
 				: null;
 
 #if DEBUG
@@ -542,9 +502,9 @@ namespace net.vieapps.Components.Repository
 			{
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? NoSqlHelper.Get<T>(context, primaryDataSource, id)
+					? context.Get<T>(primaryDataSource, id, null)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? SqlHelper.Get<T>(context, primaryDataSource, id)
+						? context.Get<T>(primaryDataSource, id)
 						: null;
 
 				// TO DO: check to get instance from secondary source if primary source is not available
@@ -594,57 +554,6 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the first instance of object that matched with the filter
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="sort">Sort expression</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<T> GetAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			// prepare
-			context.Operation = RepositoryOperation.Get;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			context.AliasTypeName = aliasTypeName;
-
-			// find
-			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? NoSqlHelper.GetAsync<T>(context, primaryDataSource, filter, sort, cancellationToken)
-				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? SqlHelper.GetAsync<T>(context, primaryDataSource, filter, sort)
-					: Task.FromResult<T>(null);
-		}
-
-		/// <summary>
-		/// Finds the first instance of object that matched with the filter
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="sort">Sort expression</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<T> GetAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				try
-				{
-					return RepositoryMediator.GetAsync<T>(context, aliasTypeName, filter, sort, cancellationToken);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					return Task.FromException<T>(new RepositoryOperationException(ex));
-				}
-			}
-		}
-
-		/// <summary>
 		/// Gets the instance of a object from repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -671,7 +580,7 @@ namespace net.vieapps.Components.Repository
 
 			// get cached object
 			var @object = processCache && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
-				? await GetAsync<T>(context.EntityDefinition.CacheStorage, id)
+				? await context.EntityDefinition.CacheStorage.FetchAsync<T>(id)
 				: null;
 
 #if DEBUG
@@ -685,9 +594,9 @@ namespace net.vieapps.Components.Repository
 				// load from primary data source
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await NoSqlHelper.GetAsync<T>(context, primaryDataSource, id, cancellationToken)
+					? await context.GetAsync<T>(primaryDataSource, id, null, cancellationToken)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? await SqlHelper.GetAsync<T>(context, primaryDataSource, id, cancellationToken)
+						? await context.GetAsync<T>(primaryDataSource, id, cancellationToken)
 						: null;
 
 				// TO DO: check to get instance from secondary source if primary source is not available
@@ -738,6 +647,112 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Get (first match)
+		/// <summary>
+		/// Finds the first instance of object that matched with the filter
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns></returns>
+		public static T Get<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null) where T : class
+		{
+			// prepare
+			context.Operation = RepositoryOperation.Get;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			context.AliasTypeName = aliasTypeName;
+
+			// find
+			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+				? context.Get<T>(primaryDataSource, filter, sort, businessEntityID, null)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+					? context.Get<T>(primaryDataSource, filter, sort, businessEntityID)
+					: null;
+		}
+
+		/// <summary>
+		/// Finds the first instance of object that matched with the filter
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns></returns>
+		public static T Get<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				try
+				{
+					return RepositoryMediator.Get<T>(context, aliasTypeName, filter, sort);
+				}
+				catch (Exception ex)
+				{
+					context.Exception = ex;
+					throw new RepositoryOperationException(ex);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Finds the first instance of object that matched with the filter
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<T> GetAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			// prepare
+			context.Operation = RepositoryOperation.Get;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			context.AliasTypeName = aliasTypeName;
+
+			// find
+			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+				? context.GetAsync<T>(primaryDataSource, filter, sort, businessEntityID, null, cancellationToken)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+					? context.GetAsync<T>(primaryDataSource, filter, sort, businessEntityID, cancellationToken)
+					: Task.FromResult<T>(null);
+		}
+
+		/// <summary>
+		/// Finds the first instance of object that matched with the filter
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<T> GetAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				try
+				{
+					return RepositoryMediator.GetAsync<T>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken);
+				}
+				catch (Exception ex)
+				{
+					context.Exception = ex;
+					return Task.FromException<T>(new RepositoryOperationException(ex));
+				}
+			}
+		}
+		#endregion
+
 		#region Replace
 		/// <summary>
 		/// Updates instance of object into repository (using replace method)
@@ -773,7 +788,10 @@ namespace net.vieapps.Components.Repository
 				// re-update object
 				currentState.ForEach(data =>
 				{
-					@object.SetAttributeValue(data.Key, data.Value);
+					if (data.Key.StartsWith("ExtendedProperties."))
+						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+					else
+						@object.SetAttributeValue(data.Key, data.Value);
 				});
 
 				// update state
@@ -791,9 +809,9 @@ namespace net.vieapps.Components.Repository
 			// update
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				NoSqlHelper.Replace<T>(context, primaryDataSource, @object);
+				context.Replace<T>(primaryDataSource, @object, null);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				SqlHelper.Replace<T>(context, primaryDataSource, @object);
+				context.Replace<T>(primaryDataSource, @object);
 
 			// update into cache storage
 			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
@@ -849,7 +867,7 @@ namespace net.vieapps.Components.Repository
 
 			// check state
 			var previousInstance = @object != null
-				? await RepositoryMediator.GetAsync<T>(context, aliasTypeName, @object.GetEntityID(), false)
+				? await RepositoryMediator.GetAsync<T>(context, aliasTypeName, @object.GetEntityID(), false, cancellationToken)
 				: null;
 
 			var previousState = previousInstance != null
@@ -867,7 +885,10 @@ namespace net.vieapps.Components.Repository
 				// re-update object
 				currentState.ForEach(data =>
 				{
-					@object.SetAttributeValue(data.Key, data.Value);
+					if (data.Key.StartsWith("ExtendedProperties."))
+						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+					else
+						@object.SetAttributeValue(data.Key, data.Value);
 				});
 
 				// update state
@@ -885,9 +906,9 @@ namespace net.vieapps.Components.Repository
 			// update
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await NoSqlHelper.ReplaceAsync<T>(context, primaryDataSource, @object, null, cancellationToken);
+				await context.ReplaceAsync<T>(primaryDataSource, @object, null, cancellationToken);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await SqlHelper.ReplaceAsync<T>(context, primaryDataSource, @object, cancellationToken);
+				await context.ReplaceAsync<T>(primaryDataSource, @object, cancellationToken);
 
 			// update into cache storage
 			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
@@ -963,7 +984,10 @@ namespace net.vieapps.Components.Repository
 				// re-update object
 				currentState.ForEach(data =>
 				{
-					@object.SetAttributeValue(data.Key, data.Value);
+					if (data.Key.StartsWith("ExtendedProperties."))
+						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+					else
+						@object.SetAttributeValue(data.Key, data.Value);
 				});
 
 				// update state
@@ -975,11 +999,13 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// update
+			var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
+
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				NoSqlHelper.Update<T>(context, primaryDataSource, @object, dirtyAttributes.ToList());
+				context.Update<T>(primaryDataSource, @object, updatedAttributes, null);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				SqlHelper.Update<T>(context, primaryDataSource, @object, dirtyAttributes.ToList());
+				context.Update<T>(primaryDataSource, @object, updatedAttributes);
 
 			// update into cache storage
 			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
@@ -1053,7 +1079,10 @@ namespace net.vieapps.Components.Repository
 				// re-update object
 				currentState.ForEach(data =>
 				{
-					@object.SetAttributeValue(data.Key, data.Value);
+					if (data.Key.StartsWith("ExtendedProperties."))
+						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+					else
+						@object.SetAttributeValue(data.Key, data.Value);
 				});
 
 				// update state
@@ -1065,11 +1094,13 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// update
+			var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
+
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await NoSqlHelper.UpdateAsync<T>(context, primaryDataSource, @object, dirtyAttributes.ToList(), null, cancellationToken);
+				await context.UpdateAsync<T>(primaryDataSource, @object, updatedAttributes, null, cancellationToken);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await SqlHelper.UpdateAsync<T>(context, primaryDataSource, @object, dirtyAttributes.ToList(), cancellationToken);
+				await context.UpdateAsync<T>(primaryDataSource, @object, updatedAttributes, cancellationToken);
 
 			// update into cache storage
 			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
@@ -1138,9 +1169,9 @@ namespace net.vieapps.Components.Repository
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				NoSqlHelper.Delete<T>(context, primaryDataSource, id);
+				context.Delete<T>(primaryDataSource, @object, null);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				SqlHelper.Delete<T>(context, primaryDataSource, id);
+				context.Delete<T>(primaryDataSource, @object);
 
 			// remove from cache storage
 			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
@@ -1207,9 +1238,9 @@ namespace net.vieapps.Components.Repository
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await NoSqlHelper.DeleteAsync<T>(context, primaryDataSource, id, null, cancellationToken);
+				await context.DeleteAsync<T>(primaryDataSource, @object, null, cancellationToken);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await SqlHelper.DeleteAsync<T>(context, primaryDataSource, id, cancellationToken);
+				await context.DeleteAsync<T>(primaryDataSource, @object, cancellationToken);
 
 			// remove from cache storage
 			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
@@ -1248,7 +1279,9 @@ namespace net.vieapps.Components.Repository
 				}
 			}
 		}
+		#endregion
 
+		#region Delete (many)
 		/// <summary>
 		/// Deletes many instances of objects from repository
 		/// </summary>
@@ -1256,7 +1289,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">Filter expression to filter instances to delete</param>
-		public static void DeleteMany<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter) where T : class
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Delete;
@@ -1266,9 +1300,9 @@ namespace net.vieapps.Components.Repository
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				NoSqlHelper.DeleteMany<T>(context, primaryDataSource, filter);
+				context.DeleteMany<T>(primaryDataSource, filter, businessEntityID, null);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				SqlHelper.DeleteMany<T>(context, primaryDataSource, filter);
+				context.DeleteMany<T>(primaryDataSource, filter, businessEntityID);
 
 			// TO DO: sync to other data sources
 
@@ -1280,13 +1314,14 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">Filter expression to filter instances to delete</param>
-		public static void DeleteMany<T>(string aliasTypeName, IFilterBy<T> filter) where T : class
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
 				try
 				{
-					RepositoryMediator.DeleteMany<T>(context, aliasTypeName, filter);
+					RepositoryMediator.DeleteMany<T>(context, aliasTypeName, filter, businessEntityID);
 				}
 				catch (Exception ex)
 				{
@@ -1303,8 +1338,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">Filter expression to filter instances to delete</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task DeleteManyAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteManyAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Delete;
@@ -1314,9 +1350,9 @@ namespace net.vieapps.Components.Repository
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await NoSqlHelper.DeleteManyAsync<T>(context, primaryDataSource, filter, null, cancellationToken);
+				await context.DeleteManyAsync<T>(primaryDataSource, filter, businessEntityID, null, cancellationToken);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await SqlHelper.DeleteManyAsync<T>(context, primaryDataSource, filter, cancellationToken);
+				await context.DeleteManyAsync<T>(primaryDataSource, filter, businessEntityID, cancellationToken);
 
 			// TO DO: sync to other data sources
 
@@ -1328,14 +1364,15 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">Filter expression to filter instances to delete</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task DeleteManyAsync<T>(string aliasTypeName, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task DeleteManyAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
 				try
 				{
-					return RepositoryMediator.DeleteManyAsync<T>(context, aliasTypeName, filter, cancellationToken);
+					return RepositoryMediator.DeleteManyAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -1357,8 +1394,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">Sort expression</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
+		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1382,9 +1420,9 @@ namespace net.vieapps.Components.Repository
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? NoSqlHelper.SelectIdentities<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
+					? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, null)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? SqlHelper.SelectIdentities<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
+						? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID)
 						: new List<string>();
 
 			// process
@@ -1420,9 +1458,9 @@ namespace net.vieapps.Components.Repository
 					if (identities.Count > 0)
 					{
 						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? NoSqlHelper.Find<T>(context, primaryDataSource, identities, sort)
+							? context.Find<T>(primaryDataSource, identities, sort, businessEntityID, null)
 							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-								? SqlHelper.Find<T>(context, primaryDataSource, identities, sort)
+								? context.Find<T>(primaryDataSource, identities, sort, businessEntityID)
 								: new List<T>();
 
 						// update results & cache
@@ -1446,9 +1484,9 @@ namespace net.vieapps.Components.Repository
 			{
 				objects = identities == null || identities.Count > 0
 					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? NoSqlHelper.Find<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
+						? context.Find<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, null)
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? SqlHelper.Find<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
+							? context.Find<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID)
 							: new List<T>()
 					: new List<T>();
 
@@ -1473,14 +1511,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">Sort expression</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber) where T : class
+		public static List<T> Find<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.Find<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber);
+					return RepositoryMediator.Find<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID);
 				}
 				catch (Exception ex)
 				{
@@ -1500,9 +1539,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">Sort expression</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1526,9 +1566,9 @@ namespace net.vieapps.Components.Repository
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await NoSqlHelper.SelectIdentitiesAsync<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
+					? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, null, cancellationToken)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? await SqlHelper.SelectIdentitiesAsync<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
+						? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken)
 						: new List<string>();
 
 			// process
@@ -1564,9 +1604,9 @@ namespace net.vieapps.Components.Repository
 					if (identities.Count > 0)
 					{
 						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? await NoSqlHelper.FindAsync<T>(context, primaryDataSource, identities, sort)
+							? await context.FindAsync<T>(primaryDataSource, identities, sort, businessEntityID, null, cancellationToken)
 							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-								? await SqlHelper.FindAsync<T>(context, primaryDataSource, identities, sort)
+								? await context.FindAsync<T>(primaryDataSource, identities, sort, businessEntityID, cancellationToken)
 								: new List<T>();
 
 						// update results & cache
@@ -1590,9 +1630,9 @@ namespace net.vieapps.Components.Repository
 			{
 				objects = identities == null || identities.Count > 0
 					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await NoSqlHelper.FindAsync<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
+						? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, null, cancellationToken)
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? await SqlHelper.FindAsync<T>(context, primaryDataSource, filter, sort, pageSize, pageNumber)
+							? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken)
 							: new List<T>()
 					: new List<T>();
 
@@ -1617,15 +1657,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">Sort expression</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, cancellationToken);
+					return RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -1647,8 +1688,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The object that presents other filter expression to combine with seaching query</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
+		public static List<T> Search<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1672,9 +1714,9 @@ namespace net.vieapps.Components.Repository
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? NoSqlHelper.SearchIdentities<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
+					? context.SearchIdentities<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? SqlHelper.SearchIdentities<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
+						? context.SearchIdentities<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID)
 						: new List<string>();
 
 			// process
@@ -1710,9 +1752,9 @@ namespace net.vieapps.Components.Repository
 					if (identities.Count > 0)
 					{
 						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? NoSqlHelper.Find<T>(context, primaryDataSource, identities)
+							? context.Find<T>(primaryDataSource, identities, null, businessEntityID, null)
 							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-								? SqlHelper.Find<T>(context, primaryDataSource, identities)
+								? context.Find<T>(primaryDataSource, identities, null, businessEntityID)
 								: new List<T>();
 
 						// update results & cache
@@ -1736,9 +1778,9 @@ namespace net.vieapps.Components.Repository
 			{
 				objects = identities == null || identities.Count > 0
 					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? NoSqlHelper.Search<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
+						? context.Search<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? SqlHelper.Search<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
+							? context.Search<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID)
 							: new List<T>()
 					: new List<T>();
 
@@ -1763,14 +1805,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The object that presents other filter expression to combine with seaching query</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber) where T : class
+		public static List<T> Search<T>(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.Search<T>(context, aliasTypeName, query, filter, pageSize, pageNumber);
+					return RepositoryMediator.Search<T>(context, aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID);
 				}
 				catch (Exception ex)
 				{
@@ -1790,9 +1833,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The object that presents other filter expression to combine with seaching query</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> SearchAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> SearchAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1816,9 +1860,9 @@ namespace net.vieapps.Components.Repository
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await NoSqlHelper.SearchIdentitiesAsync<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
+					? await context.SearchIdentitiesAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? await SqlHelper.SearchIdentitiesAsync<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
+						? await context.SearchIdentitiesAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken)
 						: new List<string>();
 
 			// process
@@ -1854,9 +1898,9 @@ namespace net.vieapps.Components.Repository
 					if (identities.Count > 0)
 					{
 						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? await NoSqlHelper.FindAsync<T>(context, primaryDataSource, identities)
+							? await context.FindAsync<T>(primaryDataSource, identities, null, businessEntityID, null, cancellationToken)
 							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-								? await SqlHelper.FindAsync<T>(context, primaryDataSource, identities)
+								? await context.FindAsync<T>(primaryDataSource, identities, null, businessEntityID, cancellationToken)
 								: new List<T>();
 
 						// update results & cache
@@ -1880,9 +1924,9 @@ namespace net.vieapps.Components.Repository
 			{
 				objects = identities == null || identities.Count > 0
 					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await NoSqlHelper.SearchAsync<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
+						? await context.SearchAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken)
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? await SqlHelper.SearchAsync<T>(context, primaryDataSource, query, filter, pageSize, pageNumber)
+							? await context.SearchAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken)
 							: new List<T>()
 					: new List<T>();
 
@@ -1907,15 +1951,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The object that presents other filter expression to combine with seaching query</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> SearchAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.SearchAsync<T>(context, aliasTypeName, query, filter, pageSize, pageNumber, cancellationToken);
+					return RepositoryMediator.SearchAsync<T>(context, aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -1934,8 +1979,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">Filter expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter) where T : class
+		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1944,9 +1990,9 @@ namespace net.vieapps.Components.Repository
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? NoSqlHelper.Count<T>(context, primaryDataSource, filter != null ? filter : Filters.And<T>())
+				? context.Count<T>(primaryDataSource, filter, businessEntityID, null)
 				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? SqlHelper.Count<T>(context, primaryDataSource, filter)
+					? context.Count<T>(primaryDataSource, filter, businessEntityID)
 					: 0;
 		}
 
@@ -1956,14 +2002,15 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">Filter expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static long Count<T>(string aliasTypeName, IFilterBy<T> filter) where T : class
+		public static long Count<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.Count<T>(context, aliasTypeName, filter);
+					return RepositoryMediator.Count<T>(context, aliasTypeName, filter, businessEntityID);
 				}
 				catch (Exception ex)
 				{
@@ -1980,9 +2027,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">Filter expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1991,9 +2039,9 @@ namespace net.vieapps.Components.Repository
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? NoSqlHelper.CountAsync<T>(context, primaryDataSource, filter != null ? filter : Filters.And<T>(), null, cancellationToken)
+				? context.CountAsync<T>(primaryDataSource, filter, businessEntityID, null, cancellationToken)
 				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? SqlHelper.CountAsync<T>(context, primaryDataSource, filter, cancellationToken)
+					? context.CountAsync<T>(primaryDataSource, filter, businessEntityID, cancellationToken)
 					: Task.FromResult<long>(0);
 		}
 
@@ -2003,15 +2051,16 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">Filter expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, cancellationToken);
+					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -2020,7 +2069,9 @@ namespace net.vieapps.Components.Repository
 				}
 			}
 		}
+		#endregion
 
+		#region Count (by query)
 		/// <summary>
 		/// Counts the number of intances of objects (using full-text search)
 		/// </summary>
@@ -2029,8 +2080,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The searching query (like Google searching query)</param>
 		/// <param name="filter">The object that presents other filter expression to combine with seaching query</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
-		public static long Count<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter) where T : class
+		public static long Count<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -2039,9 +2091,9 @@ namespace net.vieapps.Components.Repository
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? NoSqlHelper.Count<T>(context, primaryDataSource, query, filter)
+				? context.Count<T>(primaryDataSource, query, filter, businessEntityID, null)
 				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? SqlHelper.Count<T>(context, primaryDataSource, query, filter)
+					? context.Count<T>(primaryDataSource, query, filter, businessEntityID)
 					: 0;
 		}
 
@@ -2052,14 +2104,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The searching query (like Google searching query)</param>
 		/// <param name="filter">The object that presents other filter expression to combine with seaching query</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
-		public static long Count<T>(string aliasTypeName, string query, IFilterBy<T> filter) where T : class
+		public static long Count<T>(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.Count<T>(context, aliasTypeName, query, filter);
+					return RepositoryMediator.Count<T>(context, aliasTypeName, query, filter, businessEntityID);
 				}
 				catch (Exception ex)
 				{
@@ -2077,9 +2130,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The searching query (like Google searching query)</param>
 		/// <param name="filter">The object that presents other filter expression to combine with seaching query</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -2088,9 +2142,9 @@ namespace net.vieapps.Components.Repository
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? NoSqlHelper.CountAsync<T>(context, primaryDataSource, query, filter, null, cancellationToken)
+				? context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, null, cancellationToken)
 				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? SqlHelper.CountAsync<T>(context, primaryDataSource, query, filter, cancellationToken)
+					? context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, cancellationToken)
 					: Task.FromResult<long>(0);
 		}
 
@@ -2101,15 +2155,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The searching query (like Google searching query)</param>
 		/// <param name="filter">The object that presents other filter expression to combine with seaching query</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
-		public static Task<long> CountAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, query, filter, cancellationToken);
+					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, query, filter, businessEntityID, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -2270,11 +2325,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		public static bool Set<T>(this CacheManager cacheStorage, T @object) where T : class
+		/// <param name="object">The object to update into cache storage</param>
+		/// <param name="expirationTime">The expiration time (in minutes)</param>
+		public static bool Set<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
 			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.Set(@object.GetCacheKey(), @object)
+				? cacheStorage.Set(@object.GetCacheKey(), @object, expirationTime)
 				: false;
 		}
 
@@ -2295,11 +2351,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
-		public static Task<bool> SetAsync<T>(this CacheManager cacheStorage, T @object) where T : class
+		/// <param name="object">The object to update into cache storage</param>
+		/// <param name="expirationTime">The expiration time (in minutes)</param>
+		public static Task<bool> SetAsync<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
 			return !object.ReferenceEquals(@object, null)
-				? cacheStorage.SetAsync(@object.GetCacheKey(), @object)
+				? cacheStorage.SetAsync(@object.GetCacheKey(), @object, expirationTime)
 				: Task.FromResult<bool>(false);
 		}
 
@@ -2321,7 +2378,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
+		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
 		public static bool SetAbsolute<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
@@ -2335,22 +2392,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The identity of an object</param>
-		/// <param name="value">The value</param>
-		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static bool SetAbsolute<T>(this CacheManager cacheStorage, string identity, object value, int expirationTime = 0) where T : class
-		{
-			return !object.ReferenceEquals(identity, null)
-				? cacheStorage.SetAbsolute(identity.GetCacheKey<T>(), value, expirationTime)
-				: false;
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage as absolute expire item
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
+		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
 		public static Task<bool> SetAbsoluteAsync<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
@@ -2360,26 +2402,11 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Adds an object into cache storage as absolute expire item
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="identity">The identity of an object</param>
-		/// <param name="value">The value</param>
-		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static Task<bool> SetAbsoluteAsync<T>(this CacheManager cacheStorage, string identity, object value, int expirationTime = 0) where T : class
-		{
-			return !object.ReferenceEquals(identity, null)
-				? cacheStorage.SetAbsoluteAsync(identity.GetCacheKey<T>(), value, expirationTime)
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
 		/// Adds an object into cache storage (when its no cached)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
+		/// <param name="object">The object to update into cache storage</param>
 		public static bool SetIfNotExists<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
 			return !object.ReferenceEquals(@object, null)
@@ -2392,7 +2419,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
+		/// <param name="object">The object to update into cache storage</param>
 		public static Task<bool> SetIfNotExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
 			return !object.ReferenceEquals(@object, null)
@@ -2405,7 +2432,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
+		/// <param name="object">The object to update into cache storage</param>
 		public static bool SetIfAlreadyExists<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
 			return !object.ReferenceEquals(@object, null)
@@ -2418,7 +2445,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
-		/// <param name="object">The object</param>
+		/// <param name="object">The object to update into cache storage</param>
 		public static Task<bool> SetIfAlreadyExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
 			return !object.ReferenceEquals(@object, null)
@@ -2427,13 +2454,13 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets an object from cache storage
+		/// Fetchs an object from cache storage
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object need to get</param>
 		/// <returns></returns>
-		public static T Get<T>(this CacheManager cacheStorage, string identity) where T : class
+		public static T Fetch<T>(this CacheManager cacheStorage, string identity) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
 				? cacheStorage.Get<T>(identity.GetCacheKey<T>())
@@ -2441,13 +2468,13 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets an object from cache storage
+		/// Fetchs an object from cache storage
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object need to get</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(this CacheManager cacheStorage, string identity) where T : class
+		public static Task<T> FetchAsync<T>(this CacheManager cacheStorage, string identity) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
 				? cacheStorage.GetAsync<T>(identity.GetCacheKey<T>())
@@ -2533,7 +2560,57 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Attribute extension methods
+		#region Property/Attribute extension methods
+		internal static T CreateInstance<T>(string businessEntityID = null) where T : class
+		{
+			var instance = ObjectService.CreateInstance<T>();
+			if (instance.IsGotExtendedProperties(businessEntityID))
+			{
+				(instance as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
+				RepositoryMediator.GetEntityDefinition<T>().RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ForEach(attribute =>
+				{
+					(instance as IBusinessEntity).ExtendedProperties.Add(attribute.Name, attribute.GetDefaultValue());
+				});
+			}
+			return instance;
+		}
+
+		internal static Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID) where T : class
+		{
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			var standardProperties = definition != null
+				? definition.Attributes.ToDictionary(attribute => attribute.Name)
+				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => attribute.Name);
+
+			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessEntityID)
+				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
+				: null;
+
+			return new Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>>(standardProperties, extendedProperties);
+		}
+
+		internal static bool IsGotExtendedProperties<T>(this T @object, string businessEntityID = null) where T : class
+		{
+			if (!(@object is IBusinessEntity))
+				return false;
+
+			businessEntityID = string.IsNullOrWhiteSpace(businessEntityID)
+				? (@object as IBusinessEntity).EntityID
+				: businessEntityID;
+
+			if (string.IsNullOrWhiteSpace(businessEntityID))
+				return false;
+
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			if (definition == null || definition.RuntimeEntities == null)
+				return false;
+
+			var attributes = definition.RuntimeEntities.ContainsKey(businessEntityID)
+				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions
+				: null;
+			return attributes != null && attributes.Count > 0;
+		}
+
 		internal static bool IsIgnored(this ObjectService.AttributeInfo attribute)
 		{
 			return attribute.Info.GetCustomAttributes(typeof(IgnoreAttribute), true).Length > 0
