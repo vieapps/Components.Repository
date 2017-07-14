@@ -272,7 +272,7 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(this IMongoCollection<T> collection, string id, FindOptions options = null) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? collection.Get(Builders<T>.Filter.Eq("_id", id))
+				? collection.Get(Builders<T>.Filter.Eq("_id", id), null, options)
 				: null;
 		}
 
@@ -288,7 +288,7 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(this RepositoryContext context, DataSource dataSource, string id, FindOptions options = null) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? context.GetCollection<T>(dataSource).Get(id)
+				? context.GetCollection<T>(dataSource).Get(id, options)
 				: null;
 		}
 
@@ -980,28 +980,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<BsonDocument> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
+		public static List<BsonDocument> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-
-			var filterBy = filter != null
-				? filter is FilterBys<T>
-					? (filter as FilterBys<T>).GetNoSqlStatement(info.Item1, info.Item2)
-					: (filter as FilterBy<T>).GetNoSqlStatement(info.Item1, info.Item2)
-				: null;
-
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
-
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, info.Item1, info.Item2)
-				: null;
-
-			return context.GetCollection<T>(dataSource).Select(attributes, filterBy, sortBy, pageSize, pageNumber, options);
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			return context.GetCollection<T>(dataSource).Select(attributes, info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
 		/// <summary>
@@ -1056,29 +1041,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<BsonDocument>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<BsonDocument>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-
-			var filterBy = filter != null
-				? filter is FilterBys<T>
-					? (filter as FilterBys<T>).GetNoSqlStatement(info.Item1, info.Item2)
-					: (filter as FilterBy<T>).GetNoSqlStatement(info.Item1, info.Item2)
-				: null;
-
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
-
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, info.Item1, info.Item2)
-				: null;
-
-			return context.GetCollection<T>(dataSource).SelectAsync(attributes, filterBy, sortBy, pageSize, pageNumber, options, cancellationToken);
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			return context.GetCollection<T>(dataSource).SelectAsync(attributes, info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
 
@@ -1112,28 +1082,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
+		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-
-			var filterBy = filter != null
-				? filter is FilterBys<T>
-					? (filter as FilterBys<T>).GetNoSqlStatement(info.Item1, info.Item2)
-					: (filter as FilterBy<T>).GetNoSqlStatement(info.Item1, info.Item2)
-				: null;
-
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
-
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, info.Item1, info.Item2)
-				: null;
-
-			return context.GetCollection<T>(dataSource).SelectIdentities(filterBy, sortBy, pageSize, pageNumber, options);
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			return context.GetCollection<T>(dataSource).SelectIdentities(info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
 		/// <summary>
@@ -1166,29 +1121,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-
-			var filterBy = filter != null
-				? filter is FilterBys<T>
-					? (filter as FilterBys<T>).GetNoSqlStatement(info.Item1, info.Item2)
-					: (filter as FilterBy<T>).GetNoSqlStatement(info.Item1, info.Item2)
-				: null;
-
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
-
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, info.Item1, info.Item2)
-				: null;
-
-			return context.GetCollection<T>(dataSource).SelectIdentitiesAsync(filterBy, sortBy, pageSize, pageNumber, options, cancellationToken);
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			return context.GetCollection<T>(dataSource).SelectIdentitiesAsync(info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
 
@@ -1231,28 +1171,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
+		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-
-			var filterBy = filter != null
-				? filter is FilterBys<T>
-					? (filter as FilterBys<T>).GetNoSqlStatement(info.Item1, info.Item2)
-					: (filter as FilterBy<T>).GetNoSqlStatement(info.Item1, info.Item2)
-				: null;
-
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
-
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, info.Item1, info.Item2)
-				: null;
-
-			return context.GetCollection<T>(dataSource).Find(filterBy, sortBy, pageSize, pageNumber, options);
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			return context.GetCollection<T>(dataSource).Find(info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
 		/// <summary>
@@ -1294,29 +1219,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The options</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-
-			var filterBy = filter != null
-				? filter is FilterBys<T>
-					? (filter as FilterBys<T>).GetNoSqlStatement(info.Item1, info.Item2)
-					: (filter as FilterBy<T>).GetNoSqlStatement(info.Item1, info.Item2)
-				: null;
-
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
-
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, info.Item1, info.Item2)
-				: null;
-
-			return context.GetCollection<T>(dataSource).FindAsync(filterBy, sortBy, pageSize, pageNumber, options, cancellationToken);
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			return context.GetCollection<T>(dataSource).FindAsync(info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
 
@@ -1336,19 +1246,8 @@ namespace net.vieapps.Components.Repository
 		{
 			if (identities == null || identities.Count < 1)
 				return new List<T>();
-
-			var filter = Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id)));
-
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filter = Filters<T>.And(Filters<T>.Equals("EntityID", businessEntityID), filter);
-
-			var filterBy = filter.GetNoSqlStatement(info.Item1, info.Item2);
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, info.Item1, info.Item2)
-				: null;
-
-			return context.GetCollection<T>(dataSource).Find(filterBy, sortBy, 0, 1, options);
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessEntityID, false);
+			return context.GetCollection<T>(dataSource).Find(info.Item1, info.Item2, 0, 1, options);
 		}
 
 		/// <summary>
@@ -1367,23 +1266,49 @@ namespace net.vieapps.Components.Repository
 		{
 			if (identities == null || identities.Count < 1)
 				return Task.FromResult<List<T>>(new List<T>());
-
-			var filter = Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id)));
-
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filter = Filters<T>.And(Filters<T>.Equals("EntityID", businessEntityID), filter);
-
-			var filterBy = filter.GetNoSqlStatement(info.Item1, info.Item2);
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, info.Item1, info.Item2)
-				: null;
-
-			return context.GetCollection<T>(dataSource).FindAsync(filterBy, sortBy, 0, 1, options, cancellationToken);
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessEntityID, false);
+			return context.GetCollection<T>(dataSource).FindAsync(info.Item1, info.Item2, 0, 1, options, cancellationToken);
 		}
 		#endregion
 
-		#region Search
+		#region Count
+		/// <summary>
+		/// Counts the number of all the matched documents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source for counting</param>
+		/// <param name="filter">The filter-by expression for counting</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="options">The options</param>
+		/// <returns></returns>
+		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null) where T : class
+		{
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
+			return context.GetCollection<T>(dataSource).Count(info.Item1 != null ? info.Item1 : Builders<T>.Filter.Empty, options);
+		}
+
+		/// <summary>
+		/// Counts the number of all the matched documents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source for counting</param>
+		/// <param name="filter">The filter-by expression for counting</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="options">The options</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
+			return context.GetCollection<T>(dataSource).CountAsync(info.Item1 != null ? info.Item1 : Builders<T>.Filter.Empty, options, cancellationToken);
+		}
+		#endregion
+
+		#region Search (by query)
 		/// <summary>
 		/// Creates a text-search filter
 		/// </summary>
@@ -1392,40 +1317,40 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterDefinition<T> CreateTextSearchFilter<T>(this string query) where T : class
 		{
-			var searchQuery = Utility.SearchQuery.Parse(query);
-			var search = "";
+			var searchInfo = Utility.SearchQuery.Parse(query);
+			var filter = "";
 
-			searchQuery.AndWords.ForEach(word =>
+			searchInfo.AndWords.ForEach(word =>
 			{
-				search += (!search.Equals("") ? " " : "") + word;
+				filter += (!filter.Equals("") ? " " : "") + word;
 			});
 
-			searchQuery.OrWords.ForEach(word =>
+			searchInfo.OrWords.ForEach(word =>
 			{
-				search += (!search.Equals("") ? " " : "") + word;
+				filter += (!filter.Equals("") ? " " : "") + word;
 			});
 
-			searchQuery.NotWords.ForEach(word =>
+			searchInfo.NotWords.ForEach(word =>
 			{
-				search += (!search.Equals("") ? " " : "") + "-" + word;
+				filter += (!filter.Equals("") ? " " : "") + "-" + word;
 			});
 
-			searchQuery.AndPhrases.ForEach(phrase =>
+			searchInfo.AndPhrases.ForEach(phrase =>
 			{
-				search += (!search.Equals("") ? " " : "") + "\"" + phrase + "\"";
+				filter += (!filter.Equals("") ? " " : "") + "\"" + phrase + "\"";
 			});
 
-			searchQuery.OrPhrases.ForEach(phrase =>
+			searchInfo.OrPhrases.ForEach(phrase =>
 			{
-				search += (!search.Equals("") ? " " : "") + "\"" + phrase + "\"";
+				filter += (!filter.Equals("") ? " " : "") + "\"" + phrase + "\"";
 			});
 
-			searchQuery.NotPhrases.ForEach(phrase =>
+			searchInfo.NotPhrases.ForEach(phrase =>
 			{
-				search += (!search.Equals("") ? " " : "") + "-" + "\"" + phrase + "\"";
+				filter += (!filter.Equals("") ? " " : "") + "-" + "\"" + phrase + "\"";
 			});
 
-			return Builders<T>.Filter.Text(search, new TextSearchOptions() { CaseSensitive = false });
+			return Builders<T>.Filter.Text(filter, new TextSearchOptions() { CaseSensitive = false });
 		}
 
 		/// <summary>
@@ -1729,65 +1654,6 @@ namespace net.vieapps.Components.Repository
 					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
 
 			return context.GetCollection<T>(dataSource).SearchIdentitiesAsync(query, filterBy, pageSize, pageNumber, cancellationToken);
-		}
-		#endregion
-
-		#region Count
-		/// <summary>
-		/// Counts the number of all the matched documents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The working context</param>
-		/// <param name="dataSource">The data source for counting</param>
-		/// <param name="filter">The filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="options">The options</param>
-		/// <returns></returns>
-		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CountOptions options = null) where T : class
-		{
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-
-			var filterBy = filter != null
-				? filter is FilterBys<T>
-					? (filter as FilterBys<T>).GetNoSqlStatement(info.Item1, info.Item2)
-					: (filter as FilterBy<T>).GetNoSqlStatement(info.Item1, info.Item2)
-				: null;
-
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
-
-			return context.GetCollection<T>(dataSource).Count(filterBy != null ? filterBy : Builders<T>.Filter.Empty, options);
-		}
-
-		/// <summary>
-		/// Counts the number of all the matched documents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The working context</param>
-		/// <param name="dataSource">The data source for counting</param>
-		/// <param name="filter">The filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="options">The options</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			var info = RepositoryMediator.GetProperties<T>(businessEntityID);
-
-			var filterBy = filter != null
-				? filter is FilterBys<T>
-					? (filter as FilterBys<T>).GetNoSqlStatement(info.Item1, info.Item2)
-					: (filter as FilterBy<T>).GetNoSqlStatement(info.Item1, info.Item2)
-				: null;
-
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && info.Item2 != null)
-				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
-
-			return context.GetCollection<T>(dataSource).CountAsync(filterBy != null ? filterBy : Builders<T>.Filter.Empty, options, cancellationToken);
 		}
 		#endregion
 

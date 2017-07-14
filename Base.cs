@@ -439,7 +439,7 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				return RepositoryMediator.Get<TEntity>(aliasTypeName, filter, sort, businessEntityID);
+				return RepositoryMediator.Get<TEntity>(context, aliasTypeName, filter, sort, businessEntityID);
 			}
 			catch (Exception ex)
 			{
@@ -1161,10 +1161,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Find<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null) where TEntity : class
+		public static List<TEntity> Find<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where TEntity : class
 		{
-			return RepositoryMediator.Find<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID);
+			return RepositoryMediator.Find<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
@@ -1176,10 +1177,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Find<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null) where TEntity : class
+		public static List<TEntity> Find<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where TEntity : class
 		{
-			return RepositoryBase<T>.Find<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID);
+			return RepositoryBase<T>.Find<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
@@ -1191,10 +1193,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns>The collection of objects</returns>
-		public static List<T> Find(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null)
+		public static List<T> Find(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true)
 		{
-			return RepositoryBase<T>.Find<T>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID);
+			return RepositoryBase<T>.Find<T>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
@@ -1205,43 +1208,46 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns>The collection of objects</returns>
-		public static List<T> Find(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null)
+		public static List<T> Find(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true)
 		{
-			return RepositoryBase<T>.Find(null, filter, sort, pageSize, pageNumber, businessEntityID);
-		}
-
-		/// <summary>
-		/// Finds all the matched objects
-		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="sort">The expression for sorting objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
-		{
-			return RepositoryMediator.FindAsync<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.Find(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
 		/// Finds all the matched objects
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> FindAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.FindAsync<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
+			return RepositoryMediator.FindAsync<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
+		}
+
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.FindAsync<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
 		}
 
 		/// <summary>
@@ -1253,11 +1259,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> FindAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> FindAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.FindAsync<T>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.FindAsync<T>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
 		}
 
 		/// <summary>
@@ -1268,121 +1275,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.FindAsync(null, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
-		}
-		#endregion
-
-		#region Search
-		/// <summary>
-		/// Searchs all the matched objects (using full-text search)
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="query">The expression for searching objects</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Search<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber) where TEntity : class
-		{
-			return RepositoryMediator.Search<TEntity>(aliasTypeName, query, filter, pageSize, pageNumber);
-		}
-
-		/// <summary>
-		/// Searchs all the matched objects (using full-text search)
-		/// </summary>
-		/// <param name="query">The expression for searching objects</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Search<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber) where TEntity : class
-		{
-			return RepositoryBase<T>.Search<TEntity>(null, query, filter, pageSize, pageNumber);
-		}
-
-		/// <summary>
-		/// Searchs all the matched objects (using full-text search)
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="query">The expression for searching objects</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <returns>The collection of objects</returns>
-		public static List<T> Search(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber)
-		{
-			return RepositoryBase<T>.Search<T>(aliasTypeName, query, filter, pageSize, pageNumber);
-		}
-
-		/// <summary>
-		/// Searchs all the matched objects (using full-text search)
-		/// </summary>
-		/// <param name="query">The expression for searching objects</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <returns>The collection of objects</returns>
-		public static List<T> Search(string query, IFilterBy<T> filter, int pageSize, int pageNumber)
-		{
-			return RepositoryBase<T>.Search(null, query, filter, pageSize, pageNumber);
-		}
-
-		/// <summary>
-		/// Searchs all the matched objects (using full-text search)
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="query">The expression for searching objects</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber) where TEntity : class
-		{
-			return RepositoryMediator.SearchAsync<TEntity>(aliasTypeName, query, filter, pageSize, pageNumber);
-		}
-
-		/// <summary>
-		/// Searchs all the matched objects (using full-text search)
-		/// </summary>
-		/// <param name="query">The expression for searching objects</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber) where TEntity : class
-		{
-			return RepositoryBase<T>.SearchAsync<TEntity>(null, query, filter, pageSize, pageNumber);
-		}
-
-		/// <summary>
-		/// Searchs all the matched objects (using full-text search)
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="query">The expression for searching objects</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber)
-		{
-			return RepositoryBase<T>.SearchAsync<T>(aliasTypeName, query, filter, pageSize, pageNumber);
-		}
-
-		/// <summary>
-		/// Searchs all the matched objects (using full-text search)
-		/// </summary>
-		/// <param name="query">The expression for searching objects</param>
-		/// <param name="filter">The expression for filtering objects</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber)
-		{
-			return RepositoryBase<T>.SearchAsync(null, query, filter, pageSize, pageNumber);
+			return RepositoryBase<T>.FindAsync(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
 		}
 		#endregion
 
@@ -1393,10 +1291,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter) where TEntity : class
+		public static long Count<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where TEntity : class
 		{
-			return RepositoryMediator.Count<TEntity>(aliasTypeName, filter);
+			return RepositoryMediator.Count<TEntity>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
@@ -1404,20 +1304,24 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count<TEntity>(IFilterBy<TEntity> filter) where TEntity : class
+		public static long Count<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where TEntity : class
 		{
-			return RepositoryBase<T>.Count<TEntity>(null, filter);
+			return RepositoryBase<T>.Count<TEntity>(null, filter, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
 		/// Counts the number of all matched objects
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count<TEntity>() where TEntity : class
+		public static long Count<TEntity>(string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where TEntity : class
 		{
-			return RepositoryBase<T>.Count<TEntity>(null);
+			return RepositoryBase<T>.Count<TEntity>(null, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
@@ -1425,10 +1329,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count(string aliasTypeName, IFilterBy<T> filter)
+		public static long Count(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true)
 		{
-			return RepositoryBase<T>.Count<T>(aliasTypeName, filter);
+			return RepositoryBase<T>.Count<T>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
@@ -1436,9 +1342,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="filter">The expression for counting objects</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count(IFilterBy<T> filter = null)
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		public static long Count(IFilterBy<T> filter = null, string businessEntityID = null, bool autoAssociateWithMultipleParents = true)
 		{
-			return RepositoryBase<T>.Count(null, filter);
+			return RepositoryBase<T>.Count(null, filter, businessEntityID, autoAssociateWithMultipleParents);
 		}
 
 		/// <summary>
@@ -1447,10 +1355,13 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.CountAsync<TEntity>(aliasTypeName, filter);
+			return RepositoryMediator.CountAsync<TEntity>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
 		}
 
 		/// <summary>
@@ -1458,20 +1369,26 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.CountAsync<TEntity>(null, filter);
+			return RepositoryBase<T>.CountAsync<TEntity>(null, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
 		}
 
 		/// <summary>
 		/// Counts the number of all matched objects
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>() where TEntity : class
+		public static Task<long> CountAsync<TEntity>(string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.CountAsync<TEntity>(null);
+			return RepositoryBase<T>.CountAsync<TEntity>(null, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
 		}
 
 		/// <summary>
@@ -1479,20 +1396,175 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(string aliasTypeName, IFilterBy<T> filter)
+		public static Task<long> CountAsync(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.CountAsync<T>(aliasTypeName, filter);
+			return RepositoryBase<T>.CountAsync<T>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
 		}
 
 		/// <summary>
 		/// Counts the number of all matched objects
 		/// </summary>
 		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(IFilterBy<T> filter = null)
+		public static Task<long> CountAsync(IFilterBy<T> filter = null, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.CountAsync(null, filter);
+			return RepositoryBase<T>.CountAsync(null, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
+		}
+		#endregion
+
+		#region Search (by query)
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The collection of objects</returns>
+		public static List<TEntity> Search<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID = null) where TEntity : class
+		{
+			return RepositoryMediator.Search<TEntity>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The collection of objects</returns>
+		public static List<TEntity> Search<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID = null) where TEntity : class
+		{
+			return RepositoryBase<T>.Search<TEntity>(null, query, filter, pageSize, pageNumber, businessEntityID);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The collection of objects</returns>
+		public static List<T> Search(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null)
+		{
+			return RepositoryBase<T>.Search<T>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The collection of objects</returns>
+		public static List<T> Search(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null)
+		{
+			return RepositoryBase<T>.Search(null, query, filter, pageSize, pageNumber, businessEntityID);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static Task<List<TEntity>> SearchAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.SearchAsync<TEntity>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.SearchAsync<TEntity>(null, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static Task<List<T>> SearchAsync(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.SearchAsync<T>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.SearchAsync(null, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
+		}
+		#endregion
+
+		#region Count (by query)
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="query">The expression (full-text search) for counting objects</param>
+		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The number of all matched objects</returns>
+		public static long CountQuery<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
+		{
+			return RepositoryMediator.Count<TEntity>(aliasTypeName, query, filter, businessEntityID);
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="query">The expression (full-text search) for counting objects</param>
+		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The number of all matched objects</returns>
+		public static long CountQuery<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
+		{
+			return RepositoryBase<T>.CountQuery<TEntity>(null, query, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -1501,10 +1573,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The expression (full-text search) for counting objects</param>
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountQuery<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter) where TEntity : class
+		public static long CountQuery(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null)
 		{
-			return RepositoryMediator.Count<TEntity>(aliasTypeName, query, filter);
+			return RepositoryBase<T>.CountQuery<T>(aliasTypeName, query, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -1512,33 +1585,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="query">The expression (full-text search) for counting objects</param>
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountQuery<TEntity>(string query, IFilterBy<TEntity> filter) where TEntity : class
+		public static long CountQuery(string query, IFilterBy<T> filter, string businessEntityID = null)
 		{
-			return RepositoryBase<T>.CountQuery<TEntity>(null, query, filter);
-		}
-
-		/// <summary>
-		/// Counts the number of all matched objects
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="query">The expression (full-text search) for counting objects</param>
-		/// <param name="filter">The expression (additional filter) for counting objects</param>
-		/// <returns>The number of all matched objects</returns>
-		public static long CountQuery(string aliasTypeName, string query, IFilterBy<T> filter)
-		{
-			return RepositoryBase<T>.CountQuery<T>(aliasTypeName, query, filter);
-		}
-
-		/// <summary>
-		/// Counts the number of all matched objects
-		/// </summary>
-		/// <param name="query">The expression (full-text search) for counting objects</param>
-		/// <param name="filter">The expression (additional filter) for counting objects</param>
-		/// <returns>The number of all matched objects</returns>
-		public static long CountQuery(string query, IFilterBy<T> filter)
-		{
-			return RepositoryBase<T>.CountQuery(null, query, filter);
+			return RepositoryBase<T>.CountQuery(null, query, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -1547,10 +1598,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The expression (full-text search) for counting objects</param>
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountQueryAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter) where TEntity : class
+		public static Task<long> CountQueryAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.CountAsync<TEntity>(aliasTypeName, query, filter);
+			return RepositoryMediator.CountAsync<TEntity>(aliasTypeName, query, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1558,10 +1611,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="query">The expression (full-text search) for counting objects</param>
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter) where TEntity : class
+		public static Task<long> CountQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.CountQueryAsync<TEntity>(null, query, filter);
+			return RepositoryBase<T>.CountQueryAsync<TEntity>(null, query, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1570,10 +1625,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The expression (full-text search) for counting objects</param>
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountQueryAsync(string aliasTypeName, string query, IFilterBy<T> filter)
+		public static Task<long> CountQueryAsync(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.CountQueryAsync<T>(aliasTypeName, query, filter);
+			return RepositoryBase<T>.CountQueryAsync<T>(aliasTypeName, query, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1581,10 +1638,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="query">The expression (full-text search) for counting objects</param>
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountQueryAsync(string query, IFilterBy<T> filter)
+		public static Task<long> CountQueryAsync(string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.CountQueryAsync(null, query, filter);
+			return RepositoryBase<T>.CountQueryAsync(null, query, filter, businessEntityID, cancellationToken);
 		}
 		#endregion
 

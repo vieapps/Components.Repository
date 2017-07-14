@@ -99,32 +99,122 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with SQL
-		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, ObjectService.AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null)
+		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, ObjectService.AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			if (string.IsNullOrEmpty(this.Attribute))
 				return null;
 
-			var alias = extendedProperties != null && extendedProperties.ContainsKey(this.Attribute)
-				? "Extent"
-				: "Origin";
+			var statement = "";
+			var parameters = new Dictionary<string, object>();
 
-			var column = extendedProperties != null && extendedProperties.ContainsKey(this.Attribute)
-				? extendedProperties[this.Attribute].Column
-				: standardProperties != null && standardProperties.ContainsKey(this.Attribute)
-					? !string.IsNullOrWhiteSpace(standardProperties[this.Attribute].Column)
-						? standardProperties[this.Attribute].Column
-						: standardProperties[this.Attribute].Name
-					: this.Attribute;
+			if (definition != null && definition.ParentType != null && definition.ParentAssociatedProperty.Equals(this.Attribute)
+				&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn)
+				&& parentIDs != null && parentIDs.Count > 0 && this.Operator.Equals(CompareOperator.Equals))
+			{
+				parentIDs.ForEach((id, index) =>
+				{
+					var surf = (!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString();
+					statement += (statement.Equals("") ? "" : " OR ")
+						+ "Origin." + this.Attribute + "=@" + this.Attribute + surf
+						+ " OR Link." + definition.MultipleParentAssociatesMapColumn + "=@" + this.Attribute + surf + "_L";
 
-			var name = this.Attribute + (!string.IsNullOrEmpty(surfix) ? "_" + surfix : "");
+					parameters.Add("@" + this.Attribute + surf, id);
+					parameters.Add("@" + this.Attribute + surf + "_L", id);
+				});
+				statement = "(" + statement + ")";
+			}
 
-			return new Tuple<string, Dictionary<string, object>>
-			(
-				alias + "." + column + "=@" + name,
-				new Dictionary<string, object>() { 
-					{ "@" + name, this.Value }
+			else
+			{
+				var column = extendedProperties != null && extendedProperties.ContainsKey(this.Attribute)
+					? extendedProperties[this.Attribute].Column
+					: standardProperties != null && standardProperties.ContainsKey(this.Attribute)
+						? !string.IsNullOrWhiteSpace(standardProperties[this.Attribute].Column)
+							? standardProperties[this.Attribute].Column
+							: standardProperties[this.Attribute].Name
+						: this.Attribute;
+
+				var name = this.Attribute + (!string.IsNullOrEmpty(surfix) ? surfix : "");
+
+				var @operator = "=";
+				var value = this.Value;
+
+				var gotName = true;
+				switch (this.Operator)
+				{
+					case CompareOperator.Equals:
+						@operator = "=";
+						break;
+
+					case CompareOperator.NotEquals:
+						@operator = "<>";
+						break;
+
+					case CompareOperator.LessThan:
+						@operator = "<";
+						break;
+
+					case CompareOperator.LessThanOrEquals:
+						@operator = "<=";
+						break;
+
+					case CompareOperator.Greater:
+						@operator = ">";
+						break;
+
+					case CompareOperator.GreaterOrEquals:
+						@operator = ">=";
+						break;
+
+					case CompareOperator.Contains:
+						@operator = "LIKE '%@" + name + "%'";
+						gotName = false;
+						break;
+
+					case CompareOperator.StartsWith:
+						@operator = "LIKE '@" + name + "%'";
+						gotName = false;
+						break;
+
+					case CompareOperator.EndsWith:
+						@operator = "LIKE '%@" + name + "'";
+						gotName = false;
+						break;
+
+					case CompareOperator.IsNull:
+						@operator = "IS NULL";
+						value = null;
+						gotName = false;
+						break;
+
+					case CompareOperator.IsNotNull:
+						@operator = "IS NOT NULL";
+						gotName = false;
+						value = null;
+						break;
+
+					case CompareOperator.IsEmpty:
+						@operator = "=";
+						value = "";
+						break;
+
+					case CompareOperator.IsNotEmpty:
+						@operator = "<>";
+						value = "";
+						break;
+
+					default:
+						break;
 				}
-			);
+
+				statement = (extendedProperties != null && extendedProperties.ContainsKey(this.Attribute) ? "Extent" : "Origin") + "." + column
+					+ @operator + (gotName ? "@" + name : "");
+
+				if (value != null)
+					parameters.Add("@" + name, value);
+			}
+
+			return new Tuple<string, Dictionary<string, object>>(statement, parameters);
 		}
 
 		public Tuple<string, Dictionary<string, object>> GetSqlStatement()
@@ -134,7 +224,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with No SQL
-		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
+		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
@@ -143,56 +233,85 @@ namespace net.vieapps.Components.Repository
 				? "ExtendedProperties." + this.Attribute
 				: this.Attribute;
 
-			switch (this.Operator)
-			{
-				case CompareOperator.Equals:
-					return Builders<T>.Filter.Eq(attribute, this.Value);
+			FilterDefinition<T> filter = null;
 
-				case CompareOperator.NotEquals:
-					return Builders<T>.Filter.Ne(attribute, this.Value);
+			if (definition != null && definition.ParentType != null && definition.ParentAssociatedProperty.Equals(attribute)
+				&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesProperty) && parentIDs != null
+				&& this.Operator.Equals(CompareOperator.Equals))
+				parentIDs.ForEach(id =>
+				{
+					var filterBy = Builders<T>.Filter.Eq(definition.ParentAssociatedProperty, id) | Builders<T>.Filter.Eq(definition.MultipleParentAssociatesProperty, id);
+					filter = filter == null
+						? filterBy
+						: filter | filterBy;
+				});
 
-				case CompareOperator.LessThan:
-					return Builders<T>.Filter.Lt(attribute, this.Value);
+			else
+				switch (this.Operator)
+				{
+					case CompareOperator.Equals:
+						filter = Builders<T>.Filter.Eq(attribute, this.Value);
+						break;
 
-				case CompareOperator.LessThanOrEquals:
-					return Builders<T>.Filter.Lte(attribute, this.Value);
+					case CompareOperator.NotEquals:
+						filter = Builders<T>.Filter.Ne(attribute, this.Value);
+						break;
 
-				case CompareOperator.Greater:
-					return Builders<T>.Filter.Gt(attribute, this.Value);
+					case CompareOperator.LessThan:
+						filter = Builders<T>.Filter.Lt(attribute, this.Value);
+						break;
 
-				case CompareOperator.GreaterOrEquals:
-					return Builders<T>.Filter.Gte(attribute, this.Value);
+					case CompareOperator.LessThanOrEquals:
+						filter = Builders<T>.Filter.Lte(attribute, this.Value);
+						break;
 
-				case CompareOperator.Contains:
-					return this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
-						? Builders<T>.Filter.Eq(attribute, "")
-						: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("/.*" + this.Value + ".*/"));
+					case CompareOperator.Greater:
+						filter = Builders<T>.Filter.Gt(attribute, this.Value);
+						break;
 
-				case CompareOperator.StartsWith:
-					return this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
-						? Builders<T>.Filter.Eq(attribute, "")
-						: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("^" + this.Value));
+					case CompareOperator.GreaterOrEquals:
+						filter = Builders<T>.Filter.Gte(attribute, this.Value);
+						break;
 
-				case CompareOperator.EndsWith:
-					return this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
-						? Builders<T>.Filter.Eq(attribute, "")
-						: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression(this.Value + "$"));
+					case CompareOperator.Contains:
+						filter = this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
+							? Builders<T>.Filter.Eq(attribute, "")
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("/.*" + this.Value + ".*/"));
+						break;
 
-				case CompareOperator.IsNull:
-					return Builders<T>.Filter.Eq(attribute, BsonNull.Value);
+					case CompareOperator.StartsWith:
+						filter = this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
+							? Builders<T>.Filter.Eq(attribute, "")
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("^" + this.Value));
+						break;
 
-				case CompareOperator.IsNotNull:
-					return Builders<T>.Filter.Ne(attribute, BsonNull.Value);
+					case CompareOperator.EndsWith:
+						filter = this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
+							? Builders<T>.Filter.Eq(attribute, "")
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression(this.Value + "$"));
+						break;
 
-				case CompareOperator.IsEmpty:
-					return Builders<T>.Filter.Eq(attribute, "");
+					case CompareOperator.IsNull:
+						filter = Builders<T>.Filter.Eq(attribute, BsonNull.Value);
+						break;
 
-				case CompareOperator.IsNotEmpty:
-					return Builders<T>.Filter.Ne(attribute, "");
+					case CompareOperator.IsNotNull:
+						filter = Builders<T>.Filter.Ne(attribute, BsonNull.Value);
+						break;
 
-				default:
-					return null;
-			}
+					case CompareOperator.IsEmpty:
+						filter = Builders<T>.Filter.Eq(attribute, "");
+						break;
+
+					case CompareOperator.IsNotEmpty:
+						filter = Builders<T>.Filter.Ne(attribute, "");
+						break;
+
+					default:
+						break;
+				}
+
+			return filter;
 		}
 
 		/// <summary>
@@ -302,15 +421,15 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with statement of SQL
-		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, ObjectService.AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null)
+		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, ObjectService.AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			if (this.Children == null || this.Children.Count < 1)
 				return null;
 
 			else if (this.Children.Count.Equals(1))
 				return this.Children[0] is FilterBys<T>
-					? (this.Children[0] as FilterBys<T>).GetSqlStatement(surfix, standardProperties, extendedProperties)
-					: (this.Children[0] as FilterBy<T>).GetSqlStatement(surfix, standardProperties, extendedProperties);
+					? (this.Children[0] as FilterBys<T>).GetSqlStatement(surfix, standardProperties, extendedProperties, definition, parentIDs)
+					: (this.Children[0] as FilterBy<T>).GetSqlStatement(surfix, standardProperties, extendedProperties, definition, parentIDs);
 
 			else
 			{
@@ -319,8 +438,8 @@ namespace net.vieapps.Components.Repository
 				this.Children.ForEach((child, index) =>
 				{
 					var data = child is FilterBys<T>
-						? (child as FilterBys<T>).GetSqlStatement((!string.IsNullOrEmpty(surfix) ? surfix : "r") + "_" + index.ToString(), standardProperties, extendedProperties)
-						: (child as FilterBy<T>).GetSqlStatement((!string.IsNullOrEmpty(surfix) ? surfix : "r") + "_" + index.ToString(), standardProperties, extendedProperties);
+						? (child as FilterBys<T>).GetSqlStatement((!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs)
+						: (child as FilterBy<T>).GetSqlStatement((!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs);
 
 					if (data != null)
 					{
@@ -333,7 +452,7 @@ namespace net.vieapps.Components.Repository
 				});
 
 				return !statement.Equals("") && parameters.Count > 0
-					? new Tuple<string, Dictionary<string, object>>("(" + statement + ")", parameters)
+					? new Tuple<string, Dictionary<string, object>>((!string.IsNullOrEmpty(surfix) ? "(" : "") + statement + (!string.IsNullOrEmpty(surfix) ? ")" : ""), parameters)
 					: null;
 			}
 		}
@@ -345,7 +464,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with statement of No SQL
-		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
+		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			FilterDefinition<T> filter = null;
 
@@ -354,15 +473,15 @@ namespace net.vieapps.Components.Repository
 
 			else if (this.Children.Count.Equals(1))
 				filter = this.Children[0] is FilterBys<T>
-					? (this.Children[0] as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties)
-					: (this.Children[0] as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties);
+					? (this.Children[0] as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs)
+					: (this.Children[0] as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs);
 
 			else
 				this.Children.ForEach(child =>
 				{
 					var childFilter = child is FilterBys<T>
-						? (child as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties)
-						: (child as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties);
+						? (child as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs)
+						: (child as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs);
 
 					if (childFilter != null)
 						filter = filter == null
@@ -419,13 +538,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBys<T> And(IEnumerable<IFilterBy<T>> filters)
 		{
-			var filter = new FilterBys<T>(GroupOperator.And);
-			if (filters != null)
-				filters.ForEach(item =>
-				{
-					filter.Add(item);
-				});
-			return filter;
+			return new FilterBys<T>(GroupOperator.And, filters != null ? filters.ToList() : null);
 		}
 
 		/// <summary>
@@ -451,13 +564,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBys<T> Or(IEnumerable<IFilterBy<T>> filters)
 		{
-			var filter = new FilterBys<T>(GroupOperator.Or);
-			if (filters != null)
-				filters.ForEach(item =>
-				{
-					filter.Add(item);
-				});
-			return filter;
+			return new FilterBys<T>(GroupOperator.Or, filters != null ? filters.ToList() : null);
 		}
 		#endregion
 
@@ -739,6 +846,14 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		internal List<string> GetAttributes()
+		{
+			var attributes = new List<string>() { this.Attribute };
+			return this.ThenBy != null
+				? attributes.Concat(this.ThenBy.GetAttributes()).ToList()
+				: attributes;
+		}
+
 	}
 
 	// ------------------------------------------
@@ -765,8 +880,10 @@ namespace net.vieapps.Components.Repository
 		}
 	}
 
-	public static class RestrictionExtensions
+	public static class RestrictionsHelper
 	{
+
+		#region ThenBy
 		/// <summary>
 		/// Creates a combined sorting expression with an ascending sort
 		/// </summary>
@@ -784,6 +901,93 @@ namespace net.vieapps.Components.Repository
 			sort.ThenBy = new SortBy<T>(attribute, SortMode.Descending);
 			return sort;
 		}
+		#endregion
+
+		#region Statements of SQL
+		internal static Tuple<Tuple<string, Dictionary<string, object>>, string> PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		{
+			definition = definition != null
+				? definition
+				: RepositoryMediator.GetEntityDefinition<T>();
+
+			propertiesInfo = propertiesInfo != null
+				? propertiesInfo
+				: RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+
+			parentIDs = parentIDs != null
+				? parentIDs
+				: definition != null && autoAssociateWithMultipleParents && filter != null
+					? filter.GetAssociatedParentIDs(definition)
+					: null;
+
+			var standardProperties = propertiesInfo.Item1;
+			var extendedProperties = propertiesInfo.Item2;
+
+			var filterBy = filter != null
+				? filter is FilterBys<T>
+					? (filter as FilterBys<T>).GetSqlStatement(null, standardProperties, extendedProperties, definition, parentIDs)
+					: (filter as FilterBy<T>).GetSqlStatement(null, standardProperties, extendedProperties, definition, parentIDs)
+				: null;
+
+			if (!string.IsNullOrWhiteSpace(businessEntityID) && extendedProperties != null)
+				filterBy = new Tuple<string, Dictionary<string, object>>
+				(
+					"Origin.EntityID=@EntityID" + (filterBy != null ? " AND " + filterBy.Item1 : ""),
+					new Dictionary<string, object>(filterBy != null ? filterBy.Item2 : new Dictionary<string, object>())
+					{
+						{ "@EntityID", businessEntityID }
+					}
+				);
+
+			var sortBy = sort != null
+				? sort.GetSqlStatement(standardProperties, extendedProperties)
+				: null;
+
+			return new Tuple<Tuple<string, Dictionary<string, object>>, string>(filterBy, sortBy);
+		}
+		#endregion
+
+		#region Statements of No SQL
+		internal static Tuple<FilterDefinition<T>, SortDefinition<T>> PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		{
+			definition = definition != null
+				? definition
+				: autoAssociateWithMultipleParents
+					? RepositoryMediator.GetEntityDefinition<T>()
+					: null;
+
+			propertiesInfo = propertiesInfo != null
+				? propertiesInfo
+				: RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+
+			parentIDs = parentIDs != null
+				? parentIDs
+				: definition != null && autoAssociateWithMultipleParents && filter != null
+					? filter.GetAssociatedParentIDs(definition)
+					: null;
+
+			var standardProperties = propertiesInfo.Item1;
+			var extendedProperties = propertiesInfo.Item2;
+
+			var filterBy = filter != null
+				? filter is FilterBys<T>
+					? (filter as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs)
+					: (filter as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs)
+				: null;
+
+			if (!string.IsNullOrWhiteSpace(businessEntityID) && extendedProperties != null)
+				filterBy = filterBy == null
+					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
+					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
+
+			var sortBy = sort != null
+				? sort.GetNoSqlStatement(null, standardProperties, extendedProperties)
+				: null;
+
+			return new Tuple<FilterDefinition<T>, SortDefinition<T>>(filterBy, sortBy);
+		}
+		#endregion
+
 	}
 
 }

@@ -345,18 +345,18 @@ namespace net.vieapps.Components.Repository
 		/// Gets the connection of SQL database of a specified data-source
 		/// </summary>
 		/// <param name="dataSource">The object that presents related information of a data source of SQL database</param>
-		/// <param name="providerFactory">The object that presents information of a database provider factory</param>
+		/// <param name="dbProviderFactory">The object that presents information of a database provider factory</param>
 		/// <returns></returns>
-		public DbConnection GetSqlConnection(DataSource dataSource, DbProviderFactory providerFactory = null)
+		public DbConnection GetSqlConnection(DataSource dataSource, DbProviderFactory dbProviderFactory = null)
 		{
 			if (dataSource == null)
 				return null;
 
-			else if (this.SqlConnection != null && this.SqlConnectionStringName != null && this.SqlConnectionStringName.Equals(dataSource.ConnectionStringName))
+			else if (this.SqlConnection != null && !string.IsNullOrEmpty(this.SqlConnection.ConnectionString) && this.SqlConnectionStringName != null && this.SqlConnectionStringName.Equals(dataSource.ConnectionStringName))
 				return this.SqlConnection;
 
 			this.SqlConnection = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
-				? SqlHelper.GetConnection(dataSource, providerFactory)
+				? SqlHelper.GetConnection(dataSource, dbProviderFactory)
 				: null;
 
 			if (this.SqlConnection != null)

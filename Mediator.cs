@@ -1395,8 +1395,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null) where T : class
+		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1420,9 +1421,9 @@ namespace net.vieapps.Components.Repository
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, null)
+					? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID)
+						? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 						: new List<string>();
 
 			// process
@@ -1484,9 +1485,9 @@ namespace net.vieapps.Components.Repository
 			{
 				objects = identities == null || identities.Count > 0
 					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? context.Find<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, null)
+						? context.Find<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? context.Find<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID)
+							? context.Find<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 							: new List<T>()
 					: new List<T>();
 
@@ -1512,14 +1513,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null) where T : class
+		public static List<T> Find<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.Find<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID);
+					return RepositoryMediator.Find<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 				}
 				catch (Exception ex)
 				{
@@ -1540,9 +1542,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1566,9 +1569,9 @@ namespace net.vieapps.Components.Repository
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, null, cancellationToken)
+					? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken)
+						? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
 						: new List<string>();
 
 			// process
@@ -1630,9 +1633,9 @@ namespace net.vieapps.Components.Repository
 			{
 				objects = identities == null || identities.Count > 0
 					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, null, cancellationToken)
+						? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken)
+							? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
 							: new List<T>()
 					: new List<T>();
 
@@ -1658,15 +1661,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, cancellationToken);
+					return RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -1677,7 +1681,111 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Search
+		#region Count
+		/// <summary>
+		/// Counts the number of intances of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
+		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
+		{
+			// prepare
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			context.AliasTypeName = aliasTypeName;
+
+			// count
+			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+				? context.Count<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+					? context.Count<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents)
+					: 0;
+		}
+
+		/// <summary>
+		/// Counts the number of intances of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
+		public static long Count<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				try
+				{
+					return RepositoryMediator.Count<T>(context, aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents);
+				}
+				catch (Exception ex)
+				{
+					context.Exception = ex;
+					throw new RepositoryOperationException(ex);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of intances of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
+		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			// prepare
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			context.AliasTypeName = aliasTypeName;
+
+			// count
+			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
+			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+				? context.CountAsync<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
+				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+					? context.CountAsync<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
+					: Task.FromResult<long>(0);
+		}
+
+		/// <summary>
+		/// Counts the number of intances of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
+		public static Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				try
+				{
+					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
+				}
+				catch (Exception ex)
+				{
+					context.Exception = ex;
+					return Task.FromException<long>(new RepositoryOperationException(ex));
+				}
+			}
+		}
+		#endregion
+
+		#region Search (by query)
 		/// <summary>
 		/// Searchs intances of objects from repository (using full-text search)
 		/// </summary>
@@ -1966,106 +2074,6 @@ namespace net.vieapps.Components.Repository
 				{
 					context.Exception = ex;
 					return Task.FromException<List<T>>(new RepositoryOperationException(ex));
-				}
-			}
-		}
-		#endregion
-
-		#region Count
-		/// <summary>
-		/// Counts the number of intances of objects
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null) where T : class
-		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			context.AliasTypeName = aliasTypeName;
-
-			// count
-			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? context.Count<T>(primaryDataSource, filter, businessEntityID, null)
-				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? context.Count<T>(primaryDataSource, filter, businessEntityID)
-					: 0;
-		}
-
-		/// <summary>
-		/// Counts the number of intances of objects
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static long Count<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				try
-				{
-					return RepositoryMediator.Count<T>(context, aliasTypeName, filter, businessEntityID);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
-				}
-			}
-		}
-
-		/// <summary>
-		/// Counts the number of intances of objects
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			context.AliasTypeName = aliasTypeName;
-
-			// count
-			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? context.CountAsync<T>(primaryDataSource, filter, businessEntityID, null, cancellationToken)
-				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? context.CountAsync<T>(primaryDataSource, filter, businessEntityID, cancellationToken)
-					: Task.FromResult<long>(0);
-		}
-
-		/// <summary>
-		/// Counts the number of intances of objects
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				try
-				{
-					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					return Task.FromException<long>(new RepositoryOperationException(ex));
 				}
 			}
 		}
@@ -2561,35 +2569,60 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Property/Attribute extension methods
-		internal static T CreateInstance<T>(string businessEntityID = null) where T : class
+		internal static Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID, EntityDefinition definition = null) where T : class
 		{
-			var instance = ObjectService.CreateInstance<T>();
-			if (instance.IsGotExtendedProperties(businessEntityID))
-			{
-				(instance as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
-				RepositoryMediator.GetEntityDefinition<T>().RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ForEach(attribute =>
-				{
-					(instance as IBusinessEntity).ExtendedProperties.Add(attribute.Name, attribute.GetDefaultValue());
-				});
-			}
-			return instance;
-		}
+			definition = definition != null
+				? definition
+				: RepositoryMediator.GetEntityDefinition<T>();
 
-		internal static Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID) where T : class
-		{
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var standardProperties = definition != null
 				? definition.Attributes.ToDictionary(attribute => attribute.Name)
 				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => attribute.Name);
 
-			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessEntityID)
+			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessEntityID, definition)
 				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
 				: null;
 
 			return new Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>>(standardProperties, extendedProperties);
 		}
 
-		internal static bool IsGotExtendedProperties<T>(this T @object, string businessEntityID = null) where T : class
+		internal static List<string> GetAssociatedParentIDs<T>(this IFilterBy<T> filter, EntityDefinition definition = null) where T : class
+		{
+			definition = definition != null
+				? definition
+				: RepositoryMediator.GetEntityDefinition<T>();
+
+			if (definition == null || definition.ParentType == null || string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty))
+				return null;
+
+			if (filter is FilterBy<T>)
+				return (filter as FilterBy<T>).Attribute.Equals(definition.ParentAssociatedProperty)
+					? new List<string>() { (filter as FilterBy<T>).Value as string }
+					: null;
+
+			if ((filter as FilterBys<T>).Children == null || (filter as FilterBys<T>).Children.Count <1)
+				return null;
+
+			var parentIDs = new List<string>();
+
+			(filter as FilterBys<T>).Children.ForEach(info =>
+			{
+				if (info is FilterBy<T> && (info as FilterBy<T>).Attribute.Equals(definition.ParentAssociatedProperty))
+					parentIDs.Add((info as FilterBy<T>).Value as string);
+				else if (info is FilterBys<T> && (info as FilterBys<T>).Children != null && (info as FilterBys<T>).Children.Count > 0)
+				{
+					var ids = info.GetAssociatedParentIDs(definition);
+					if (ids != null)
+						parentIDs.Append(ids);
+				}
+			});
+
+			return parentIDs.Count > 0
+				? parentIDs.Distinct().ToList()
+				: null;
+		}
+
+		internal static bool IsGotExtendedProperties<T>(this T @object, string businessEntityID = null, EntityDefinition definition = null) where T : class
 		{
 			if (!(@object is IBusinessEntity))
 				return false;
@@ -2601,7 +2634,10 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(businessEntityID))
 				return false;
 
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			definition = definition != null
+				? definition
+				: RepositoryMediator.GetEntityDefinition<T>();
+
 			if (definition == null || definition.RuntimeEntities == null)
 				return false;
 
