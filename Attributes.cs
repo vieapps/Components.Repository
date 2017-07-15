@@ -270,6 +270,15 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
+	/// Specifies this property is able for searching by full-text search (means got pre-defined index)
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property)]
+	public class SearchableAttribute : Attribute
+	{
+		public SearchableAttribute() { }
+	}
+
+	/// <summary>
 	/// Specifies this date-time property will be stored in SQL as a string with format 'yyyy/MM/dd HH:mm:ss'
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]

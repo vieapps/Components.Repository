@@ -2571,18 +2571,18 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Property/Attribute extension methods
-		internal static Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID, EntityDefinition definition = null, bool toLowerCase = false) where T : class
+		internal static Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID, EntityDefinition definition = null, bool lowerCaseKeys = false) where T : class
 		{
 			definition = definition != null
 				? definition
 				: RepositoryMediator.GetEntityDefinition<T>();
 
 			var standardProperties = definition != null
-				? definition.Attributes.ToDictionary(attribute => toLowerCase ? attribute.Name.ToLower() : attribute.Name)
-				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => toLowerCase ? attribute.Name.ToLower() : attribute.Name);
+				? definition.Attributes.ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
+				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name);
 
 			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessEntityID, definition)
-				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => toLowerCase ? attribute.Name.ToLower() : attribute.Name)
+				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
 				: null;
 
 			return new Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>>(standardProperties, extendedProperties);
@@ -2669,6 +2669,16 @@ namespace net.vieapps.Components.Repository
 		internal static bool IsStoredAsString(this ObjectService.AttributeInfo attribute)
 		{
 			return attribute.Type.IsDateTimeType() && attribute.Info.GetCustomAttributes(typeof(AsStringAttribute), true).Length > 0;
+		}
+
+		internal static bool IsSortable(this ObjectService.AttributeInfo attribute)
+		{
+			return attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true).Length > 0;
+		}
+
+		internal static bool IsSearchable(this ObjectService.AttributeInfo attribute)
+		{
+			return attribute.Type.IsStringType() && attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0;
 		}
 		#endregion
 

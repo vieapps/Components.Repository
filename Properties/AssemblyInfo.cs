@@ -36,4 +36,4 @@ using System.Security.Permissions;
 //
 [assembly: AssemblyVersion("10.1")]
 [assembly: AssemblyFileVersion("10.1")]
-[assembly: AssemblyInformationalVersion("10.1.sfxp-2017.06.12")]
+[assembly: AssemblyInformationalVersion("10.1.sqlh-2017.07.15")]

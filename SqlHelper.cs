@@ -223,7 +223,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Parameter
-		static DbParameter CreateParameter(this KeyValuePair<string, object> info, DbProviderFactory dbProviderFactory)
+		static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, KeyValuePair<string, object> info)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = info.Key;
@@ -234,12 +234,12 @@ namespace net.vieapps.Components.Repository
 			return parameter;
 		}
 
-		static DbParameter CreateParameter(this ObjectService.AttributeInfo attribute, object value, DbProviderFactory dbProviderFactory)
+		static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory,ObjectService.AttributeInfo attribute, object value)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = "@" + attribute.Name;
 			parameter.DbType = attribute.GetDbType();
-			parameter.Value = attribute.IsStoredAsJson()
+			parameter.Value = attribute.IsStoredAsJson() 
 				? parameter.Value = value == null
 					? ""
 					: value.ToJson().ToString(Newtonsoft.Json.Formatting.None)
@@ -251,7 +251,7 @@ namespace net.vieapps.Components.Repository
 			return parameter;
 		}
 
-		static DbParameter CreateParameter(this ExtendedPropertyDefinition attribute, object value, DbProviderFactory dbProviderFactory)
+		static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, ExtendedPropertyDefinition attribute, object value)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = "@" + attribute.Name;
@@ -304,6 +304,7 @@ namespace net.vieapps.Components.Repository
 					var value = reader[index];
 					if (value != null && attribute.Type.IsDateTimeType())
 						value = DateTime.Parse(value as string);
+
 					if ((@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name))
 						(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value.CastAs(attribute.Type);
 					else
@@ -326,18 +327,13 @@ namespace net.vieapps.Components.Repository
 			if (@object is IBusinessEntity && extendedProperties != null && (@object as IBusinessEntity).ExtendedProperties == null)
 				(@object as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
 
-			if (standardProperties != null)
-				standardProperties.ForEach(info =>
+			for (var index = 0; index < data.Table.Columns.Count; index++)
+			{
+				var name = data.Table.Columns[index].ColumnName;
+				if (standardProperties != null && standardProperties.ContainsKey(name))
 				{
-					var attribute = info.Value;					
-					object value = null;
-					if (data.Table.Columns.Contains(attribute.Name))
-						try
-						{
-							value = data[attribute.Name];
-						}
-						catch { }
-
+					var attribute = standardProperties[name];
+					var value = data[name];
 					if (value != null)
 					{
 						if (attribute.Type.IsDateTimeType() && attribute.IsStoredAsString())
@@ -349,32 +345,22 @@ namespace net.vieapps.Components.Repository
 								: JObject.Parse(value as string) as JToken;
 							value = (new JsonSerializer()).Deserialize(new JTokenReader(json), attribute.Type);
 						}
-						@object.SetAttributeValue(attribute, value, true);
 					}
-				});
-
-			if (extendedProperties != null)
-				extendedProperties.ForEach(info =>
+					@object.SetAttributeValue(attribute, value, true);
+				}
+				else if (extendedProperties != null && extendedProperties.ContainsKey(name))
 				{
-					var attribute = info.Value;
-					if (data.Table.Columns.Contains(attribute.Name))
-					{
-						object value = null;
-						try
-						{
-							value = data[attribute.Name];
-						}
-						catch { }
+					var attribute = extendedProperties[name];
+					var value = data[name];
+					if (value != null && attribute.Type.IsDateTimeType())
+						value = DateTime.Parse(value as string);
 
-						if (value != null && attribute.Type.IsDateTimeType())
-							value = DateTime.Parse(value as string);
-
-						if ((@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name))
-							(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value.CastAs(attribute.Type);
-						else
-							(@object as IBusinessEntity).ExtendedProperties.Add(attribute.Name, value.CastAs(attribute.Type));
-					}
-				});
+					if ((@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name))
+						(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value.CastAs(attribute.Type);
+					else
+						(@object as IBusinessEntity).ExtendedProperties.Add(attribute.Name, value.CastAs(attribute.Type));
+				}
+			}
 
 			return @object;
 		}
@@ -396,7 +382,7 @@ namespace net.vieapps.Components.Repository
 
 				columns.Add(string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column);
 				values.Add("@" + attribute.Name);
-				parameters.Add(attribute.CreateParameter(value, dbProviderFactory));
+				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
 			var statement = "INSERT INTO " + definition.TableName
@@ -411,10 +397,10 @@ namespace net.vieapps.Components.Repository
 			var values = "@ID,@SystemID,@RepositoryID,@EntityID".ToList();
 			var parameters = new List<DbParameter>()
 			{
-				(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)).CreateParameter(dbProviderFactory),
-				(new KeyValuePair<string, object>("@SystemID", (@object as IBusinessEntity).SystemID)).CreateParameter(dbProviderFactory),
-				(new KeyValuePair<string, object>("@RepositoryID", (@object as IBusinessEntity).RepositoryID)).CreateParameter(dbProviderFactory),
-				(new KeyValuePair<string, object>("@EntityID", (@object as IBusinessEntity).EntityID)).CreateParameter(dbProviderFactory)
+				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID",(@object as IBusinessEntity).ID)),
+				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@SystemID",(@object as IBusinessEntity).SystemID)),
+				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@RepositoryID",(@object as IBusinessEntity).RepositoryID)),
+				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@EntityID",(@object as IBusinessEntity).EntityID))
 			};
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
@@ -427,7 +413,7 @@ namespace net.vieapps.Components.Repository
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
 					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
 					: attribute.GetDefaultValue();
-				parameters.Add(attribute.CreateParameter(value, dbProviderFactory));
+				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
 			var statement = "INSERT INTO " + definition.RepositoryDefinition.ExtendedPropertiesTableName
@@ -511,7 +497,7 @@ namespace net.vieapps.Components.Repository
 			var info = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
 			var statement = "SELECT " + string.Join(", ", fields)
 				+ " FROM " + definition.TableName + " AS Origin WHERE " + info.Item1;
-			var parameters = new List<DbParameter>(info.Item2.Select(param => param.CreateParameter(dbProviderFactory)));
+			var parameters = info.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -525,7 +511,7 @@ namespace net.vieapps.Components.Repository
 			var info = Filters<T>.Equals("ID", id).GetSqlStatement();
 			var statement = "SELECT " + string.Join(", ", fields)
 				+ " FROM " + RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName + " AS Origin WHERE " + info.Item1;
-			var parameters = new List<DbParameter>(info.Item2.Select(param => param.CreateParameter(dbProviderFactory)));
+			var parameters = info.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -665,10 +651,10 @@ namespace net.vieapps.Components.Repository
 					continue;
 
 				columns.Add((string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + "=" + "@" + attribute.Name);
-				parameters.Add(attribute.CreateParameter(value, dbProviderFactory));
+				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
-			parameters.Add((new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory));
+			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())));
 			var statement = "UPDATE " + definition.TableName
 				+ " SET " + string.Join(", ", columns) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 
@@ -689,10 +675,10 @@ namespace net.vieapps.Components.Repository
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
 					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
 					: attribute.GetDefaultValue();
-				parameters.Add(attribute.CreateParameter(value, dbProviderFactory));
+				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
-			parameters.Add((new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)).CreateParameter(dbProviderFactory));
+			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", @object.GetEntityID())));
 			var statement = "UPDATE " + definition.RepositoryDefinition.ExtendedPropertiesTableName
 				+ " SET " + string.Join(", ", columns) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 
@@ -776,10 +762,10 @@ namespace net.vieapps.Components.Repository
 					continue;
 
 				columns.Add((string.IsNullOrEmpty(standardProperties[attribute].Column) ? standardProperties[attribute].Name : standardProperties[attribute].Column) + "=" + "@" + standardProperties[attribute].Name);
-				parameters.Add(standardProperties[attribute].CreateParameter(value, dbProviderFactory));
+				parameters.Add(dbProviderFactory.CreateParameter(standardProperties[attribute], value));
 			}
 
-			parameters.Add((new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory));
+			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())));
 			var statement = "UPDATE " + definition.TableName
 				+ " SET " + string.Join(", ", columns) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 
@@ -803,10 +789,10 @@ namespace net.vieapps.Components.Repository
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(extendedProperties[attribute].Name)
 					? (@object as IBusinessEntity).ExtendedProperties[extendedProperties[attribute].Name]
 					: extendedProperties[attribute].GetDefaultValue();
-				parameters.Add(extendedProperties[attribute].CreateParameter(value, dbProviderFactory));
+				parameters.Add(dbProviderFactory.CreateParameter(extendedProperties[attribute], value));
 			}
 
-			parameters.Add((new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)).CreateParameter(dbProviderFactory));
+			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)));
 			var statement = "UPDATE " + definition.RepositoryDefinition.ExtendedPropertiesTableName
 				+ " SET " + string.Join(", ", colums) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 
@@ -894,7 +880,7 @@ namespace net.vieapps.Components.Repository
 				var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 				var parameters = new List<DbParameter>()
 				{
-					(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory)
+					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID()))
 				};
 				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 				command.ExecuteNonQuery();
@@ -904,7 +890,7 @@ namespace net.vieapps.Components.Repository
 					statement = "DELETE FROM " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " WHERE ID=@ID";
 					parameters = new List<DbParameter>()
 					{
-						(new KeyValuePair<string, object>("@ID", @object.GetEntityID())).CreateParameter(dbProviderFactory)
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", @object.GetEntityID()))
 					};
 					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 					command.ExecuteNonQuery();
@@ -933,7 +919,7 @@ namespace net.vieapps.Components.Repository
 				var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 				var parameters = new List<DbParameter>()
 				{
-					(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory)
+					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID()))
 				};
 				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 				await command.ExecuteNonQueryAsync(cancellationToken);
@@ -943,7 +929,7 @@ namespace net.vieapps.Components.Repository
 					statement = "DELETE FROM " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " WHERE ID=@ID";
 					parameters = new List<DbParameter>()
 					{
-						(new KeyValuePair<string, object>("@ID", @object.GetEntityID())).CreateParameter(dbProviderFactory)
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", @object.GetEntityID()))
 					};
 					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 					await command.ExecuteNonQueryAsync(cancellationToken);
@@ -973,7 +959,7 @@ namespace net.vieapps.Components.Repository
 				var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 				var parameters = new List<DbParameter>()
 				{
-					(new KeyValuePair<string, object>("@" + definition.PrimaryKey, id)).CreateParameter(dbProviderFactory)
+					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, id))
 				};
 				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 				command.ExecuteNonQuery();
@@ -983,7 +969,7 @@ namespace net.vieapps.Components.Repository
 					statement = "DELETE FROM " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " WHERE ID=@ID";
 					parameters = new List<DbParameter>()
 					{
-						(new KeyValuePair<string, object>("@ID", id)).CreateParameter(dbProviderFactory)
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", id))
 					};
 					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 					command.ExecuteNonQuery();
@@ -1015,7 +1001,7 @@ namespace net.vieapps.Components.Repository
 				var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 				var parameters = new List<DbParameter>()
 				{
-					(new KeyValuePair<string, object>("@" + definition.PrimaryKey, id)).CreateParameter(dbProviderFactory)
+					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, id))
 				};
 				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 				await command.ExecuteNonQueryAsync(cancellationToken);
@@ -1025,7 +1011,7 @@ namespace net.vieapps.Components.Repository
 					statement = "DELETE FROM " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " WHERE ID=@ID";
 					parameters = new List<DbParameter>()
 					{
-						(new KeyValuePair<string, object>("@ID", id)).CreateParameter(dbProviderFactory)
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", id))
 					};
 					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 					await command.ExecuteNonQueryAsync(cancellationToken);
@@ -1085,7 +1071,8 @@ namespace net.vieapps.Components.Repository
 			var fields = new List<string>();
 			(attributes != null && attributes.Count() > 0
 				? attributes
-				: standardProperties.Select(item => item.Value.Name)
+				: standardProperties
+					.Select(item => item.Value.Name)
 					.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
 			).ForEach(attribute =>
 			{
@@ -1158,7 +1145,7 @@ namespace net.vieapps.Components.Repository
 
 			// parameters
 			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
-				? statementsInfo.Item1.Item2.Select(param => param.CreateParameter(dbProviderFactory)).ToList()
+				? statementsInfo.Item1.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList()
 				: new List<DbParameter>();
 
 			// return information
@@ -1513,7 +1500,7 @@ namespace net.vieapps.Components.Repository
 		{
 			return identities == null || identities.Count < 1
 				? new List<T>()
-				: context.Find(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, 0, 1, businessEntityID, false);
+				: context.Find(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessEntityID, false);
 		}
 
 		/// <summary>
@@ -1531,7 +1518,7 @@ namespace net.vieapps.Components.Repository
 		{
 			return identities == null || identities.Count < 1
 				? Task.FromResult<List<T>>(new List<T>())
-				: context.FindAsync(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, 0, 1, businessEntityID, false, cancellationToken);
+				: context.FindAsync(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessEntityID, false, cancellationToken);
 		}
 		#endregion
 
@@ -1556,16 +1543,16 @@ namespace net.vieapps.Components.Repository
 				+ (gotAssociateWithMultipleParents ? " LEFT JOIN " + definition.MultipleParentAssociatesTable + " AS Link ON Origin." + definition.PrimaryKey + "=Link." + definition.MultipleParentAssociatesLinkColumn : "");
 
 			// couting expressions (WHERE)
-			string where = statementsInfo.Item1 == null || string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
-				? ""
-				: " WHERE " + statementsInfo.Item1.Item1;
+			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
+				? " WHERE " + statementsInfo.Item1.Item1
+				: "";
 
 			// statement
 			var statement = "SELECT COUNT(" + (gotAssociateWithMultipleParents ? "DISTINCT " : "") + definition.PrimaryKey + ") AS TotalRecords" + tables + where;
 
 			// parameters
 			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
-				? statementsInfo.Item1.Item2.Select(param => param.CreateParameter(dbProviderFactory)).ToList()
+				? statementsInfo.Item1.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList()
 				: new List<DbParameter>();
 
 			// return info
@@ -1589,8 +1576,7 @@ namespace net.vieapps.Components.Repository
 			{
 				connection.Open();
 
-				var info = dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents);
-				var command = connection.CreateCommand(info);
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents));
 				return command.ExecuteScalar().CastAs<long>();
 			}
 		}
@@ -1613,8 +1599,7 @@ namespace net.vieapps.Components.Repository
 			{
 				await connection.OpenAsync(cancellationToken);
 
-				var info = dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents);
-				var command = connection.CreateCommand(info);
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents));
 				return (await command.ExecuteScalarAsync(cancellationToken)).CastAs<long>();
 			}
 		}
@@ -1629,6 +1614,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static string GetSearchTerms(this DbProviderFactory dbProviderFactory, SearchQuery queryInfo)
 		{
+			var searchTerms = "";
+
 			// Microsoft SQL Server
 			if (dbProviderFactory.IsMicrosoftSQL())
 			{
@@ -1670,7 +1657,6 @@ namespace net.vieapps.Components.Repository
 					orSearchTerms = orSearchTerms.Left(orSearchTerms.Length - 4);
 
 				// build search terms
-				var searchTerms = "";
 				if (!andSearchTerms.Equals("") && !notSearchTerms.Equals("") && !orSearchTerms.Equals(""))
 					searchTerms = andSearchTerms + " " + notSearchTerms + " AND (" + orSearchTerms + ")";
 
@@ -1707,12 +1693,40 @@ namespace net.vieapps.Components.Repository
 				}
 
 				// return search terms with Unicode mark (N')
-				return "N'" + searchTerms + "'";
+				searchTerms = "N'" + searchTerms + "'";
 			}
 
-			// unknown
-			else
-				return "";
+			else if (dbProviderFactory.IsMySQL())
+			{
+				queryInfo.AndWords.ForEach(word =>
+				{
+					searchTerms += (searchTerms.Equals("") ? "" : " ") + "+" + word;
+				});
+				queryInfo.AndPhrases.ForEach(phrase =>
+				{
+					searchTerms += (searchTerms.Equals("") ? "" : " ") + "+\"" + phrase + "\"";
+				});
+
+				queryInfo.NotWords.ForEach(word =>
+				{
+					searchTerms += (searchTerms.Equals("") ? "" : " ") + "-" + word;
+				});
+				queryInfo.NotPhrases.ForEach(phrase =>
+				{
+					searchTerms += (searchTerms.Equals("") ? "" : " ") + "-\"" + phrase + "\"";
+				});
+
+				queryInfo.OrWords.ForEach(word =>
+				{
+					searchTerms += (searchTerms.Equals("") ? "" : " ") + word;
+				});
+				queryInfo.OrPhrases.ForEach(phrase =>
+				{
+					searchTerms += (searchTerms.Equals("") ? "" : " ") + "\"" + phrase + "\"";
+				});
+			}
+
+			return searchTerms;
 		}
 
 		static Tuple<string, List<DbParameter>> PrepareSearch<T>(this DbProviderFactory dbProviderFactory, IEnumerable<string> attributes, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, string searchInColumns = "*") where T : class
@@ -1772,6 +1786,23 @@ namespace net.vieapps.Components.Repository
 				orderby = "SearchScore DESC";
 			}
 
+			// MySQL
+			else if (dbProviderFactory.IsMySQL())
+			{
+				searchInColumns = !searchInColumns.Equals("*")
+					? searchInColumns
+					: standardProperties
+						.Where(attribute => attribute.Value.IsSearchable())
+						.Select(attribute => "Origin." + attribute.Value.Name)
+						.ToList()
+						.ToString(",");
+
+				fields.Add("SearchScore");
+				columns.Add("(MATCH(" + searchInColumns + ") AGAINST (" + searchTerms + " IN BOOLEAN MODE) AS SearchScore");
+				where += !where.Equals("") ? " AND SearchScore > 0" : " WHERE SearchScore > 0";
+				orderby = "SearchScore DESC";
+			}
+
 			// statement
 			var select = "SELECT " + string.Join(", ", columns) + tables + where;
 			var statement = "";
@@ -1815,7 +1846,7 @@ namespace net.vieapps.Components.Repository
 
 			// parameters
 			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
-				? statementsInfo.Item1.Item2.Select(param => param.CreateParameter(dbProviderFactory)).ToList()
+				? statementsInfo.Item1.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList()
 				: new List<DbParameter>();
 
 			// return info
@@ -1874,10 +1905,12 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					dataSet.Tables[0].Rows.ToList().ForEach(data =>
-					{
-						objects.Add(ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties));
-					});
+					dataSet.Tables[0].Rows
+						.ToList()
+						.ForEach(data =>
+						{
+							objects.Add(ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties));
+						});
 				}
 
 				return objects;
@@ -1937,10 +1970,12 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					dataSet.Tables[0].Rows.ToList().ForEach(data =>
-					{
-						objects.Add(ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties));
-					});
+					dataSet.Tables[0].Rows
+						.ToList()
+						.ForEach(data =>
+						{
+							objects.Add(ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties));
+						});
 				}
 
 				return objects;
@@ -2001,10 +2036,12 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					dataSet.Tables[0].Rows.ToList().ForEach(data =>
-					{
-						identities.Add(data[context.EntityDefinition.PrimaryKey].CastAs<string>());
-					});
+					dataSet.Tables[0].Rows
+						.ToList()
+						.ForEach(data =>
+						{
+							identities.Add(data[context.EntityDefinition.PrimaryKey].CastAs<string>());
+						});
 				}
 
 				return identities;
@@ -2064,10 +2101,12 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					dataSet.Tables[0].Rows.ToList().ForEach(data =>
-					{
-						identities.Add(data[context.EntityDefinition.PrimaryKey].CastAs<string>());
-					});
+					dataSet.Tables[0].Rows
+						.ToList()
+						.ForEach(data =>
+						{
+							identities.Add(data[context.EntityDefinition.PrimaryKey].CastAs<string>());
+						});
 				}
 
 				return identities;
@@ -2103,12 +2142,26 @@ namespace net.vieapps.Components.Repository
 			if (dbProviderFactory.IsMicrosoftSQL())
 				tables += " INNER JOIN CONTAINSTABLE (" + definition.TableName + ", " + searchInColumns + ", " + searchTerms + ") AS Search ON Origin." + definition.PrimaryKey + "=Search.[KEY]";
 
+			// MySQL
+			else if (dbProviderFactory.IsMySQL())
+			{
+				searchInColumns = !searchInColumns.Equals("*")
+					? searchInColumns
+					: standardProperties
+						.Where(attribute => attribute.Value.IsSearchable())
+						.Select(attribute => "Origin." + attribute.Value.Name)
+						.ToList()
+						.ToString(",");
+				where += (!where.Equals("") ? " AND " : " WHERE ")
+					+ "(MATCH(" + searchInColumns + ") AGAINST (" + searchTerms + " IN BOOLEAN MODE) > 0";
+			}
+
 			// statement
 			var statement = "SELECT COUNT(Origin." + definition.PrimaryKey + ") AS TotalRecords" + tables + where;
 
 			// parameters
 			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
-				? statementsInfo.Item1.Item2.Select(param => param.CreateParameter(dbProviderFactory)).ToList()
+				? statementsInfo.Item1.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList()
 				: new List<DbParameter>();
 
 			// return info
