@@ -1152,7 +1152,7 @@ namespace net.vieapps.Components.Repository
 			return dataTable;
 		}
 
-		static DataTable ConvertToDataTable(this DbDataReader reader, string name = "Table")
+		static DataTable ToDataTable(this DbDataReader reader, string name = "Table")
 		{
 			var dataTable = reader.CreateDataTable(name);
 			while (reader.Read())
@@ -1165,7 +1165,7 @@ namespace net.vieapps.Components.Repository
 			return dataTable;
 		}
 
-		static async Task<DataTable> ConvertoToDataTableAsync(this DbDataReader reader, string name = "Table", CancellationToken cancellationToken = default(CancellationToken))
+		static async Task<DataTable> ToDataTableAsync(this DbDataReader reader, string name = "Table", CancellationToken cancellationToken = default(CancellationToken))
 		{
 			var dataTable = reader.CreateDataTable(name);
 			while (await reader.ReadAsync(cancellationToken))
@@ -1206,7 +1206,7 @@ namespace net.vieapps.Components.Repository
 					var command = connection.CreateCommand(info);
 					using (var reader = command.ExecuteReader())
 					{
-						return reader.ConvertToDataTable(typeof(T).GetTypeName(true)).Rows.ToList();
+						return reader.ToDataTable(typeof(T).GetTypeName(true)).Rows.ToList();
 					}
 				}
 
@@ -1256,7 +1256,7 @@ namespace net.vieapps.Components.Repository
 					var command = connection.CreateCommand(info);
 					using (var reader = await command.ExecuteReaderAsync())
 					{
-						return (await reader.ConvertoToDataTableAsync(typeof(T).GetTypeName(true), cancellationToken)).Rows.ToList();
+						return (await reader.ToDataTableAsync(typeof(T).GetTypeName(true), cancellationToken)).Rows.ToList();
 					}
 				}
 
