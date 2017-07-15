@@ -19,7 +19,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Collection of methods for working with SQL database (like SQL Server, MySQL, Oracle, ...)
+	/// Collection of methods for working with SQL database (support Microsoft SQL Server, MySQL, PostgreSQL, Oracle RDBMS and ODBC)
 	/// </summary>
 	public static class SqlHelper
 	{
@@ -40,9 +40,53 @@ namespace net.vieapps.Components.Repository
 				: null;
 		}
 
+		static bool IsMicrosoftSQL(this DbProviderFactory dbProviderFactory)
+		{
+			var name = dbProviderFactory != null
+				? dbProviderFactory.GetType().GetTypeName(true)
+				: "";
+			return name.Equals("SqlClientFactory");
+		}
+
+		static bool IsOracle(this DbProviderFactory dbProviderFactory)
+		{
+			var name = dbProviderFactory != null
+				? dbProviderFactory.GetType().GetTypeName(true)
+				: "";
+			return name.Equals("OracleClientFactory");
+		}
+
+		static bool IsMySQL(this DbProviderFactory dbProviderFactory)
+		{
+			var name = dbProviderFactory != null
+				? dbProviderFactory.GetType().GetTypeName(true)
+				: "";
+			return name.Equals("MySqlClientFactory");
+		}
+
+		static bool IsPostgreSQL(this DbProviderFactory dbProviderFactory)
+		{
+			var name = dbProviderFactory != null
+				? dbProviderFactory.GetType().GetTypeName(true)
+				: "";
+			return name.Equals("NpgsqlFactory");
+		}
+
 		static bool IsGotRowNumber(this DbProviderFactory dbProviderFactory)
 		{
-			return !dbProviderFactory.GetType().GetTypeName(true).Equals("MySqlClientFactory");
+			return dbProviderFactory != null && (dbProviderFactory.IsMicrosoftSQL() || dbProviderFactory.IsOracle());
+		}
+
+		static bool IsGotLimitOffset(this DbProviderFactory dbProviderFactory)
+		{
+			return dbProviderFactory != null && (dbProviderFactory.IsMySQL() || dbProviderFactory.IsPostgreSQL());
+		}
+
+		static string GetOffsetStatement(this DbProviderFactory dbProviderFactory, int pageSize, int pageNumber = 1)
+		{
+			return dbProviderFactory != null && dbProviderFactory.IsGotLimitOffset()
+				? "LIMIT " + pageSize.ToString() + " OFFSET " + ((pageNumber - 1) * pageSize).ToString()
+				: "";
 		}
 		#endregion
 
@@ -93,7 +137,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Command
-		static DbCommand CreateCommand(this Tuple<string, List<DbParameter>> info, DbConnection connection)
+		static DbCommand CreateCommand(this DbConnection connection, Tuple<string, List<DbParameter>> info)
 		{
 			var command = connection.CreateCommand();
 			command.CommandText = info.Item1;
@@ -104,26 +148,21 @@ namespace net.vieapps.Components.Repository
 			return command;
 		}
 
-		static DbCommand CreateCommand(this Tuple<string, List<DbParameter>> info, DbProviderFactory dbProviderFactory)
+		static DbCommand CreateCommand(this DbProviderFactory dbProviderFactory, Tuple<string, List<DbParameter>> info, DbConnection connection = null)
 		{
-			var command = dbProviderFactory.CreateCommand();
-			command.CommandText = info.Item1;
-			info.Item2.ForEach(parameter =>
+			if (connection != null)
+				return connection.CreateCommand(info);
+			else
 			{
-				command.Parameters.Add(parameter);
-			});
-			return command;
-		}
-
-		static DbParameter CreateParameter(this KeyValuePair<string, object> info, DbProviderFactory dbProviderFactory)
-		{
-			var parameter = dbProviderFactory.CreateParameter();
-			parameter.ParameterName = info.Key;
-			parameter.Value = info.Value;
-			parameter.DbType = info.Key.EndsWith("ID")
-				? DbType.AnsiStringFixedLength
-				:  SqlHelper.DbTypes[info.Value.GetType()];
-			return parameter;
+				var command = dbProviderFactory.CreateCommand();
+				command.Connection = connection;
+				command.CommandText = info.Item1;
+				info.Item2.ForEach(parameter =>
+				{
+					command.Parameters.Add(parameter);
+				});
+				return command;
+			}
 		}
 		#endregion
 
@@ -168,15 +207,65 @@ namespace net.vieapps.Components.Repository
 
 		internal static DbType GetDbType(this ObjectService.AttributeInfo attribute)
 		{
-			return attribute.IsStoredAsString()
+			return (attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))) || attribute.IsStoredAsString()
 				? DbType.AnsiStringFixedLength
-				: attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))
-					? DbType.AnsiStringFixedLength
+				: attribute.IsStoredAsJson()
+					? DbType.String
 					: SqlHelper.DbTypes[attribute.Type];
+		}
+
+		internal static DbType GetDbType(this ExtendedPropertyDefinition attribute)
+		{
+			return attribute.Type.Equals(typeof(DateTime))
+				? DbType.AnsiString
+				: SqlHelper.DbTypes[attribute.Type];
 		}
 		#endregion
 
-		#region Copy data from DataReader/DataRow into object
+		#region Parameter
+		static DbParameter CreateParameter(this KeyValuePair<string, object> info, DbProviderFactory dbProviderFactory)
+		{
+			var parameter = dbProviderFactory.CreateParameter();
+			parameter.ParameterName = info.Key;
+			parameter.Value = info.Value;
+			parameter.DbType = info.Key.EndsWith("ID")
+				? DbType.AnsiStringFixedLength
+				: SqlHelper.DbTypes[info.Value.GetType()];
+			return parameter;
+		}
+
+		static DbParameter CreateParameter(this ObjectService.AttributeInfo attribute, object value, DbProviderFactory dbProviderFactory)
+		{
+			var parameter = dbProviderFactory.CreateParameter();
+			parameter.ParameterName = "@" + attribute.Name;
+			parameter.DbType = attribute.GetDbType();
+			parameter.Value = attribute.IsStoredAsJson()
+				? parameter.Value = value == null
+					? ""
+					: value.ToJson().ToString(Newtonsoft.Json.Formatting.None)
+				: attribute.IsStoredAsString()
+					? value == null
+						? ""
+						: ((DateTime)value).ToDTString()
+					: value;
+			return parameter;
+		}
+
+		static DbParameter CreateParameter(this ExtendedPropertyDefinition attribute, object value, DbProviderFactory dbProviderFactory)
+		{
+			var parameter = dbProviderFactory.CreateParameter();
+			parameter.ParameterName = "@" + attribute.Name;
+			parameter.DbType = attribute.GetDbType();
+			parameter.Value = attribute.Type.Equals(typeof(DateTime))
+					? value == null
+						? ""
+						: ((DateTime)value).ToDTString()
+					: value;
+			return parameter;
+		}
+		#endregion
+
+		#region Copy (DataReader)
 		static T Copy<T>(this T @object, DbDataReader reader, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			// create object
@@ -225,7 +314,9 @@ namespace net.vieapps.Components.Repository
 			// return object
 			return @object;
 		}
+		#endregion
 
+		#region Copy (DataRow)
 		static T Copy<T>(this T @object, DataRow data, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			@object = @object != null
@@ -292,8 +383,10 @@ namespace net.vieapps.Components.Repository
 		#region Create
 		static Tuple<string, List<DbParameter>> PrepareCreateOrigin<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
 		{
-			string columns = "", values = "";
+			var columns = new List<string>();
+			var values = new List<string>();
 			var parameters = new List<DbParameter>();
+
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			foreach(var attribute in definition.Attributes)
 			{
@@ -301,86 +394,46 @@ namespace net.vieapps.Components.Repository
 				if (value == null && attribute.IsIgnoredIfNull())
 					continue;
 
-				columns += (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + ",";
-				values += "@" + attribute.Name + ",";
-
-				var parameter = dbProviderFactory.CreateParameter();
-				parameter.ParameterName = "@" + attribute.Name;
-				if (attribute.IsStoredAsJson())
-				{
-					parameter.DbType = DbType.String;
-					parameter.Value = value.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-				}
-				else
-				{
-					parameter.DbType = attribute.GetDbType();
-					parameter.Value = attribute.IsStoredAsString()
-						? ((DateTime)value).ToDTString()
-						: value;
-				}
-				parameters.Add(parameter);
+				columns.Add(string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column);
+				values.Add("@" + attribute.Name);
+				parameters.Add(attribute.CreateParameter(value, dbProviderFactory));
 			}
 
-			return new Tuple<string, List<DbParameter>>(
-					"INSERT INTO " + definition.TableName + " (" + columns.Left(columns.Length - 1) + ") VALUES (" + values.Left(values.Length - 1) + ")", 
-					parameters
-				);
+			var statement = "INSERT INTO " + definition.TableName
+				+ " (" + string.Join(", ", columns) + ") VALUES (" + string.Join(", ", values) + ")";
+
+			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
 		static Tuple<string, List<DbParameter>> PrepareCreateExtent<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var columns = "ID,SystemID,RepositoryID,EntityID";
-			var values = "@ID,@SystemID,@RepositoryID,@EntityID";
-			var parameters = new List<DbParameter>();
-
-			var parameter = dbProviderFactory.CreateParameter();
-			parameter.ParameterName = "@ID";
-			parameter.Value = (@object as IBusinessEntity).ID;
-			parameter.DbType = DbType.StringFixedLength;
-			parameters.Add(parameter);
-
-			parameter = dbProviderFactory.CreateParameter();
-			parameter.ParameterName = "@SystemID";
-			parameter.Value = (@object as IBusinessEntity).SystemID;
-			parameter.DbType = DbType.StringFixedLength;
-			parameters.Add(parameter);
-
-			parameter = dbProviderFactory.CreateParameter();
-			parameter.ParameterName = "@RepositoryID";
-			parameter.Value = (@object as IBusinessEntity).RepositoryID;
-			parameter.DbType = DbType.StringFixedLength;
-			parameters.Add(parameter);
-
-			parameter = dbProviderFactory.CreateParameter();
-			parameter.ParameterName = "@EntityID";
-			parameter.Value = (@object as IBusinessEntity).EntityID;
-			parameter.DbType = DbType.StringFixedLength;
-			parameters.Add(parameter);
+			var columns = "ID,SystemID,RepositoryID,EntityID".ToList();
+			var values = "@ID,@SystemID,@RepositoryID,@EntityID".ToList();
+			var parameters = new List<DbParameter>()
+			{
+				(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)).CreateParameter(dbProviderFactory),
+				(new KeyValuePair<string, object>("@SystemID", (@object as IBusinessEntity).SystemID)).CreateParameter(dbProviderFactory),
+				(new KeyValuePair<string, object>("@RepositoryID", (@object as IBusinessEntity).RepositoryID)).CreateParameter(dbProviderFactory),
+				(new KeyValuePair<string, object>("@EntityID", (@object as IBusinessEntity).EntityID)).CreateParameter(dbProviderFactory)
+			};
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var attributes = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
 			foreach (var attribute in attributes)
 			{
-				columns += attribute.Column + ",";
-				values += "@" + attribute.Name + ",";
+				columns.Add(attribute.Column);
+				values.Add("@" + attribute.Name);
 
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
 					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
 					: attribute.GetDefaultValue();
-
-				parameter = dbProviderFactory.CreateParameter();
-				parameter.ParameterName = "@" + attribute.Name;
-				parameter.DbType = attribute.DbType;
-				parameter.Value = attribute.Type.Equals(typeof(DateTime))
-					? ((DateTime)value).ToDTString()
-					: value;
-				parameters.Add(parameter);
+				parameters.Add(attribute.CreateParameter(value, dbProviderFactory));
 			}
 
-			return new Tuple<string, List<DbParameter>>(
-					"INSERT INTO " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " (" + columns.Left(columns.Length - 1) + ") VALUES (" + values.Left(values.Length - 1) + ")",
-					parameters
-				);
+			var statement = "INSERT INTO " + definition.RepositoryDefinition.ExtendedPropertiesTableName
+				+ " (" + string.Join(", ", columns) + ") VALUES (" + string.Join(", ", values) + ")";
+
+			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
 		/// <summary>
@@ -396,16 +449,16 @@ namespace net.vieapps.Components.Repository
 				throw new NullReferenceException("Cannot create new because the object is null");
 
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				connection.Open();
 
-				var command = @object.PrepareCreateOrigin(dbProviderFactory).CreateCommand(connection);
+				var command = connection.CreateCommand(@object.PrepareCreateOrigin(dbProviderFactory));
 				command.ExecuteNonQuery();
 
 				if (@object.IsGotExtendedProperties())
 				{
-					command = @object.PrepareCreateExtent(dbProviderFactory).CreateCommand(connection);
+					command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
 					command.ExecuteNonQuery();
 				}
 			}
@@ -426,16 +479,16 @@ namespace net.vieapps.Components.Repository
 				throw new NullReferenceException("Cannot create new because the object is null");
 
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				await connection.OpenAsync(cancellationToken);
 
-				var command = @object.PrepareCreateOrigin(dbProviderFactory).CreateCommand(connection);
+				var command = connection.CreateCommand(@object.PrepareCreateOrigin(dbProviderFactory));
 				await command.ExecuteNonQueryAsync(cancellationToken);
 
 				if (@object.IsGotExtendedProperties())
 				{
-					command = @object.PrepareCreateExtent(dbProviderFactory).CreateCommand(connection);
+					command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
 					await command.ExecuteNonQueryAsync(cancellationToken);
 				}
 			}
@@ -445,39 +498,36 @@ namespace net.vieapps.Components.Repository
 		#region Get
 		static Tuple<string, List<DbParameter>> PrepareGetOrigin<T>(this T @object, string id, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var statement = "";
+			var fields = new List<string>();
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			foreach (var attribute in definition.Attributes)
 			{
 				if (attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) == null)
 					continue;
 
-				statement += "Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + ",";
+				fields.Add("Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column + " AS " + attribute.Name));
 			};
 
-			if (statement.Equals(""))
-				return null;
-
 			var info = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
-			return new Tuple<string, List<DbParameter>>
-			(
-				"SELECT TOP 1 " + statement.Left(statement.Length - 1) + " FROM " + definition.TableName + " AS Origin WHERE " + info.Item1,
-				new List<DbParameter>(info.Item2.Select(param => param.CreateParameter(dbProviderFactory)))
-			);
+			var statement = "SELECT " + string.Join(", ", fields)
+				+ " FROM " + definition.TableName + " AS Origin WHERE " + info.Item1;
+			var parameters = new List<DbParameter>(info.Item2.Select(param => param.CreateParameter(dbProviderFactory)));
+
+			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
 		static Tuple<string, List<DbParameter>> PrepareGetExtent<T>(this T @object, string id, DbProviderFactory dbProviderFactory, List<ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
-			var statement = "Origin.ID";
+			var fields = new List<string>() { "Origin.ID" };
 			foreach (var attribute in extendedProperties)
-				statement += "Origin." + attribute.Column + " AS " + attribute.Name + ",";
+				fields.Add("Origin." + attribute.Column + " AS " + attribute.Name);
 
 			var info = Filters<T>.Equals("ID", id).GetSqlStatement();
-			return new Tuple<string, List<DbParameter>>
-			(
-				"SELECT TOP 1 " + statement.Left(statement.Length - 1) + " FROM " + RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName + " AS Origin WHERE " + info.Item1,
-				new List<DbParameter>(info.Item2.Select(param => param.CreateParameter(dbProviderFactory)))
-			);
+			var statement = "SELECT " + string.Join(", ", fields)
+				+ " FROM " + RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName + " AS Origin WHERE " + info.Item1;
+			var parameters = new List<DbParameter>(info.Item2.Select(param => param.CreateParameter(dbProviderFactory)));
+
+			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
 		/// <summary>
@@ -495,11 +545,11 @@ namespace net.vieapps.Components.Repository
 
 			var @object = ObjectService.CreateInstance<T>();
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				connection.Open();
 
-				var command = @object.PrepareGetOrigin<T>(id, dbProviderFactory).CreateCommand(connection);
+				var command = connection.CreateCommand(@object.PrepareGetOrigin<T>(id, dbProviderFactory));
 				using (var reader = command.ExecuteReader())
 				{
 					if (reader.Read())
@@ -509,7 +559,7 @@ namespace net.vieapps.Components.Repository
 				if (@object.IsGotExtendedProperties())
 				{
 					var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
-					command = @object.PrepareGetExtent<T>(id, dbProviderFactory, extendedProperties).CreateCommand(connection);
+					command = connection.CreateCommand(@object.PrepareGetExtent<T>(id, dbProviderFactory, extendedProperties));
 					using (var reader = command.ExecuteReader())
 					{
 						if (reader.Read())
@@ -536,11 +586,11 @@ namespace net.vieapps.Components.Repository
 
 			var @object = ObjectService.CreateInstance<T>();
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				await connection.OpenAsync(cancellationToken);
 
-				var command = @object.PrepareGetOrigin<T>(id, dbProviderFactory).CreateCommand(connection);
+				var command = connection.CreateCommand(@object.PrepareGetOrigin<T>(id, dbProviderFactory));
 				using (var reader = await command.ExecuteReaderAsync(cancellationToken))
 				{
 					if (await reader.ReadAsync(cancellationToken))
@@ -550,7 +600,7 @@ namespace net.vieapps.Components.Repository
 				if (@object.IsGotExtendedProperties())
 				{
 					var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
-					command = @object.PrepareGetExtent<T>(id, dbProviderFactory, extendedProperties).CreateCommand(connection);
+					command = connection.CreateCommand(@object.PrepareGetExtent<T>(id, dbProviderFactory, extendedProperties));
 					using (var reader = await command.ExecuteReaderAsync(cancellationToken))
 					{
 						if (await reader.ReadAsync(cancellationToken))
@@ -604,8 +654,9 @@ namespace net.vieapps.Components.Repository
 		#region Replace
 		static Tuple<string, List<DbParameter>> PrepareReplaceOrigin<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var statement = "";
+			var columns = new List<string>();
 			var parameters = new List<DbParameter>();
+
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			foreach (var attribute in definition.Attributes)
 			{
@@ -613,57 +664,37 @@ namespace net.vieapps.Components.Repository
 				if (attribute.Name.Equals(definition.PrimaryKey) || (value == null && attribute.IsIgnoredIfNull()))
 					continue;
 
-				statement += (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + "=" + "@" + attribute.Name + ",";
-
-				var parameter = dbProviderFactory.CreateParameter();
-				parameter.ParameterName = "@" + attribute.Name;
-				if (attribute.IsStoredAsJson())
-				{
-					parameter.DbType = DbType.String;
-					parameter.Value = value.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-				}
-				else
-				{
-					parameter.DbType = attribute.GetDbType();
-					parameter.Value = attribute.IsStoredAsString()
-						? ((DateTime)value).ToDTString()
-						: value;
-				}
-				parameters.Add(parameter);
+				columns.Add((string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column) + "=" + "@" + attribute.Name);
+				parameters.Add(attribute.CreateParameter(value, dbProviderFactory));
 			}
 
-			statement = "UPDATE " + definition.TableName + " SET " + statement.Left(statement.Length - 1) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 			parameters.Add((new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory));
+			var statement = "UPDATE " + definition.TableName
+				+ " SET " + string.Join(", ", columns) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
 		static Tuple<string, List<DbParameter>> PrepareReplaceExtent<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var statement = "";
+			var columns = new List<string>();
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var attributes = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
 			foreach (var attribute in attributes)
 			{
-				statement += attribute.Column + "=@" + attribute.Name + ",";
+				columns.Add(attribute.Column + "=@" + attribute.Name);
 
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
 					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
 					: attribute.GetDefaultValue();
-
-				var parameter = dbProviderFactory.CreateParameter();
-				parameter.ParameterName = "@" + attribute.Name;
-				parameter.DbType = attribute.DbType;
-				parameter.Value = attribute.Type.Equals(typeof(DateTime))
-					? ((DateTime)value).ToDTString()
-					: value;
-				parameters.Add(parameter);
+				parameters.Add(attribute.CreateParameter(value, dbProviderFactory));
 			}
 
-			statement = "UPDATE " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " SET " + statement.Left(statement.Length - 1) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 			parameters.Add((new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)).CreateParameter(dbProviderFactory));
+			var statement = "UPDATE " + definition.RepositoryDefinition.ExtendedPropertiesTableName
+				+ " SET " + string.Join(", ", columns) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -681,16 +712,16 @@ namespace net.vieapps.Components.Repository
 				throw new NullReferenceException("Cannot replace because the object is null");
 
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				connection.Open();
 
-				var command = @object.PrepareReplaceOrigin(dbProviderFactory).CreateCommand(connection);
+				var command = connection.CreateCommand(@object.PrepareReplaceOrigin(dbProviderFactory));
 				command.ExecuteNonQuery();
 
 				if (@object.IsGotExtendedProperties())
 				{
-					command = @object.PrepareReplaceExtent(dbProviderFactory).CreateCommand(connection);
+					command = connection.CreateCommand(@object.PrepareReplaceExtent(dbProviderFactory));
 					command.ExecuteNonQuery();
 				}
 			}
@@ -711,16 +742,16 @@ namespace net.vieapps.Components.Repository
 				throw new NullReferenceException("Cannot replace because the object is null");
 
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				await connection.OpenAsync(cancellationToken);
 
-				var command = @object.PrepareReplaceOrigin(dbProviderFactory).CreateCommand(connection);
+				var command = connection.CreateCommand(@object.PrepareReplaceOrigin(dbProviderFactory));
 				await command.ExecuteNonQueryAsync(cancellationToken);
 
 				if (@object.IsGotExtendedProperties())
 				{
-					command = @object.PrepareReplaceExtent(dbProviderFactory).CreateCommand(connection);
+					command = connection.CreateCommand(@object.PrepareReplaceExtent(dbProviderFactory));
 					await command.ExecuteNonQueryAsync(cancellationToken);
 				}
 			}
@@ -730,11 +761,11 @@ namespace net.vieapps.Components.Repository
 		#region Update
 		static Tuple<string, List<DbParameter>> PrepareUpdateOrigin<T>(this T @object, List<string> attributes, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var statement = "";
+			var columns = new List<string>();
 			var parameters = new List<DbParameter>();
+
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var standardProperties = definition.Attributes.ToDictionary(attribute => attribute.Name);
-
 			foreach (var attribute in attributes)
 			{
 				if (!standardProperties.ContainsKey(attribute))
@@ -744,34 +775,20 @@ namespace net.vieapps.Components.Repository
 				if (value == null && standardProperties[attribute].IsIgnoredIfNull())
 					continue;
 
-				statement += (string.IsNullOrEmpty(standardProperties[attribute].Column) ? standardProperties[attribute].Name : standardProperties[attribute].Column) + "=" + "@" + standardProperties[attribute].Name + ",";
-
-				var parameter = dbProviderFactory.CreateParameter();
-				parameter.ParameterName = "@" + standardProperties[attribute].Name;
-				if (standardProperties[attribute].IsStoredAsJson())
-				{
-					parameter.DbType = DbType.String;
-					parameter.Value = value.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-				}
-				else
-				{
-					parameter.DbType = standardProperties[attribute].GetDbType();
-					parameter.Value = standardProperties[attribute].IsStoredAsString()
-						? ((DateTime)value).ToDTString()
-						: value;
-				}
-				parameters.Add(parameter);
+				columns.Add((string.IsNullOrEmpty(standardProperties[attribute].Column) ? standardProperties[attribute].Name : standardProperties[attribute].Column) + "=" + "@" + standardProperties[attribute].Name);
+				parameters.Add(standardProperties[attribute].CreateParameter(value, dbProviderFactory));
 			}
 
-			statement = "UPDATE " + definition.TableName + " SET " + statement.Left(statement.Length - 1) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 			parameters.Add((new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory));
+			var statement = "UPDATE " + definition.TableName
+				+ " SET " + string.Join(", ", columns) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
 		static Tuple<string, List<DbParameter>> PrepareUpdateExtent<T>(this T @object, List<string> attributes, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var statement = "";
+			var colums = new List<string>();
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
@@ -781,23 +798,17 @@ namespace net.vieapps.Components.Repository
 				if (!extendedProperties.ContainsKey(attribute))
 					continue;
 
-				statement += extendedProperties[attribute].Column + "=@" + extendedProperties[attribute].Name + ",";
+				colums.Add(extendedProperties[attribute].Column + "=@" + extendedProperties[attribute].Name);
 
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(extendedProperties[attribute].Name)
 					? (@object as IBusinessEntity).ExtendedProperties[extendedProperties[attribute].Name]
 					: extendedProperties[attribute].GetDefaultValue();
-
-				var parameter = dbProviderFactory.CreateParameter();
-				parameter.ParameterName = "@" + extendedProperties[attribute].Name;
-				parameter.DbType = extendedProperties[attribute].DbType;
-				parameter.Value = extendedProperties[attribute].Type.Equals(typeof(DateTime))
-					? ((DateTime)value).ToDTString()
-					: value;
-				parameters.Add(parameter);
+				parameters.Add(extendedProperties[attribute].CreateParameter(value, dbProviderFactory));
 			}
 
-			statement = "UPDATE " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " SET " + statement.Left(statement.Length - 1) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 			parameters.Add((new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)).CreateParameter(dbProviderFactory));
+			var statement = "UPDATE " + definition.RepositoryDefinition.ExtendedPropertiesTableName
+				+ " SET " + string.Join(", ", colums) + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -816,16 +827,16 @@ namespace net.vieapps.Components.Repository
 				throw new NullReferenceException("Cannot update because the object is null");
 
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				connection.Open();
 
-				var command = @object.PrepareUpdateOrigin(attributes, dbProviderFactory).CreateCommand(connection);
+				var command = connection.CreateCommand(@object.PrepareUpdateOrigin(attributes, dbProviderFactory));
 				command.ExecuteNonQuery();
 
 				if (@object.IsGotExtendedProperties())
 				{
-					command = @object.PrepareUpdateExtent(attributes, dbProviderFactory).CreateCommand(connection);
+					command = connection.CreateCommand(@object.PrepareUpdateExtent(attributes, dbProviderFactory));
 					command.ExecuteNonQuery();
 				}
 			}
@@ -847,16 +858,16 @@ namespace net.vieapps.Components.Repository
 				throw new NullReferenceException("Cannot update because the object is null");
 
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				await connection.OpenAsync(cancellationToken);
 
-				var command = @object.PrepareUpdateOrigin(attributes, dbProviderFactory).CreateCommand(connection);
+				var command = connection.CreateCommand(@object.PrepareUpdateOrigin(attributes, dbProviderFactory));
 				await command.ExecuteNonQueryAsync(cancellationToken);
 
 				if (@object.IsGotExtendedProperties())
 				{
-					command = @object.PrepareUpdateExtent(attributes, dbProviderFactory).CreateCommand(connection);
+					command = connection.CreateCommand(@object.PrepareUpdateExtent(attributes, dbProviderFactory));
 					await command.ExecuteNonQueryAsync(cancellationToken);
 				}
 			}
@@ -876,17 +887,16 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
-			var parameters = new List<DbParameter>()
-			{
-				(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory)
-			};
-
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				connection.Open();
 
-				var command = (new Tuple<string, List<DbParameter>>(statement, parameters)).CreateCommand(connection);
+				var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
+				var parameters = new List<DbParameter>()
+				{
+					(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory)
+				};
+				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 				command.ExecuteNonQuery();
 
 				if (@object.IsGotExtendedProperties())
@@ -896,22 +906,10 @@ namespace net.vieapps.Components.Repository
 					{
 						(new KeyValuePair<string, object>("@ID", @object.GetEntityID())).CreateParameter(dbProviderFactory)
 					};
-					command = (new Tuple<string, List<DbParameter>>(statement, parameters)).CreateCommand(connection);
+					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 					command.ExecuteNonQuery();
 				}
 			}
-		}
-
-		/// <summary>
-		/// Delete the record of an object
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The working context</param>
-		/// <param name="dataSource">The data source</param>
-		/// <param name="id">The identity of the document of an object for deleting</param>
-		public static void Delete<T>(this RepositoryContext context, DataSource dataSource, string id) where T : class
-		{
-			
 		}
 
 		/// <summary>
@@ -928,17 +926,16 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
-			var parameters = new List<DbParameter>()
-			{
-				(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory)
-			};
-
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				await connection.OpenAsync(cancellationToken);
 
-				var command = (new Tuple<string, List<DbParameter>>(statement, parameters)).CreateCommand(connection);
+				var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
+				var parameters = new List<DbParameter>()
+				{
+					(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID())).CreateParameter(dbProviderFactory)
+				};
+				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 				await command.ExecuteNonQueryAsync(cancellationToken);
 
 				if (@object.IsGotExtendedProperties())
@@ -948,8 +945,48 @@ namespace net.vieapps.Components.Repository
 					{
 						(new KeyValuePair<string, object>("@ID", @object.GetEntityID())).CreateParameter(dbProviderFactory)
 					};
-					command = (new Tuple<string, List<DbParameter>>(statement, parameters)).CreateCommand(connection);
+					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
 					await command.ExecuteNonQueryAsync(cancellationToken);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Delete the record of an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="id">The identity of the document of an object for deleting</param>
+		public static void Delete<T>(this RepositoryContext context, DataSource dataSource, string id) where T : class
+		{
+			if (string.IsNullOrWhiteSpace(id))
+				return;
+
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
+			{
+				connection.Open();
+
+				var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
+				var parameters = new List<DbParameter>()
+				{
+					(new KeyValuePair<string, object>("@" + definition.PrimaryKey, id)).CreateParameter(dbProviderFactory)
+				};
+				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+				command.ExecuteNonQuery();
+
+				if (definition.Extendable && definition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(definition.RepositoryDefinition.ExtendedPropertiesTableName))
+				{
+					statement = "DELETE FROM " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " WHERE ID=@ID";
+					parameters = new List<DbParameter>()
+					{
+						(new KeyValuePair<string, object>("@ID", id)).CreateParameter(dbProviderFactory)
+					};
+					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+					command.ExecuteNonQuery();
 				}
 			}
 		}
@@ -963,9 +1000,37 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return Task.CompletedTask;
+			if (string.IsNullOrWhiteSpace(id))
+				return;
+
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
+			{
+				await connection.OpenAsync(cancellationToken);
+
+				var statement = "DELETE FROM " + definition.TableName + " WHERE " + definition.PrimaryKey + "=@" + definition.PrimaryKey;
+				var parameters = new List<DbParameter>()
+				{
+					(new KeyValuePair<string, object>("@" + definition.PrimaryKey, id)).CreateParameter(dbProviderFactory)
+				};
+				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+				await command.ExecuteNonQueryAsync(cancellationToken);
+
+				if (definition.Extendable && definition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(definition.RepositoryDefinition.ExtendedPropertiesTableName))
+				{
+					statement = "DELETE FROM " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " WHERE ID=@ID";
+					parameters = new List<DbParameter>()
+					{
+						(new KeyValuePair<string, object>("@ID", id)).CreateParameter(dbProviderFactory)
+					};
+					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+					await command.ExecuteNonQueryAsync(cancellationToken);
+				}
+			}
 		}
 		#endregion
 
@@ -1004,60 +1069,58 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition, true);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
+
 			var parentIDs = definition != null && autoAssociateWithMultipleParents && filter != null
 				? filter.GetAssociatedParentIDs(definition)
 				: null;
-			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			// listing of fields (SELECT)
+			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+
+			// fields/columns (SELECT)
 			var fields = new List<string>();
-			attributes = attributes != null && attributes.Count() > 0
+			(attributes != null && attributes.Count() > 0
 				? attributes
-				: propertiesInfo.Item1.Select(item => item.Value.Name).Concat(propertiesInfo.Item2 != null ? propertiesInfo.Item2.Select(item => item.Value.Name) : new List<string>());
-			attributes.ForEach(attribute =>
+				: standardProperties.Select(item => item.Value.Name)
+					.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
+			).ForEach(attribute =>
 			{
-				var field = extendedProperties != null && extendedProperties.ContainsKey(attribute)
-					? "Extent." + extendedProperties[attribute].Column + " AS " + extendedProperties[attribute].Name
-					: standardProperties.ContainsKey(attribute)
-						? "Origin." + (string.IsNullOrWhiteSpace(standardProperties[attribute].Column)
-							? standardProperties[attribute].Name
-							: standardProperties[attribute].Column + " AS " + standardProperties[attribute].Name
-							)
-						: null;
-				if (!string.IsNullOrWhiteSpace(field))
-					fields.Add(field);
+				if (standardProperties.ContainsKey(attribute.ToLower()) || (extendedProperties != null && extendedProperties.ContainsKey(attribute.ToLower())))
+					fields.Add(attribute);
 			});
 
-			// listing of table (FROM)
-			var tables = definition.TableName + " AS Origin"
+			var columns = fields.Select(field =>
+				extendedProperties != null && extendedProperties.ContainsKey(field.ToLower())
+				? "Extent." + extendedProperties[field.ToLower()].Column + " AS " + extendedProperties[field.ToLower()].Name
+				: "Origin." + (string.IsNullOrWhiteSpace(standardProperties[field.ToLower()].Column)
+					? standardProperties[field.ToLower()].Name
+					: standardProperties[field.ToLower()].Column + " AS " + standardProperties[field.ToLower()].Name)
+				)
+				.ToList();
+
+			// tables (FROM)
+			var tables = " FROM " + definition.TableName + " AS Origin"
 				+ (extendedProperties != null ? " LEFT JOIN " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " AS Extent ON Origin." + definition.PrimaryKey + "=Extent.ID" : "")
 				+ (gotAssociateWithMultipleParents ? " LEFT JOIN " + definition.MultipleParentAssociatesTable + " AS Link ON Origin." + definition.PrimaryKey + "=Link." + definition.MultipleParentAssociatesLinkColumn : "");
 
-			// clauses (WHERE & ORDER BY)
-			string where = statementsInfo.Item1 == null || string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
-				? ""
-				: " WHERE " + statementsInfo.Item1.Item1;
+			// filtering expressions (WHERE)
+			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
+				? " WHERE " + statementsInfo.Item1.Item1
+				: "";
+
+			// ordering expressions (ORDER BY)
 			string orderby = statementsInfo.Item2;
 
 			// statements
-			var select = "SELECT " + (gotAssociateWithMultipleParents ? "DISTINCT " : "") + string.Join(", ", fields) + " FROM " + tables + where;
+			var select = "SELECT " + (gotAssociateWithMultipleParents ? "DISTINCT " : "") + string.Join(", ", columns) + tables + where;
 			var statement = "";
 
-			// statement of MySQL or first page
-			if (!dbProviderFactory.IsGotRowNumber() || pageNumber < 2 || pageSize < 1)
-			{
-				statement = (pageNumber < 2 && pageSize > 0
-					? "SELECT TOP " + pageSize.ToString() + " " + string.Join(", ", attributes) + " FROM (" + select + ") AS __Results"
-					: select)
-					+ (!string.IsNullOrWhiteSpace(orderby) ? " ORDER BY " + orderby : "");
-			}
-
-			// statement of SQL database server with pagination via ROW_NUMBER() function
-			else
+			// pagination with ROW_NUMBER
+			if (pageSize > 0 && dbProviderFactory.IsGotRowNumber())
 			{
 				// normalize: add name of extended column into ORDER BY clause
 				if (!string.IsNullOrWhiteSpace(orderby))
@@ -1066,25 +1129,32 @@ namespace net.vieapps.Components.Repository
 					orderby = "";
 					orders.ForEach(order =>
 					{
-						var orderInfo = order.ToArray(' ');
-						if (extendedProperties != null && extendedProperties.ContainsKey(orderInfo[0]))
-							orderby += (orderby.Equals("") ? "" : ",")
-								+ extendedProperties[orderInfo[0]].Column
-								+ (orderInfo.Length > 1 ? " " + orderInfo[0] : "");
+						var info = order.ToArray(' ');
+						if (extendedProperties != null && extendedProperties.ContainsKey(info[0].ToLower()))
+							orderby += (orderby.Equals("") ? "" : ", ")
+								+ extendedProperties[info[0]].Column
+								+ (info.Length > 1 ? " " + info[1] : "");
 						else
-							orderby += (orderby.Equals("") ? "" : ",") + order;
+							orderby += (orderby.Equals("") ? "" : ", ") + order;
 					});
 				}
 
-				statement = "SELECT " + string.Join(", ", attributes) + ","
-					+ " ROW_NUMBER()" + (!string.IsNullOrWhiteSpace(orderby) ? " OVER(ORDER BY " + orderby + ")" : "") + " AS __RowNumber"
+				// set pagination statement
+				statement = "SELECT " + string.Join(", ", fields) + ","
+					+ " ROW_NUMBER() OVER(ORDER BY " + (!string.IsNullOrWhiteSpace(orderby) ? orderby : definition.PrimaryKey + " ASC") + ") AS __RowNumber"
 					+ " FROM (" + select + ") AS __DistinctResults";
 
-				statement = "SELECT TOP " + pageSize.ToString() + " " + string.Join(", ", attributes)
+				statement = "SELECT " + string.Join(", ", fields)
 					+ " FROM (" + statement + ") AS __Results"
-					+ " WHERE __Results.__RowNumber > " + ((pageNumber - 1) * pageSize).ToString()
+					+ " WHERE __Results.__RowNumber > " + ((pageNumber - 1) * pageSize).ToString() + " AND __Results.__RowNumber <= " + (pageNumber * pageSize).ToString()
 					+ " ORDER BY __Results.__RowNumber";
 			}
+
+			// no pagination or pagination with generic SQL/got LIMIT ... OFFSET ...
+			else
+				statement = select
+					+ (!string.IsNullOrWhiteSpace(orderby) ? " ORDER BY " + orderby : "")
+					+ (pageSize > 0 ? dbProviderFactory.GetOffsetStatement(pageSize, pageNumber) : "");
 
 			// parameters
 			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
@@ -1101,6 +1171,66 @@ namespace net.vieapps.Components.Repository
 			foreach (DataRow row in dataRows)
 				rows.Add(row);
 			return rows;
+		}
+
+		static void Copy(this DataTable dataTable, DbDataReader reader)
+		{
+			while (reader.Read())
+			{
+				object[] data = new object[reader.FieldCount];
+				for (int index = 0; index < reader.FieldCount; index++)
+					data[index] = reader[index];
+				dataTable.LoadDataRow(data, true);
+			}
+		}
+
+		static async Task CopyAsync(this DataTable dataTable, DbDataReader reader, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			while (await reader.ReadAsync(cancellationToken))
+			{
+				object[] data = new object[reader.FieldCount];
+				for (int index = 0; index < reader.FieldCount; index++)
+					data[index] = reader[index];
+				dataTable.LoadDataRow(data, true);
+			}
+		}
+
+		static DataTable CreateDataTable(this DbDataReader reader, string name = "Table", bool doLoad = false)
+		{
+			var dataTable = new DataTable(name);
+
+			if (doLoad)
+				dataTable.Load(reader);
+
+			else
+				foreach (DataRow info in reader.GetSchemaTable().Rows)
+				{
+					var column = new DataColumn();
+					column.ColumnName = info["ColumnName"].ToString();
+					column.Unique = Convert.ToBoolean(info["IsUnique"]);
+					column.AllowDBNull = Convert.ToBoolean(info["AllowDBNull"]);
+					column.ReadOnly = Convert.ToBoolean(info["IsReadOnly"]);
+					column.DataType = (Type)info["DataType"];
+					dataTable.Columns.Add(column);
+				}
+
+			return dataTable;
+		}
+
+		static DataTable GetDataTable(this DbDataReader reader, string name = "Table", bool doLoad = false)
+		{
+			var dataTable = reader.CreateDataTable(name, doLoad);
+			if (!doLoad)
+				dataTable.Copy(reader);
+			return dataTable;
+		}
+
+		static async Task<DataTable> GetDataTableAsync(this DbDataReader reader, string name = "Table", bool doLoad = false, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			var dataTable = reader.CreateDataTable(name, doLoad);
+			if (!doLoad)
+				await dataTable.CopyAsync(reader, cancellationToken);
+			return dataTable;
 		}
 
 		/// <summary>
@@ -1120,32 +1250,37 @@ namespace net.vieapps.Components.Repository
 		public static List<DataRow> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				connection.Open();
 
 				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 				DataTable dataTable = null;
 
-				if (dbProviderFactory.IsGotRowNumber())
+				// got ROW_NUMBER or LIMIT ... OFFSET
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
 				{
-					var command = info.CreateCommand(connection);
+					var command = connection.CreateCommand(info);
 					using (var reader = command.ExecuteReader())
 					{
-						dataTable = new DataTable();
-						dataTable.Load(reader);
+						dataTable = reader.GetDataTable(typeof(T).GetTypeName(true));
 					}
 				}
+
+				// generic SQL
 				else
 				{
-					var startRecord = (pageNumber - 1) * pageSize;
-					if (startRecord < 0)
-						startRecord = 0;
+					var dataAdapter = dbProviderFactory.CreateDataAdapter();
+					dataAdapter.SelectCommand = connection.CreateCommand(info);
 
 					var dataSet = new DataSet();
-					var dataAdapter = dbProviderFactory.CreateDataAdapter();
-					dataAdapter.SelectCommand = info.CreateCommand(connection);
-					dataAdapter.Fill(dataSet, startRecord, pageSize, typeof(T).GetTypeName(true));
+					if (pageSize > 0)
+					{
+						var startRecord = pageNumber > 0 ? (pageNumber - 1) * pageSize : 0;
+						dataAdapter.Fill(dataSet, startRecord, pageSize, typeof(T).GetTypeName(true));
+					}
+					else
+						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 					dataTable = dataSet.Tables[0];
 				}
 
@@ -1171,22 +1306,24 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				await connection.OpenAsync(cancellationToken);
 
 				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 				DataTable dataTable = null;
 
-				if (dbProviderFactory.IsGotRowNumber())
+				// got ROW_NUMBER or LIMIT ... OFFSET
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
 				{
-					var command = info.CreateCommand(connection);
+					var command = connection.CreateCommand(info);
 					using (var reader = await command.ExecuteReaderAsync())
 					{
-						dataTable = new DataTable();
-						dataTable.Load(reader);
+						dataTable = await reader.GetDataTableAsync(typeof(T).GetTypeName(true), false, cancellationToken);
 					}
 				}
+
+				// generic SQL
 				else
 				{
 					var startRecord = (pageNumber - 1) * pageSize;
@@ -1195,7 +1332,7 @@ namespace net.vieapps.Components.Repository
 
 					var dataSet = new DataSet();
 					var dataAdapter = dbProviderFactory.CreateDataAdapter();
-					dataAdapter.SelectCommand = info.CreateCommand(connection);
+					dataAdapter.SelectCommand = connection.CreateCommand(info);
 					dataAdapter.Fill(dataSet, startRecord, pageSize, typeof(T).GetTypeName(true));
 					dataTable = dataSet.Tables[0];
 				}
@@ -1221,8 +1358,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
-			return SqlHelper.Select(context, dataSource, new List<string>() { "ID" }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
-				.Select(data => data["ID"] as string)
+			return SqlHelper.Select(context, dataSource, new List<string>() { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
 		}
 
@@ -1242,8 +1379,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return (await SqlHelper.SelectAsync(context, dataSource, new List<string>() { "ID" }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken))
-				.Select(data => data["ID"] as string)
+			return (await SqlHelper.SelectAsync(context, dataSource, new List<string>() { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken))
+				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
 		}
 		#endregion
@@ -1271,29 +1408,29 @@ namespace net.vieapps.Components.Repository
 
 			if (autoAssociateWithMultipleParents && context.EntityDefinition.ParentType != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.ParentAssociatedProperty))
 			{
-				var allAttributes = standardProperties.Select(info => info.Value.Name)
+				var allAttributes = standardProperties
+					.Select(info => info.Value.Name)
 					.Concat(extendedProperties != null ? extendedProperties.Select(info => info.Value.Name) : new List<string>())
 					.ToList();
 
-				var distinctAttributes = (new List<string>(sort.GetAttributes()) { context.EntityDefinition.PrimaryKey }).Distinct().ToList();
-				var otherAttributes = allAttributes.Except(distinctAttributes).ToList();
+				var distinctAttributes = (new List<string>(sort != null ? sort.GetAttributes() : new List<string>()) { context.EntityDefinition.PrimaryKey })
+					.Distinct()
+					.ToList();
 
-				var distinctData = context.Select<T>(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
-
-				var objects = distinctData
+				var objects = context.Select<T>(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
-					.ToDictionary(@object => @object.GetEntityID<T>());
+					.ToDictionary(@object => @object.GetEntityID(context.EntityDefinition.PrimaryKey));
 
+				var otherAttributes = allAttributes.Except(distinctAttributes).ToList();
 				if (otherAttributes.Count > 0)
 				{
 					otherAttributes.Add(context.EntityDefinition.PrimaryKey);
-					var otherFilter = Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key)));
-					var otherData = context.Select<T>(dataSource, otherAttributes, otherFilter, null, 0, 1, businessEntityID, false);
-					otherData.ForEach(data =>
-					{
-						var id = data[context.EntityDefinition.PrimaryKey] as string;
-						objects[id] = objects[id].Copy(data, standardProperties, extendedProperties);
-					});
+					context.Select<T>(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false)
+						.ForEach(data =>
+						{
+							var id = data[context.EntityDefinition.PrimaryKey].CastAs<string>();
+							objects[id] = objects[id].Copy(data, standardProperties, extendedProperties);
+						});
 				}
 
 				return objects.Select(item => item.Value).ToList();
@@ -1327,29 +1464,29 @@ namespace net.vieapps.Components.Repository
 
 			if (autoAssociateWithMultipleParents && context.EntityDefinition.ParentType != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.ParentAssociatedProperty))
 			{
-				var allAttributes = standardProperties.Select(info => info.Value.Name)
+				var allAttributes = standardProperties
+					.Select(info => info.Value.Name)
 					.Concat(extendedProperties != null ? extendedProperties.Select(info => info.Value.Name) : new List<string>())
 					.ToList();
 
-				var distinctAttributes = (new List<string>(sort.GetAttributes()) { context.EntityDefinition.PrimaryKey }).Distinct().ToList();
-				var otherAttributes = allAttributes.Except(distinctAttributes).ToList();
+				var distinctAttributes = (new List<string>(sort != null ? sort.GetAttributes() : new List<string>()) { context.EntityDefinition.PrimaryKey })
+					.Distinct()
+					.ToList();
 
-				var distinctData = await context.SelectAsync<T>(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken);
-
-				var objects = distinctData
+				var objects = (await context.SelectAsync<T>(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken))
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
-					.ToDictionary(@object => @object.GetEntityID<T>());
+					.ToDictionary(@object => @object.GetEntityID(context.EntityDefinition.PrimaryKey));
 
+				var otherAttributes = allAttributes.Except(distinctAttributes).ToList();
 				if (otherAttributes.Count > 0)
 				{
 					otherAttributes.Add(context.EntityDefinition.PrimaryKey);
-					var otherFilter = Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key)));
-					var otherData = await context.SelectAsync<T>(dataSource, otherAttributes, otherFilter, null, 0, 1, businessEntityID, false, cancellationToken);
-					otherData.ForEach(data =>
-					{
-						var id = data[context.EntityDefinition.PrimaryKey] as string;
-						objects[id] = objects[id].Copy(data, standardProperties, extendedProperties);
-					});
+					(await context.SelectAsync<T>(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false, cancellationToken))
+						.ForEach(data =>
+						{
+							var id = data[context.EntityDefinition.PrimaryKey].CastAs<string>();
+							objects[id] = objects[id].Copy(data, standardProperties, extendedProperties);
+						});
 				}
 
 				return objects.Select(item => item.Value).ToList();
@@ -1403,25 +1540,28 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
+
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+
 			var parentIDs = definition != null && autoAssociateWithMultipleParents && filter != null
 				? filter.GetAssociatedParentIDs(definition)
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
+
 			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
-			// listing of table (FROM)
-			var tables = definition.TableName + " AS Origin"
-				+ (propertiesInfo.Item2 != null ? " LEFT JOIN " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " AS Extent ON Origin.ID=Extent.ID" : "")
-				+ (gotAssociateWithMultipleParents ? " LEFT JOIN " + definition.MultipleParentAssociatesTable + " AS Link ON Origin.ID=Link." + definition.MultipleParentAssociatesLinkColumn : "");
+			// tables (FROM)
+			var tables = " FROM " + definition.TableName + " AS Origin"
+				+ (propertiesInfo.Item2 != null ? " LEFT JOIN " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " AS Extent ON Origin." + definition.PrimaryKey + "=Extent.ID" : "")
+				+ (gotAssociateWithMultipleParents ? " LEFT JOIN " + definition.MultipleParentAssociatesTable + " AS Link ON Origin." + definition.PrimaryKey + "=Link." + definition.MultipleParentAssociatesLinkColumn : "");
 
-			// clauses (WHERE)
+			// couting expressions (WHERE)
 			string where = statementsInfo.Item1 == null || string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
 				? ""
 				: " WHERE " + statementsInfo.Item1.Item1;
 
 			// statement
-			var statement = "SELECT COUNT(" + (gotAssociateWithMultipleParents ? "DISTINCT " : "") + "ID) AS Total FROM " + tables + where;
+			var statement = "SELECT COUNT(" + (gotAssociateWithMultipleParents ? "DISTINCT " : "") + definition.PrimaryKey + ") AS TotalRecords" + tables + where;
 
 			// parameters
 			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
@@ -1445,12 +1585,12 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				connection.Open();
 
 				var info = dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents);
-				var command = info.CreateCommand(connection);
+				var command = connection.CreateCommand(info);
 				return command.ExecuteScalar().CastAs<long>();
 			}
 		}
@@ -1469,18 +1609,219 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
-			using (var connection = context.GetSqlConnection(dataSource, dbProviderFactory))
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
 			{
 				await connection.OpenAsync(cancellationToken);
 
 				var info = dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents);
-				var command = info.CreateCommand(connection);
+				var command = connection.CreateCommand(info);
 				return (await command.ExecuteScalarAsync(cancellationToken)).CastAs<long>();
 			}
 		}
 		#endregion
 
-		#region Search (by query)
+		#region Search
+		/// <summary>
+		/// Gets the terms for searching in SQL database using full-text search
+		/// </summary>
+		/// <param name="dbProviderFactory"></param>
+		/// <param name="queryInfo"></param>
+		/// <returns></returns>
+		public static string GetSearchTerms(this DbProviderFactory dbProviderFactory, SearchQuery queryInfo)
+		{
+			// Microsoft SQL Server
+			if (dbProviderFactory.IsMicrosoftSQL())
+			{
+				// prepare AND/OR/AND NOT terms
+				var andSearchTerms = "";
+				queryInfo.AndWords.ForEach(word =>
+				{
+					andSearchTerms += "\"*" + word + "*\"" + " AND ";
+				});
+				queryInfo.AndPhrases.ForEach(phrase =>
+				{
+					andSearchTerms += "\"" + phrase + "\" AND ";
+				});
+				if (!andSearchTerms.Equals(""))
+					andSearchTerms = andSearchTerms.Left(andSearchTerms.Length - 5);
+
+				var notSearchTerms = "";
+				queryInfo.NotWords.ForEach(word =>
+				{
+					notSearchTerms += " AND NOT " + word;
+				});
+				queryInfo.NotPhrases.ForEach(phrase =>
+				{
+					notSearchTerms += " AND NOT \"" + phrase + "\"";
+				});
+				if (!notSearchTerms.Equals(""))
+					notSearchTerms = notSearchTerms.Trim();
+
+				var orSearchTerms = "";
+				queryInfo.OrWords.ForEach(word =>
+				{
+					orSearchTerms += "\"*" + word + "*\"" + " OR ";
+				});
+				queryInfo.OrPhrases.ForEach(phrase =>
+				{
+					orSearchTerms += "\"" + phrase + "\" OR ";
+				});
+				if (!orSearchTerms.Equals(""))
+					orSearchTerms = orSearchTerms.Left(orSearchTerms.Length - 4);
+
+				// build search terms
+				var searchTerms = "";
+				if (!andSearchTerms.Equals("") && !notSearchTerms.Equals("") && !orSearchTerms.Equals(""))
+					searchTerms = andSearchTerms + " " + notSearchTerms + " AND (" + orSearchTerms + ")";
+
+				else if (andSearchTerms.Equals("") && orSearchTerms.Equals("") && !notSearchTerms.Equals(""))
+					searchTerms = "";
+
+				else if (andSearchTerms.Equals(""))
+				{
+					searchTerms = orSearchTerms;
+					if (!notSearchTerms.Equals(""))
+					{
+						if (!searchTerms.Equals(""))
+							searchTerms = "(" + searchTerms + ") ";
+						searchTerms += notSearchTerms;
+					}
+				}
+
+				else
+				{
+					searchTerms = andSearchTerms;
+					if (!notSearchTerms.Equals(""))
+					{
+						if (!searchTerms.Equals(""))
+							searchTerms += " ";
+						searchTerms += notSearchTerms;
+					}
+					if (!orSearchTerms.Equals(""))
+					{
+						if (!searchTerms.Equals(""))
+							searchTerms += " AND (" + orSearchTerms + ")";
+						else
+							searchTerms += orSearchTerms;
+					}
+				}
+
+				// return search terms with Unicode mark (N')
+				return "N'" + searchTerms + "'";
+			}
+
+			// unknown
+			else
+				return "";
+		}
+
+		static Tuple<string, List<DbParameter>> PrepareSearch<T>(this DbProviderFactory dbProviderFactory, IEnumerable<string> attributes, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, string searchInColumns = "*") where T : class
+		{
+			// prepare
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition, true);
+			var standardProperties = propertiesInfo.Item1;
+			var extendedProperties = propertiesInfo.Item2;
+
+			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+
+			// fields/columns (SELECT)
+			var fields = new List<string>();
+			(attributes != null && attributes.Count() > 0
+				? attributes
+				: standardProperties
+					.Select(item => item.Value.Name)
+					.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
+			).ForEach(attribute =>
+			{
+				if (standardProperties.ContainsKey(attribute.ToLower()) || (extendedProperties != null && extendedProperties.ContainsKey(attribute.ToLower())))
+					fields.Add(attribute);
+			});
+
+			var columns = fields.Select(field =>
+				extendedProperties != null && extendedProperties.ContainsKey(field.ToLower())
+				? "Extent." + extendedProperties[field.ToLower()].Column + " AS " + extendedProperties[field.ToLower()].Name
+				: "Origin." + (string.IsNullOrWhiteSpace(standardProperties[field.ToLower()].Column)
+					? standardProperties[field.ToLower()].Name
+					: standardProperties[field.ToLower()].Column + " AS " + standardProperties[field.ToLower()].Name)
+				)
+				.ToList();
+
+			// tables (FROM)
+			var tables = " FROM " + definition.TableName + " AS Origin"
+				+ (extendedProperties != null ? " LEFT JOIN " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " AS Extent ON Origin." + definition.PrimaryKey + "=Extent.ID" : "");
+
+			// filtering expressions (WHERE)
+			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
+				? " WHERE " + statementsInfo.Item1.Item1
+				: "";
+
+			// ordering expressions (ORDER BY)
+			var orderby = "";
+
+			// searching terms
+			var searchTerms = dbProviderFactory.GetSearchTerms(Utility.SearchQuery.Parse(query));
+
+			// Microsoft SQL Server
+			if (dbProviderFactory.IsMicrosoftSQL())
+			{
+				fields.Add("SearchScore");
+				columns.Add("Search.[RANK] AS SearchScore");
+				tables += " INNER JOIN CONTAINSTABLE (" + definition.TableName + ", " + searchInColumns + ", " + searchTerms + ") AS Search ON Origin." + definition.PrimaryKey + "=Search.[KEY]";
+				orderby = "SearchScore DESC";
+			}
+
+			// statement
+			var select = "SELECT " + string.Join(", ", columns) + tables + where;
+			var statement = "";
+
+			// pagination with ROW_NUMBER
+			if (pageSize > 0 && dbProviderFactory.IsGotRowNumber())
+			{
+				// normalize: add name of extended column into ORDER BY clause
+				if (!string.IsNullOrWhiteSpace(orderby))
+				{
+					var orders = orderby.ToArray(',');
+					orderby = "";
+					orders.ForEach(order =>
+					{
+						var info = order.ToArray(' ');
+						if (extendedProperties != null && extendedProperties.ContainsKey(info[0].ToLower()))
+							orderby += (orderby.Equals("") ? "" : ", ")
+								+ extendedProperties[info[0]].Column
+								+ (info.Length > 1 ? " " + info[1] : "");
+						else
+							orderby += (orderby.Equals("") ? "" : ", ") + order;
+					});
+				}
+
+				// set pagination statement
+				statement = "SELECT " + string.Join(", ", fields) + ","
+					+ " ROW_NUMBER() OVER(ORDER BY " + (!string.IsNullOrWhiteSpace(orderby) ? orderby : definition.PrimaryKey + " ASC") + ") AS __RowNumber"
+					+ " FROM (" + select + ") AS __DistinctResults";
+
+				statement = "SELECT " + string.Join(", ", fields)
+					+ " FROM (" + statement + ") AS __Results"
+					+ " WHERE __Results.__RowNumber > " + ((pageNumber - 1) * pageSize).ToString() + " AND __Results.__RowNumber <= " + (pageNumber * pageSize).ToString()
+					+ " ORDER BY __Results.__RowNumber";
+			}
+
+			// no pagination or pagination with generic SQL/got LIMIT ... OFFSET ...
+			else
+				statement = select
+					+ (!string.IsNullOrWhiteSpace(orderby) ? " ORDER BY " + orderby : "")
+					+ (pageSize > 0 ? dbProviderFactory.GetOffsetStatement(pageSize, pageNumber) : "");
+
+			// parameters
+			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
+				? statementsInfo.Item1.Item2.Select(param => param.CreateParameter(dbProviderFactory)).ToList()
+				: new List<DbParameter>();
+
+			// return info
+			return new Tuple<string, List<DbParameter>>(statement, parameters);
+		}
+
 		/// <summary>
 		/// Searchs the records and construct the collection of objects
 		/// </summary>
@@ -1495,7 +1836,52 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
-			return new List<T>();
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
+			var standardProperties = propertiesInfo.Item1;
+			var extendedProperties = propertiesInfo.Item2;
+
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
+			{
+				connection.Open();
+
+				var objects = new List<T>();
+				var info = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
+
+				// got ROW_NUMBER or LIMIT ... OFFSET
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				{
+					var command = connection.CreateCommand(info);
+					using (var reader = command.ExecuteReader())
+					{
+						while (reader.Read())
+							objects.Add(ObjectService.CreateInstance<T>().Copy(reader, standardProperties, extendedProperties));
+					}
+				}
+
+				// generic SQL
+				else
+				{
+					var dataAdapter = dbProviderFactory.CreateDataAdapter();
+					dataAdapter.SelectCommand = connection.CreateCommand(info);
+
+					var dataSet = new DataSet();
+					if (pageSize > 0)
+					{
+						var startRecord = pageNumber > 0 ? (pageNumber - 1) * pageSize : 0;
+						dataAdapter.Fill(dataSet, startRecord, pageSize, typeof(T).GetTypeName(true));
+					}
+					else
+						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
+
+					dataSet.Tables[0].Rows.ToList().ForEach(data =>
+					{
+						objects.Add(ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties));
+					});
+				}
+
+				return objects;
+			}
 		}
 
 		/// <summary>
@@ -1511,11 +1897,58 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return Task.FromResult<List<T>>(new List<T>());
-		}
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
+			var standardProperties = propertiesInfo.Item1;
+			var extendedProperties = propertiesInfo.Item2;
 
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
+			{
+				await connection.OpenAsync(cancellationToken);
+
+				var objects = new List<T>();
+				var info = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
+
+				// got ROW_NUMBER or LIMIT ... OFFSET
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				{
+					var command = connection.CreateCommand(info);
+					using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+					{
+						while (await reader.ReadAsync(cancellationToken))
+							objects.Add(ObjectService.CreateInstance<T>().Copy(reader, standardProperties, extendedProperties));
+					}
+				}
+
+				// generic SQL
+				else
+				{
+					var dataAdapter = dbProviderFactory.CreateDataAdapter();
+					dataAdapter.SelectCommand = connection.CreateCommand(info);
+
+					var dataSet = new DataSet();
+					if (pageSize > 0)
+					{
+						var startRecord = pageNumber > 0 ? (pageNumber - 1) * pageSize : 0;
+						dataAdapter.Fill(dataSet, startRecord, pageSize, typeof(T).GetTypeName(true));
+					}
+					else
+						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
+
+					dataSet.Tables[0].Rows.ToList().ForEach(data =>
+					{
+						objects.Add(ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties));
+					});
+				}
+
+				return objects;
+			}
+		}
+		#endregion
+
+		#region Search (identities)
 		/// <summary>
 		/// Searchs all the matched records and return the collection of identities
 		/// </summary>
@@ -1530,7 +1963,52 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
-			return new List<string>();
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
+			var standardProperties = propertiesInfo.Item1;
+			var extendedProperties = propertiesInfo.Item2;
+
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
+			{
+				connection.Open();
+
+				var identities = new List<string>();
+				var info = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
+
+				// got ROW_NUMBER or LIMIT ... OFFSET
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				{
+					var command = connection.CreateCommand(info);
+					using (var reader = command.ExecuteReader())
+					{
+						while (reader.Read())
+							identities.Add(reader[context.EntityDefinition.PrimaryKey].CastAs<string>());
+					}
+				}
+
+				// generic SQL
+				else
+				{
+					var dataAdapter = dbProviderFactory.CreateDataAdapter();
+					dataAdapter.SelectCommand = connection.CreateCommand(info);
+
+					var dataSet = new DataSet();
+					if (pageSize > 0)
+					{
+						var startRecord = pageNumber > 0 ? (pageNumber - 1) * pageSize : 0;
+						dataAdapter.Fill(dataSet, startRecord, pageSize, typeof(T).GetTypeName(true));
+					}
+					else
+						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
+
+					dataSet.Tables[0].Rows.ToList().ForEach(data =>
+					{
+						identities.Add(data[context.EntityDefinition.PrimaryKey].CastAs<string>());
+					});
+				}
+
+				return identities;
+			}
 		}
 
 		/// <summary>
@@ -1546,13 +2024,97 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return Task.FromResult<List<string>>(new List<string>());
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
+			var standardProperties = propertiesInfo.Item1;
+			var extendedProperties = propertiesInfo.Item2;
+
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
+			{
+				await connection.OpenAsync(cancellationToken);
+
+				var identities = new List<string>();
+				var info = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
+
+				// got ROW_NUMBER or LIMIT ... OFFSET
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				{
+					var command = connection.CreateCommand(info);
+					using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+					{
+						while (await reader.ReadAsync(cancellationToken))
+							identities.Add(reader[context.EntityDefinition.PrimaryKey].CastAs<string>());
+					}
+				}
+
+				// generic SQL
+				else
+				{
+					var dataAdapter = dbProviderFactory.CreateDataAdapter();
+					dataAdapter.SelectCommand = connection.CreateCommand(info);
+
+					var dataSet = new DataSet();
+					if (pageSize > 0)
+					{
+						var startRecord = pageNumber > 0 ? (pageNumber - 1) * pageSize : 0;
+						dataAdapter.Fill(dataSet, startRecord, pageSize, typeof(T).GetTypeName(true));
+					}
+					else
+						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
+
+					dataSet.Tables[0].Rows.ToList().ForEach(data =>
+					{
+						identities.Add(data[context.EntityDefinition.PrimaryKey].CastAs<string>());
+					});
+				}
+
+				return identities;
+			}
 		}
 		#endregion
 
-		#region Count (by query)
+		#region Count (searching)
+		static Tuple<string, List<DbParameter>> PrepareCount<T>(this DbProviderFactory dbProviderFactory, string query, IFilterBy<T> filter, string businessEntityID = null, string searchInColumns = "*") where T : class
+		{
+			// prepare
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition, true);
+			var standardProperties = propertiesInfo.Item1;
+			var extendedProperties = propertiesInfo.Item2;
+
+			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+
+			// tables (FROM)
+			var tables = " FROM " + definition.TableName + " AS Origin"
+				+ (extendedProperties != null ? " LEFT JOIN " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " AS Extent ON Origin." + definition.PrimaryKey + "=Extent.ID" : "");
+
+			// filtering expressions (WHERE)
+			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
+				? " WHERE " + statementsInfo.Item1.Item1
+				: "";
+
+			// searching terms
+			var searchTerms = dbProviderFactory.GetSearchTerms(Utility.SearchQuery.Parse(query));
+
+			// Microsoft SQL Server
+			if (dbProviderFactory.IsMicrosoftSQL())
+				tables += " INNER JOIN CONTAINSTABLE (" + definition.TableName + ", " + searchInColumns + ", " + searchTerms + ") AS Search ON Origin." + definition.PrimaryKey + "=Search.[KEY]";
+
+			// statement
+			var statement = "SELECT COUNT(Origin." + definition.PrimaryKey + ") AS TotalRecords" + tables + where;
+
+			// parameters
+			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
+				? statementsInfo.Item1.Item2.Select(param => param.CreateParameter(dbProviderFactory)).ToList()
+				: new List<DbParameter>();
+
+			// return info
+			return new Tuple<string, List<DbParameter>>(statement, parameters);
+		}
+
 		/// <summary>
 		/// Counts the number of all matched records
 		/// </summary>
@@ -1565,7 +2127,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
-			return 0;
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
+			{
+				connection.Open();
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
+				return command.ExecuteScalar().CastAs<long>();
+			}
 		}
 
 		/// <summary>
@@ -1579,9 +2147,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return Task.FromResult<long>(0);
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			using (var connection = SqlHelper.GetConnection(dataSource, dbProviderFactory))
+			{
+				await connection.OpenAsync(cancellationToken);
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
+				return (await command.ExecuteScalarAsync(cancellationToken)).CastAs<long>();
+			}
 		}
 		#endregion
 

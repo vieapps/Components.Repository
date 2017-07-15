@@ -2286,12 +2286,14 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="entity">The entity object (usually is object of sub-class of <see cref="RepositoryBase">RepositoryBase</see>)</param>
+		/// <param name="keyAttribute">The string that presents the name of identity attribute)</param>
 		/// <returns></returns>
-		public static string GetEntityID<T>(this T entity) where T : class
+		public static string GetEntityID<T>(this T entity, string keyAttribute = null) where T : class
 		{
 			var identity = entity is RepositoryBase
 				? (entity as RepositoryBase).ID
-				: entity.GetAttributeValue("ID") as string;
+				: entity.GetAttributeValue(string.IsNullOrWhiteSpace(keyAttribute) ? "ID" : keyAttribute) as string;
+
 			return !string.IsNullOrWhiteSpace(identity)
 				? identity
 				: entity.GetAttributeValue("Id") as string;
@@ -2569,18 +2571,18 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Property/Attribute extension methods
-		internal static Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID, EntityDefinition definition = null) where T : class
+		internal static Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID, EntityDefinition definition = null, bool toLowerCase = false) where T : class
 		{
 			definition = definition != null
 				? definition
 				: RepositoryMediator.GetEntityDefinition<T>();
 
 			var standardProperties = definition != null
-				? definition.Attributes.ToDictionary(attribute => attribute.Name)
-				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => attribute.Name);
+				? definition.Attributes.ToDictionary(attribute => toLowerCase ? attribute.Name.ToLower() : attribute.Name)
+				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => toLowerCase ? attribute.Name.ToLower() : attribute.Name);
 
 			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessEntityID, definition)
-				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
+				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => toLowerCase ? attribute.Name.ToLower() : attribute.Name)
 				: null;
 
 			return new Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>>(standardProperties, extendedProperties);

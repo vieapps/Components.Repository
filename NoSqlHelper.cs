@@ -1308,7 +1308,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Search (by query)
+		#region Search
 		/// <summary>
 		/// Creates a text-search filter
 		/// </summary>
@@ -1526,7 +1526,9 @@ namespace net.vieapps.Components.Repository
 
 			return context.GetCollection<T>(dataSource).SearchAsync(query, filterBy, pageSize, pageNumber, cancellationToken);
 		}
+		#endregion
 
+		#region Search (identities)
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
 		/// </summary>
@@ -1657,7 +1659,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Count (by query)
+		#region Count (searching)
 		/// <summary>
 		/// Counts the number of all the matched documents
 		/// </summary>

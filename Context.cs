@@ -167,12 +167,6 @@ namespace net.vieapps.Components.Repository
 		public void Dispose()
 		{
 			this.CommitTransaction();
-			if (this.SqlConnection != null)
-			{
-				if (this.SqlConnection.State != ConnectionState.Open)
-					this.SqlConnection.Close();
-				this.SqlConnection.Dispose();
-			}
 		}
 
 		~RepositoryContext ()
@@ -337,10 +331,6 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Get SQL connection && No SQL collection
-		internal string SqlConnectionStringName { get; set; }
-
-		internal DbConnection SqlConnection { get; set; }
-
 		/// <summary>
 		/// Gets the connection of SQL database of a specified data-source
 		/// </summary>
@@ -349,20 +339,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public DbConnection GetSqlConnection(DataSource dataSource, DbProviderFactory dbProviderFactory = null)
 		{
-			if (dataSource == null)
-				return null;
-
-			else if (this.SqlConnection != null && !string.IsNullOrEmpty(this.SqlConnection.ConnectionString) && this.SqlConnectionStringName != null && this.SqlConnectionStringName.Equals(dataSource.ConnectionStringName))
-				return this.SqlConnection;
-
-			this.SqlConnection = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
-				? SqlHelper.GetConnection(dataSource, dbProviderFactory)
-				: null;
-
-			if (this.SqlConnection != null)
-				this.SqlConnectionStringName = dataSource.ConnectionStringName;
-
-			return this.SqlConnection;
+			return SqlHelper.GetConnection(dataSource, dbProviderFactory);
 		}
 
 		/// <summary>
