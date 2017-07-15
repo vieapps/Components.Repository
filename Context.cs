@@ -314,7 +314,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Clone the context for working with event handler
+		#region Clone the context (for working with event handlers)
 		internal RepositoryContext Clone()
 		{
 			return new RepositoryContext()
@@ -330,16 +330,17 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Get SQL connection && No SQL collection
+		#region Helper
 		/// <summary>
 		/// Gets the connection of SQL database of a specified data-source
 		/// </summary>
 		/// <param name="dataSource">The object that presents related information of a data source of SQL database</param>
-		/// <param name="dbProviderFactory">The object that presents information of a database provider factory</param>
 		/// <returns></returns>
-		public DbConnection GetSqlConnection(DataSource dataSource, DbProviderFactory dbProviderFactory = null)
+		public DbConnection GetSqlConnection(DataSource dataSource)
 		{
-			return SqlHelper.GetConnection(dataSource, dbProviderFactory);
+			return dataSource != null
+				? SqlHelper.GetProviderFactory(dataSource).CreateConnection(dataSource)
+				: null;
 		}
 
 		/// <summary>
