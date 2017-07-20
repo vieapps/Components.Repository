@@ -154,6 +154,7 @@ namespace net.vieapps.Components.Repository
 		internal static Dictionary<Type, DbType> DbTypes = new Dictionary<Type, DbType>()
 		{
 			{ typeof(String), DbType.String },
+			{ typeof(Char), DbType.StringFixedLength },
 			{ typeof(Byte[]), DbType.Binary },
 			{ typeof(Byte), DbType.Byte },
 			{ typeof(SByte), DbType.SByte },
@@ -167,27 +168,15 @@ namespace net.vieapps.Components.Repository
 			{ typeof(Double), DbType.Double },
 			{ typeof(Decimal), DbType.Decimal },
 			{ typeof(Boolean), DbType.Boolean },
-			{ typeof(Char), DbType.StringFixedLength },
 			{ typeof(Guid), DbType.Guid },
 			{ typeof(DateTime), DbType.DateTime },
-			{ typeof(DateTimeOffset), DbType.DateTimeOffset },
-			{ typeof(Byte?), DbType.Byte },
-			{ typeof(SByte?), DbType.SByte },
-			{ typeof(Int16?), DbType.Int16 },
-			{ typeof(UInt16?), DbType.UInt16 },
-			{ typeof(Int32?), DbType.Int32 },
-			{ typeof(UInt32?), DbType.UInt32 },
-			{ typeof(Int64?), DbType.Int64 },
-			{ typeof(UInt64?), DbType.UInt64 },
-			{ typeof(Single?), DbType.Single },
-			{ typeof(Double?), DbType.Double },
-			{ typeof(Decimal?), DbType.Decimal },
-			{ typeof(Boolean?), DbType.Boolean },
-			{ typeof(Char?), DbType.StringFixedLength },
-			{ typeof(Guid?), DbType.Guid },
-			{ typeof(DateTime?), DbType.DateTime },
-			{ typeof(DateTimeOffset?), DbType.DateTimeOffset },
+			{ typeof(DateTimeOffset), DbType.DateTimeOffset }
 		};
+
+		internal static DbType GetDbType(this Type type)
+		{
+			return SqlHelper.DbTypes[type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)) ? Nullable.GetUnderlyingType(type) : type];
+		}
 
 		internal static DbType GetDbType(this ObjectService.AttributeInfo attribute)
 		{
@@ -195,14 +184,14 @@ namespace net.vieapps.Components.Repository
 				? DbType.AnsiStringFixedLength
 				: attribute.IsStoredAsJson()
 					? DbType.String
-					: SqlHelper.DbTypes[attribute.Type];
+					: attribute.Type.GetDbType();
 		}
 
 		internal static DbType GetDbType(this ExtendedPropertyDefinition attribute)
 		{
 			return attribute.Type.Equals(typeof(DateTime))
 				? DbType.AnsiString
-				: SqlHelper.DbTypes[attribute.Type];
+				: attribute.Type.GetDbType();
 		}
 
 		internal static string GetDbTypeString(this ObjectService.AttributeInfo attribute, DbProviderFactory dbProviderFactory)
@@ -390,7 +379,7 @@ namespace net.vieapps.Components.Repository
 			parameter.Value = info.Value;
 			parameter.DbType = info.Key.EndsWith("ID") || info.Key.EndsWith("Id")
 				? DbType.AnsiStringFixedLength
-				: SqlHelper.DbTypes[info.Value.GetType()];
+				: info.Value.GetType().GetDbType();
 			return parameter;
 		}
 
@@ -2356,8 +2345,7 @@ namespace net.vieapps.Components.Repository
 				case "MySQL":
 					sql = @"CREATE TABLE " + context.EntityDefinition.TableName + " ("
 						+ string.Join(", ", context.EntityDefinition.Attributes.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL"))
-						+ ", PRIMARY KEY (" + context.EntityDefinition.PrimaryKey + ")"
-						+ ")";
+						+ ", PRIMARY KEY (" + context.EntityDefinition.PrimaryKey + "))";
 					break;
 			}
 
@@ -2447,7 +2435,7 @@ namespace net.vieapps.Components.Repository
 					indexes.ForEach(info =>
 					{
 						if (info.Value.Count > 0)
-							sql += (sql.Equals("") ? "" : ";")
+							sql += (sql.Equals("") ? "" : ";\n")
 								+ "CREATE INDEX " + info.Key + " ON " + context.EntityDefinition.TableName + " ("
 								+ string.Join(", ", info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC"))
 								+ ")";
@@ -2455,7 +2443,7 @@ namespace net.vieapps.Components.Repository
 					uniqueIndexes.ForEach(info =>
 					{
 						if (info.Value.Count > 0)
-							sql += (sql.Equals("") ? "" : ";")
+							sql += (sql.Equals("") ? "" : ";\n")
 								+ "CREATE UNIQUE INDEX " + info.Key + " ON " + context.EntityDefinition.TableName + " ("
 								+ string.Join(", ", info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC"))
 								+ ")";
@@ -2538,7 +2526,7 @@ namespace net.vieapps.Components.Repository
 				case "MicrosoftSQL":
 					sql = "CREATE TABLE [" + context.EntityDefinition.MultipleParentAssociatesTable + "] ("
 						+ string.Join(", ", columns.Select(info => "[" + info.Key + "] " + info.Value.GetDbTypeString(dbProviderFactory) + " NOT  NULL"))
-						+ ", CONSTRAINT [PK_" + context.EntityDefinition.MultipleParentAssociatesTable + "] PRIMARY KEY CLUSTERED ([" + string.Join(", ", columns.Select(info => "[" + info.Key + "] ASC")) + ") "
+						+ ", CONSTRAINT [PK_" + context.EntityDefinition.MultipleParentAssociatesTable + "] PRIMARY KEY CLUSTERED (" + string.Join(", ", columns.Select(info => "[" + info.Key + "] ASC")) + ") "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
 					break;
 
@@ -2564,6 +2552,117 @@ namespace net.vieapps.Components.Repository
 					catch (Exception ex)
 					{
 						throw new RepositoryOperationException("Error occurred while creating new table [" + sql + "]", ex);
+					}
+				}
+		}
+
+		internal static async Task CreateExtentTableAsync(this RepositoryContext context, DataSource dataSource)
+		{
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			var dbProviderFactoryName = dbProviderFactory.GetName();
+			var tableName = context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName;
+
+			var columns = new Dictionary<string, Tuple<Type, int>>()
+			{
+				{ "ID", new Tuple<Type, int>(typeof(String), 32) },
+				{ "SystemID", new Tuple<Type, int>(typeof(String), 32) },
+				{ "RepositoryID", new Tuple<Type, int>(typeof(String), 32) },
+				{ "EntityID", new Tuple<Type, int>(typeof(String), 32) },
+			};
+
+			var max = dbProviderFactoryName.Equals("MySQL") ? 15 : 30;
+			for (var index = 1; index <= max; index++)
+				columns.Add("SmallText" + index.ToString(), new Tuple<Type, int>(typeof(String), 250));
+
+			max = dbProviderFactoryName.Equals("MySQL") ? 3 : 10;
+			for (var index = 1; index <= max; index++)
+				columns.Add("MediumText" + index.ToString(), new Tuple<Type, int>(typeof(String), 4000));
+
+			max = 5;
+			for (var index = 1; index <= max; index++)
+				columns.Add("LargeText" + index.ToString(), new Tuple<Type, int>(typeof(String), 0));
+
+			max = dbProviderFactoryName.Equals("MySQL") ? 20 : 40;
+			for (var index = 1; index <= max; index++)
+				columns.Add("Number" + index.ToString(), new Tuple<Type, int>(typeof(Int32), 0));
+
+			max = 10;
+			for (var index = 1; index <= max; index++)
+				columns.Add("Decimal" + index.ToString(), new Tuple<Type, int>(typeof(Decimal), 0));
+
+			for (var index = 1; index <= max; index++)
+				columns.Add("DateTime" + index.ToString(), new Tuple<Type, int>(typeof(String), 19));
+
+			var sql = "";
+			switch (dbProviderFactoryName)
+			{
+				case "MicrosoftSQL":
+					sql = "CREATE TABLE [" + tableName + "] ("
+						+ string.Join(", ", columns.Select(info =>
+							{
+								var type = info.Value.Item1;
+								var precision = info.Value.Item2;
+								var asFixedLength = type.Equals(typeof(String)) && precision.Equals(32);
+								var asCLOB = type.Equals(typeof(String)) && precision.Equals(0);
+								return "[" + info.Key + "] "
+									+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
+									+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
+							}))
+						+ ", CONSTRAINT [PK_" + tableName + "] PRIMARY KEY CLUSTERED ([ID] ASC) "
+						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];\n"
+						+ "CREATE NONCLUSTERED INDEX [IDX_" + tableName + "] ON [" + tableName + "] ([ID] ASC, [SystemID] ASC, [RepositoryID] ASC, [EntityID] ASC)"
+						+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY];";
+					columns.ForEach((info, index) =>
+					{
+						var type = info.Value.Item1;
+						var precision = info.Value.Item2;
+						var isBigText = type.Equals(typeof(String)) && precision.Equals(0);
+						if (index > 3 && !isBigText)
+							sql += "\n"
+								+ "CREATE NONCLUSTERED INDEX [IDX_" + tableName + "_" + info.Key + "] ON [" + tableName + "] ([" + info.Key + "] ASC)"
+								+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY];";
+					});
+					break;
+
+				case "MySQL":
+					sql = @"CREATE TABLE " + tableName + " ("
+						+ string.Join(", ", columns.Select(info =>
+						{
+							var type = info.Value.Item1;
+							var precision = info.Value.Item2;
+							var asFixedLength = type.Equals(typeof(String)) && precision.Equals(32);
+							var asCLOB = type.Equals(typeof(String)) && precision.Equals(0);
+							return info.Key + " "
+								+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
+								+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
+						}))
+						+ ", PRIMARY KEY (ID ASC));\n"
+						+ "CREATE INDEX IDX_" + tableName + " ON " + tableName + " (ID ASC, SystemID ASC, RepositoryID ASC, EntityID ASC);";
+					columns.ForEach((info, index) =>
+					{
+						var type = info.Value.Item1;
+						var precision = info.Value.Item2;
+						var isBigText = type.Equals(typeof(String)) && (precision.Equals(0) || precision.Equals(4000));
+						if (index > 3 && !isBigText)
+							sql += "\n" + "CREATE INDEX IDX_" + tableName + "_" + info.Key + " ON " + tableName + " (" + info.Key + " ASC);";
+					});
+					break;
+			}
+
+			// create table
+			if (!sql.Equals(""))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					await connection.OpenAsync();
+					try
+					{
+						var command = connection.CreateCommand();
+						command.CommandText = sql;
+						await command.ExecuteNonQueryAsync();
+					}
+					catch (Exception ex)
+					{
+						throw new RepositoryOperationException("Error occurred while creating new table of extended properties [" + sql + "]", ex);
 					}
 				}
 		}
@@ -2608,6 +2707,8 @@ namespace net.vieapps.Components.Repository
 						if (definition.ParentType != null && !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty) && definition.MultipleParentAssociates
 							&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
 							await context.CreateMapTableAsync(dataSource);
+						if (definition.Extendable && definition.RepositoryDefinition != null)
+							await context.CreateExtentTableAsync(dataSource);
 					}
 					catch (Exception ex)
 					{
