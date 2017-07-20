@@ -1,5 +1,4 @@
 ﻿using System;
-using net.vieapps.Components.Caching;
 
 namespace net.vieapps.Components.Repository
 {
@@ -77,6 +76,11 @@ namespace net.vieapps.Components.Repository
 		public string CacheStorageName { get; set; }
 
 		/// <summary>
+		/// Gets or sets the state that specifies this entity is able to search using full-text method
+		/// </summary>
+		public bool Searchable { get; set; }
+
+		/// <summary>
 		/// Gets or sets the identity (when this object is defined as a content-type definition)
 		/// </summary>
 		public string ID { get; set; }
@@ -102,9 +106,9 @@ namespace net.vieapps.Components.Repository
 		public bool Extendable { get; set; }
 
 		/// <summary>
-		/// Gets or sets the state that specifies this entity is able to search using global method, default is true (when this object is defined as a content-type definition)
+		/// Gets or sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Searchable { get; set; }
+		public bool Indexable { get; set; }
 
 		/// <summary>
 		/// Gets or sets the type of parent entity definition (when this object is defined as a content-type definition)
@@ -261,16 +265,26 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
-	/// Specifies this property is able for sorting (means got pre-defined index)
+	/// Specifies this property is able for sorting (means got pre-defined index or able to create new index)
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]
 	public class SortableAttribute : Attribute
 	{
 		public SortableAttribute() { }
+
+		/// <summary>
+		/// Gets or sets the name of the index while creating new
+		/// </summary>
+		public string IndexName { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the unique index while creating new
+		/// </summary>
+		public string UniqueIndexName { get; set; }
 	}
 
 	/// <summary>
-	/// Specifies this property is able for searching by full-text search (means got pre-defined index)
+	/// Specifies this property is able for searching by full-text search (means got pre-defined full-text index)
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]
 	public class SearchableAttribute : Attribute

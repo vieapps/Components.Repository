@@ -1905,25 +1905,25 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the title
 		/// </summary>
-		[BsonIgnoreIfNull, Property(MaxLength = 250), IgnoreIfNull]
+		[BsonIgnoreIfNull, Property(MaxLength = 250), IgnoreIfNull, Sortable]
 		public virtual string Title { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable]
 		public virtual string SystemID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable]
 		public virtual string RepositoryID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable]
 		public virtual string EntityID { get; set; }
 
 		/// <summary>

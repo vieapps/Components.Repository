@@ -89,6 +89,21 @@ namespace net.vieapps.Components.Repository
 				? "LIMIT " + pageSize.ToString() + " OFFSET " + ((pageNumber - 1) * pageSize).ToString()
 				: "";
 		}
+
+		static string GetName(this DbProviderFactory dbProviderFactory)
+		{
+			return dbProviderFactory == null
+				? "Unknown"
+				: dbProviderFactory.IsMicrosoftSQL()
+					? "MicrosoftSQL"
+					: dbProviderFactory.IsMySQL()
+						? "MySQL"
+						: dbProviderFactory.IsOracle()
+							? "OralceSQL"
+							: dbProviderFactory.IsPostgreSQL()
+								? "PostgreSQL"
+								: "ODBC";
+		}
 		#endregion
 
 		#region Connection
@@ -189,6 +204,182 @@ namespace net.vieapps.Components.Repository
 				? DbType.AnsiString
 				: SqlHelper.DbTypes[attribute.Type];
 		}
+
+		internal static string GetDbTypeString(this ObjectService.AttributeInfo attribute, DbProviderFactory dbProviderFactory)
+		{
+			return attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))
+				? typeof(String).GetDbTypeString(dbProviderFactory, 32, true, false)
+				: attribute.IsStoredAsString()
+					? typeof(String).GetDbTypeString(dbProviderFactory, 19, true, false)
+					: attribute.IsStoredAsJson()
+						? typeof(String).GetDbTypeString(dbProviderFactory, 0, false, true)
+						: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength);
+		}
+
+		internal static string GetDbTypeString(this Type type, DbProviderFactory dbProviderFactory, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
+		{
+			return type == null || dbProviderFactory == null
+				? ""
+				: type.GetDbTypeString(dbProviderFactory.GetName(), precision, asFixedLength, asCLOB);
+		}
+
+		internal static string GetDbTypeString(this Type type, string dbProviderFactoryName, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
+		{
+			type = !type.Equals(typeof(String))
+				? type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>))
+					? Nullable.GetUnderlyingType(type)
+					: type
+				: asFixedLength
+					? typeof(Char)
+					: asCLOB
+						? typeof(Char?)
+						: type;
+
+			precision = precision < 1 && type.Equals(typeof(String))
+				? 4000
+				: precision;
+
+			var dbTypeString = !string.IsNullOrWhiteSpace(dbProviderFactoryName) && SqlHelper.DbTypeStrings.ContainsKey(type) && SqlHelper.DbTypeStrings[type].ContainsKey(dbProviderFactoryName)
+				? SqlHelper.DbTypeStrings[type][dbProviderFactoryName]
+				: "";
+
+			if (dbTypeString.IndexOf("{0}") > 0 && precision > 0)
+				dbTypeString = string.Format(dbTypeString, "(" + precision.ToString() + ")");
+
+			return dbTypeString;
+		}
+
+		internal static Dictionary<Type, Dictionary<string, string>> DbTypeStrings = new Dictionary<Type, Dictionary<string, string>>()
+		{
+			{
+				typeof(String), 
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "NVARCHAR{0}" },
+					{ "MySQL", "VARCHAR{0}" },
+				}
+			},
+			{
+				typeof(Char),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "CHAR{0}" },
+					{ "MySQL", "CHAR{0}" },
+				}
+			},
+			{
+				typeof(Char?),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "NTEXT" },
+					{ "MySQL", "TEXT" },
+				}
+			},
+			{
+				typeof(Byte),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "TINYINT" },
+					{ "MySQL", "TINYINT" },
+				}
+			},
+			{
+				typeof(SByte),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "TINYINT" },
+					{ "MySQL", "TINYINT UNSIGNED" },
+				}
+			},
+			{
+				typeof(Int16),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "SMALLINT" },
+					{ "MySQL", "SMALLINT" },
+				}
+			},
+			{
+				typeof(UInt16),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "SMALLINT" },
+					{ "MySQL", "SMALLINT" },
+				}
+			},
+			{
+				typeof(Int32),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "INT" },
+					{ "MySQL", "INT" },
+				}
+			},
+			{
+				typeof(UInt32),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "INT" },
+					{ "MySQL", "INT" },
+				}
+			},
+			{
+				typeof(Int64),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "BIGINT" },
+					{ "MySQL", "BIGINT" },
+				}
+			},
+			{
+				typeof(UInt64),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "BIGINT" },
+					{ "MySQL", "BIGINT" },
+				}
+			},
+			{
+				typeof(Single),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "FLOAT(24)" },
+					{ "MySQL", "FLOAT" },
+				}
+			},
+			{
+				typeof(Double),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "FLOAT(53)" },
+					{ "MySQL", "DOUBLE" },
+				}
+			},
+			{
+				typeof(Decimal),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "DECIMAL(19,5)" },
+					{ "MySQL", "NUMERIC(19,5)" },
+				}
+			},
+			{
+				typeof(Boolean),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "BIT" },
+					{ "MySQL", "TINYINT(1)" },
+				}
+			},
+			{
+				typeof(DateTime),
+				new Dictionary<string, string>()
+				{
+					{ "MicrosoftSQL", "DATETIME" },
+					{ "MySQL", "DATETIME" },
+				}
+			}
+		};
 		#endregion
 
 		#region Parameter
@@ -2144,6 +2335,285 @@ namespace net.vieapps.Components.Repository
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
 				return (await command.ExecuteScalarAsync(cancellationToken)).CastAs<long>();
 			}
+		}
+		#endregion
+
+		#region Schemas & Indexes
+		internal static async Task CreateTableAsync(this RepositoryContext context, DataSource dataSource)
+		{
+			// prepare
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			var sql = "";
+			switch (dbProviderFactory.GetName())
+			{
+				case "MicrosoftSQL":
+					sql = "CREATE TABLE [" + context.EntityDefinition.TableName + "] ("
+						+ string.Join(", ", context.EntityDefinition.Attributes.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL"))
+						+ ", CONSTRAINT [PK_" + context.EntityDefinition.TableName + "] PRIMARY KEY CLUSTERED ([" + context.EntityDefinition.PrimaryKey + "] ASC) "
+						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
+					break;
+
+				case "MySQL":
+					sql = @"CREATE TABLE " + context.EntityDefinition.TableName + " ("
+						+ string.Join(", ", context.EntityDefinition.Attributes.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL"))
+						+ ", PRIMARY KEY (" + context.EntityDefinition.PrimaryKey + ")"
+						+ ")";
+					break;
+			}
+
+			// create table
+			if (!sql.Equals(""))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					await connection.OpenAsync();
+					try
+					{
+						var command = connection.CreateCommand();
+						command.CommandText = sql;
+						await command.ExecuteNonQueryAsync();
+					}
+					catch (Exception ex)
+					{
+						throw new RepositoryOperationException("Error occurred while creating new table [" + sql + "]", ex);
+					}
+				}
+		}
+
+		internal static async Task CreateTableIndexesAsync(this RepositoryContext context, DataSource dataSource)
+		{
+			// prepare
+			var prefix = "IDX_" + context.EntityDefinition.TableName;
+			var indexes = new Dictionary<string, List<ObjectService.AttributeInfo>>()
+			{
+				{ prefix, new List<ObjectService.AttributeInfo>() }
+			};
+			var uniqueIndexes = new Dictionary<string, List<ObjectService.AttributeInfo>>();
+
+			context.EntityDefinition.Attributes.ForEach(attribute =>
+			{
+				var attributes = attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true);
+				if (attributes.Length > 0)
+				{
+					var attr = attributes[0] as SortableAttribute;
+					if (!string.IsNullOrWhiteSpace(attr.UniqueIndexName))
+					{
+						var name = prefix + "_" + attr.UniqueIndexName;
+						if (!uniqueIndexes.ContainsKey(name))
+							uniqueIndexes.Add(name, new List<ObjectService.AttributeInfo>());
+						uniqueIndexes[name].Add(attribute);
+
+						if (!string.IsNullOrWhiteSpace(attr.IndexName))
+						{
+							name = prefix + "_" + attr.IndexName;
+							if (!indexes.ContainsKey(name))
+								indexes.Add(name, new List<ObjectService.AttributeInfo>());
+							indexes[name].Add(attribute);
+						}
+					}
+					else
+					{
+						var name = prefix + (string.IsNullOrWhiteSpace(attr.IndexName) ? "" : "_" + attr.IndexName);
+						if (!indexes.ContainsKey(name))
+							indexes.Add(name, new List<ObjectService.AttributeInfo>());
+						indexes[name].Add(attribute);
+					}
+				}
+			});
+
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			var sql = "";
+			switch (dbProviderFactory.GetName())
+			{
+				case "MicrosoftSQL":
+					indexes.ForEach(info =>
+					{
+						if (info.Value.Count > 0)
+							sql += (sql.Equals("") ? "" : ";")
+								+ "CREATE NONCLUSTERED INDEX [" + info.Key + "] ON [" + context.EntityDefinition.TableName + "] ("
+								+ string.Join(", ", info.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC"))
+								+ ") WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY]";
+					});
+					uniqueIndexes.ForEach(info =>
+					{
+						if (info.Value.Count > 0)
+							sql += (sql.Equals("") ? "" : ";")
+								+ "CREATE UNIQUE NONCLUSTERED INDEX [" + info.Key + "] ON [" + context.EntityDefinition.TableName + "] ("
+								+ string.Join(", ", info.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC"))
+								+ ") WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY]";
+					});
+					break;
+
+				case "MySQL":
+					indexes.ForEach(info =>
+					{
+						if (info.Value.Count > 0)
+							sql += (sql.Equals("") ? "" : ";")
+								+ "CREATE INDEX " + info.Key + " ON " + context.EntityDefinition.TableName + " ("
+								+ string.Join(", ", info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC"))
+								+ ")";
+					});
+					uniqueIndexes.ForEach(info =>
+					{
+						if (info.Value.Count > 0)
+							sql += (sql.Equals("") ? "" : ";")
+								+ "CREATE UNIQUE INDEX " + info.Key + " ON " + context.EntityDefinition.TableName + " ("
+								+ string.Join(", ", info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC"))
+								+ ")";
+					});
+					break;
+			}
+
+			// create index
+			if (!sql.Equals(""))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					await connection.OpenAsync();
+					try
+					{
+						var command = connection.CreateCommand();
+						command.CommandText = sql;
+						await command.ExecuteNonQueryAsync();
+					}
+					catch (Exception ex)
+					{
+						throw new RepositoryOperationException("Error occurred while creating new indexes [" + sql + "]", ex);
+					}
+				}
+		}
+
+		internal static async Task CreateTableFulltextIndexAsync(this RepositoryContext context, DataSource dataSource)
+		{
+			// prepare
+			var columns = context.EntityDefinition.Attributes
+				.Where(attribute => attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0)
+				.Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)
+				.ToList();
+
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			var sql = "";
+			if (columns.Count > 0)
+				switch (dbProviderFactory.GetName())
+				{
+					case "MicrosoftSQL":
+						sql = "CREATE FULLTEXT INDEX ON [" + context.EntityDefinition.TableName + "] ("
+							+ string.Join(", ", columns)
+							+ ") KEY INDEX [PK_" + context.EntityDefinition.TableName + "]";
+						break;
+
+					case "MySQL":
+						sql = "CREATE FULLTEXT INDEX FT_" + context.EntityDefinition.TableName + " ON " + context.EntityDefinition.TableName + " ("
+							+ string.Join(", ", columns)
+							+ ")";
+						break;
+				}
+
+			// create full-text index
+			if (!sql.Equals(""))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					await connection.OpenAsync();
+					try
+					{
+						var command = connection.CreateCommand();
+						command.CommandText = sql;
+						await command.ExecuteNonQueryAsync();
+					}
+					catch (Exception ex)
+					{
+						throw new RepositoryOperationException("Error occurred while creating new full-text indexes [" + sql + "]", ex);
+					}
+				}
+		}
+
+		internal static async Task CreateMapTableAsync(this RepositoryContext context, DataSource dataSource)
+		{
+			// prepare
+			var columns = context.EntityDefinition.Attributes
+				.Where(attribute => attribute.Name.Equals(context.EntityDefinition.ParentAssociatedProperty) || attribute.Name.Equals(context.EntityDefinition.PrimaryKey))
+				.ToDictionary(attribute => attribute.Name.Equals(context.EntityDefinition.PrimaryKey) ? context.EntityDefinition.MultipleParentAssociatesLinkColumn : context.EntityDefinition.MultipleParentAssociatesMapColumn);
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			var sql = "";
+			switch (dbProviderFactory.GetName())
+			{
+				case "MicrosoftSQL":
+					sql = "CREATE TABLE [" + context.EntityDefinition.MultipleParentAssociatesTable + "] ("
+						+ string.Join(", ", columns.Select(info => "[" + info.Key + "] " + info.Value.GetDbTypeString(dbProviderFactory) + " NOT  NULL"))
+						+ ", CONSTRAINT [PK_" + context.EntityDefinition.MultipleParentAssociatesTable + "] PRIMARY KEY CLUSTERED ([" + string.Join(", ", columns.Select(info => "[" + info.Key + "] ASC")) + ") "
+						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
+					break;
+
+				case "MySQL":
+					sql = @"CREATE TABLE " + context.EntityDefinition.MultipleParentAssociatesTable + " ("
+						+ string.Join(", ", columns.Select(info => info.Key + " " + info.Value.GetDbTypeString(dbProviderFactory) + " NOT  NULL"))
+						+ ", PRIMARY KEY (" + string.Join(", ", columns.Select(info => info.Key + " ASC")) + ")"
+						+ ")";
+					break;
+			}
+
+			// create table
+			if (!sql.Equals(""))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					await connection.OpenAsync();
+					try
+					{
+						var command = connection.CreateCommand();
+						command.CommandText = sql;
+						await command.ExecuteNonQueryAsync();
+					}
+					catch (Exception ex)
+					{
+						throw new RepositoryOperationException("Error occurred while creating new table [" + sql + "]", ex);
+					}
+				}
+		}
+
+		internal static async Task EnsureSchemaAsync(this EntityDefinition definition, DataSource dataSource)
+		{
+			// check existed
+			var isExisted = false;
+			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
+			var sql = "";
+			switch (dbProviderFactory.GetName())
+			{
+				case "MicrosoftSQL":
+				case "MySQL":
+					sql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='" + definition.TableName + "'";
+					break;
+			}
+
+			if (!sql.Equals(""))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					try
+					{
+						await connection.OpenAsync();
+						var command = connection.CreateCommand();
+						command.CommandText = sql;
+						isExisted = (await command.ExecuteScalarAsync()).CastAs<int>() > 0;
+					}
+					catch { }
+				}
+
+			if (!isExisted)
+				using (var context = new RepositoryContext(false))
+				{
+					context.EntityDefinition = definition;
+					try
+					{
+						await context.CreateTableAsync(dataSource);
+						await context.CreateTableIndexesAsync(dataSource);
+						if (definition.Searchable)
+							await context.CreateTableFulltextIndexAsync(dataSource);
+						if (definition.ParentType != null && !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty) && definition.MultipleParentAssociates
+							&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
+							await context.CreateMapTableAsync(dataSource);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs("Error occurred while processing schemas & indexes of a table [" + definition.TableName + "]", ex);
+					}
+				}
 		}
 		#endregion
 

@@ -3187,7 +3187,7 @@ namespace net.vieapps.Components.Repository
 		#region [Logs]
 		static string LogsPath = null;
 
-		static async Task WriteLogs(string filePath, List<string> logs, Exception ex)
+		internal static async Task WriteLogs(string filePath, List<string> logs, Exception ex)
 		{
 			// prepare
 			var info = DateTime.Now.ToString("HH:mm:ss.fff") + "\t" + "[" + Process.GetCurrentProcess().Id.ToString()
@@ -3232,7 +3232,7 @@ namespace net.vieapps.Components.Repository
 			catch { }
 		}
 
-		static void WriteLogs(List<string> logs, Exception ex)
+		internal static void WriteLogs(List<string> logs, Exception ex)
 		{
 			// prepare path of all log files
 			if (RepositoryMediator.LogsPath == null)
@@ -3241,6 +3241,13 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.LogsPath = !string.IsNullOrWhiteSpace(System.Web.HttpRuntime.AppDomainAppPath)
 						? System.Web.HttpRuntime.AppDomainAppPath + @"\Logs\"
 						: null;
+				}
+				catch { }
+
+			if (RepositoryMediator.LogsPath == null)
+				try
+				{
+					RepositoryMediator.LogsPath = Directory.GetCurrentDirectory() + @"\Logs\";
 				}
 				catch { }
 
@@ -3256,12 +3263,12 @@ namespace net.vieapps.Components.Repository
 			}).ConfigureAwait(false);
 		}
 
-		static void WriteLogs(string log, Exception ex)
+		internal static void WriteLogs(string log, Exception ex)
 		{
 			RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex);
 		}
 
-		static void WriteLogs(string log)
+		internal static void WriteLogs(string log)
 		{
 			RepositoryMediator.WriteLogs(log, null);
 		}

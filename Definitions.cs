@@ -305,10 +305,11 @@ namespace net.vieapps.Components.Repository
 		{
 			this.Attributes = new List<ObjectService.AttributeInfo>();
 			this.SortableAttributes = new List<string>() { "ID" };
+			this.Searchable = true;
 			this.ExtraSettings = new Dictionary<string, object>();
+			this.Indexable = true;
 			this.MultipleIntances = false;
 			this.Extendable = false;
-			this.Searchable = true;
 			this.MultipleParentAssociates = false;
 			this.RuntimeEntities = new Dictionary<string, IRepositoryEntity>();
 		}
@@ -353,6 +354,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the name of the object in the static class that contains information of the cache storage for processing caching data
 		/// </summary>
 		public string CacheStorageName { get; internal set; }
+
+		/// <summary>
+		/// Gets or sets the state that specifies this entity is able to search using full-text method
+		/// </summary>
+		public bool Searchable { get; internal set; }
 
 		/// <summary>
 		/// Gets extra settings of of the entity definition
@@ -476,9 +482,9 @@ namespace net.vieapps.Components.Repository
 		public bool Extendable { get; internal set; }
 
 		/// <summary>
-		/// Gets the state that specifies this entity is able to search using global method, default is true (when this object is defined as a content-type definition)
+		/// Gets or sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Searchable { get; internal set; }
+		public bool Indexable { get; internal set; }
 
 		/// <summary>
 		/// Gets the type of parent entity definition (when this object is defined as a content-type definition)
@@ -551,12 +557,13 @@ namespace net.vieapps.Components.Repository
 				CollectionName = info.CollectionName,
 				CacheStorageType = info.CacheStorageType,
 				CacheStorageName = info.CacheStorageName,
+				Searchable = info.Searchable,
 				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
 				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
 				MultipleIntances = info.MultipleIntances,
 				Extendable = info.Extendable,
-				Searchable = info.Searchable,
+				Indexable = info.Indexable,
 				ParentType = info.ParentType,
 				NavigatorType = info.NavigatorType
 			};

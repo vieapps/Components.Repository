@@ -5,6 +5,8 @@ using System.Configuration;
 using System.Xml;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -94,6 +96,27 @@ namespace net.vieapps.Components.Repository
 					foreach (XmlNode repositoryEntityNode in repositoryNode.SelectNodes("entity"))
 						EntityDefinition.Update(config.GetSettings(repositoryEntityNode));
 				}
+
+				// schemas & indexes
+				if (config._section.Attributes["ensureSchemas"] != null && config._section.Attributes["ensureSchemas"].Value.IsEquals("true"))
+					Task.Run(async () =>
+					{
+						try
+						{
+							await RepositoryStarter.EnsureSqlSchemasAsync();
+						}
+						catch { }
+					}).ConfigureAwait(false);
+
+				if (config._section.Attributes["ensureIndexes"] != null && config._section.Attributes["ensureIndexes"].Value.IsEquals("true"))
+					Task.Run(async () =>
+					{
+						try
+						{
+							await RepositoryStarter.EnsureNoSqlIndexesAsync();
+						}
+						catch { }
+					}).ConfigureAwait(false);
 			}
 			else if (updateConfigFromDisc)
 				throw new ConfigurationErrorsException("Cannot find the configuration section named 'net.vieapps.repositories' in the configuration file");
@@ -106,6 +129,27 @@ namespace net.vieapps.Components.Repository
 		public static void Initialize(Func<IEnumerable<Assembly>> selector = null)
 		{
 			RepositoryStarter.Initialize(selector != null ? selector() : AppDomain.CurrentDomain.GetAssemblies());
+		}
+
+		static async Task EnsureSqlSchemasAsync()
+		{
+			foreach (var info in RepositoryMediator.EntityDefinitions)
+			{
+				var definition = info.Value;
+
+				var dataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
+				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL))
+					await definition.EnsureSchemaAsync(dataSource);
+
+				dataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
+				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL))
+					await definition.EnsureSchemaAsync(dataSource);
+			}
+		}
+
+		static async Task EnsureNoSqlIndexesAsync()
+		{
+			await Task.Delay(0);
 		}
 	}
 
