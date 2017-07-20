@@ -619,8 +619,7 @@ namespace net.vieapps.Components.Repository
 					}
 
 					// sortable
-					attributes = attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true);
-					if (attributes.Length > 0)
+					if (attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true).Length > 0)
 						definition.SortableAttributes.Add(attribute.Name);
 
 					// update
@@ -810,7 +809,7 @@ namespace net.vieapps.Components.Repository
 		public ExtendedPropertyDefinition(JObject json = null)
 		{
 			this.Name = "";
-			this.Mode = ExtendedPropertyMode.Text;
+			this.Mode = ExtendedPropertyMode.SmallText;
 			this.Column = "";
 			this.DefaultValue = "";
 			this.DefaultValueFormula = "";

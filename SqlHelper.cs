@@ -415,7 +415,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Copy (DataReader)
-		static T Copy<T>(this T @object, DbDataReader reader, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			// create object
 			@object = @object != null
@@ -426,13 +426,13 @@ namespace net.vieapps.Components.Repository
 				(@object as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
 
 			// copy data
-			for (var index = 0; index < reader.FieldCount; index++)
+			for (var index = 0; index < dataReader.FieldCount; index++)
 			{
-				var name = reader.GetName(index);
+				var name = dataReader.GetName(index);
 				if (standardProperties != null && standardProperties.ContainsKey(name))
 				{
 					var attribute = standardProperties[name];
-					var value = reader[index];
+					var value = dataReader[index];
 					if (value != null)
 					{
 						if (attribute.Type.IsDateTimeType() && attribute.IsStoredAsString())
@@ -450,7 +450,7 @@ namespace net.vieapps.Components.Repository
 				else if (extendedProperties != null && extendedProperties.ContainsKey(name))
 				{
 					var attribute = extendedProperties[name];
-					var value = reader[index];
+					var value = dataReader[index];
 					if (value != null && attribute.Type.IsDateTimeType())
 						value = DateTime.Parse(value as string);
 
@@ -467,7 +467,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Copy (DataRow)
-		static T Copy<T>(this T @object, DataRow data, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			@object = @object != null
 				? @object
@@ -476,13 +476,13 @@ namespace net.vieapps.Components.Repository
 			if (@object is IBusinessEntity && extendedProperties != null && (@object as IBusinessEntity).ExtendedProperties == null)
 				(@object as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
 
-			for (var index = 0; index < data.Table.Columns.Count; index++)
+			for (var index = 0; index < dataRow.Table.Columns.Count; index++)
 			{
-				var name = data.Table.Columns[index].ColumnName;
+				var name = dataRow.Table.Columns[index].ColumnName;
 				if (standardProperties != null && standardProperties.ContainsKey(name))
 				{
 					var attribute = standardProperties[name];
-					var value = data[name];
+					var value = dataRow[name];
 					if (value != null)
 					{
 						if (attribute.Type.IsDateTimeType() && attribute.IsStoredAsString())
@@ -500,7 +500,7 @@ namespace net.vieapps.Components.Repository
 				else if (extendedProperties != null && extendedProperties.ContainsKey(name))
 				{
 					var attribute = extendedProperties[name];
-					var value = data[name];
+					var value = dataRow[name];
 					if (value != null && attribute.Type.IsDateTimeType())
 						value = DateTime.Parse(value as string);
 
@@ -686,20 +686,20 @@ namespace net.vieapps.Components.Repository
 				connection.Open();
 
 				var command = connection.CreateCommand(@object.PrepareGetOrigin<T>(id, dbProviderFactory));
-				using (var reader = command.ExecuteReader())
+				using (var dataReader = command.ExecuteReader())
 				{
-					if (reader.Read())
-						@object = @object.Copy<T>(reader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null);
+					if (dataReader.Read())
+						@object = @object.Copy<T>(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null);
 				}
 
 				if (@object.IsGotExtendedProperties())
 				{
 					var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
 					command = connection.CreateCommand(@object.PrepareGetExtent<T>(id, dbProviderFactory, extendedProperties));
-					using (var reader = command.ExecuteReader())
+					using (var dataReader = command.ExecuteReader())
 					{
-						if (reader.Read())
-							@object = @object.Copy<T>(reader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
+						if (dataReader.Read())
+							@object = @object.Copy<T>(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
 					}
 				}
 			}
@@ -727,20 +727,20 @@ namespace net.vieapps.Components.Repository
 				await connection.OpenAsync(cancellationToken);
 
 				var command = connection.CreateCommand(@object.PrepareGetOrigin<T>(id, dbProviderFactory));
-				using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+				using (var dataReader = await command.ExecuteReaderAsync(cancellationToken))
 				{
-					if (await reader.ReadAsync(cancellationToken))
-						@object = @object.Copy<T>(reader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null);
+					if (await dataReader.ReadAsync(cancellationToken))
+						@object = @object.Copy<T>(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null);
 				}
 
 				if (@object.IsGotExtendedProperties())
 				{
 					var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
 					command = connection.CreateCommand(@object.PrepareGetExtent<T>(id, dbProviderFactory, extendedProperties));
-					using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken))
 					{
-						if (await reader.ReadAsync(cancellationToken))
-							@object = @object.Copy<T>(reader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
+						if (await dataReader.ReadAsync(cancellationToken))
+							@object = @object.Copy<T>(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
 					}
 				}
 			}
@@ -1310,52 +1310,34 @@ namespace net.vieapps.Components.Repository
 			return rows;
 		}
 
-		static DataTable CreateDataTable(this DbDataReader reader, string name = "Table", bool doLoad = false)
+		static DataTable CreateDataTable(this DbDataReader dataReader, string name = "Table", bool doLoad = false)
 		{
 			var dataTable = new DataTable(name);
 
 			if (doLoad)
-				dataTable.Load(reader);
+				dataTable.Load(dataReader);
 
 			else
-				foreach (DataRow info in reader.GetSchemaTable().Rows)
+				foreach (DataRow info in dataReader.GetSchemaTable().Rows)
 				{
-					var column = new DataColumn();
-					column.ColumnName = info["ColumnName"].ToString();
-					column.Unique = Convert.ToBoolean(info["IsUnique"]);
-					column.AllowDBNull = Convert.ToBoolean(info["AllowDBNull"]);
-					column.ReadOnly = Convert.ToBoolean(info["IsReadOnly"]);
-					column.DataType = (Type)info["DataType"];
-					dataTable.Columns.Add(column);
+					var dataColumn = new DataColumn();
+					dataColumn.ColumnName = info["ColumnName"].ToString();
+					dataColumn.Unique = Convert.ToBoolean(info["IsUnique"]);
+					dataColumn.AllowDBNull = Convert.ToBoolean(info["AllowDBNull"]);
+					dataColumn.ReadOnly = Convert.ToBoolean(info["IsReadOnly"]);
+					dataColumn.DataType = (Type)info["DataType"];
+					dataTable.Columns.Add(dataColumn);
 				}
 
 			return dataTable;
 		}
 
-		static DataTable ToDataTable(this DbDataReader reader, string name = "Table")
+		static void Append(this DataTable dataTable, DbDataReader dataReader)
 		{
-			var dataTable = reader.CreateDataTable(name);
-			while (reader.Read())
-			{
-				object[] data = new object[reader.FieldCount];
-				for (int index = 0; index < reader.FieldCount; index++)
-					data[index] = reader[index];
-				dataTable.LoadDataRow(data, true);
-			}
-			return dataTable;
-		}
-
-		static async Task<DataTable> ToDataTableAsync(this DbDataReader reader, string name = "Table", CancellationToken cancellationToken = default(CancellationToken))
-		{
-			var dataTable = reader.CreateDataTable(name);
-			while (await reader.ReadAsync(cancellationToken))
-			{
-				object[] data = new object[reader.FieldCount];
-				for (int index = 0; index < reader.FieldCount; index++)
-					data[index] = reader[index];
-				dataTable.LoadDataRow(data, true);
-			}
-			return dataTable;
+			object[] data = new object[dataReader.FieldCount];
+			for (int index = 0; index < dataReader.FieldCount; index++)
+				data[index] = dataReader[index];
+			dataTable.LoadDataRow(data, true);
 		}
 
 		/// <summary>
@@ -1378,15 +1360,19 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				connection.Open();
+
+				DataTable dataTable = null;
 				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
 				{
 					var command = connection.CreateCommand(info);
-					using (var reader = command.ExecuteReader())
+					using (var dataReader = command.ExecuteReader())
 					{
-						return reader.ToDataTable(typeof(T).GetTypeName(true)).Rows.ToList();
+						dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
+						while (dataReader.Read())
+							dataTable.Append(dataReader);
 					}
 				}
 
@@ -1402,8 +1388,10 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					return dataSet.Tables[0].Rows.ToList();
+					dataTable = dataSet.Tables[0];
 				}
+
+				return dataTable.Rows.ToList();
 			}
 		}
 
@@ -1428,15 +1416,19 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				await connection.OpenAsync(cancellationToken);
+
+				DataTable dataTable = null;
 				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
 				{
 					var command = connection.CreateCommand(info);
-					using (var reader = await command.ExecuteReaderAsync())
+					using (var dataReader = await command.ExecuteReaderAsync())
 					{
-						return (await reader.ToDataTableAsync(typeof(T).GetTypeName(true), cancellationToken)).Rows.ToList();
+						dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
+						while (await dataReader.ReadAsync())
+							dataTable.Append(dataReader);
 					}
 				}
 
@@ -1452,8 +1444,10 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					return dataSet.Tables[0].Rows.ToList();
+					dataTable = dataSet.Tables[0];
 				}
+
+				return dataTable.Rows.ToList();
 			}
 		}
 		#endregion
@@ -2010,10 +2004,10 @@ namespace net.vieapps.Components.Repository
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
 				{
 					var command = connection.CreateCommand(info);
-					using (var reader = command.ExecuteReader())
+					using (var dataReader = command.ExecuteReader())
 					{
-						while (reader.Read())
-							objects.Add(ObjectService.CreateInstance<T>().Copy(reader, standardProperties, extendedProperties));
+						while (dataReader.Read())
+							objects.Add(ObjectService.CreateInstance<T>().Copy(dataReader, standardProperties, extendedProperties));
 					}
 				}
 
@@ -2031,9 +2025,9 @@ namespace net.vieapps.Components.Repository
 
 					dataSet.Tables[0].Rows
 						.ToList()
-						.ForEach(data =>
+						.ForEach(dataRow =>
 						{
-							objects.Add(ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties));
+							objects.Add(ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties));
 						});
 				}
 
@@ -2072,10 +2066,10 @@ namespace net.vieapps.Components.Repository
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
 				{
 					var command = connection.CreateCommand(info);
-					using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken))
 					{
-						while (await reader.ReadAsync(cancellationToken))
-							objects.Add(ObjectService.CreateInstance<T>().Copy(reader, standardProperties, extendedProperties));
+						while (await dataReader.ReadAsync(cancellationToken))
+							objects.Add(ObjectService.CreateInstance<T>().Copy(dataReader, standardProperties, extendedProperties));
 					}
 				}
 
@@ -2093,9 +2087,9 @@ namespace net.vieapps.Components.Repository
 
 					dataSet.Tables[0].Rows
 						.ToList()
-						.ForEach(data =>
+						.ForEach(dataRow =>
 						{
-							objects.Add(ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties));
+							objects.Add(ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties));
 						});
 				}
 
@@ -2135,10 +2129,10 @@ namespace net.vieapps.Components.Repository
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
 				{
 					var command = connection.CreateCommand(info);
-					using (var reader = command.ExecuteReader())
+					using (var dataReader = command.ExecuteReader())
 					{
-						while (reader.Read())
-							identities.Add(reader[context.EntityDefinition.PrimaryKey].CastAs<string>());
+						while (dataReader.Read())
+							identities.Add(dataReader[context.EntityDefinition.PrimaryKey].CastAs<string>());
 					}
 				}
 
@@ -2526,8 +2520,8 @@ namespace net.vieapps.Components.Repository
 				case "MicrosoftSQL":
 					sql = "CREATE TABLE [" + context.EntityDefinition.MultipleParentAssociatesTable + "] ("
 						+ string.Join(", ", columns.Select(info => "[" + info.Key + "] " + info.Value.GetDbTypeString(dbProviderFactory) + " NOT  NULL"))
-						+ ", CONSTRAINT [PK_" + context.EntityDefinition.MultipleParentAssociatesTable + "] PRIMARY KEY CLUSTERED (" + string.Join(", ", columns.Select(info => "[" + info.Key + "] ASC")) + ") "
-						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
+						+ ", CONSTRAINT [PK_" + context.EntityDefinition.MultipleParentAssociatesTable + "] PRIMARY KEY CLUSTERED (" + string.Join(", ", columns.Select(info => "[" + info.Key + "] ASC")) + ")"
+						+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
 					break;
 
 				case "MySQL":
@@ -2670,7 +2664,7 @@ namespace net.vieapps.Components.Repository
 		internal static async Task EnsureSchemaAsync(this EntityDefinition definition, DataSource dataSource)
 		{
 			// check existed
-			var isExisted = false;
+			var isExisted = true;
 			var dbProviderFactory = SqlHelper.GetProviderFactory(dataSource);
 			var sql = "";
 			switch (dbProviderFactory.GetName())
@@ -2701,12 +2695,17 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						await context.CreateTableAsync(dataSource);
+
 						await context.CreateTableIndexesAsync(dataSource);
+
 						if (definition.Searchable)
 							await context.CreateTableFulltextIndexAsync(dataSource);
-						if (definition.ParentType != null && !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty) && definition.MultipleParentAssociates
-							&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
+
+						if (definition.ParentType != null && !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty)
+							&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable)
+							&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
 							await context.CreateMapTableAsync(dataSource);
+
 						if (definition.Extendable && definition.RepositoryDefinition != null)
 							await context.CreateExtentTableAsync(dataSource);
 					}

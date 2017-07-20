@@ -152,9 +152,14 @@ namespace net.vieapps.Components.Repository
 	public enum ExtendedPropertyMode
 	{
 		/// <summary>
-		/// Unicode text
+		/// Small Unicode text (max: 250)
 		/// </summary>
-		Text,
+		SmallText,
+
+		/// <summary>
+		/// Medium Unicode text (max: 4000)
+		/// </summary>
+		MediumText,
 
 		/// <summary>
 		/// Large (CLOB) unicode text
