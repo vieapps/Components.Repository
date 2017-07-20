@@ -858,10 +858,8 @@ namespace net.vieapps.Components.Repository
 				switch (this.Mode)
 				{
 					case ExtendedPropertyMode.YesNo:
-						return typeof(Int32);
-
 					case ExtendedPropertyMode.Number:
-						return typeof(Int64);
+						return typeof(Int32);
 
 					case ExtendedPropertyMode.Decimal:
 						return typeof(Decimal);
@@ -884,18 +882,17 @@ namespace net.vieapps.Components.Repository
 				switch (this.Mode)
 				{
 					case ExtendedPropertyMode.YesNo:
-						return SqlHelper.DbTypes[typeof(Int32)];
-
 					case ExtendedPropertyMode.Number:
-						return SqlHelper.DbTypes[typeof(Int64)];
+						return typeof(Int32).GetDbType();
+
 
 					case ExtendedPropertyMode.Decimal:
-						return SqlHelper.DbTypes[typeof(Decimal)];
+						return typeof(Decimal).GetDbType();
 
 					case ExtendedPropertyMode.DateTime:
 						return DbType.AnsiString;
 				}
-				return SqlHelper.DbTypes[typeof(String)];
+				return typeof(String).GetDbType();
 			}
 		}
 		#endregion
