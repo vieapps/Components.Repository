@@ -16,6 +16,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 using net.vieapps.Components.Utility;
+using net.vieapps.Components.Security;
 #endregion
 
 namespace net.vieapps.Components.Repository

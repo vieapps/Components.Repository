@@ -16,6 +16,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 using net.vieapps.Components.Utility;
+using net.vieapps.Components.Security;
 #endregion
 
 namespace net.vieapps.Components.Repository
@@ -1959,7 +1960,7 @@ namespace net.vieapps.Components.Repository
 			get
 			{
 				if (this.Permissions == null)
-					this.Permissions = RepositoryMediator.Combine(this.OriginalPermissions, this.Parent != null ? this.Parent.WorkingPermissions : null);
+					this.Permissions = SecurityHelper.Combine(this.OriginalPermissions, this.Parent != null ? this.Parent.WorkingPermissions : null);
 				return this.Permissions;
 			}
 		}
