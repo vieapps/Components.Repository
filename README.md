@@ -1,5 +1,5 @@
 # Components.Repository
-Tiny ORM component for working with NoSQL/SQL in the fastest way...
+Tiny ORM component to help POCO object can work with both NoSQL and SQL in a time on the fastest way...
 
 Features:
 - Based on ActiveRecord pattern
