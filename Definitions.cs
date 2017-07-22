@@ -1127,7 +1127,6 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Name}")]
 	public sealed class ExtendedUIControlDefinition
 	{
-
 		public ExtendedUIControlDefinition(JObject json = null)
 		{
 			this.Name = "";
@@ -1267,6 +1266,77 @@ namespace net.vieapps.Components.Repository
 		{
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 		}
+	}
+
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
+	/// Information of a data source
+	/// </summary>
+	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
+	public class DataSource
+	{
+		public DataSource() { }
+
+		#region Properties
+		/// <summary>
+		/// Gets the name of the data source
+		/// </summary>
+		public string Name { get; internal set; }
+
+		/// <summary>
+		/// Gets the working mode
+		/// </summary>
+		public Repository.RepositoryMode Mode { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the connection string (for working with database server)
+		/// </summary>
+		public string ConnectionStringName { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the database (for working with database server)
+		/// </summary>
+		public string DatabaseName { get; internal set; }
+		#endregion
+
+		#region Helper methods
+		internal static DataSource FromJson(JObject settings)
+		{
+			if (settings == null)
+				throw new ArgumentNullException("settings");
+			else if (settings["name"] == null)
+				throw new ArgumentNullException("name", "[name] attribute of settings");
+			else if (settings["mode"] == null)
+				throw new ArgumentNullException("mode", "[mode] attribute of settings");
+
+			// initialize
+			var dataSource = new DataSource()
+			{
+				Name = (settings["name"] as JValue).Value as string,
+				Mode = (RepositoryMode)Enum.Parse(typeof(RepositoryMode), (settings["mode"] as JValue).Value as string)
+			};
+
+			// name of connection string (SQL and NoSQL)
+			if (dataSource.Mode.Equals(RepositoryMode.SQL) || dataSource.Mode.Equals(RepositoryMode.NoSQL))
+			{
+				if (settings["connectionStringName"] == null)
+					throw new ArgumentNullException("connectionStringName", "[connectionStringName] attribute of settings");
+				dataSource.ConnectionStringName = (settings["connectionStringName"] as JValue).Value as string;
+			}
+
+			// name of database (NoSQL)
+			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+			{
+				if (settings["databaseName"] == null)
+					throw new ArgumentNullException("databaseName", "[databaseName] attribute of settings");
+				dataSource.DatabaseName = (settings["databaseName"] as JValue).Value as string;
+			}
+
+			return dataSource;
+		}
+		#endregion
 
 	}
+
 }

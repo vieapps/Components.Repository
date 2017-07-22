@@ -84,7 +84,6 @@
     <Compile Include="Interfaces.cs" />
     <Compile Include="Base.cs" />
     <Compile Include="Context.cs" />
-    <Compile Include="DataStructs.cs" />
     <Compile Include="Definitions.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Mediator.cs" />
@@ -99,6 +98,10 @@
     <ProjectReference Include="..\Caching\VIEApps.Components.Caching.csproj">
       <Project>{98147bac-f0a1-48d8-9e1f-064dd227d281}</Project>
       <Name>VIEApps.Components.Caching</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Security\VIEApps.Components.Security.csproj">
+      <Project>{bf8597e1-3fdf-4d5e-b990-6f8bcd8bbc70}</Project>
+      <Name>VIEApps.Components.Security</Name>
     </ProjectReference>
     <ProjectReference Include="..\Utility\VIEApps.Components.Utility.csproj">
       <Project>{995c1122-0acc-4cf4-8a89-775212a35d89}</Project>
