@@ -184,6 +184,10 @@ namespace net.vieapps.Components.Repository
 				? DbType.AnsiStringFixedLength
 				: attribute.IsStoredAsJson()
 					? DbType.String
+					: attribute.Type.IsEnum
+						? attribute.IsEnumString()
+							? DbType.String
+							: DbType.Int32
 					: attribute.Type.GetDbType();
 		}
 
@@ -202,7 +206,11 @@ namespace net.vieapps.Components.Repository
 					? typeof(String).GetDbTypeString(dbProviderFactory, 19, true, false)
 					: attribute.IsStoredAsJson()
 						? typeof(String).GetDbTypeString(dbProviderFactory, 0, false, true)
-						: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength);
+						: attribute.Type.IsEnum
+							? attribute.IsEnumString()
+								? typeof(String).GetDbTypeString(dbProviderFactory, 50, false, false)
+								: typeof(Int32).GetDbTypeString(dbProviderFactory, 0, false, false)
+							: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength);
 		}
 
 		internal static string GetDbTypeString(this Type type, DbProviderFactory dbProviderFactory, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
@@ -444,6 +452,8 @@ namespace net.vieapps.Components.Repository
 								: JObject.Parse(value as string) as JToken;
 							value = (new JsonSerializer()).Deserialize(new JTokenReader(json), attribute.Type);
 						}
+						else if (attribute.Type.IsEnum)
+							value = attribute.IsEnumString() ? value.ToString().ToEnum(attribute.Type) : value.CastAs<int>();
 					}
 					@object.SetAttributeValue(attribute, value, true);
 				}
@@ -494,6 +504,8 @@ namespace net.vieapps.Components.Repository
 								: JObject.Parse(value as string) as JToken;
 							value = (new JsonSerializer()).Deserialize(new JTokenReader(json), attribute.Type);
 						}
+						else if (attribute.Type.IsEnum)
+							value = attribute.IsEnumString() ? value.ToString().ToEnum(attribute.Type) : value.CastAs<int>();
 					}
 					@object.SetAttributeValue(attribute, value, true);
 				}

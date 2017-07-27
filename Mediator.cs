@@ -13,6 +13,7 @@ using System.Xml;
 using System.Xml.Linq;
 
 using MongoDB.Driver;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using net.vieapps.Components.Caching;
@@ -2728,6 +2729,14 @@ namespace net.vieapps.Components.Repository
 			return attribute.Type.IsDateTimeType() && attribute.Info.GetCustomAttributes(typeof(AsStringAttribute), true).Length > 0;
 		}
 
+		internal static bool IsEnumString(this ObjectService.AttributeInfo attribute)
+		{
+			var attributes = attribute.Type.IsEnum
+				? attribute.Info.GetCustomAttributes(typeof(JsonConverterAttribute), true)
+				: new object[] { };
+			return attributes.Length > 0 && (attributes[0] as JsonConverterAttribute).ConverterType.Equals(typeof(Newtonsoft.Json.Converters.StringEnumConverter));
+		}
+
 		internal static bool IsSortable(this ObjectService.AttributeInfo attribute)
 		{
 			return attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true).Length > 0;
@@ -2736,100 +2745,6 @@ namespace net.vieapps.Components.Repository
 		internal static bool IsSearchable(this ObjectService.AttributeInfo attribute)
 		{
 			return attribute.Type.IsStringType() && attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0;
-		}
-		#endregion
-
-		#region Permission extension methods
-		/// <summary>
-		/// Determines an user can manage (means the user can act like an administrator) on this business entity
-		/// </summary>
-		/// <param name="object">The business entity</param>
-		/// <param name="userID">The string that presents the identity of an user</param>
-		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
-		/// <returns>true if the user got right; otherwise false</returns>
-		public static bool CanManage(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
-		{
-			return SecurityHelper.CanManage(userID, userRoles, @object.OriginalPermissions)
-				? true
-				: @object.Parent != null
-					? SecurityHelper.CanManage(userID, userRoles, @object.Parent.WorkingPermissions)
-					: false;
-		}
-
-		/// <summary>
-		/// Determines an user can moderate (means the user can act like a moderator) on this business entity
-		/// </summary>
-		/// <param name="object">The business entity</param>
-		/// <param name="userID">The string that presents the identity of an user</param>
-		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
-		/// <returns>true if the user got right; otherwise false</returns>
-		public static bool CanModerate(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
-		{
-			return SecurityHelper.CanModerate(userID, userRoles, @object.OriginalPermissions)
-				? true
-				: @object.Parent != null
-					? SecurityHelper.CanModerate(userID, userRoles, @object.Parent.WorkingPermissions)
-					: false;
-		}
-
-		/// <summary>
-		/// Determines an user can edit (means the user can act like an editor) on this business entity
-		/// </summary>
-		/// <param name="object">The business entity</param>
-		/// <param name="userID">The string that presents the identity of an user</param>
-		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
-		/// <returns>true if the user got right; otherwise false</returns>
-		public static bool CanEdit(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
-		{
-			return SecurityHelper.CanEdit(userID, userRoles, @object.OriginalPermissions)
-				? true
-				: @object.Parent != null
-					? SecurityHelper.CanEdit(userID, userRoles, @object.Parent.WorkingPermissions)
-					: false;
-		}
-
-		/// <summary>
-		/// Determines an user can contribute (means the user can act like a contributor) on this business entity
-		/// </summary>
-		/// <param name="object">The business entity</param>
-		/// <param name="userID">The string that presents the identity of an user</param>
-		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
-		/// <returns>true if the user got right; otherwise false</returns>
-		public static bool CanContribute(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
-		{
-			return SecurityHelper.CanContribute(userID, userRoles, @object.OriginalPermissions)
-				? true
-				: @object.Parent != null
-					? SecurityHelper.CanContribute(userID, userRoles, @object.Parent.WorkingPermissions)
-					: false;
-		}
-
-		/// <summary>
-		/// Determines an user can view (means the user can act like a viewer) on this business entity
-		/// </summary>
-		/// <param name="object">The business entity</param>
-		/// <param name="userID">The string that presents the identity of an user</param>
-		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
-		/// <returns>true if the user got right; otherwise false</returns>
-		public static bool CanView(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
-		{
-			return SecurityHelper.CanView(userID, userRoles, @object.OriginalPermissions)
-				? true
-				: @object.Parent != null
-					? SecurityHelper.CanView(userID, userRoles, @object.Parent.WorkingPermissions)
-					: false;
-		}
-
-		/// <summary>
-		/// Determines an user can download (means the user can act like a downloader/viewer)
-		/// </summary>
-		/// <param name="object">The business entity</param>
-		/// <param name="userID">The string that presents the identity of an user</param>
-		/// <param name="userRoles">The collection of strings that presents the roles of an users</param>
-		/// <returns>true if the user got right; otherwise false</returns>
-		public static bool CanDownload(this IBusinessEntity @object, string userID, IEnumerable<string> userRoles = null)
-		{
-			return SecurityHelper.CanDownload(userID, userRoles, @object.OriginalPermissions, @object.Parent != null ? @object.Parent.WorkingPermissions : null);
 		}
 		#endregion
 

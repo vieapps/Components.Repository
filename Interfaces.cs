@@ -139,14 +139,14 @@ namespace net.vieapps.Components.Repository
 		IBusinessEntity Parent { get; }
 
 		/// <summary>
-		/// Gets or sets the original working permissions of this object
+		/// Gets or sets the original privileges (means original working permissions) of this object
 		/// </summary>
-		AccessPermissions OriginalPermissions { get; set; }
+		Privileges OriginalPrivileges { get; set; }
 
 		/// <summary>
-		/// Gets the actual working permissions (mean the combined permissions)
+		/// Gets the actual privileges (mean the combined privileges) of this object
 		/// </summary>
-		AccessPermissions WorkingPermissions { get; }
+		Privileges WorkingPrivileges { get; }
 		#endregion
 
 		#region Methods

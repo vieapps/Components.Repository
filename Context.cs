@@ -128,7 +128,7 @@ namespace net.vieapps.Components.Repository
 
 		void Initialize()
 		{
-			this.ID = Utility.Utility.GetUUID();
+			this.ID = Utility.UtilityService.GetUUID();
 			this.Operation = RepositoryOperation.Query;
 			this.PreviousStateData = new Dictionary<string, Dictionary<string, object>>();
 			this.CurrentStateData = new Dictionary<string, Dictionary<string, object>>();

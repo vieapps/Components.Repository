@@ -1940,28 +1940,28 @@ namespace net.vieapps.Components.Repository
 		public virtual IBusinessEntity Parent { get; }
 
 		/// <summary>
-		/// Gets or sets the original working permissions
+		/// Gets or sets the original privileges (means original working permissions)
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, AsJson]
-		public virtual AccessPermissions OriginalPermissions { get; set; }
+		public virtual Privileges OriginalPrivileges { get; set; }
 
 		/// <summary>
-		/// The combined permissions
+		/// The privileges that are combined from original privileges and parent privileges
 		/// </summary>
 		[NonSerialized]
-		protected AccessPermissions Permissions = null;
+		protected Privileges Privileges = null;
 
 		/// <summary>
-		/// Gets the actual working permissions (mean the combined permissions)
+		/// Gets the actual privileges (mean the combined privileges)
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
-		public virtual AccessPermissions WorkingPermissions
+		public virtual Privileges WorkingPrivileges
 		{
 			get
 			{
-				if (this.Permissions == null)
-					this.Permissions = SecurityHelper.Combine(this.OriginalPermissions, this.Parent != null ? this.Parent.WorkingPermissions : null);
-				return this.Permissions;
+				if (this.Privileges == null)
+					this.Privileges = SecurityHelper.Combine(this.OriginalPrivileges, this.Parent != null ? this.Parent.WorkingPrivileges : null);
+				return this.Privileges;
 			}
 		}
 		#endregion
