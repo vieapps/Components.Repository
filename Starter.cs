@@ -68,6 +68,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="updateConfigFromDisc">true to update other settings from configuration file on the disc</param>
 		public static void Initialize(IEnumerable<Assembly> assemblies, bool updateConfigFromDisc = true)
 		{
+#if DEBUG
+			RepositoryMediator.WriteLogs("Start to initialize repositories & entities [" + assemblies.Select(a => a.FullName.Left(a.FullName.IndexOf(","))).ToString(", ") + "]");
+#endif
+
 			// initialize & register all types
 			assemblies.ForEach(assembly =>
 			{
