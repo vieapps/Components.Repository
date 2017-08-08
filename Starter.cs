@@ -136,8 +136,11 @@ namespace net.vieapps.Components.Repository
 				? selector()
 				: (new List<Assembly>() { Assembly.GetCallingAssembly() }).Concat(Assembly.GetCallingAssembly()
 					.GetReferencedAssemblies()
-					.Where(n => !n.Name.IsStartsWith("MsCorLib") && !n.Name.IsStartsWith("System") && !n.Name.IsStartsWith("Newtonsoft") && !n.Name.IsStartsWith("MongoDB"))
-					.Select(n => Assembly.Load(n)))
+					.Where(n => !n.Name.IsStartsWith("MsCorLib") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsStartsWith("System")
+						&& !n.Name.IsStartsWith("Newtonsoft") && !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("WampSharp")
+					)
+					.Select(n => Assembly.Load(n))
+				)
 			);
 		}
 
@@ -151,22 +154,22 @@ namespace net.vieapps.Components.Repository
 				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL))
 					try
 					{
-						await definition.EnsureSchemaAsync(dataSource);
+						await definition.EnsureSchemasAsync(dataSource);
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure SQL schemas", ex);
+						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]", ex);
 					}
 
 				dataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
 				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL))
 					try
 					{
-						await definition.EnsureSchemaAsync(dataSource);
+						await definition.EnsureSchemasAsync(dataSource);
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure SQL schemas", ex);
+						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]", ex);
 					}
 			}
 		}
