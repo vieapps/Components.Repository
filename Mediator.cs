@@ -2799,7 +2799,16 @@ namespace net.vieapps.Components.Repository
 		internal static void WriteLogs(List<string> logs, Exception ex)
 		{
 			// prepare path of all log files
-			if (RepositoryMediator.LogsPath == null)
+			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
+				try
+				{
+					RepositoryMediator.LogsPath = ConfigurationManager.AppSettings["vieapps:LogsPath"];
+					if (!RepositoryMediator.LogsPath.EndsWith(@"\"))
+						RepositoryMediator.LogsPath += @"\";
+				}
+				catch { }
+
+			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				try
 				{
 					RepositoryMediator.LogsPath = !string.IsNullOrWhiteSpace(System.Web.HttpRuntime.AppDomainAppPath)
@@ -2808,15 +2817,15 @@ namespace net.vieapps.Components.Repository
 				}
 				catch { }
 
-			if (RepositoryMediator.LogsPath == null)
+			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				try
 				{
 					RepositoryMediator.LogsPath = Directory.GetCurrentDirectory() + @"\Logs\";
 				}
 				catch { }
 
-			// stop if not valid path is found
-			if (RepositoryMediator.LogsPath == null)
+			// stop if a valid path is not found
+			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				return;
 
 			// build file path and write logs via other thread
