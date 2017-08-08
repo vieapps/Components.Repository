@@ -204,7 +204,7 @@ namespace net.vieapps.Components.Repository
 				? typeof(String).GetDbTypeString(dbProviderFactory, 32, true, false)
 				: attribute.IsStoredAsString()
 					? typeof(String).GetDbTypeString(dbProviderFactory, 19, true, false)
-					: attribute.IsStoredAsJson()
+					: attribute.IsCLOB || attribute.IsStoredAsJson()
 						? typeof(String).GetDbTypeString(dbProviderFactory, 0, false, true)
 						: attribute.Type.IsEnum
 							? attribute.IsEnumString()

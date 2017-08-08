@@ -128,7 +128,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="selector">The function to select assemblies to initialize</param>
 		public static void Initialize(Func<IEnumerable<Assembly>> selector = null)
 		{
-			RepositoryStarter.Initialize(selector != null ? selector() : AppDomain.CurrentDomain.GetAssemblies());
+			RepositoryStarter.Initialize(selector != null
+				? selector()
+				: (new List<Assembly>() { Assembly.GetCallingAssembly() }).Concat(Assembly.GetCallingAssembly()
+					.GetReferencedAssemblies()
+					.Where(n => !n.Name.IsStartsWith("MsCorLib") && !n.Name.IsStartsWith("System") && !n.Name.IsStartsWith("Newtonsoft") && !n.Name.IsStartsWith("MongoDB"))
+					.Select(n => Assembly.Load(n)))
+			);
 		}
 
 		static async Task EnsureSqlSchemasAsync()
@@ -139,11 +145,25 @@ namespace net.vieapps.Components.Repository
 
 				var dataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
 				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL))
-					await definition.EnsureSchemaAsync(dataSource);
+					try
+					{
+						await definition.EnsureSchemaAsync(dataSource);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs("Cannot ensure SQL schemas", ex);
+					}
 
 				dataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
 				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL))
-					await definition.EnsureSchemaAsync(dataSource);
+					try
+					{
+						await definition.EnsureSchemaAsync(dataSource);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs("Cannot ensure SQL schemas", ex);
+					}
 			}
 		}
 
