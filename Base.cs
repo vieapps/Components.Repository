@@ -1960,7 +1960,7 @@ namespace net.vieapps.Components.Repository
 			get
 			{
 				if (this.Privileges == null)
-					this.Privileges = SecurityHelper.Combine(this.OriginalPrivileges, this.Parent != null ? this.Parent.WorkingPrivileges : null);
+					this.Privileges = User.CombinePrivileges(this.OriginalPrivileges, this.Parent != null ? this.Parent.WorkingPrivileges : null);
 				return this.Privileges;
 			}
 		}
