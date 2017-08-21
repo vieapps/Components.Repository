@@ -1227,7 +1227,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// fields/columns (SELECT)
 			var fields = new List<string>();
@@ -1668,7 +1668,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// tables (FROM)
 			var tables = " FROM " + definition.TableName + " AS Origin"
@@ -1871,7 +1871,7 @@ namespace net.vieapps.Components.Repository
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
-			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
 
 			// fields/columns (SELECT)
 			var fields = new List<string>();
@@ -2245,7 +2245,7 @@ namespace net.vieapps.Components.Repository
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
-			var statementsInfo = RestrictionsHelper.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
 
 			// tables (FROM)
 			var tables = " FROM " + definition.TableName + " AS Origin"

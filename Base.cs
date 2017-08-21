@@ -1167,7 +1167,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Find<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
+		public static List<TEntity> Find<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
 		{
 			return RepositoryMediator.Find<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
 		}
@@ -1186,7 +1186,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Find<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
+		public static List<TEntity> Find<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
 		{
 			return RepositoryBase<T>.Find<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
 		}
@@ -1231,6 +1231,35 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Finds all the matched objects
 		/// </summary>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <returns>The collection of objects</returns>
+		public static List<T> Find(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID, string cacheKey)
+		{
+			return RepositoryBase<T>.Find(filter, sort, pageSize, pageNumber, businessEntityID, true, cacheKey, null, 0);
+		}
+
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <returns>The collection of objects</returns>
+		public static List<T> Find(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string cacheKey)
+		{
+			return RepositoryBase<T>.Find(filter, sort, pageSize, pageNumber, null, cacheKey);
+		}
+
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
@@ -1244,7 +1273,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> FindAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryMediator.FindAsync<TEntity>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
 		}
@@ -1264,7 +1293,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryBase<T>.FindAsync<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
 		}
@@ -1307,6 +1336,37 @@ namespace net.vieapps.Components.Repository
 		{
 			return RepositoryBase<T>.FindAsync(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
 		}
+
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID, string cacheKey, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.FindAsync(filter, sort, pageSize, pageNumber, businessEntityID, true, cacheKey, null, 0, cancellationToken);
+		}
+
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string cacheKey, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.FindAsync(filter, sort, pageSize, pageNumber, null, cacheKey, cancellationToken);
+		}
 		#endregion
 
 		#region Count
@@ -1322,7 +1382,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
+		public static long Count<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
 		{
 			return RepositoryMediator.Count<TEntity>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
 		}
@@ -1338,7 +1398,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
+		public static long Count<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
 		{
 			return RepositoryBase<T>.Count<TEntity>(null, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
 		}
@@ -1347,15 +1407,13 @@ namespace net.vieapps.Components.Repository
 		/// Counts the number of all matched objects
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="filter">The expression for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count<TEntity>(string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where TEntity : class
+		public static long Count<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, string cacheKey = null) where TEntity : class
 		{
-			return RepositoryBase<T>.Count<TEntity>(null, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
+			return RepositoryBase<T>.Count<TEntity>(filter, businessEntityID, true, cacheKey, null, 0);
 		}
 
 		/// <summary>
@@ -1369,7 +1427,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long Count(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0)
+		public static long Count(string aliasTypeName, IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0)
 		{
 			return RepositoryBase<T>.Count<T>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
 		}
@@ -1378,15 +1436,27 @@ namespace net.vieapps.Components.Repository
 		/// Counts the number of all matched objects
 		/// </summary>
 		/// <param name="filter">The expression for counting objects</param>
-		/// <returns>The number of all matched objects</returns>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
 		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
-		public static long Count(IFilterBy<T> filter = null, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0)
+		/// <returns>The number of all matched objects</returns>
+		public static long Count(IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0)
 		{
-			return RepositoryBase<T>.Count(null, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
+			return RepositoryBase<T>.Count<T>(filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
+		/// <returns>The number of all matched objects</returns>
+		public static long Count(IFilterBy<T> filter = null, string businessEntityID = null, string cacheKey = null)
+		{
+			return RepositoryBase<T>.Count(filter, businessEntityID, true, cacheKey);
 		}
 
 		/// <summary>
@@ -1402,7 +1472,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryMediator.CountAsync<TEntity>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
 		}
@@ -1419,7 +1489,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryBase<T>.CountAsync<TEntity>(null, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
 		}
@@ -1428,16 +1498,14 @@ namespace net.vieapps.Components.Repository
 		/// Counts the number of all matched objects
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="filter">The expression for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, string cacheKey = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.CountAsync<TEntity>(null, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
+			return RepositoryBase<T>.CountAsync<TEntity>(filter, businessEntityID, true, cacheKey, null, 0, cancellationToken);
 		}
 
 		/// <summary>
@@ -1452,7 +1520,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(string aliasTypeName, IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return RepositoryBase<T>.CountAsync<T>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
 		}
@@ -1468,9 +1536,34 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(IFilterBy<T> filter = null, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return RepositoryBase<T>.CountAsync(null, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The number of all matched objects</returns>
+		public static Task<long> CountAsync(IFilterBy<T> filter, string businessEntityID, string cacheKey = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.CountAsync(filter, businessEntityID, true, cacheKey, null, 0, cancellationToken);
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The number of all matched objects</returns>
+		public static Task<long> CountAsync(IFilterBy<T> filter = null, string cacheKey = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.CountAsync(filter, null, cacheKey, cancellationToken);
 		}
 		#endregion
 
@@ -1485,7 +1578,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Search<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID = null) where TEntity : class
+		public static List<TEntity> Search<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID) where TEntity : class
 		{
 			return RepositoryMediator.Search<TEntity>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID);
 		}
@@ -1499,7 +1592,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Search<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID = null) where TEntity : class
+		public static List<TEntity> Search<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID) where TEntity : class
 		{
 			return RepositoryBase<T>.Search<TEntity>(null, query, filter, pageSize, pageNumber, businessEntityID);
 		}
@@ -1514,7 +1607,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<T> Search(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null)
+		public static List<T> Search(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID)
 		{
 			return RepositoryBase<T>.Search<T>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID);
 		}
@@ -1544,7 +1637,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> SearchAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryMediator.SearchAsync<TEntity>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
@@ -1559,7 +1652,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryBase<T>.SearchAsync<TEntity>(null, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
@@ -1575,7 +1668,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> SearchAsync(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return RepositoryBase<T>.SearchAsync<T>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
@@ -1590,9 +1683,23 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return RepositoryBase<T>.SearchAsync(null, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.SearchAsync(null, query, filter, pageSize, pageNumber, null, cancellationToken);
 		}
 		#endregion
 
@@ -1605,7 +1712,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
+		public static long CountByQuery<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
 		{
 			return RepositoryMediator.Count<TEntity>(aliasTypeName, query, filter, businessEntityID);
 		}
@@ -1617,7 +1724,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
+		public static long CountByQuery<TEntity>(string query, IFilterBy<TEntity> filter = null, string businessEntityID = null) where TEntity : class
 		{
 			return RepositoryBase<T>.CountByQuery<TEntity>(null, query, filter, businessEntityID);
 		}
@@ -1630,7 +1737,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null)
+		public static long CountByQuery(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID)
 		{
 			return RepositoryBase<T>.CountByQuery<T>(aliasTypeName, query, filter, businessEntityID);
 		}
@@ -1642,7 +1749,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery(string query, IFilterBy<T> filter, string businessEntityID = null)
+		public static long CountByQuery(string query, IFilterBy<T> filter = null, string businessEntityID = null)
 		{
 			return RepositoryBase<T>.CountByQuery(null, query, filter, businessEntityID);
 		}
@@ -1656,7 +1763,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountByQueryAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryMediator.CountAsync<TEntity>(aliasTypeName, query, filter, businessEntityID, cancellationToken);
 		}
@@ -1669,9 +1776,21 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountByQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryBase<T>.CountByQueryAsync<TEntity>(null, query, filter, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="query">The expression (full-text search) for counting objects</param>
+		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The number of all matched objects</returns>
+		public static Task<long> CountByQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.CountByQueryAsync<TEntity>(null, query, filter, null, cancellationToken);
 		}
 
 		/// <summary>
@@ -1683,7 +1802,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountByQueryAsync(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return RepositoryBase<T>.CountByQueryAsync<T>(aliasTypeName, query, filter, businessEntityID, cancellationToken);
 		}
@@ -1696,9 +1815,21 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync(string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountByQueryAsync(string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			return RepositoryBase<T>.CountByQueryAsync(null, query, filter, businessEntityID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="query">The expression (full-text search) for counting objects</param>
+		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The number of all matched objects</returns>
+		public static Task<long> CountByQueryAsync(string query, IFilterBy<T> filter = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.CountByQueryAsync(query, filter, null, cancellationToken);
 		}
 		#endregion
 

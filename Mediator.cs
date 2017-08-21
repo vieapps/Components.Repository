@@ -347,7 +347,7 @@ namespace net.vieapps.Components.Repository
 				context.Create<T>(primaryDataSource, @object);
 
 			// update in cache storage
-			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 				if (context.EntityDefinition.CacheStorage.Set(@object))
 					RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -426,7 +426,7 @@ namespace net.vieapps.Components.Repository
 				await context.CreateAsync<T>(primaryDataSource, @object, cancellationToken);
 
 			// update in cache storage
-			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 				if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
 					RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -490,7 +490,7 @@ namespace net.vieapps.Components.Repository
 				return null;
 
 			// get cached object
-			var @object = processCache && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
+			var @object = processCache && context.EntityDefinition.CacheStorage != null
 				? context.EntityDefinition.CacheStorage.Fetch<T>(id)
 				: null;
 
@@ -512,7 +512,7 @@ namespace net.vieapps.Components.Repository
 				// TO DO: check to get instance from secondary source if primary source is not available
 
 				// update into cache storage
-				if (!object.ReferenceEquals(@object, null) && processCache && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+				if (!object.ReferenceEquals(@object, null) && processCache && context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 					if (context.EntityDefinition.CacheStorage.Set(@object))
 						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -581,7 +581,7 @@ namespace net.vieapps.Components.Repository
 				return null;
 
 			// get cached object
-			var @object = processCache && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
+			var @object = processCache && context.EntityDefinition.CacheStorage != null
 				? await context.EntityDefinition.CacheStorage.FetchAsync<T>(id)
 				: null;
 
@@ -604,7 +604,7 @@ namespace net.vieapps.Components.Repository
 				// TO DO: check to get instance from secondary source if primary source is not available
 
 				// update into cache storage
-				if (!object.ReferenceEquals(@object, null) && processCache && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+				if (!object.ReferenceEquals(@object, null) && processCache && context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 					if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
 						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -816,7 +816,7 @@ namespace net.vieapps.Components.Repository
 				context.Replace<T>(primaryDataSource, @object);
 
 			// update into cache storage
-			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 				if (context.EntityDefinition.CacheStorage.Set(@object))
 					RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -913,7 +913,7 @@ namespace net.vieapps.Components.Repository
 				await context.ReplaceAsync<T>(primaryDataSource, @object, cancellationToken);
 
 			// update into cache storage
-			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 				if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
 					RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -1010,7 +1010,7 @@ namespace net.vieapps.Components.Repository
 				context.Update<T>(primaryDataSource, @object, updatedAttributes);
 
 			// update into cache storage
-			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 				if (context.EntityDefinition.CacheStorage.Set(@object))
 					RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -1105,7 +1105,7 @@ namespace net.vieapps.Components.Repository
 				await context.UpdateAsync<T>(primaryDataSource, @object, updatedAttributes, cancellationToken);
 
 			// update into cache storage
-			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 				if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
 					RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -1176,7 +1176,7 @@ namespace net.vieapps.Components.Repository
 				context.Delete<T>(primaryDataSource, @object);
 
 			// remove from cache storage
-			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 				if (context.EntityDefinition.CacheStorage.Remove(@object))
 					RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -1245,7 +1245,7 @@ namespace net.vieapps.Components.Repository
 				await context.DeleteAsync<T>(primaryDataSource, @object, cancellationToken);
 
 			// remove from cache storage
-			if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
+			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 				if (await context.EntityDefinition.CacheStorage.RemoveAsync(@object))
 					RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -1498,10 +1498,10 @@ namespace net.vieapps.Components.Repository
 							: new List<T>()
 					: new List<T>();
 
-				if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null) && objects.Count > 0)
+				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					if (!string.IsNullOrWhiteSpace(cacheKey))
-						context.EntityDefinition.CacheStorage.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheExpirationType, cacheExpirationTime);
+						context.EntityDefinition.CacheStorage.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), string.IsNullOrWhiteSpace(cacheExpirationType) ? "Absolute" : cacheExpirationType, cacheExpirationTime);
 					context.EntityDefinition.CacheStorage.Set(objects);
 #if DEBUG
 					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -1656,10 +1656,10 @@ namespace net.vieapps.Components.Repository
 							: new List<T>()
 					: new List<T>();
 
-				if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null) && objects.Count > 0)
+				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					if (!string.IsNullOrWhiteSpace(cacheKey))
-						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheExpirationType, cacheExpirationTime);
+						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), string.IsNullOrWhiteSpace(cacheExpirationType) ? "Absolute" : cacheExpirationType, cacheExpirationTime);
 					await context.EntityDefinition.CacheStorage.SetAsync(objects);
 #if DEBUG
 					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -1719,17 +1719,17 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
 		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where T : class
 		{
+			// prepare
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			context.AliasTypeName = aliasTypeName;
+
 			// check cache
-			var total = !string.IsNullOrWhiteSpace(cacheKey) && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
+			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && context.EntityDefinition.CacheStorage.Exists(cacheKey)
 				? context.EntityDefinition.CacheStorage.Get<long>(cacheKey)
 				: -1;
 			if (total > -1)
 				return total;
 			
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			context.AliasTypeName = aliasTypeName;
-
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			total = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
@@ -1739,8 +1739,8 @@ namespace net.vieapps.Components.Repository
 					: 0;
 
 			// update cache and return
-			if (!string.IsNullOrWhiteSpace(cacheKey) && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
-				context.EntityDefinition.CacheStorage.Set(cacheKey, total, cacheExpirationType, cacheExpirationTime);
+			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
+				context.EntityDefinition.CacheStorage.Set(cacheKey, total, string.IsNullOrWhiteSpace(cacheExpirationType) ? "Absolute" : cacheExpirationType, cacheExpirationTime);
 			return total;
 		}
 
@@ -1788,16 +1788,16 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
 		public static async Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			// prepare
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			context.AliasTypeName = aliasTypeName;
+
 			// check cache
-			var total = !string.IsNullOrWhiteSpace(cacheKey) && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
+			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && await context.EntityDefinition.CacheStorage.ExistsAsync(cacheKey)
 				? await context.EntityDefinition.CacheStorage.GetAsync<long>(cacheKey)
 				: -1;
 			if (total > -1)
 				return total;
-
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			context.AliasTypeName = aliasTypeName;
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -1808,8 +1808,8 @@ namespace net.vieapps.Components.Repository
 					: 0;
 
 			// update cache and return
-			if (!string.IsNullOrWhiteSpace(cacheKey) && !object.ReferenceEquals(context.EntityDefinition.CacheStorage, null))
-				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, cacheExpirationType, cacheExpirationTime);
+			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
+				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, string.IsNullOrWhiteSpace(cacheExpirationType) ? "Absolute" : cacheExpirationType, cacheExpirationTime);
 			return total;
 		}
 
@@ -1950,7 +1950,7 @@ namespace net.vieapps.Components.Repository
 							: new List<T>()
 					: new List<T>();
 
-				if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null) && objects.Count > 0)
+				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					context.EntityDefinition.CacheStorage.Set(objects);
 #if DEBUG
@@ -2096,7 +2096,7 @@ namespace net.vieapps.Components.Repository
 							: new List<T>()
 					: new List<T>();
 
-				if (!object.ReferenceEquals(context.EntityDefinition.CacheStorage, null) && objects.Count > 0)
+				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					await context.EntityDefinition.CacheStorage.SetAsync(objects);
 #if DEBUG

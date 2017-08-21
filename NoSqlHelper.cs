@@ -985,7 +985,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<BsonDocument> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).Select(attributes, info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
@@ -1047,7 +1047,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<List<BsonDocument>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectAsync(attributes, info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
@@ -1087,7 +1087,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectIdentities(info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
@@ -1127,7 +1127,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectIdentitiesAsync(info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
@@ -1176,7 +1176,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).Find(info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
@@ -1225,7 +1225,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).FindAsync(info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
@@ -1246,7 +1246,7 @@ namespace net.vieapps.Components.Repository
 		{
 			if (identities == null || identities.Count < 1)
 				return new List<T>();
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessEntityID, false);
+			var info = Extensions.PrepareNoSqlStatements<T>(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessEntityID, false);
 			return context.GetCollection<T>(dataSource).Find(info.Item1, info.Item2, 0, 1, options);
 		}
 
@@ -1266,7 +1266,7 @@ namespace net.vieapps.Components.Repository
 		{
 			if (identities == null || identities.Count < 1)
 				return Task.FromResult<List<T>>(new List<T>());
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessEntityID, false);
+			var info = Extensions.PrepareNoSqlStatements<T>(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessEntityID, false);
 			return context.GetCollection<T>(dataSource).FindAsync(info.Item1, info.Item2, 0, 1, options, cancellationToken);
 		}
 		#endregion
@@ -1285,7 +1285,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null) where T : class
 		{
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).Count(info.Item1 != null ? info.Item1 : Builders<T>.Filter.Empty, options);
 		}
 
@@ -1303,7 +1303,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var info = RestrictionsHelper.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).CountAsync(info.Item1 != null ? info.Item1 : Builders<T>.Filter.Empty, options, cancellationToken);
 		}
 		#endregion

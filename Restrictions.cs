@@ -9,6 +9,7 @@ using System.Xml;
 using System.Linq;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using System.Dynamic;
 
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -65,27 +66,31 @@ namespace net.vieapps.Components.Repository
 		{
 			if (json != null)
 			{
-				this.Operator = json["Operator"] != null
-					? (CompareOperator)Enum.Parse(typeof(CompareOperator), (json["Operator"] as JValue).Value.ToString())
+				var @operator = json["Operator"];
+				this.Operator = @operator != null && @operator is JValue && (@operator as JValue).Value != null
+					? (@operator as JValue).Value.ToString().ToEnum<CompareOperator>()
 					: CompareOperator.Equals;
-				this.Attribute = json["Attribute"] != null
-					? (json["Attribute"] as JValue).Value.ToString()
+
+				var attribute = json["Attribute"];
+				this.Attribute = attribute != null && attribute is JValue && (attribute as JValue).Value != null
+					? (attribute as JValue).Value.ToString()
 					: null;
-				this.Value = json["Value"] != null
-					? (json["Value"] as JValue).Value
+
+				var value = json["Value"];
+				this.Value = value != null && value is JValue
+					? (value as JValue).Value
 					: null;
 			}
 		}
 
 		public JObject ToJson()
 		{
-			var json = new JObject()
+			return new JObject()
 			{
 				{ "Operator", this.Operator.ToString() },
 				{ "Attribute", this.Attribute },
+				{ "Value", new JValue(this.Value) }
 			};
-			json.Add(new JProperty("Value", this.Value));
-			return json;
 		}
 
 		public override string ToString()
@@ -378,35 +383,32 @@ namespace net.vieapps.Components.Repository
 		{
 			if (json != null)
 			{
-				this.Operator = json["Operator"] != null
-					? (GroupOperator)Enum.Parse(typeof(GroupOperator), (json["Operator"] as JValue).Value.ToString())
+				var @operator = json["Operator"];
+				this.Operator = @operator != null && @operator is JValue && (@operator as JValue).Value != null
+					? (@operator as JValue).Value.ToString().ToEnum<GroupOperator>()
 					: GroupOperator.And;
 
 				var childrenJson = json["Children"];
 				if (childrenJson != null && childrenJson is JArray)
 					foreach (JObject childJson in childrenJson as JArray)
 					{
-						var @operator = (childJson["Operator"] as JValue).Value.ToString();
-						var child = @operator.IsEquals("And") || @operator.IsEquals("Or")
+						var childOperator = (childJson["Operator"] as JValue).Value.ToString();
+						var childFilter = childOperator.IsEquals("And") || childOperator.IsEquals("Or")
 							? new FilterBys<T>() as IFilterBy<T>
 							: new FilterBy<T>() as IFilterBy<T>;
-						child.Parse(childJson);
-						this.Children.Add(child);
+						childFilter.Parse(childJson);
+
+						this.Children.Add(childFilter);
 					}
 			}
 		}
 
 		public JObject ToJson()
 		{
-			var children = new JArray();
-			this.Children.ForEach(child =>
-			{
-				children.Add(child.ToJson());
-			});
 			return new JObject()
 			{
 				{ "Operator", this.Operator.ToString() },
-				{ "Children", children }
+				{ "Children", this.Children.Select(c => c.ToJson()).ToList().ToJArray() }
 			};
 		}
 
@@ -538,7 +540,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBys<T> And(IEnumerable<IFilterBy<T>> filters)
 		{
-			return new FilterBys<T>(GroupOperator.And, filters != null ? filters.ToList() : null);
+			return new FilterBys<T>(GroupOperator.And, filters?.ToList());
 		}
 
 		/// <summary>
@@ -564,7 +566,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBys<T> Or(IEnumerable<IFilterBy<T>> filters)
 		{
-			return new FilterBys<T>(GroupOperator.Or, filters != null ? filters.ToList() : null);
+			return new FilterBys<T>(GroupOperator.Or, filters?.ToList());
 		}
 		#endregion
 
@@ -754,14 +756,19 @@ namespace net.vieapps.Components.Repository
 		{
 			if (json != null)
 			{
-				this.Attribute = json["Attribute"] != null
-					? (json["Attribute"] as JValue).Value.ToString()
+				var attribute = json["Attribute"];
+				this.Attribute = attribute != null && attribute is JValue && (attribute as JValue).Value != null
+					? (attribute as JValue).Value.ToString()
 					: null;
-				this.Mode = json["Mode"] != null
-					? (SortMode)Enum.Parse(typeof(SortMode), (json["Mode"] as JValue).Value.ToString())
+
+				var mode = json["Mode"];
+				this.Mode = mode != null && mode is JValue && (mode as JValue).Value != null
+					? (mode as JValue).Value.ToString().ToEnum<SortMode>()
 					: SortMode.Ascending;
-				this.ThenBy = json["ThenBy"] != null
-					? new SortBy<T>(json["ThenBy"] as JObject)
+
+				var thenby = json["ThenBy"];
+				this.ThenBy = thenby != null && thenby is JObject
+					? new SortBy<T>(thenby as JObject)
 					: null;
 			}
 		}
@@ -776,7 +783,7 @@ namespace net.vieapps.Components.Repository
 			{
 				{ "Attribute", this.Attribute },
 				{ "Mode", this.Mode.ToString() },
-				{ "ThenBy", this.ThenBy != null ? this.ThenBy.ToJson() : null }
+				{ "ThenBy", this.ThenBy?.ToJson() }
 			};
 		}
 
@@ -880,7 +887,12 @@ namespace net.vieapps.Components.Repository
 		}
 	}
 
-	public static class RestrictionsHelper
+	// ------------------------------------------
+
+	/// <summary>
+	/// Extension methods for working with repository restrictions
+	/// </summary>
+	public static class Extensions
 	{
 
 		#region ThenBy
