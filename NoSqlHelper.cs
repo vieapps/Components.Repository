@@ -56,22 +56,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="databaseName"></param>
 		/// <param name="databaseSettings"></param>
 		/// <returns></returns>
-		public static IMongoDatabase GetDatabase(IMongoClient mongoClient, string databaseName, MongoDatabaseSettings databaseSettings)
+		public static IMongoDatabase GetDatabase(IMongoClient mongoClient, string databaseName, MongoDatabaseSettings databaseSettings = null)
 		{
 			return !string.IsNullOrWhiteSpace(databaseName) && mongoClient != null
 				? mongoClient.GetDatabase(databaseName, databaseSettings)
 				: null;
-		}
-
-		/// <summary>
-		/// Gets a database of MongoDB
-		/// </summary>
-		/// <param name="mongoClient"></param>
-		/// <param name="databaseName"></param>
-		/// <returns></returns>
-		public static IMongoDatabase GetDatabase(IMongoClient mongoClient, string databaseName)
-		{
-			return NoSqlHelper.GetDatabase(mongoClient, databaseName, null);
 		}
 
 		internal static Dictionary<string, IMongoDatabase> Databases = new Dictionary<string, IMongoDatabase>();
@@ -83,7 +72,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="databaseName"></param>
 		/// <param name="databaseSettings"></param>
 		/// <returns></returns>
-		public static IMongoDatabase GetDatabase(string connectionString, string databaseName, MongoDatabaseSettings databaseSettings)
+		public static IMongoDatabase GetDatabase(string connectionString, string databaseName, MongoDatabaseSettings databaseSettings = null)
 		{
 			if (string.IsNullOrWhiteSpace(connectionString) || string.IsNullOrWhiteSpace(databaseName))
 				return null;
@@ -101,17 +90,6 @@ namespace net.vieapps.Components.Repository
 				}
 			return database;
 		}
-
-		/// <summary>
-		/// Gets a database of MongoDB
-		/// </summary>
-		/// <param name="connectionString"></param>
-		/// <param name="databaseName"></param>
-		/// <returns></returns>
-		public static IMongoDatabase GetDatabase(string connectionString, string databaseName)
-		{
-			return NoSqlHelper.GetDatabase(databaseName, connectionString, null);
-		}
 		#endregion
 
 		#region Collection
@@ -125,23 +103,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="collectionName"></param>
 		/// <param name="collectionSettings"></param>
 		/// <returns></returns>
-		public static IMongoCollection<T> GetCollection<T>(IMongoDatabase mongoDatabase, string collectionName, MongoCollectionSettings collectionSettings) where T : class
+		public static IMongoCollection<T> GetCollection<T>(IMongoDatabase mongoDatabase, string collectionName, MongoCollectionSettings collectionSettings = null) where T : class
 		{
 			return mongoDatabase != null && !string.IsNullOrWhiteSpace(collectionName)
 				? mongoDatabase.GetCollection<T>(collectionName, collectionSettings)
 				: null;
-		}
-
-		/// <summary>
-		/// Gets a collection of MongoDB
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="mongoDatabase"></param>
-		/// <param name="collectionName"></param>
-		/// <returns></returns>
-		public static IMongoCollection<T> GetCollection<T>(IMongoDatabase mongoDatabase, string collectionName) where T : class
-		{
-			return NoSqlHelper.GetCollection<T>(mongoDatabase, collectionName, null);
 		}
 
 		/// <summary>
@@ -154,7 +120,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="collectionName"></param>
 		/// <param name="collectionSettings"></param>
 		/// <returns></returns>
-		public static IMongoCollection<T> GetCollection<T>(string connectionString, string databaseName, MongoDatabaseSettings databaseSettings, string collectionName, MongoCollectionSettings collectionSettings) where T : class
+		public static IMongoCollection<T> GetCollection<T>(string connectionString, string databaseName, string collectionName, MongoDatabaseSettings databaseSettings = null, MongoCollectionSettings collectionSettings = null) where T : class
 		{
 			if (string.IsNullOrWhiteSpace(connectionString) || string.IsNullOrWhiteSpace(databaseName) || string.IsNullOrWhiteSpace(collectionName))
 				return null;
@@ -171,19 +137,6 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 			return collection as IMongoCollection<T>;
-		}
-
-		/// <summary>
-		/// Gets a collection of MongoDB
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="connectionString"></param>
-		/// <param name="databaseName"></param>
-		/// <param name="collectionName"></param>
-		/// <returns></returns>
-		public static IMongoCollection<T> GetCollection<T>(string connectionString, string databaseName, string collectionName) where T : class
-		{
-			return NoSqlHelper.GetCollection<T>(connectionString, databaseName, null, collectionName, null);
 		}
 
 		/// <summary>
@@ -442,7 +395,7 @@ namespace net.vieapps.Components.Repository
 			if (object.ReferenceEquals(@object, null))
 				throw new NullReferenceException("Cannot update because the object is null");
 
-			return collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options != null ? options : new UpdateOptions() { IsUpsert = true });
+			return collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true });
 		}
 
 		/// <summary>
@@ -473,7 +426,7 @@ namespace net.vieapps.Components.Repository
 			if (object.ReferenceEquals(@object, null))
 				throw new NullReferenceException("Cannot update because the object is null");
 
-			return collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options != null ? options : new UpdateOptions() { IsUpsert = true }, cancellationToken);
+			return collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken);
 		}
 
 		/// <summary>
@@ -551,7 +504,7 @@ namespace net.vieapps.Components.Repository
 			// replace whole document when got a generic of primitive (workaround)
 			if (gotGenericPrimitives)
 			{
-				collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options != null ? options : new UpdateOptions() { IsUpsert = true });
+				collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true });
 				return;
 			}
 
@@ -667,7 +620,7 @@ namespace net.vieapps.Components.Repository
 			// replace whole document when got a generic of primitive (workaround)
 			if (gotGenericPrimitives)
 			{
-				await collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options != null ? options : new UpdateOptions() { IsUpsert = true }, cancellationToken);
+				await collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken);
 				return;
 			}
 
@@ -947,16 +900,11 @@ namespace net.vieapps.Components.Repository
 			if (attributes == null)
 				projection = Builders<T>.Projection.Include("_id");
 			else
-				attributes.ForEach(attribute =>
-				{
-					projection = projection == null
-						? Builders<T>.Projection.Include(attribute)
-						: projection.Include(attribute);
-				});
+				attributes.ForEach(attribute => projection = projection == null ? Builders<T>.Projection.Include(attribute) : projection.Include(attribute));
 
 			var results = collection
-				.Find(filter != null ? filter : Builders<T>.Filter.Empty, options)
-				.Sort(sort != null ? sort : Builders<T>.Sort.Ascending("_id"));
+				.Find(filter ?? Builders<T>.Filter.Empty, options)
+				.Sort(sort ?? Builders<T>.Sort.Ascending("_id"));
 
 			if (pageSize > 0)
 			{
@@ -1008,16 +956,11 @@ namespace net.vieapps.Components.Repository
 			if (attributes == null)
 				projection = Builders<T>.Projection.Include("_id");
 			else
-				attributes.ForEach(attribute =>
-				{
-					projection = projection == null
-						? Builders<T>.Projection.Include(attribute)
-						: projection.Include(attribute);
-				});
+				attributes.ForEach(attribute => projection = projection == null ? Builders<T>.Projection.Include(attribute) : projection.Include(attribute));
 
 			var results = collection
-				.Find(filter != null ? filter : Builders<T>.Filter.Empty, options)
-				.Sort(sort != null ? sort : Builders<T>.Sort.Ascending("_id"));
+				.Find(filter ?? Builders<T>.Filter.Empty, options)
+				.Sort(sort ?? Builders<T>.Sort.Ascending("_id"));
 
 			if (pageSize > 0)
 			{
@@ -1147,8 +1090,8 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Find<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			var results = collection
-				.Find(filter != null ? filter : Builders<T>.Filter.Empty, options)
-				.Sort(sort != null ? sort : Builders<T>.Sort.Ascending("_id"));
+				.Find(filter ?? Builders<T>.Filter.Empty, options)
+				.Sort(sort ?? Builders<T>.Sort.Ascending("_id"));
 
 			if (pageSize > 0)
 			{
@@ -1195,8 +1138,8 @@ namespace net.vieapps.Components.Repository
 		public static Task<List<T>> FindAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var results = collection
-				.Find(filter != null ? filter : Builders<T>.Filter.Empty, options)
-				.Sort(sort != null ? sort : Builders<T>.Sort.Ascending("_id"));
+				.Find(filter ?? Builders<T>.Filter.Empty, options)
+				.Sort(sort ?? Builders<T>.Sort.Ascending("_id"));
 
 			if (pageSize > 0)
 			{
@@ -1317,38 +1260,15 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterDefinition<T> CreateTextSearchFilter<T>(this string query) where T : class
 		{
-			var searchInfo = Utility.SearchQuery.Parse(query);
+			var searchQuery = Utility.SearchQuery.Parse(query);
+
 			var filter = "";
-
-			searchInfo.AndWords.ForEach(word =>
-			{
-				filter += (!filter.Equals("") ? " " : "") + word;
-			});
-
-			searchInfo.OrWords.ForEach(word =>
-			{
-				filter += (!filter.Equals("") ? " " : "") + word;
-			});
-
-			searchInfo.NotWords.ForEach(word =>
-			{
-				filter += (!filter.Equals("") ? " " : "") + "-" + word;
-			});
-
-			searchInfo.AndPhrases.ForEach(phrase =>
-			{
-				filter += (!filter.Equals("") ? " " : "") + "\"" + phrase + "\"";
-			});
-
-			searchInfo.OrPhrases.ForEach(phrase =>
-			{
-				filter += (!filter.Equals("") ? " " : "") + "\"" + phrase + "\"";
-			});
-
-			searchInfo.NotPhrases.ForEach(phrase =>
-			{
-				filter += (!filter.Equals("") ? " " : "") + "-" + "\"" + phrase + "\"";
-			});
+			searchQuery.AndWords.ForEach(word => filter += (!filter.Equals("") ? " " : "") + word);
+			searchQuery.OrWords.ForEach(word => filter += (!filter.Equals("") ? " " : "") + word);
+			searchQuery.NotWords.ForEach(word => filter += (!filter.Equals("") ? " " : "") + "-" + word);
+			searchQuery.AndPhrases.ForEach(phrase => filter += (!filter.Equals("") ? " " : "") + "\"" + phrase + "\"");
+			searchQuery.OrPhrases.ForEach(phrase => filter += (!filter.Equals("") ? " " : "") + "\"" + phrase + "\"");
+			searchQuery.NotPhrases.ForEach(phrase => filter += (!filter.Equals("") ? " " : "") + "-" + "\"" + phrase + "\"");
 
 			return Builders<T>.Filter.Text(filter, new TextSearchOptions() { CaseSensitive = false });
 		}
