@@ -68,15 +68,10 @@ namespace net.vieapps.Components.Repository
 
 		#region Constructors
 		/// <summary>
-		/// Creates new context for working with repositories (with default transaction support - async flow is enabled)
-		/// </summary>
-		public RepositoryContext() : this(true) { }
-
-		/// <summary>
 		/// Creates new context for working with repositories
 		/// </summary>
 		/// <param name="openTransaction">true to open transaction with default settings (async flow is enabled); false to not</param>
-		public RepositoryContext(bool openTransaction)
+		public RepositoryContext(bool openTransaction = true)
 		{
 			this.Initialize();
 			if (openTransaction)
@@ -330,7 +325,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Helper
+		#region Helper for working with database
 		/// <summary>
 		/// Gets the connection of SQL database of a specified data-source
 		/// </summary>
