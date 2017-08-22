@@ -22,7 +22,7 @@ using net.vieapps.Components.Security;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Repository (means information of a business module object in run-time)
+	/// Presents a repository (means information of a business module object in the run-time)
 	/// </summary>
 	public interface IRepository
 	{
@@ -52,7 +52,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Repository entity (means information of a business content-type object in run-time)
+	/// Presents an entity of a repository (means information of a business content-type object in the run-time)
 	/// </summary>
 	public interface IRepositoryEntity
 	{
@@ -97,7 +97,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Business entity (means information of a business object in run-time)
+	/// Presents a business entity (means information of a business object in the run-time)
 	/// </summary>
 	public interface IBusinessEntity
 	{
@@ -157,7 +157,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Define a filtering expression
+	/// Presents a filtering expression
 	/// </summary>
 	public interface IFilterBy<T> where T : class
 	{
