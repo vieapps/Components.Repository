@@ -2472,10 +2472,12 @@ namespace net.vieapps.Components.Repository
 		internal static async Task CreateTableFulltextIndexAsync(this RepositoryContext context, DataSource dataSource)
 		{
 			// prepare
-			var columns = context.EntityDefinition.Attributes
-				.Where(attribute => attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0)
-				.Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)
-				.ToList();
+			var columns = context.EntityDefinition.Searchable
+				? context.EntityDefinition.Attributes
+					.Where(attribute => attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0)
+					.Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)
+					.ToList()
+				: new List<string>();
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var sql = "";

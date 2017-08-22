@@ -1674,6 +1674,117 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Schemas & Indexes
+		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource)
+		{
+			// get the collection
+			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName);
+
+			// create the blank document for ensuring the collection is created
+			var blankDocumentIsCreated = false;
+			if (await collection.CountAsync(Builders<BsonDocument>.Filter.Empty) > 0)
+			{
+				var @object = definition.Type.CreateInstance() as RepositoryBase;
+				@object.ID = UtilityService.BlankUID;
+				await collection.InsertOneAsync(@object.ToBsonDocument(), null, CancellationToken.None);
+				blankDocumentIsCreated = true;
+			}
+
+			// prepare indexes
+			var prefix = "IDX_" + definition.CollectionName;
+			var indexes = new Dictionary<string, List<ObjectService.AttributeInfo>>()
+			{
+				{ prefix, new List<ObjectService.AttributeInfo>() }
+			};
+			var uniqueIndexes = new Dictionary<string, List<ObjectService.AttributeInfo>>();
+
+			definition.Attributes.ForEach(attribute =>
+			{
+				var attributes = attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true);
+				if (attributes.Length > 0)
+				{
+					var attr = attributes[0] as SortableAttribute;
+					if (!string.IsNullOrWhiteSpace(attr.UniqueIndexName))
+					{
+						var name = prefix + "_" + attr.UniqueIndexName;
+						if (!uniqueIndexes.ContainsKey(name))
+							uniqueIndexes.Add(name, new List<ObjectService.AttributeInfo>());
+						uniqueIndexes[name].Add(attribute);
+
+						if (!string.IsNullOrWhiteSpace(attr.IndexName))
+						{
+							name = prefix + "_" + attr.IndexName;
+							if (!indexes.ContainsKey(name))
+								indexes.Add(name, new List<ObjectService.AttributeInfo>());
+							indexes[name].Add(attribute);
+						}
+					}
+					else
+					{
+						var name = prefix + (string.IsNullOrWhiteSpace(attr.IndexName) ? "" : "_" + attr.IndexName);
+						if (!indexes.ContainsKey(name))
+							indexes.Add(name, new List<ObjectService.AttributeInfo>());
+						indexes[name].Add(attribute);
+					}
+				}
+			});
+
+			var textIndexes = definition.Searchable
+				? definition.Attributes
+					.Where(attribute => attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0)
+					.Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)
+					.ToList()
+				: new List<string>();
+
+			// create indexes
+			await indexes.ForEachAsync(async (info, cancellationToken) =>
+			{
+				if (info.Value.Count > 0)
+				{
+					IndexKeysDefinition<BsonDocument> index = null;
+					info.Value.ForEach(attribute =>
+					{
+						index = index == null
+							? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
+							: index.Ascending(attribute.Name);
+					});
+					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true }, cancellationToken);
+				}
+			});
+
+			await uniqueIndexes.ForEachAsync(async (info, cancellationToken) =>
+			{
+				if (info.Value.Count > 0)
+				{
+					IndexKeysDefinition<BsonDocument> index = null;
+					info.Value.ForEach(attribute =>
+					{
+						index = index == null
+							? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
+							: index.Ascending(attribute.Name);
+					});
+					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true, Unique = true }, cancellationToken);
+				}
+			});
+
+			if (textIndexes.Count > 0)
+			{
+				IndexKeysDefinition<BsonDocument> index = null;
+				textIndexes.ForEach(attribute =>
+				{
+					index = index == null
+						? Builders<BsonDocument>.IndexKeys.Text(attribute)
+						: index.Text(attribute);
+				});
+				await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }, CancellationToken.None);
+			}
+
+			// delete the blank document
+			if (blankDocumentIsCreated)
+			{
+				await Task.Delay(234);
+				await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, CancellationToken.None);
+			}
+		}
 		#endregion
 
 	}

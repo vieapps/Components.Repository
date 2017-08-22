@@ -59,8 +59,8 @@ namespace net.vieapps.Components.Repository
 		/// Initializes all types in assemblies
 		/// </summary>
 		/// <param name="assemblies">The collection of assemblies</param>
-		/// <param name="updateConfigFromDisc">true to update other settings from configuration file on the disc</param>
-		public static void Initialize(IEnumerable<Assembly> assemblies, bool updateConfigFromDisc = true)
+		/// <param name="updateFromConfigurationFile">true to update other settings from configuration file on the disc</param>
+		public static void Initialize(IEnumerable<Assembly> assemblies, bool updateFromConfigurationFile = true)
 		{
 #if DEBUG
 			RepositoryMediator.WriteLogs("Start to initialize repositories & entities [" + assemblies.Select(a => a.FullName.Left(a.FullName.IndexOf(","))).ToString(", ") + "]");
@@ -113,7 +113,7 @@ namespace net.vieapps.Components.Repository
 						catch { }
 					}).ConfigureAwait(false);
 			}
-			else if (updateConfigFromDisc)
+			else if (updateFromConfigurationFile)
 				throw new ConfigurationErrorsException("Cannot find the configuration section named 'net.vieapps.repositories' in the configuration file");
 		}
 
@@ -168,7 +168,32 @@ namespace net.vieapps.Components.Repository
 
 		static async Task EnsureNoSqlIndexesAsync()
 		{
-			await Task.Delay(0);
+			foreach (var info in RepositoryMediator.EntityDefinitions)
+			{
+				var definition = info.Value;
+
+				var dataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
+				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					try
+					{
+						await definition.EnsureIndexesAsync(dataSource);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]", ex);
+					}
+
+				dataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
+				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					try
+					{
+						await definition.EnsureIndexesAsync(dataSource);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]", ex);
+					}
+			}
 		}
 	}
 
