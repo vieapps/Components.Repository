@@ -273,12 +273,12 @@ namespace net.vieapps.Components.Repository
 		public SortableAttribute() { }
 
 		/// <summary>
-		/// Gets or sets the name of the index while creating new
+		/// Gets or sets the name of the index (for ensuring schemas)
 		/// </summary>
 		public string IndexName { get; set; }
 
 		/// <summary>
-		/// Gets or sets the name of the unique index while creating new
+		/// Gets or sets the name of the unique index (for ensuring schemas)
 		/// </summary>
 		public string UniqueIndexName { get; set; }
 	}
@@ -302,7 +302,7 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
-	/// Specifies this property will be stored in SQL as a CLOB string in JSON format
+	/// Specifies this property will be stored in SQL as a CLOB string with JSON format
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]
 	public class AsJsonAttribute : Attribute
