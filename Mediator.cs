@@ -105,7 +105,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetPrimaryDataSource(RepositoryContext context)
+		public static DataSource GetPrimaryDataSource(this RepositoryContext context)
 		{
 			return RepositoryMediator.GetPrimaryDataSource(context.AliasTypeName, context.EntityDefinition);
 		}
@@ -115,7 +115,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetPrimaryDataSource(EntityDefinition definition)
+		public static DataSource GetPrimaryDataSource(this EntityDefinition definition)
 		{
 			return RepositoryMediator.GetPrimaryDataSource(null, definition);
 		}
@@ -157,7 +157,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetSecondaryDataSource(RepositoryContext context)
+		public static DataSource GetSecondaryDataSource(this RepositoryContext context)
 		{
 			return RepositoryMediator.GetSecondaryDataSource(context.AliasTypeName, context.EntityDefinition);
 		}
@@ -167,7 +167,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetSecondaryDataSource(EntityDefinition definition)
+		public static DataSource GetSecondaryDataSource(this EntityDefinition definition)
 		{
 			return RepositoryMediator.GetSecondaryDataSource(null, definition);
 		}
@@ -202,7 +202,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static ConnectionStringSettings GetConnectionStringSettings(DataSource dataSource)
+		public static ConnectionStringSettings GetConnectionStringSettings(this DataSource dataSource)
 		{
 			return dataSource != null
 				? RepositoryMediator.GetConnectionStringSettings(dataSource.ConnectionStringName)
@@ -214,7 +214,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static string GetConnectionString(DataSource dataSource)
+		public static string GetConnectionString(this DataSource dataSource)
 		{
 			var connectionStringSettings = RepositoryMediator.GetConnectionStringSettings(dataSource);
 			return connectionStringSettings != null
@@ -238,7 +238,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static string GetPrimaryConnectionString(EntityDefinition definition)
+		public static string GetPrimaryConnectionString(this EntityDefinition definition)
 		{
 			return RepositoryMediator.GetPrimaryConnectionString(null, definition);
 		}
@@ -259,7 +259,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static string GetSecondaryConnectionString(EntityDefinition definition)
+		public static string GetSecondaryConnectionString(this EntityDefinition definition)
 		{
 			return RepositoryMediator.GetSecondaryConnectionString(null, definition);
 		}
