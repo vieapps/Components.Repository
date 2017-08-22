@@ -29,18 +29,12 @@ namespace net.vieapps.Components.Repository
 				// repositories
 				assembly.GetTypes()
 					.Where(type => type.IsDefined(typeof(RepositoryAttribute), false))
-					.ForEach(type =>
-					{
-						RepositoryDefinition.Register(type);
-					});
+					.ForEach(type => RepositoryDefinition.Register(type));
 
 				// entities
 				assembly.GetTypes()
 					.Where(type => type.IsDefined(typeof(EntityAttribute), false))
-					.ForEach(type =>
-					{
-						EntityDefinition.Register(type);
-					});
+					.ForEach(type => EntityDefinition.Register(type));
 			}
 			catch (ReflectionTypeLoadException ex)
 			{
@@ -73,10 +67,7 @@ namespace net.vieapps.Components.Repository
 #endif
 
 			// initialize & register all types
-			assemblies.ForEach(assembly =>
-			{
-				RepositoryStarter.Initialize(assembly);
-			});
+			assemblies.ForEach(assembly => RepositoryStarter.Initialize(assembly));
 
 			// read configuration and update
 			var config = ConfigurationManager.GetSection("net.vieapps.repositories") as ConfigurationSectionHandler;
