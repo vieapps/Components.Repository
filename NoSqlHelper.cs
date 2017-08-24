@@ -34,7 +34,7 @@ namespace net.vieapps.Components.Repository
 				return null;
 
 			IMongoClient client = null;
-			var key = connectionString.Trim().ToLower().GetMD5();
+			var key = "MongoClient#" + connectionString.Trim().ToLower().GetMD5();
 			if (!NoSqlHelper.Clients.TryGetValue(key, out client))
 				lock (NoSqlHelper.Clients)
 				{
@@ -78,7 +78,7 @@ namespace net.vieapps.Components.Repository
 				return null;
 
 			IMongoDatabase database = null;
-			var key = (databaseName.Trim() + "@" + connectionString.Trim()).ToLower().GetMD5();
+			var key = databaseName.Trim() + "#" + connectionString.Trim().ToLower().GetMD5();
 			if (!NoSqlHelper.Databases.TryGetValue(key, out database))
 				lock (NoSqlHelper.Databases)
 				{
@@ -116,17 +116,21 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="connectionString"></param>
 		/// <param name="databaseName"></param>
-		/// <param name="databaseSettings"></param>
 		/// <param name="collectionName"></param>
+		/// <param name="disableCache"></param>
+		/// <param name="databaseSettings"></param>
 		/// <param name="collectionSettings"></param>
 		/// <returns></returns>
-		public static IMongoCollection<T> GetCollection<T>(string connectionString, string databaseName, string collectionName, MongoDatabaseSettings databaseSettings = null, MongoCollectionSettings collectionSettings = null) where T : class
+		public static IMongoCollection<T> GetCollection<T>(string connectionString, string databaseName, string collectionName, bool disableCache = false, MongoDatabaseSettings databaseSettings = null, MongoCollectionSettings collectionSettings = null) where T : class
 		{
 			if (string.IsNullOrWhiteSpace(connectionString) || string.IsNullOrWhiteSpace(databaseName) || string.IsNullOrWhiteSpace(collectionName))
 				return null;
 
+			if (disableCache)
+				return NoSqlHelper.GetCollection<T>(NoSqlHelper.GetDatabase(connectionString, databaseName, databaseSettings), collectionName, collectionSettings);
+
 			object collection = null;
-			var key = (collectionName.Trim() + "@" + databaseName.Trim() + "#" + connectionString.Trim()).ToLower().GetMD5();
+			var key = collectionName.Trim() + "#" + (databaseName.Trim() + "#" + connectionString.Trim()).ToLower().GetMD5();
 			if (!NoSqlHelper.Collections.TryGetValue(key, out collection))
 				lock (NoSqlHelper.Collections)
 				{
@@ -1229,7 +1233,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
-			return context.GetCollection<T>(dataSource).Count(info.Item1 != null ? info.Item1 : Builders<T>.Filter.Empty, options);
+			return context.GetCollection<T>(dataSource).Count(info.Item1 ?? Builders<T>.Filter.Empty, options);
 		}
 
 		/// <summary>
@@ -1247,7 +1251,7 @@ namespace net.vieapps.Components.Repository
 		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
-			return context.GetCollection<T>(dataSource).CountAsync(info.Item1 != null ? info.Item1 : Builders<T>.Filter.Empty, options, cancellationToken);
+			return context.GetCollection<T>(dataSource).CountAsync(info.Item1 ?? Builders<T>.Filter.Empty, options, cancellationToken);
 		}
 		#endregion
 
@@ -1677,7 +1681,7 @@ namespace net.vieapps.Components.Repository
 		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource)
 		{
 			// get the collection
-			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName);
+			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
 
 			// create the blank document for ensuring the collection is created
 			var blankDocumentIsCreated = false;
