@@ -495,12 +495,12 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 #if DEBUG
-			if (!object.ReferenceEquals(@object, null))
+			if (@object != null)
 				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
 #endif
 
 			// load from data store if got no cached
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 			{
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
@@ -512,7 +512,7 @@ namespace net.vieapps.Components.Repository
 				// TO DO: check to get instance from secondary source if primary source is not available
 
 				// update into cache storage
-				if (!object.ReferenceEquals(@object, null) && processCache && context.EntityDefinition.CacheStorage != null)
+				if (@object != null && processCache && context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 					if (context.EntityDefinition.CacheStorage.Set(@object))
 						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -522,7 +522,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// update state & call post-handlers
-			if (callHandlers && !object.ReferenceEquals(@object, null))
+			if (callHandlers && @object != null)
 			{
 				context.SetCurrentState(@object);
 				RepositoryMediator.CallPostHandlers(context, @object);
@@ -586,12 +586,12 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 #if DEBUG
-			if (!object.ReferenceEquals(@object, null))
-				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
+			if (@object != null)
+				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey() + "]");
 #endif
 
 			// load from data store if got no cached
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 			{
 				// load from primary data source
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -604,7 +604,7 @@ namespace net.vieapps.Components.Repository
 				// TO DO: check to get instance from secondary source if primary source is not available
 
 				// update into cache storage
-				if (!object.ReferenceEquals(@object, null) && processCache && context.EntityDefinition.CacheStorage != null)
+				if (@object != null && processCache && context.EntityDefinition.CacheStorage != null)
 #if DEBUG
 					if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
 						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
@@ -614,7 +614,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// update state & call post-handlers
-			if (callHandlers && !object.ReferenceEquals(@object, null))
+			if (callHandlers && @object != null)
 			{
 				context.SetCurrentState(@object);
 				await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken);
@@ -2275,18 +2275,16 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static JArray ToJsonArray<T>(this List<T> objects, bool addTypeOfExtendedProperties = false) where T : class
 		{
-			var array = new JArray();
-			if (objects != null)
-				objects.ForEach(@object =>
+			return objects == null || objects.Count < 1
+				? new JArray()
+				: objects.ToJArray(@object =>
 				{
-					array.Add(@object is RepositoryBase
-							? addTypeOfExtendedProperties
-								? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties)
-								: (@object as RepositoryBase).ToJson()
-							: @object.ToJson()
-						);
+					return @object is RepositoryBase
+						? addTypeOfExtendedProperties
+							? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties)
+							: (@object as RepositoryBase).ToJson()
+						: @object.ToJson();
 				});
-			return array;
 		}
 
 		/// <summary>
@@ -2301,14 +2299,14 @@ namespace net.vieapps.Components.Repository
 			var json = new JObject();
 			objects.ForEach(@object =>
 			{
-				json.Add(new JProperty(
-						@object.GetEntityID(),
-						@object is RepositoryBase
-							? addTypeOfExtendedProperties
-								? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties)
-								: (@object as RepositoryBase).ToJson()
-							: @object.ToJson())
-					);
+				var name = @object.GetEntityID();
+				var value = @object is RepositoryBase
+					? addTypeOfExtendedProperties
+						? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties)
+						: (@object as RepositoryBase).ToJson()
+					: @object.ToJson();
+
+				json.Add(new JProperty(name, value));
 			});
 			return json;
 		}
@@ -2397,7 +2395,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="expirationTime">The expiration time (in minutes)</param>
 		public static bool Set<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.Set(@object.GetCacheKey(), @object, expirationTime)
 				: false;
 		}
@@ -2423,7 +2421,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="expirationTime">The expiration time (in minutes)</param>
 		public static Task<bool> SetAsync<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.SetAsync(@object.GetCacheKey(), @object, expirationTime)
 				: Task.FromResult<bool>(false);
 		}
@@ -2450,7 +2448,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
 		public static bool SetAbsolute<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.SetAbsolute(@object.GetCacheKey(), @object, expirationTime)
 				: false;
 		}
@@ -2464,7 +2462,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
 		public static Task<bool> SetAbsoluteAsync<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.SetAbsoluteAsync(@object.GetCacheKey(), @object, expirationTime)
 				: Task.FromResult<bool>(false);
 		}
@@ -2477,7 +2475,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to update into cache storage</param>
 		public static bool SetIfNotExists<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.SetIfNotExists(@object.GetCacheKey(), @object)
 				: false;
 		}
@@ -2490,7 +2488,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to update into cache storage</param>
 		public static Task<bool> SetIfNotExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.SetIfNotExistsAsync(@object.GetCacheKey(), @object)
 				: Task.FromResult<bool>(false);
 		}
@@ -2503,7 +2501,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to update into cache storage</param>
 		public static bool SetIfAlreadyExists<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.SetIfAlreadyExists(@object.GetCacheKey(), @object)
 				: false;
 		}
@@ -2516,7 +2514,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to update into cache storage</param>
 		public static Task<bool> SetIfAlreadyExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.SetIfAlreadyExistsAsync(@object.GetCacheKey(), @object)
 				: Task.FromResult<bool>(false);
 		}
@@ -2557,7 +2555,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object need to delete from cache storage</param>
 		public static bool Remove<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.Remove(@object.GetCacheKey())
 				: false;
 		}
@@ -2583,7 +2581,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object need to delete from cache storage</param>
 		public static Task<bool> RemoveAsync<T>(this CacheManager cacheStorage, T @object) where T : class
 		{
-			return !object.ReferenceEquals(@object, null)
+			return @object != null
 				? cacheStorage.RemoveAsync(@object.GetCacheKey())
 				: Task.FromResult<bool>(false);
 		}
@@ -2802,7 +2800,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				try
 				{
-					RepositoryMediator.LogsPath = ConfigurationManager.AppSettings["vieapps:LogsPath"];
+					RepositoryMediator.LogsPath = UtilityService.GetAppSetting("LogsPath");
 					if (!RepositoryMediator.LogsPath.EndsWith(@"\"))
 						RepositoryMediator.LogsPath += @"\";
 				}
@@ -2836,14 +2834,9 @@ namespace net.vieapps.Components.Repository
 			}).ConfigureAwait(false);
 		}
 
-		internal static void WriteLogs(string log, Exception ex)
+		internal static void WriteLogs(string log, Exception ex = null)
 		{
 			RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex);
-		}
-
-		internal static void WriteLogs(string log)
-		{
-			RepositoryMediator.WriteLogs(log, null);
 		}
 		#endregion
 

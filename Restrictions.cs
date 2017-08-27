@@ -446,10 +446,7 @@ namespace net.vieapps.Components.Repository
 					if (data != null)
 					{
 						statement += (statement.Equals("") ? "" : this.Operator.Equals(GroupOperator.And) ? " AND " : " OR ") + data.Item1;
-						data.Item2.ForEach(parameter =>
-						{
-							parameters.Add(parameter.Key, parameter.Value);
-						});
+						data.Item2.ForEach(parameter => parameters.Add(parameter.Key, parameter.Value));
 					}
 				});
 
@@ -526,10 +523,7 @@ namespace net.vieapps.Components.Repository
 		{
 			var filter = new FilterBys<T>(GroupOperator.And);
 			if (filters != null)
-				filters.ForEach(item =>
-				{
-					filter.Add(item);
-				});
+				filters.ForEach(item => filter.Add(item));
 			return filter;
 		}
 
@@ -552,10 +546,7 @@ namespace net.vieapps.Components.Repository
 		{
 			var filter = new FilterBys<T>(GroupOperator.Or);
 			if (filters != null)
-				filters.ForEach(item =>
-				{
-					filter.Add(item);
-				});
+				filters.ForEach(item => filter.Add(item));
 			return filter;
 		}
 

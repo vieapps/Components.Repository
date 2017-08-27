@@ -1264,7 +1264,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterDefinition<T> CreateTextSearchFilter<T>(this string query) where T : class
 		{
-			var searchQuery = Utility.SearchQuery.Parse(query);
+			var searchQuery = new SearchQuery(query);
 
 			var filter = "";
 			searchQuery.AndWords.ForEach(word => filter += (!filter.Equals("") ? " " : "") + word);

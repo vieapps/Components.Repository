@@ -1737,9 +1737,9 @@ namespace net.vieapps.Components.Repository
 		/// Gets the terms for searching in SQL database using full-text search
 		/// </summary>
 		/// <param name="dbProviderFactory"></param>
-		/// <param name="queryInfo"></param>
+		/// <param name="searchQuery"></param>
 		/// <returns></returns>
-		public static string GetSearchTerms(this DbProviderFactory dbProviderFactory, SearchQuery queryInfo)
+		public static string GetSearchTerms(this DbProviderFactory dbProviderFactory, SearchQuery searchQuery)
 		{
 			var searchTerms = "";
 
@@ -1748,38 +1748,20 @@ namespace net.vieapps.Components.Repository
 			{
 				// prepare AND/OR/AND NOT terms
 				var andSearchTerms = "";
-				queryInfo.AndWords.ForEach(word =>
-				{
-					andSearchTerms += "\"*" + word + "*\"" + " AND ";
-				});
-				queryInfo.AndPhrases.ForEach(phrase =>
-				{
-					andSearchTerms += "\"" + phrase + "\" AND ";
-				});
+				searchQuery.AndWords.ForEach(word => andSearchTerms += "\"*" + word + "*\"" + " AND ");
+				searchQuery.AndPhrases.ForEach(phrase => andSearchTerms += "\"" + phrase + "\" AND ");
 				if (!andSearchTerms.Equals(""))
 					andSearchTerms = andSearchTerms.Left(andSearchTerms.Length - 5);
 
 				var notSearchTerms = "";
-				queryInfo.NotWords.ForEach(word =>
-				{
-					notSearchTerms += " AND NOT " + word;
-				});
-				queryInfo.NotPhrases.ForEach(phrase =>
-				{
-					notSearchTerms += " AND NOT \"" + phrase + "\"";
-				});
+				searchQuery.NotWords.ForEach(word => notSearchTerms += " AND NOT " + word);
+				searchQuery.NotPhrases.ForEach(phrase => notSearchTerms += " AND NOT \"" + phrase + "\"");
 				if (!notSearchTerms.Equals(""))
 					notSearchTerms = notSearchTerms.Trim();
 
 				var orSearchTerms = "";
-				queryInfo.OrWords.ForEach(word =>
-				{
-					orSearchTerms += "\"*" + word + "*\"" + " OR ";
-				});
-				queryInfo.OrPhrases.ForEach(phrase =>
-				{
-					orSearchTerms += "\"" + phrase + "\" OR ";
-				});
+				searchQuery.OrWords.ForEach(word => orSearchTerms += "\"*" + word + "*\"" + " OR ");
+				searchQuery.OrPhrases.ForEach(phrase => orSearchTerms += "\"" + phrase + "\" OR ");
 				if (!orSearchTerms.Equals(""))
 					orSearchTerms = orSearchTerms.Left(orSearchTerms.Length - 4);
 
@@ -1825,32 +1807,14 @@ namespace net.vieapps.Components.Repository
 
 			else if (dbProviderFactory.IsMySQL())
 			{
-				queryInfo.AndWords.ForEach(word =>
-				{
-					searchTerms += (searchTerms.Equals("") ? "" : " ") + "+" + word;
-				});
-				queryInfo.AndPhrases.ForEach(phrase =>
-				{
-					searchTerms += (searchTerms.Equals("") ? "" : " ") + "+\"" + phrase + "\"";
-				});
+				searchQuery.AndWords.ForEach(word => searchTerms += (searchTerms.Equals("") ? "" : " ") + "+" + word);
+				searchQuery.AndPhrases.ForEach(phrase => searchTerms += (searchTerms.Equals("") ? "" : " ") + "+\"" + phrase + "\"");
 
-				queryInfo.NotWords.ForEach(word =>
-				{
-					searchTerms += (searchTerms.Equals("") ? "" : " ") + "-" + word;
-				});
-				queryInfo.NotPhrases.ForEach(phrase =>
-				{
-					searchTerms += (searchTerms.Equals("") ? "" : " ") + "-\"" + phrase + "\"";
-				});
+				searchQuery.NotWords.ForEach(word => searchTerms += (searchTerms.Equals("") ? "" : " ") + "-" + word);
+				searchQuery.NotPhrases.ForEach(phrase => searchTerms += (searchTerms.Equals("") ? "" : " ") + "-\"" + phrase + "\"");
 
-				queryInfo.OrWords.ForEach(word =>
-				{
-					searchTerms += (searchTerms.Equals("") ? "" : " ") + word;
-				});
-				queryInfo.OrPhrases.ForEach(phrase =>
-				{
-					searchTerms += (searchTerms.Equals("") ? "" : " ") + "\"" + phrase + "\"";
-				});
+				searchQuery.OrWords.ForEach(word => searchTerms += (searchTerms.Equals("") ? "" : " ") + word);
+				searchQuery.OrPhrases.ForEach(phrase => searchTerms += (searchTerms.Equals("") ? "" : " ") + "\"" + phrase + "\"");
 			}
 
 			return searchTerms;
@@ -1902,7 +1866,7 @@ namespace net.vieapps.Components.Repository
 			var orderby = "";
 
 			// searching terms
-			var searchTerms = dbProviderFactory.GetSearchTerms(Utility.SearchQuery.Parse(query));
+			var searchTerms = dbProviderFactory.GetSearchTerms(new SearchQuery(query));
 
 			// Microsoft SQL Server
 			if (dbProviderFactory.IsMicrosoftSQL())
@@ -2251,7 +2215,7 @@ namespace net.vieapps.Components.Repository
 				: "";
 
 			// searching terms
-			var searchTerms = dbProviderFactory.GetSearchTerms(Utility.SearchQuery.Parse(query));
+			var searchTerms = dbProviderFactory.GetSearchTerms(new SearchQuery(query));
 
 			// Microsoft SQL Server
 			if (dbProviderFactory.IsMicrosoftSQL())

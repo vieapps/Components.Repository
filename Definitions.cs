@@ -279,12 +279,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var names = data.ToArray(',', true, true);
 					data = "";
-					names.ForEach(name =>
-					{
-						data += RepositoryMediator.DataSources.ContainsKey(name)
-							? (!data.Equals("") ? "," : "") + name
-							: "";
-					});
+					names.ForEach(name => data += RepositoryMediator.DataSources.ContainsKey(name) ? (!data.Equals("") ? "," : "") + name : "");
 				}
 			}
 			RepositoryMediator.RepositoryDefinitions[typeName].SyncDataSourceNames = data;
@@ -748,14 +743,9 @@ namespace net.vieapps.Components.Repository
 					data = null;
 				else
 				{
-					var names = data.ToArray(',', true, true);
+					var names = data.ToArray(',', true);
 					data = "";
-					names.ForEach(name =>
-					{
-						data += RepositoryMediator.DataSources.ContainsKey(name)
-							? (!data.Equals("") ? "," : "") + name
-							: "";
-					});
+					names.ForEach(name => data += RepositoryMediator.DataSources.ContainsKey(name) ? (!data.Equals("") ? "," : "") + name : "");
 				}
 			}
 			RepositoryMediator.EntityDefinitions[typeName].SyncDataSourceNames = data;
