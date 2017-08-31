@@ -1680,19 +1680,6 @@ namespace net.vieapps.Components.Repository
 		#region Schemas & Indexes
 		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource)
 		{
-			// get the collection
-			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
-
-			// create the blank document for ensuring the collection is created
-			var blankDocumentIsCreated = false;
-			if (await collection.CountAsync(Builders<BsonDocument>.Filter.Empty) > 0)
-			{
-				var @object = definition.Type.CreateInstance() as RepositoryBase;
-				@object.ID = UtilityService.BlankUID;
-				await collection.InsertOneAsync(@object.ToBsonDocument(), null, CancellationToken.None);
-				blankDocumentIsCreated = true;
-			}
-
 			// prepare indexes
 			var prefix = "IDX_" + definition.CollectionName;
 			var indexes = new Dictionary<string, List<ObjectService.AttributeInfo>>()
@@ -1739,6 +1726,9 @@ namespace net.vieapps.Components.Repository
 					.ToList()
 				: new List<string>();
 
+			// get the collection
+			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
+
 			// create indexes
 			await indexes.ForEachAsync(async (info, cancellationToken) =>
 			{
@@ -1782,11 +1772,23 @@ namespace net.vieapps.Components.Repository
 				await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }, CancellationToken.None);
 			}
 
-			// delete the blank document
-			if (blankDocumentIsCreated)
+			// create the blank document for ensuring the collection is created
+			if (await collection.CountAsync(Builders<BsonDocument>.Filter.Empty) < 1)
 			{
-				await Task.Delay(234);
-				await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, CancellationToken.None);
+				var task = Task.Run(async () =>
+				{
+					try
+					{
+						var @object = definition.Type.CreateInstance() as RepositoryBase;
+						@object.ID = UtilityService.BlankUID;
+						await collection.InsertOneAsync(@object.ToBsonDocument(), null, CancellationToken.None).ContinueWith(async (t) =>
+						{
+							await Task.Delay(456, CancellationToken.None);
+							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, CancellationToken.None);
+						});
+					}
+					catch { }
+				}).ConfigureAwait(false);
 			}
 		}
 		#endregion

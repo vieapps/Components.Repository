@@ -181,21 +181,32 @@ namespace net.vieapps.Components.Repository
 			// standard properties
 			@object.GetProperties().ForEach(attribute =>
 			{
-				if (!attribute.IsIgnored() && attribute.CanRead && attribute.CanWrite)
+				try
+				{
 					stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
+				}
+				catch { }
 			});
 
 			// standard fields
 			@object.GetFields().ForEach(attribute =>
 			{
-				stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
+				try
+				{
+					stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
+				}
+				catch { }
 			});
 
 			// extended properties
-			if (@object is IBusinessEntity && (@object as IBusinessEntity).ExtendedProperties != null)
-				(@object as IBusinessEntity).ExtendedProperties.ForEach(info =>
+			if (@object is IBusinessEntity)
+				(@object as IBusinessEntity).ExtendedProperties?.ForEach(info =>
 				{
-					stateData.Add("ExtendedProperties." + info.Key, info.Value);
+					try
+					{
+						stateData.Add("ExtendedProperties." + info.Key, info.Value);
+					}
+					catch { }
 				});
 
 			return stateData;
