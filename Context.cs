@@ -173,6 +173,7 @@ namespace net.vieapps.Components.Repository
 		#region State data
 		internal Dictionary<string, object> GetStateData(object @object)
 		{
+			// prepare
 			if (@object == null)
 				return new Dictionary<string, object>();
 
@@ -181,21 +182,23 @@ namespace net.vieapps.Components.Repository
 			// standard properties
 			@object.GetProperties().ForEach(attribute =>
 			{
-				try
-				{
-					stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
-				}
-				catch { }
+				if (!attribute.IsIgnored())
+					try
+					{
+						stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
+					}
+					catch { }
 			});
 
 			// standard fields
 			@object.GetFields().ForEach(attribute =>
 			{
-				try
-				{
-					stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
-				}
-				catch { }
+				if (!attribute.IsIgnored())
+					try
+					{
+						stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
+					}
+					catch { }
 			});
 
 			// extended properties

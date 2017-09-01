@@ -1411,17 +1411,6 @@ namespace net.vieapps.Components.Repository
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			List<T> objects = null;
 
-#if DEBUG
-			RepositoryMediator.WriteLogs(new List<string>(){
-					"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-					"- Mode: " + primaryDataSource.Mode.ToString(),
-					"- Page Size: " + pageSize.ToString(),
-					"- Page Number: " + pageNumber.ToString(),
-					"- Filter By: " + (filter != null ? filter.ToString() : "None"),
-					"- Sort By: " + (sort != null ? sort.ToString() : "None"),
-				}, null);
-#endif
-
 			// find identities
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
@@ -1432,6 +1421,18 @@ namespace net.vieapps.Components.Repository
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 							? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 							: new List<string>();
+
+#if DEBUG
+			RepositoryMediator.WriteLogs(new List<string>(){
+					"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Page Size: " + pageSize.ToString(),
+					"- Page Number: " + pageNumber.ToString(),
+					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
+					"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
+				}, null);
+#endif
 
 			// process cache
 			if (identities != null && identities.Count > 0)
@@ -1501,7 +1502,7 @@ namespace net.vieapps.Components.Repository
 				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					if (!string.IsNullOrWhiteSpace(cacheKey))
-						context.EntityDefinition.CacheStorage.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), string.IsNullOrWhiteSpace(cacheExpirationType) ? "Absolute" : cacheExpirationType, cacheExpirationTime);
+						context.EntityDefinition.CacheStorage.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheExpirationType ?? "Absolute", (cacheExpirationType == null || cacheExpirationType.IsEquals("Absolute")) && cacheExpirationTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheExpirationTime);
 					context.EntityDefinition.CacheStorage.Set(objects);
 #if DEBUG
 					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -1569,17 +1570,6 @@ namespace net.vieapps.Components.Repository
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			List<T> objects = null;
 
-#if DEBUG
-			RepositoryMediator.WriteLogs(new List<string>(){
-					"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-					"- Mode: " + primaryDataSource.Mode.ToString(),
-					"- Page Size: " + pageSize.ToString(),
-					"- Page Number: " + pageNumber.ToString(),
-					"- Filter By: " + (filter != null ? filter.ToString() : "None"),
-					"- Sort By: " + (sort != null ? sort.ToString() : "None"),
-				}, null);
-#endif
-
 			// find identities
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
@@ -1590,6 +1580,18 @@ namespace net.vieapps.Components.Repository
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 							? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
 							: new List<string>();
+
+#if DEBUG
+			RepositoryMediator.WriteLogs(new List<string>(){
+					"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Page Size: " + pageSize.ToString(),
+					"- Page Number: " + pageNumber.ToString(),
+					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
+					"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
+				}, null);
+#endif
 
 			// process
 			if (identities != null && identities.Count > 0)
@@ -1659,7 +1661,7 @@ namespace net.vieapps.Components.Repository
 				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					if (!string.IsNullOrWhiteSpace(cacheKey))
-						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), string.IsNullOrWhiteSpace(cacheExpirationType) ? "Absolute" : cacheExpirationType, cacheExpirationTime);
+						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheExpirationType ?? "Absolute", (cacheExpirationType == null || cacheExpirationType.IsEquals("Absolute")) && cacheExpirationTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheExpirationTime);
 					await context.EntityDefinition.CacheStorage.SetAsync(objects);
 #if DEBUG
 					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -1729,7 +1731,7 @@ namespace net.vieapps.Components.Repository
 				: -1;
 			if (total > -1)
 				return total;
-			
+
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			total = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
@@ -1738,9 +1740,18 @@ namespace net.vieapps.Components.Repository
 					? context.Count<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents)
 					: 0;
 
+#if DEBUG
+			RepositoryMediator.WriteLogs(new List<string>(){
+					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + total.ToString(),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
+#endif
+
 			// update cache and return
 			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
-				context.EntityDefinition.CacheStorage.Set(cacheKey, total, string.IsNullOrWhiteSpace(cacheExpirationType) ? "Absolute" : cacheExpirationType, cacheExpirationTime);
+				context.EntityDefinition.CacheStorage.Set(cacheKey, total, cacheExpirationType ?? "Absolute", (cacheExpirationType == null || cacheExpirationType.IsEquals("Absolute")) && cacheExpirationTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheExpirationTime);
 			return total;
 		}
 
@@ -1807,9 +1818,18 @@ namespace net.vieapps.Components.Repository
 					? await context.CountAsync<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
 					: 0;
 
+#if DEBUG
+			RepositoryMediator.WriteLogs(new List<string>(){
+					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + total.ToString(),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
+#endif
+
 			// update cache and return
 			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
-				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, string.IsNullOrWhiteSpace(cacheExpirationType) ? "Absolute" : cacheExpirationType, cacheExpirationTime);
+				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, cacheExpirationType ?? "Absolute", (cacheExpirationType == null || cacheExpirationType.IsEquals("Absolute")) && cacheExpirationTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheExpirationTime);
 			return total;
 		}
 
@@ -1865,17 +1885,6 @@ namespace net.vieapps.Components.Repository
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			List<T> objects = null;
 
-#if DEBUG
-			RepositoryMediator.WriteLogs(new List<string>(){
-					"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-					"- Mode: " + primaryDataSource.Mode.ToString(),
-					"- Page Size: " + pageSize.ToString(),
-					"- Page Number: " + pageNumber.ToString(),
-					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "Unknown"),
-					"- Filter By (Additional): " + (filter != null ? filter.ToString() : "None")
-				}, null);
-#endif
-
 			// search identities
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
@@ -1884,6 +1893,18 @@ namespace net.vieapps.Components.Repository
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 						? context.SearchIdentities<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID)
 						: new List<string>();
+
+#if DEBUG
+			RepositoryMediator.WriteLogs(new List<string>(){
+					"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Page Size: " + pageSize.ToString(),
+					"- Page Number: " + pageNumber.ToString(),
+					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
+					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
+#endif
 
 			// process
 			if (identities != null && identities.Count > 0)
@@ -2011,17 +2032,6 @@ namespace net.vieapps.Components.Repository
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			List<T> objects = null;
 
-#if DEBUG
-			RepositoryMediator.WriteLogs(new List<string>(){
-					"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-					"- Mode: " + primaryDataSource.Mode.ToString(),
-					"- Page Size: " + pageSize.ToString(),
-					"- Page Number: " + pageNumber.ToString(),
-					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "Unknown"),
-					"- Filter By (Additional): " + (filter != null ? filter.ToString() : "None")
-				}, null);
-#endif
-
 			// search identities
 			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
 				? null
@@ -2030,6 +2040,18 @@ namespace net.vieapps.Components.Repository
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 						? await context.SearchIdentitiesAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken)
 						: new List<string>();
+
+#if DEBUG
+			RepositoryMediator.WriteLogs(new List<string>(){
+					"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Page Size: " + pageSize.ToString(),
+					"- Page Number: " + pageNumber.ToString(),
+					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
+					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
+#endif
 
 			// process
 			if (identities != null && identities.Count > 0)
@@ -2156,11 +2178,23 @@ namespace net.vieapps.Components.Repository
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+			var total = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 				? context.Count<T>(primaryDataSource, query, filter, businessEntityID, null)
 				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 					? context.Count<T>(primaryDataSource, query, filter, businessEntityID)
 					: 0;
+
+#if DEBUG
+			RepositoryMediator.WriteLogs(new List<string>(){
+					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + total.ToString(),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
+					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
+#endif
+
+			return total;
 		}
 
 		/// <summary>
@@ -2199,7 +2233,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
-		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -2207,11 +2241,23 @@ namespace net.vieapps.Components.Repository
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
-			return primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, null, cancellationToken)
+			var total = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+				? await context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, null, cancellationToken)
 				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, cancellationToken)
-					: Task.FromResult<long>(0);
+					? await context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, cancellationToken)
+					: 0;
+
+#if DEBUG
+			RepositoryMediator.WriteLogs(new List<string>(){
+					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + total.ToString(),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
+					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
+#endif
+
+			return total;
 		}
 
 		/// <summary>
