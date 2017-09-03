@@ -2326,9 +2326,7 @@ namespace net.vieapps.Components.Repository
 				: objects.ToJArray(@object =>
 				{
 					return @object is RepositoryBase
-						? addTypeOfExtendedProperties
-							? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties)
-							: (@object as RepositoryBase).ToJson()
+						? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
 						: @object.ToJson();
 				});
 		}
@@ -2347,9 +2345,7 @@ namespace net.vieapps.Components.Repository
 			{
 				var name = @object.GetEntityID();
 				var value = @object is RepositoryBase
-					? addTypeOfExtendedProperties
-						? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties)
-						: (@object as RepositoryBase).ToJson()
+					? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
 					: @object.ToJson();
 
 				json.Add(new JProperty(name, value));
@@ -2372,9 +2368,7 @@ namespace net.vieapps.Components.Repository
 				objects.ForEach(@object => {
 					xml.Add(
 							@object is RepositoryBase
-								? addTypeOfExtendedProperties
-									? (@object as RepositoryBase).ToXml(addTypeOfExtendedProperties)
-									: (@object as RepositoryBase).ToXml()
+								? (@object as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
 								: @object.ToXml()
 						);
 				});

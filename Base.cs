@@ -72,8 +72,9 @@ namespace net.vieapps.Components.Repository
 		/// Serializes this object to JSON
 		/// </summary>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (named with surfix '$Type')</param>
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
 		/// <returns></returns>
-		public abstract JObject ToJson(bool addTypeOfExtendedProperties);
+		public abstract JObject ToJson(bool addTypeOfExtendedProperties, Action<JObject> onPreCompleted);
 
 		/// <summary>
 		/// Serializes this object to JSON
@@ -81,21 +82,23 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public virtual JObject ToJson()
 		{
-			return this.ToJson(false);
+			return this.ToJson(false, null);
 		}
 
 		/// <summary>
 		/// Parses the JSON and copy values into this object
 		/// </summary>
 		/// <param name="json">The JSON object that contains information</param>
-		public abstract void ParseJson(JObject json);
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
+		public abstract void ParseJson(JObject json, Action<JObject> onPreCompleted);
 
 		/// <summary>
 		/// Serializes this object to XML
 		/// </summary>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (attribute named '$type')</param>
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
 		/// <returns></returns>
-		public abstract XElement ToXml(bool addTypeOfExtendedProperties);
+		public abstract XElement ToXml(bool addTypeOfExtendedProperties, Action<XElement> onPreCompleted);
 
 		/// <summary>
 		/// Serializes this object to XML
@@ -103,14 +106,15 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public virtual XElement ToXml()
 		{
-			return this.ToXml(false);
+			return this.ToXml(false, null);
 		}
 
 		/// <summary>
 		/// Parses the XML and copy values into this object
 		/// </summary>
 		/// <param name="xml">The XML object that contains information</param>
-		public abstract void ParseXml(XContainer xml);
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
+		public abstract void ParseXml(XContainer xml, Action<XContainer> onPreCompleted);
 		#endregion
 
 	}
@@ -1964,22 +1968,34 @@ namespace net.vieapps.Components.Repository
 		/// Serializes this object to JSON object
 		/// </summary>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (named with surfix '$Type')</param>
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
 		/// <returns></returns>
-		public override JObject ToJson(bool addTypeOfExtendedProperties = false)
+		public override JObject ToJson(bool addTypeOfExtendedProperties = false, Action<JObject> onPreCompleted = null)
 		{
+			// serialize
 			var json = (this as T).ToJson() as JObject;
 			if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
 				(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
 				{
-					Type type = property.Value != null
+					var type = property.Value != null
 						? property.Value.GetType()
 						: null;
 
 					if (addTypeOfExtendedProperties && type != null)
 						json.Add(new JProperty(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
 
-					json.Add(new JProperty(property.Key, type == null || type.IsPrimitiveType() ? property.Value : property.Value is RepositoryBase ? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties) : property.Value.ToJson()));
+					var value = type == null || type.IsPrimitiveType()
+						? property.Value
+						: property.Value is RepositoryBase
+							? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
+							: property.Value.ToJson();
+					json.Add(new JProperty(property.Key, value));
 				});
+
+			// run the handler on pre-completed
+			onPreCompleted?.Invoke(json);
+
+			// return the JSON
 			return json;
 		}
 
@@ -1987,19 +2003,25 @@ namespace net.vieapps.Components.Repository
 		/// Parses the JSON object and copy values into this object
 		/// </summary>
 		/// <param name="json">The JSON object that contains information</param>
-		public override void ParseJson(JObject json)
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
+		public override void ParseJson(JObject json, Action<JObject> onPreCompleted = null)
 		{
 			if (json != null)
+			{
 				this.CopyFrom(json);
+				onPreCompleted?.Invoke(json);
+			}
 		}
 
 		/// <summary>
 		/// Serializes this object to XML object
 		/// </summary>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (attribute named '$type')</param>
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
 		/// <returns></returns>
-		public override XElement ToXml(bool addTypeOfExtendedProperties)
+		public override XElement ToXml(bool addTypeOfExtendedProperties = false, Action<XElement> onPreCompleted = null)
 		{
+			// serialize
 			var xml = (this as T).ToXml();
 			if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
 				(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
@@ -2011,7 +2033,7 @@ namespace net.vieapps.Components.Repository
 					var value = type == null || type.IsPrimitiveType()
 						? property.Value
 						: property.Value is RepositoryBase
-							? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties)
+							? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
 							: property.Value.ToXml();
 
 					var element = addTypeOfExtendedProperties && type != null
@@ -2019,6 +2041,11 @@ namespace net.vieapps.Components.Repository
 						: new XElement(XName.Get(property.Key), value);
 					xml.Add(element);
 				});
+
+			// run the handler
+			onPreCompleted?.Invoke(xml);
+
+			// return the XML
 			return xml;
 		}
 
@@ -2026,10 +2053,14 @@ namespace net.vieapps.Components.Repository
 		/// Parses the XML object and copy values into this object
 		/// </summary>
 		/// <param name="xml">The XML object that contains information</param>
-		public override void ParseXml(XContainer xml)
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
+		public override void ParseXml(XContainer xml, Action<XContainer> onPreCompleted = null)
 		{
 			if (xml != null)
+			{
 				this.CopyFrom(xml.FromXml<T>());
+				onPreCompleted?.Invoke(xml);
+			}
 		}
 		#endregion
 
