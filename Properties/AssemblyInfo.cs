@@ -28,4 +28,4 @@ using System.Security.Permissions;
 //
 [assembly: AssemblyVersion("10.1")]
 [assembly: AssemblyFileVersion("10.1")]
-[assembly: AssemblyInformationalVersion("10.1.fmvp-2017.08.23")]
+[assembly: AssemblyInformationalVersion("10.1.mvpi-2017.09.04")]

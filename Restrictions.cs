@@ -28,12 +28,25 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public class FilterBy<T> : IFilterBy<T> where T : class
 	{
-		public FilterBy(CompareOperator @operator = CompareOperator.Equals, string attribute = null, object value = null) : this(null, @operator, attribute, value) { }
+		/// <summary>
+		/// Initializes a new filtering expression
+		/// </summary>
+		/// <param name="operator"></param>
+		/// <param name="attribute"></param>
+		/// <param name="value"></param>
+		public FilterBy(string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null) : this(null, attribute, @operator, value) { }
 
-		public FilterBy(JObject json, CompareOperator @operator = CompareOperator.Equals, string attribute = null, object value = null)
+		/// <summary>
+		/// Initializes a new filtering expression
+		/// </summary>
+		/// <param name="json"></param>
+		/// <param name="operator"></param>
+		/// <param name="attribute"></param>
+		/// <param name="value"></param>
+		public FilterBy(JObject json, string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null)
 		{
-			this.Operator = @operator;
 			this.Attribute = attribute;
+			this.Operator = @operator;
 			this.Value = value;
 			this.Parse(json);
 		}
@@ -66,15 +79,15 @@ namespace net.vieapps.Components.Repository
 		{
 			if (json != null)
 			{
-				var @operator = json["Operator"];
-				this.Operator = @operator != null && @operator is JValue && (@operator as JValue).Value != null
-					? (@operator as JValue).Value.ToString().ToEnum<CompareOperator>()
-					: CompareOperator.Equals;
-
 				var attribute = json["Attribute"];
 				this.Attribute = attribute != null && attribute is JValue && (attribute as JValue).Value != null
 					? (attribute as JValue).Value.ToString()
 					: null;
+
+				var @operator = json["Operator"];
+				this.Operator = @operator != null && @operator is JValue && (@operator as JValue).Value != null
+					? (@operator as JValue).Value.ToString().ToEnum<CompareOperator>()
+					: CompareOperator.Equals;
 
 				var value = json["Value"];
 				this.Value = value != null && value is JValue
@@ -87,8 +100,8 @@ namespace net.vieapps.Components.Repository
 		{
 			return new JObject()
 			{
-				{ "Operator", this.Operator.ToString() },
 				{ "Attribute", this.Attribute },
+				{ "Operator", this.Operator.ToString() },
 				{ "Value", new JValue(this.Value) }
 			};
 		}
@@ -339,14 +352,23 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public class FilterBys<T> : IFilterBy<T> where T : class
 	{
+		/// <summary>
+		/// Initializes a group of filtering expression
+		/// </summary>
+		/// <param name="operator"></param>
+		/// <param name="children"></param>
 		public FilterBys(GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null) : this(null, @operator, children) { }
 
+		/// <summary>
+		/// Initializes a group of filtering expression
+		/// </summary>
+		/// <param name="json"></param>
+		/// <param name="operator"></param>
+		/// <param name="children"></param>
 		public FilterBys(JObject json, GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null)
 		{
 			this.Operator = @operator;
-			this.Children = children != null
-				? children
-				: new List<IFilterBy<T>>();
+			this.Children = children ?? new List<IFilterBy<T>>();
 			this.Parse(json);
 		}
 
@@ -369,7 +391,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		/// <summary>
-		/// Adds an expression into the collection of children
+		/// Adds a filtering expression into the collection of children
 		/// </summary>
 		/// <param name="filter"></param>
 		public void Add(IFilterBy<T> filter)
@@ -522,8 +544,7 @@ namespace net.vieapps.Components.Repository
 		public static FilterBys<T> And(params IFilterBy<T>[] filters)
 		{
 			var filter = new FilterBys<T>(GroupOperator.And);
-			if (filters != null)
-				filters.ForEach(item => filter.Add(item));
+			filters?.ForEach(item => filter.Add(item));
 			return filter;
 		}
 
@@ -545,8 +566,7 @@ namespace net.vieapps.Components.Repository
 		public static FilterBys<T> Or(params IFilterBy<T>[] filters)
 		{
 			var filter = new FilterBys<T>(GroupOperator.Or);
-			if (filters != null)
-				filters.ForEach(item => filter.Add(item));
+			filters?.ForEach(item => filter.Add(item));
 			return filter;
 		}
 
@@ -570,7 +590,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> Equals(string attribute, object value)
 		{
-			return new FilterBy<T>(CompareOperator.Equals, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.Equals, value);
 		}
 
 		/// <summary>
@@ -581,7 +601,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> NotEquals(string attribute, object value)
 		{
-			return new FilterBy<T>(CompareOperator.NotEquals, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.NotEquals, value);
 		}
 
 		/// <summary>
@@ -592,7 +612,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> LessThan(string attribute, object value)
 		{
-			return new FilterBy<T>(CompareOperator.LessThan, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.LessThan, value);
 		}
 
 		/// <summary>
@@ -603,7 +623,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> LessThanOrEquals(string attribute, object value)
 		{
-			return new FilterBy<T>(CompareOperator.LessThanOrEquals, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.LessThanOrEquals, value);
 		}
 
 		/// <summary>
@@ -614,7 +634,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> Greater(string attribute, object value)
 		{
-			return new FilterBy<T>(CompareOperator.Greater, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.Greater, value);
 		}
 
 		/// <summary>
@@ -625,7 +645,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> GreaterOrEquals(string attribute, object value)
 		{
-			return new FilterBy<T>(CompareOperator.GreaterOrEquals, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.GreaterOrEquals, value);
 		}
 
 		/// <summary>
@@ -636,7 +656,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> Contains(string attribute, object value)
 		{
-			return new FilterBy<T>(CompareOperator.Contains, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.Contains, value);
 		}
 
 		/// <summary>
@@ -647,7 +667,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> StartsWith(string attribute, string value)
 		{
-			return new FilterBy<T>(CompareOperator.StartsWith, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.StartsWith, value);
 		}
 
 		/// <summary>
@@ -658,7 +678,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> EndsWith(string attribute, string value)
 		{
-			return new FilterBy<T>(CompareOperator.EndsWith, attribute, value);
+			return new FilterBy<T>(attribute, CompareOperator.EndsWith, value);
 		}
 
 		/// <summary>
@@ -668,7 +688,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> IsNull(string attribute)
 		{
-			return new FilterBy<T>(CompareOperator.IsNull, attribute, null);
+			return new FilterBy<T>(attribute, CompareOperator.IsNull, null);
 		}
 
 		/// <summary>
@@ -678,7 +698,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> IsNotNull(string attribute)
 		{
-			return new FilterBy<T>(CompareOperator.IsNotNull, attribute, null);
+			return new FilterBy<T>(attribute, CompareOperator.IsNotNull, null);
 		}
 
 		/// <summary>
@@ -688,7 +708,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> IsEmpty(string attribute)
 		{
-			return new FilterBy<T>(CompareOperator.IsEmpty, attribute, null);
+			return new FilterBy<T>(attribute, CompareOperator.IsEmpty, null);
 		}
 
 		/// <summary>
@@ -698,7 +718,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static FilterBy<T> IsNotEmpty(string attribute)
 		{
-			return new FilterBy<T>(CompareOperator.IsNotEmpty, attribute, null);
+			return new FilterBy<T>(attribute, CompareOperator.IsNotEmpty, null);
 		}
 		#endregion
 
@@ -712,8 +732,19 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public class SortBy<T> where T : class
 	{
+		/// <summary>
+		/// Initializes a sorting expression
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <param name="mode"></param>
 		public SortBy(string attribute = null, SortMode mode = SortMode.Ascending) : this(null, attribute, mode) { }
 
+		/// <summary>
+		/// Initializes a sorting expression
+		/// </summary>
+		/// <param name="json"></param>
+		/// <param name="attribute"></param>
+		/// <param name="mode"></param>
 		public SortBy(JObject json, string attribute = null, SortMode mode = SortMode.Ascending)
 		{
 			this.Attribute = attribute;
@@ -846,12 +877,10 @@ namespace net.vieapps.Components.Repository
 
 		internal List<string> GetAttributes()
 		{
-			var attributes = new List<string>() { this.Attribute };
-			return this.ThenBy != null
-				? attributes.Concat(this.ThenBy.GetAttributes()).ToList()
-				: attributes;
+			return (new List<string>() { this.Attribute })
+				.Concat(this.ThenBy != null ? this.ThenBy.GetAttributes() : new List<string>())
+				.ToList();
 		}
-
 	}
 
 	// ------------------------------------------
@@ -909,19 +938,9 @@ namespace net.vieapps.Components.Repository
 		#region Statements of SQL
 		internal static Tuple<Tuple<string, Dictionary<string, object>>, string> PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
 		{
-			definition = definition != null
-				? definition
-				: RepositoryMediator.GetEntityDefinition<T>();
-
-			propertiesInfo = propertiesInfo != null
-				? propertiesInfo
-				: RepositoryMediator.GetProperties<T>(businessEntityID, definition);
-
-			parentIDs = parentIDs != null
-				? parentIDs
-				: definition != null && autoAssociateWithMultipleParents && filter != null
-					? filter.GetAssociatedParentIDs(definition)
-					: null;
+			definition = definition ?? RepositoryMediator.GetEntityDefinition<T>();
+			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+			parentIDs = parentIDs ?? (definition != null && autoAssociateWithMultipleParents && filter != null ? filter.GetAssociatedParentIDs(definition) : null);
 
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -942,9 +961,7 @@ namespace net.vieapps.Components.Repository
 					}
 				);
 
-			var sortBy = sort != null
-				? sort.GetSqlStatement(standardProperties, extendedProperties)
-				: null;
+			var sortBy = sort?.GetSqlStatement(standardProperties, extendedProperties);
 
 			return new Tuple<Tuple<string, Dictionary<string, object>>, string>(filterBy, sortBy);
 		}
@@ -953,21 +970,9 @@ namespace net.vieapps.Components.Repository
 		#region Statements of No SQL
 		internal static Tuple<FilterDefinition<T>, SortDefinition<T>> PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
 		{
-			definition = definition != null
-				? definition
-				: autoAssociateWithMultipleParents
-					? RepositoryMediator.GetEntityDefinition<T>()
-					: null;
-
-			propertiesInfo = propertiesInfo != null
-				? propertiesInfo
-				: RepositoryMediator.GetProperties<T>(businessEntityID, definition);
-
-			parentIDs = parentIDs != null
-				? parentIDs
-				: definition != null && autoAssociateWithMultipleParents && filter != null
-					? filter.GetAssociatedParentIDs(definition)
-					: null;
+			definition = definition ?? (autoAssociateWithMultipleParents ? RepositoryMediator.GetEntityDefinition<T>() : null);
+			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+			parentIDs = parentIDs ?? (definition != null && autoAssociateWithMultipleParents && filter != null ? filter.GetAssociatedParentIDs(definition) : null);
 
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -983,9 +988,7 @@ namespace net.vieapps.Components.Repository
 					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
 					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
 
-			var sortBy = sort != null
-				? sort.GetNoSqlStatement(null, standardProperties, extendedProperties)
-				: null;
+			var sortBy = sort?.GetNoSqlStatement(null, standardProperties, extendedProperties);
 
 			return new Tuple<FilterDefinition<T>, SortDefinition<T>>(filterBy, sortBy);
 		}
