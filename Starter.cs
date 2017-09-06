@@ -70,30 +70,33 @@ namespace net.vieapps.Components.Repository
 			assemblies.ForEach(assembly => RepositoryStarter.Initialize(assembly));
 
 			// read configuration and update
-			var config = ConfigurationManager.GetSection("net.vieapps.repositories") as ConfigurationSectionHandler;
+			var config = ConfigurationManager.GetSection("net.vieapps.repositories") as AppConfigurationSectionHandler;
 			if (config != null)
 			{
 				// update settings of data sources
-				foreach (XmlNode dataSourceNode in config._section.SelectNodes("dataSources/dataSource"))
-				{
-					var dataSource = DataSource.FromJson(config.GetSettings(dataSourceNode));
-					if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
-						RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
-				}
+				if (config.Section.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
+					foreach (XmlNode dataSourceNode in dataSourceNodes)
+					{
+						var dataSource = DataSource.FromJson(config.GetJson(dataSourceNode));
+						if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
+							RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
+					}
 
 				// update settings of repositories
-				foreach (XmlNode repositoryNode in config._section.SelectNodes("repository"))
-				{
-					// update repository
-					RepositoryDefinition.Update(config.GetSettings(repositoryNode));
+				if (config.Section.SelectNodes("repository") is XmlNodeList repositoryNodes)
+					foreach (XmlNode repositoryNode in repositoryNodes)
+					{
+						// update repository
+						RepositoryDefinition.Update(config.GetJson(repositoryNode));
 
-					// update repository entities
-					foreach (XmlNode repositoryEntityNode in repositoryNode.SelectNodes("entity"))
-						EntityDefinition.Update(config.GetSettings(repositoryEntityNode));
-				}
+						// update repository entities
+						if (repositoryNode.SelectNodes("entity") is XmlNodeList entityNodes)
+							foreach (XmlNode repositoryEntityNode in entityNodes)
+								EntityDefinition.Update(config.GetJson(repositoryEntityNode));
+					}
 
-				// schemas & indexes
-				if (config._section.Attributes["ensureSchemas"] != null && config._section.Attributes["ensureSchemas"].Value.IsEquals("true"))
+				// schemas (SQL)
+				if ("true".IsEquals(config.Section.Attributes["ensureSchemas"]?.Value))
 					Task.Run(async () =>
 					{
 						try
@@ -103,7 +106,8 @@ namespace net.vieapps.Components.Repository
 						catch { }
 					}).ConfigureAwait(false);
 
-				if (config._section.Attributes["ensureIndexes"] != null && config._section.Attributes["ensureIndexes"].Value.IsEquals("true"))
+				// indexes (NoSQL)
+				if ("true".IsEquals(config.Section.Attributes["ensureIndexes"]?.Value))
 					Task.Run(async () =>
 					{
 						try
@@ -196,26 +200,4 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 	}
-
-	//  --------------------------------------------------------------------------------------------
-
-	public class ConfigurationSectionHandler : IConfigurationSectionHandler
-	{
-		internal XmlNode _section = null;
-
-		public object Create(object parent, object configContext, XmlNode section)
-		{
-			this._section = section;
-			return this;
-		}
-
-		internal JObject GetSettings(XmlNode node)
-		{
-			var settings = new JObject();
-			foreach (XmlAttribute attribute in node.Attributes)
-				settings.Add(new JProperty(attribute.Name, attribute.Value));
-			return settings;
-		}
-	}
-
 }
