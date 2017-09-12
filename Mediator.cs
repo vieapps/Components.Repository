@@ -273,12 +273,12 @@ namespace net.vieapps.Components.Repository
 			// standard properties
 			foreach (var attribute in definition.Attributes)
 			{
-				if (!attribute.CanRead || !attribute.CanWrite)
+				if (attribute.IsIgnored() || !attribute.CanRead || !attribute.CanWrite)
 					continue;
 
 				object value = stateData[attribute.Name];
 
-				if (object.ReferenceEquals(value, null))
+				if (value == null)
 				{
 					if (attribute.Name.Equals(definition.PrimaryKey))
 						throw new InformationRequiredException("The value of the primary-key is required");

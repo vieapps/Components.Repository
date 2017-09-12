@@ -215,12 +215,10 @@ namespace net.vieapps.Components.Repository
 			return stateData;
 		}
 
-		internal Dictionary<string, object> SetPreviousState(object @object, Dictionary<string, object> stateData)
+		internal Dictionary<string, object> SetPreviousState(object @object, Dictionary<string, object> stateData = null)
 		{
 			var key = @object.GetCacheKey(true);
-			stateData = stateData != null
-				? stateData
-				: this.GetStateData(@object);
+			stateData = stateData ?? this.GetStateData(@object);
 
 			if (this.PreviousStateData.ContainsKey(key))
 				this.PreviousStateData[key] = stateData;
@@ -228,11 +226,6 @@ namespace net.vieapps.Components.Repository
 				this.PreviousStateData.Add(key, stateData);
 
 			return stateData;
-		}
-
-		internal Dictionary<string, object> SetPreviousState(object @object)
-		{
-			return this.SetPreviousState(@object, null);
 		}
 
 		/// <summary>
@@ -251,12 +244,10 @@ namespace net.vieapps.Components.Repository
 				: null;
 		}
 
-		internal Dictionary<string, object> SetCurrentState(object @object, Dictionary<string, object> stateData)
+		internal Dictionary<string, object> SetCurrentState(object @object, Dictionary<string, object> stateData = null)
 		{
 			var key = @object.GetCacheKey(true);
-			stateData = stateData != null
-				? stateData
-				: this.GetStateData(@object);
+			stateData = stateData ?? this.GetStateData(@object);
 
 			if (this.CurrentStateData.ContainsKey(key))
 				this.CurrentStateData[key] = stateData;
@@ -264,11 +255,6 @@ namespace net.vieapps.Components.Repository
 				this.CurrentStateData.Add(key, stateData);
 
 			return stateData;
-		}
-
-		internal Dictionary<string, object> SetCurrentState(object @object)
-		{
-			return this.SetCurrentState(@object, null);
 		}
 
 		/// <summary>

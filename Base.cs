@@ -2132,6 +2132,43 @@ namespace net.vieapps.Components.Repository
 
 	//  --------------------------------------------------------------------------------------------
 
+	#region Repository object comparer
+	/// <summary>
+	/// Presents the comparer for all repository objects
+	/// </summary>
+	public class RepositoryBaseComparer : IEqualityComparer<RepositoryBase>
+	{
+		/// <summary>
+		/// Objects are equal if their identities are equal
+		/// </summary>
+		/// <param name="x"></param>
+		/// <param name="y"></param>
+		/// <returns></returns>
+		public bool Equals(RepositoryBase x, RepositoryBase y)
+		{
+			return object.ReferenceEquals(x, y)
+				? true
+				: object.ReferenceEquals(x, null) || Object.ReferenceEquals(y, null)
+					? false
+					: x.ID.IsEquals(y.ID);
+		}
+
+		/// <summary>
+		/// If Equals() returns true for a pair of objects,  then GetHashCode() must return the same value for these objects
+		/// </summary>
+		/// <param name="bookmark"></param>
+		/// <returns></returns>
+		public int GetHashCode(RepositoryBase bookmark)
+		{
+			return object.ReferenceEquals(bookmark, null) || string.IsNullOrWhiteSpace(bookmark.ID)
+				? 0
+				: bookmark.ID.GetHashCode();
+		}
+	}
+	#endregion
+
+	//  --------------------------------------------------------------------------------------------
+
 	#region Identity generator (for working with MongoDB)
 	/// <summary>
 	/// Generates identity as UUID (128 bits) for MongoDB documents
