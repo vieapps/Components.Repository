@@ -2156,13 +2156,13 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// If Equals() returns true for a pair of objects,  then GetHashCode() must return the same value for these objects
 		/// </summary>
-		/// <param name="bookmark"></param>
+		/// <param name="object"></param>
 		/// <returns></returns>
-		public int GetHashCode(RepositoryBase bookmark)
+		public int GetHashCode(RepositoryBase @object)
 		{
-			return object.ReferenceEquals(bookmark, null) || string.IsNullOrWhiteSpace(bookmark.ID)
+			return @object == null || string.IsNullOrWhiteSpace(@object.ID)
 				? 0
-				: bookmark.ID.GetHashCode();
+				: @object.ID.GetHashCode();
 		}
 	}
 	#endregion

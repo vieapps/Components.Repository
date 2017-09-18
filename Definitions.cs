@@ -404,7 +404,7 @@ namespace net.vieapps.Components.Repository
 					return new List<DataSource>();
 				else
 				{
-					HashSet<string> dataSources = this.SyncDataSourceNames.ToHashSet();
+					var dataSources = this.SyncDataSourceNames.ToHashSet();
 					return RepositoryMediator.DataSources
 						.Where(item => dataSources.Contains(item.Key))
 						.Select(item => item.Value)

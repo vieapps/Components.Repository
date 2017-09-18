@@ -8,6 +8,7 @@ using System.Linq;
 
 using MongoDB.Driver;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 
 using net.vieapps.Components.Utility;
 #endregion
@@ -382,6 +383,43 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			return context.GetCollection<T>(dataSource).GetAsync(filterBy, sortBy, options, cancellationToken);
+		}
+		#endregion
+
+		#region Get (by definition and identity)
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="definition">The definition</param>
+		/// <param name="id">The identity</param>
+		/// <param name="options">The options</param>
+		/// <returns></returns>
+		public static object Get(EntityDefinition definition, string id, FindOptions options = null)
+		{
+			var dataSource = definition.GetPrimaryDataSource();
+			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
+			var document = collection.Get(id, options);
+			return document != null
+				? BsonSerializer.Deserialize(document, definition.Type)
+				: null;
+		}
+
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="definition">The definition</param>
+		/// <param name="id">The identity</param>
+		/// <param name="options">The options</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<object> GetAsync(EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			var dataSource = definition.GetPrimaryDataSource();
+			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
+			var document = await collection.GetAsync(id, options, cancellationToken);
+			return document != null
+				? BsonSerializer.Deserialize(document, definition.Type)
+				: null;
 		}
 		#endregion
 

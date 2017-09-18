@@ -38,15 +38,7 @@ namespace net.vieapps.Components.Repository
 			}
 			catch (ReflectionTypeLoadException ex)
 			{
-				var gotFileNotFoundException = false;
-				foreach (var exception in ex.LoaderExceptions)
-					if (exception is System.IO.FileNotFoundException)
-					{
-						gotFileNotFoundException = true;
-						break;
-					}
-
-				if (!gotFileNotFoundException)
+				if (ex.LoaderExceptions.FirstOrDefault(exception => exception is System.IO.FileNotFoundException) == null)
 					throw ex;
 			}
 			catch (Exception)
@@ -70,8 +62,7 @@ namespace net.vieapps.Components.Repository
 			assemblies.ForEach(assembly => RepositoryStarter.Initialize(assembly));
 
 			// read configuration and update
-			var config = ConfigurationManager.GetSection("net.vieapps.repositories") as AppConfigurationSectionHandler;
-			if (config != null)
+			if (ConfigurationManager.GetSection("net.vieapps.repositories") is AppConfigurationSectionHandler config)
 			{
 				// update settings of data sources
 				if (config.Section.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
@@ -142,10 +133,8 @@ namespace net.vieapps.Components.Repository
 
 		static async Task EnsureSqlSchemasAsync()
 		{
-			foreach (var info in RepositoryMediator.EntityDefinitions)
+			await RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, ct) =>
 			{
-				var definition = info.Value;
-
 				var dataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
 				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL))
 					try
@@ -167,15 +156,13 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]", ex);
 					}
-			}
+			}); 
 		}
 
 		static async Task EnsureNoSqlIndexesAsync()
 		{
-			foreach (var info in RepositoryMediator.EntityDefinitions)
+			await RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, ct) =>
 			{
-				var definition = info.Value;
-
 				var dataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
 				if (dataSource != null && dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					try
@@ -197,7 +184,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]", ex);
 					}
-			}
+			});
 		}
 	}
 }

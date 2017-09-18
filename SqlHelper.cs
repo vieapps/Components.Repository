@@ -793,6 +793,117 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Get (by definition and identity)
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="definition">The definition</param>
+		/// <param name="id">The identity</param>
+		/// <returns></returns>
+		public static object Get(EntityDefinition definition, string id)
+		{
+			var @object = definition.Type.CreateInstance();
+
+			var dataSource = definition.GetPrimaryDataSource();
+			var dbProviderFactory = dataSource.GetProviderFactory();
+			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			{
+				connection.Open();
+
+				var standardProperties = definition.Attributes
+					.Where(attribute => !attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null)
+					.ToDictionary(attribute => attribute.Name);
+
+				var fields = standardProperties.Select(info => "Origin." + (string.IsNullOrEmpty(info.Value.Column) ? info.Value.Name : info.Value.Column + " AS " + info.Value.Name));
+
+				var command = connection.CreateCommand();
+				command.CommandText = "SELECT " + string.Join(", ", fields)
+					+ " FROM " + definition.TableName + " AS Origin"
+					+ " WHERE Origin.ID='" + id.Replace("'", "''") + "'";
+
+				using (var dataReader = command.ExecuteReader())
+				{
+					if (dataReader.Read())
+						@object.Copy(dataReader, standardProperties, null);
+				}
+
+				if (@object.IsGotExtendedProperties())
+				{
+					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
+					fields = extendedProperties.Select(info => "Origin." + info.Value.Column + " AS " + info.Value.Name);
+
+					command = connection.CreateCommand();
+					command.CommandText = "SELECT " + string.Join(", ", fields)
+						+ " FROM " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " AS Origin"
+						+ " WHERE Origin.ID='" + id.Replace("'", "''") + "'";
+
+					using (var dataReader = command.ExecuteReader())
+					{
+						if (dataReader.Read())
+							@object.Copy(dataReader, null, extendedProperties);
+					}
+				}
+			}
+
+			return @object;
+		}
+
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="definition">The definition</param>
+		/// <param name="id">The identity</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<object> GetAsync(EntityDefinition definition, string id, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			var @object = definition.Type.CreateInstance();
+
+			var dataSource = definition.GetPrimaryDataSource();
+			var dbProviderFactory = dataSource.GetProviderFactory();
+			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			{
+				await connection.OpenAsync(cancellationToken);
+
+				var standardProperties = definition.Attributes
+					.Where(attribute => !attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null)
+					.ToDictionary(attribute => attribute.Name);
+
+				var fields = standardProperties.Select(info => "Origin." + (string.IsNullOrEmpty(info.Value.Column) ? info.Value.Name : info.Value.Column + " AS " + info.Value.Name));
+
+				var command = connection.CreateCommand();
+				command.CommandText = "SELECT " + string.Join(", ", fields)
+					+ " FROM " + definition.TableName + " AS Origin"
+					+ " WHERE Origin.ID='" + id.Replace("'", "''") + "'";
+
+				using (var dataReader = await command.ExecuteReaderAsync(cancellationToken))
+				{
+					if (await dataReader.ReadAsync(cancellationToken))
+						@object.Copy(dataReader, standardProperties, null);
+				}
+
+				if (@object.IsGotExtendedProperties())
+				{
+					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
+					fields = extendedProperties.Select(info => "Origin." + info.Value.Column + " AS " + info.Value.Name);
+
+					command = connection.CreateCommand();
+					command.CommandText = "SELECT " + string.Join(", ", fields)
+						+ " FROM " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " AS Origin"
+						+ " WHERE Origin.ID='" + id.Replace("'", "''") + "'";
+
+					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken))
+					{
+						if (await dataReader.ReadAsync(cancellationToken))
+							@object.Copy(dataReader, null, extendedProperties);
+					}
+				}
+			}
+
+			return @object;
+		}
+		#endregion
+
 		#region Replace
 		static Tuple<string, List<DbParameter>> PrepareReplaceOrigin<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
 		{

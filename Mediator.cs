@@ -52,6 +52,26 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
+		/// Gets the repository definition that matched with the type
+		/// </summary>
+		/// <param name="type"></param>
+		/// <returns></returns>
+		public static RepositoryDefinition GetRepositoryDefinition(Type type)
+		{
+			return RepositoryMediator.GetRepositoryDefinition(type?.GetTypeName());
+		}
+
+		/// <summary>
+		/// Gets the repository definition that matched with the type
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		public static RepositoryDefinition GetRepositoryDefinition<T>() where T : class
+		{
+			return RepositoryMediator.GetRepositoryDefinition(typeof(T));
+		}
+
+		/// <summary>
 		/// Gets the repository entity definition that matched with the type
 		/// </summary>
 		/// <param name="type"></param>
@@ -72,6 +92,62 @@ namespace net.vieapps.Components.Repository
 		public static EntityDefinition GetEntityDefinition<T>() where T : class
 		{
 			return RepositoryMediator.GetEntityDefinition(typeof(T));
+		}
+		#endregion
+
+		#region Runtime repositories & entities
+		/// <summary>
+		/// Gets the runtime repositories (means business modules)  of a system (means an organization)
+		/// </summary>
+		/// <param name="systemID"></param>
+		/// <returns></returns>
+		public static List<IRepository> GetRuntimeRepositories(string systemID)
+		{
+			if (string.IsNullOrWhiteSpace(systemID))
+				return null;
+
+			var repositories = new List<IRepository>();
+			RepositoryMediator.RepositoryDefinitions
+				.Where(info => info.Value.RuntimeRepositories != null && info.Value.RuntimeRepositories.Count > 0)
+				.ForEach(info => repositories = repositories.Concat(info.Value.RuntimeRepositories.Where(data => data.Value.SystemID.IsEquals(systemID)).Select(data => data.Value)).ToList());
+
+			return repositories;
+		}
+
+		/// <summary>
+		/// Gets the runtime repository (means business module) by identity
+		/// </summary>
+		/// <param name="repositoryID"></param>
+		/// <returns></returns>
+		public static IRepository GetRuntimeRepository(string repositoryID)
+		{
+			if (string.IsNullOrWhiteSpace(repositoryID))
+				return null;
+
+			var repositories = RepositoryMediator.RepositoryDefinitions
+				.Where(info => info.Value.RuntimeRepositories.ContainsKey(repositoryID))
+				.Select(info => info.Value.RuntimeRepositories)
+				.FirstOrDefault();
+
+			return repositories?[repositoryID];
+		}
+
+		/// <summary>
+		/// Gets the runtime repository entity (means business content-type) by identity
+		/// </summary>
+		/// <param name="entityID"></param>
+		/// <returns></returns>
+		public static IRepositoryEntity GetRuntimeRepositoryEntity(string entityID)
+		{
+			if (string.IsNullOrWhiteSpace(entityID))
+				return null;
+
+			var entities = RepositoryMediator.EntityDefinitions
+				.Where(info => info.Value.RuntimeEntities.ContainsKey(entityID))
+				.Select(info => info.Value.RuntimeEntities)
+				.FirstOrDefault();
+
+			return entities?[entityID];
 		}
 		#endregion
 
@@ -752,6 +828,105 @@ namespace net.vieapps.Components.Repository
 					return Task.FromException<T>(new RepositoryOperationException(ex));
 				}
 			}
+		}
+		#endregion
+
+		#region Get (by definition and identity)
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="definition">The definition</param>
+		/// <param name="id">The identity</param>
+		/// <returns></returns>
+		public static object Get(EntityDefinition definition, string id)
+		{
+			// check
+			if (definition == null || string.IsNullOrWhiteSpace(id) || !id.IsValidUUID())
+				return null;
+
+			// get cached object
+			var @object = definition.CacheStorage != null
+				? definition.CacheStorage.Get(definition.Type.GetTypeName(true) + "#" + id.Trim().ToLower())
+				: null;
+
+#if DEBUG
+			if (@object != null)
+				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
+#endif
+
+			// load from data store if got no cached
+			if (@object == null)
+			{
+				var primaryDataSource = definition.GetPrimaryDataSource();
+				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? NoSqlHelper.Get(definition, id)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+						? SqlHelper.Get(definition, id)
+						: null;
+
+				// TO DO: check to get instance from secondary source if primary source is not available
+
+				// update into cache storage
+				if (@object != null && definition.CacheStorage != null)
+#if DEBUG
+					if (definition.CacheStorage.Set(@object))
+						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+#else
+					definition.CacheStorage.Set(@object);
+#endif
+			}
+
+			// return the instance of object
+			return @object;
+		}
+
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="definition">The definition</param>
+		/// <param name="id">The identity</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<object> GetAsync(EntityDefinition definition, string id, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			// check
+			if (definition == null || string.IsNullOrWhiteSpace(id) || !id.IsValidUUID())
+				return null;
+
+			// get cached object
+			var @object = definition.CacheStorage != null
+				? await definition.CacheStorage.GetAsync(definition.Type.GetTypeName(true) + "#" + id.Trim().ToLower())
+				: null;
+
+#if DEBUG
+			if (@object != null)
+				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
+#endif
+
+			// load from data store if got no cached
+			if (@object == null)
+			{
+				var primaryDataSource = definition.GetPrimaryDataSource();
+				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? await NoSqlHelper.GetAsync(definition, id, null, cancellationToken)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+						? await SqlHelper.GetAsync(definition, id, cancellationToken)
+						: null;
+
+				// TO DO: check to get instance from secondary source if primary source is not available
+
+				// update into cache storage
+				if (@object != null && definition.CacheStorage != null)
+#if DEBUG
+					if (await definition.CacheStorage.SetAsync(@object))
+						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+#else
+					await definition.CacheStorage.SetAsync(@object);
+#endif
+			}
+
+			// return the instance of object
+			return @object;
 		}
 		#endregion
 
@@ -2318,17 +2493,13 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
+		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
 		/// <returns></returns>
-		public static JArray ToJsonArray<T>(this List<T> objects, bool addTypeOfExtendedProperties = false) where T : class
+		public static JArray ToJsonArray<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemPreCompleted = null) where T : class
 		{
 			return objects == null || objects.Count < 1
 				? new JArray()
-				: objects.ToJArray(@object =>
-				{
-					return @object is RepositoryBase
-						? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
-						: @object.ToJson();
-				});
+				: objects.ToJArray(@object => @object is RepositoryBase ? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object.ToJson());
 		}
 
 		/// <summary>
@@ -2337,19 +2508,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
+		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
 		/// <returns></returns>
-		public static JObject ToJsonObject<T>(this List<T> objects, bool addTypeOfExtendedProperties = false) where T : class
+		public static JObject ToJsonObject<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemPreCompleted = null) where T : class
 		{
 			var json = new JObject();
-			objects.ForEach(@object =>
-			{
-				var name = @object.GetEntityID();
-				var value = @object is RepositoryBase
-					? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
-					: @object.ToJson();
-
-				json.Add(new JProperty(name, value));
-			});
+			objects.ForEach(@object => json.Add(new JProperty(@object.GetEntityID(), @object is RepositoryBase ? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object.ToJson())));
 			return json;
 		}
 
@@ -2360,18 +2524,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="objects">The object to serialize</param>
 		/// <param name="name">The string that presents name of root tag, null to use default</param>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
+		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
 		/// <returns></returns>
-		public static XElement ToXML<T>(this List<T> objects, string name = null, bool addTypeOfExtendedProperties = false) where T : class
+		public static XElement ToXml<T>(this List<T> objects, string name = null, bool addTypeOfExtendedProperties = false, Action<XElement> onItemPreCompleted = null) where T : class
 		{
 			var xml = new XElement(XName.Get(string.IsNullOrWhiteSpace(name) ? typeof(T).GetTypeName(true) : name));
 			if (objects != null)
-				objects.ForEach(@object => {
-					xml.Add(
-							@object is RepositoryBase
-								? (@object as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
-								: @object.ToXml()
-						);
-				});
+				objects.ForEach(@object => xml.Add(@object is RepositoryBase ? (@object as RepositoryBase).ToXml(addTypeOfExtendedProperties, onItemPreCompleted) : @object.ToXml()));
 			return xml;
 		}
 		#endregion

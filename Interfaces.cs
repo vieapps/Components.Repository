@@ -42,6 +42,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the identity of a business system that the object is belong to
 		/// </summary>
 		string SystemID { get; }
+
+		/// <summary>
+		/// Gets the definition of the repository (means module definition)
+		/// </summary>
+		RepositoryDefinition Definition { get; }
 		#endregion
 
 		#region Methods
@@ -87,6 +92,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the definition for working with custom properties on UI
 		/// </summary>
 		ExtendedUIDefinition ExtendedUIDefinition { get; }
+
+		/// <summary>
+		/// Gets the definition of the entity (means content-type definition)
+		/// </summary>
+		EntityDefinition Definition { get; }
 		#endregion
 
 		#region Methods
