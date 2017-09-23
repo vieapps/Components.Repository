@@ -2414,7 +2414,7 @@ namespace net.vieapps.Components.Repository
 					sql = "CREATE TABLE [" + context.EntityDefinition.TableName + "] ("
 						+ string.Join(", ", context.EntityDefinition.Attributes.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL"))
 						+ ", CONSTRAINT [PK_" + context.EntityDefinition.TableName + "] PRIMARY KEY CLUSTERED ([" + context.EntityDefinition.PrimaryKey + "] ASC) "
-						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
+						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY]";
 					break;
 
 				case "MySQL":
@@ -2556,6 +2556,28 @@ namespace net.vieapps.Components.Repository
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var sql = "";
+
+			// check to create default fulltext catalog on Microsoft SQL Server
+			if (dbProviderFactory.GetName() == "MicrosoftSQL")
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					await connection.OpenAsync();
+					try
+					{						
+						var command = connection.CreateCommand();
+						command.CommandText = "SELECT COUNT([name]) AS Total FROM sys.fulltext_catalogs WHERE [name] = '" + connection.Database + "'";
+						if ((await command.ExecuteScalarAsync()).CastAs<int>() > 0)
+						{
+							command.CommandText = "CREATE FULLTEXT CATALOG [" + connection.Database + "] WITH ACCENT_SENSITIVITY = OFF AS DEFAULT AUTHORIZATION [dbo]";
+							await command.ExecuteNonQueryAsync();
+						}
+					}
+					catch (Exception ex)
+					{
+						throw new RepositoryOperationException("Error occurred while creating the default full-text catalog of Microsoft SQL Server [" + sql + "]", ex);
+					}
+				}
+
 			if (columns.Count > 0)
 				switch (dbProviderFactory.GetName())
 				{
@@ -2768,34 +2790,31 @@ namespace net.vieapps.Components.Repository
 						command.CommandText = sql;
 						isExisted = (await command.ExecuteScalarAsync()).CastAs<int>() > 0;
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						throw new RepositoryOperationException("Error occurred while checking the table existed [" + sql + "]", ex);
+					}
 				}
 
 			if (!isExisted)
 				using (var context = new RepositoryContext(false))
 				{
 					context.EntityDefinition = definition;
-					try
-					{
-						await context.CreateTableAsync(dataSource);
 
-						await context.CreateTableIndexesAsync(dataSource);
+					await context.CreateTableAsync(dataSource);
 
-						if (definition.Searchable)
-							await context.CreateTableFulltextIndexAsync(dataSource);
+					await context.CreateTableIndexesAsync(dataSource);
 
-						if (definition.ParentType != null && !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty)
-							&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable)
-							&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
-							await context.CreateMapTableAsync(dataSource);
+					if (definition.Searchable)
+						await context.CreateTableFulltextIndexAsync(dataSource);
 
-						if (definition.Extendable && definition.RepositoryDefinition != null)
-							await context.CreateExtentTableAsync(dataSource);
-					}
-					catch (Exception ex)
-					{
-						RepositoryMediator.WriteLogs("Error occurred while processing schemas & indexes of a table [" + definition.TableName + "]", ex);
-					}
+					if (definition.ParentType != null && !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty)
+						&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable)
+						&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
+						await context.CreateMapTableAsync(dataSource);
+
+					if (definition.Extendable && definition.RepositoryDefinition != null)
+						await context.CreateExtentTableAsync(dataSource);
 				}
 		}
 		#endregion

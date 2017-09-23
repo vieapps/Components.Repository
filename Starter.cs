@@ -143,7 +143,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]", ex);
+						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]: " + ex.Message, ex);
 					}
 
 				dataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
@@ -154,9 +154,9 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]", ex);
+						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]: " + ex.Message, ex);
 					}
-			}); 
+			}, default(CancellationToken), true, false); 
 		}
 
 		static async Task EnsureNoSqlIndexesAsync()
@@ -171,7 +171,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]", ex);
+						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]: " + ex.Message, ex);
 					}
 
 				dataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
@@ -182,9 +182,9 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]", ex);
+						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]: " + ex.Message, ex);
 					}
-			});
+			}, default(CancellationToken), true, false);
 		}
 	}
 }

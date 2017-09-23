@@ -364,6 +364,9 @@ namespace net.vieapps.Components.Repository
 
 				else if (attribute.Type.IsStringType() && !attribute.IsCLOB)
 				{
+					if (attribute.IsEmptyNotAllowed() && string.IsNullOrWhiteSpace(value as string))
+						throw new InformationRequiredException("The value of the " + (attribute.IsPublic ? "property" : "attribute") + " named '" + attribute.Name + "' is required (doesn't allow empty or null)");
+
 					var maxLength = attribute.MaxLength > 0 ? attribute.MaxLength : 4000;
 					if ((value as string).Length > maxLength)
 					{
@@ -883,6 +886,22 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets an object by definition and identity
 		/// </summary>
+		/// <param name="definitionID">The identity of the entity definition</param>
+		/// <param name="objectID">The identity of the object</param>
+		/// <returns></returns>
+		public static object Get(string definitionID, string objectID)
+		{
+			var entity = !string.IsNullOrWhiteSpace(definitionID)
+				? RepositoryMediator.GetRuntimeRepositoryEntity(definitionID)
+				: null;
+			return entity != null
+				? RepositoryMediator.Get(entity.Definition, objectID)
+				: null;
+		}
+
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
 		/// <param name="definition">The definition</param>
 		/// <param name="id">The identity</param>
 		/// <param name="cancellationToken">The cancellation token</param>
@@ -927,6 +946,23 @@ namespace net.vieapps.Components.Repository
 
 			// return the instance of object
 			return @object;
+		}
+
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="definitionID">The identity of the entity definition</param>
+		/// <param name="objectID">The identity of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<object> GetAsync(string definitionID, string objectID, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			var entity = !string.IsNullOrWhiteSpace(definitionID)
+				? RepositoryMediator.GetRuntimeRepositoryEntity(definitionID)
+				: null;
+			return entity != null
+				? RepositoryMediator.GetAsync(entity.Definition, objectID, cancellationToken)
+				: null;
 		}
 		#endregion
 
@@ -2914,6 +2950,11 @@ namespace net.vieapps.Components.Repository
 		internal static bool IsIgnoredIfNull(this ObjectService.AttributeInfo attribute)
 		{
 			return attribute.Info.GetCustomAttributes(typeof(IgnoreIfNullAttribute), true).Length > 0;
+		}
+
+		internal static bool IsEmptyNotAllowed(this ObjectService.AttributeInfo attribute)
+		{
+			return attribute.Info.GetCustomAttributes(typeof(NotEmptyAttribute), true).Length > 0;
 		}
 
 		internal static bool IsStoredAsJson(this ObjectService.AttributeInfo attribute)

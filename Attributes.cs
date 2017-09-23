@@ -265,6 +265,15 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
+	/// Specifies this property is not allow empty or null (only available for string)
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	public class NotEmptyAttribute : Attribute
+	{
+		public NotEmptyAttribute() { }
+	}
+
+	/// <summary>
 	/// Specifies this property is able for sorting (means got pre-defined index or able to create new index)
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]
