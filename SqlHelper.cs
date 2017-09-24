@@ -420,9 +420,7 @@ namespace net.vieapps.Components.Repository
 		static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			// create object
-			@object = @object != null
-				? @object
-				: ObjectService.CreateInstance<T>();
+			@object = @object ?? ObjectService.CreateInstance<T>();
 
 			if (@object is IBusinessEntity && extendedProperties != null &&(@object as IBusinessEntity).ExtendedProperties == null)
 				(@object as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
@@ -473,9 +471,7 @@ namespace net.vieapps.Components.Repository
 		#region Copy (DataRow)
 		static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
-			@object = @object != null
-				? @object
-				: ObjectService.CreateInstance<T>();
+			@object = @object ?? ObjectService.CreateInstance<T>();
 
 			if (@object is IBusinessEntity && extendedProperties != null && (@object as IBusinessEntity).ExtendedProperties == null)
 				(@object as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
@@ -641,14 +637,10 @@ namespace net.vieapps.Components.Repository
 		{
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var fields = new List<string>();
-			foreach (var attribute in definition.Attributes)
-			{
-				if (attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) == null)
-					continue;
-
-				fields.Add("Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column + " AS " + attribute.Name));
-			};
+			var fields = definition.Attributes
+				.Where(attribute => !attribute.IsIgnoredIfNull() || (attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null))
+				.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column + " AS " + attribute.Name))
+				.ToList();
 
 			var info = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
 			var statement = "SELECT " + string.Join(", ", fields)
@@ -660,9 +652,9 @@ namespace net.vieapps.Components.Repository
 
 		static Tuple<string, List<DbParameter>> PrepareGetExtent<T>(this T @object, string id, DbProviderFactory dbProviderFactory, List<ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
-			var fields = new List<string>() { "Origin.ID" };
-			foreach (var attribute in extendedProperties)
-				fields.Add("Origin." + attribute.Column + " AS " + attribute.Name);
+			var fields = extendedProperties.Select(attribute => "Origin." + attribute.Column + " AS " + attribute.Name)
+				.Concat(new List<string>() { "Origin.ID" })
+				.ToList();
 
 			var info = Filters<T>.Equals("ID", id).GetSqlStatement();
 			var statement = "SELECT " + string.Join(", ", fields)
@@ -1335,24 +1327,21 @@ namespace net.vieapps.Components.Repository
 			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// fields/columns (SELECT)
-			var fields = new List<string>();
-			(attributes != null && attributes.Count() > 0
-				? attributes
-				: standardProperties
-					.Select(item => item.Value.Name)
-					.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
-			).ForEach(attribute =>
-			{
-				if (standardProperties.ContainsKey(attribute.ToLower()) || (extendedProperties != null && extendedProperties.ContainsKey(attribute.ToLower())))
-					fields.Add(attribute);
-			});
+			var fields = (attributes != null && attributes.Count() > 0
+					? attributes
+					: standardProperties
+						.Select(item => item.Value.Name)
+						.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
+				)
+				.Where(attribute => standardProperties.ContainsKey(attribute.ToLower()) || (extendedProperties != null && extendedProperties.ContainsKey(attribute.ToLower())))
+				.ToList();
 
 			var columns = fields.Select(field =>
 				extendedProperties != null && extendedProperties.ContainsKey(field.ToLower())
-				? "Extent." + extendedProperties[field.ToLower()].Column + " AS " + extendedProperties[field.ToLower()].Name
-				: "Origin." + (string.IsNullOrWhiteSpace(standardProperties[field.ToLower()].Column)
-					? standardProperties[field.ToLower()].Name
-					: standardProperties[field.ToLower()].Column + " AS " + standardProperties[field.ToLower()].Name)
+					? "Extent." + extendedProperties[field.ToLower()].Column + " AS " + extendedProperties[field.ToLower()].Name
+					: "Origin." + (string.IsNullOrWhiteSpace(standardProperties[field.ToLower()].Column)
+						? standardProperties[field.ToLower()].Name
+						: standardProperties[field.ToLower()].Column + " AS " + standardProperties[field.ToLower()].Name)
 				)
 				.ToList();
 
@@ -1943,24 +1932,21 @@ namespace net.vieapps.Components.Repository
 			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
 
 			// fields/columns (SELECT)
-			var fields = new List<string>();
-			(attributes != null && attributes.Count() > 0
-				? attributes
-				: standardProperties
-					.Select(item => item.Value.Name)
-					.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
-			).ForEach(attribute =>
-			{
-				if (standardProperties.ContainsKey(attribute.ToLower()) || (extendedProperties != null && extendedProperties.ContainsKey(attribute.ToLower())))
-					fields.Add(attribute);
-			});
+			var fields = (attributes != null && attributes.Count() > 0
+					? attributes
+					: standardProperties
+						.Select(item => item.Value.Name)
+						.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
+				)
+				.Where(attribute => standardProperties.ContainsKey(attribute.ToLower()) || (extendedProperties != null && extendedProperties.ContainsKey(attribute.ToLower())))
+				.ToList();
 
 			var columns = fields.Select(field =>
 				extendedProperties != null && extendedProperties.ContainsKey(field.ToLower())
-				? "Extent." + extendedProperties[field.ToLower()].Column + " AS " + extendedProperties[field.ToLower()].Name
-				: "Origin." + (string.IsNullOrWhiteSpace(standardProperties[field.ToLower()].Column)
-					? standardProperties[field.ToLower()].Name
-					: standardProperties[field.ToLower()].Column + " AS " + standardProperties[field.ToLower()].Name)
+					? "Extent." + extendedProperties[field.ToLower()].Column + " AS " + extendedProperties[field.ToLower()].Name
+					: "Origin." + (string.IsNullOrWhiteSpace(standardProperties[field.ToLower()].Column)
+						? standardProperties[field.ToLower()].Name
+						: standardProperties[field.ToLower()].Column + " AS " + standardProperties[field.ToLower()].Name)
 				)
 				.ToList();
 
@@ -2104,12 +2090,9 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					dataSet.Tables[0].Rows
-						.ToList()
-						.ForEach(dataRow =>
-						{
-							objects.Add(ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties));
-						});
+					objects = dataSet.Tables[0].Rows.ToList()
+						.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
+						.ToList();
 				}
 
 				return objects;
@@ -2166,12 +2149,9 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					dataSet.Tables[0].Rows
-						.ToList()
-						.ForEach(dataRow =>
-						{
-							objects.Add(ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties));
-						});
+					objects = dataSet.Tables[0].Rows.ToList()
+						.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
+						.ToList();
 				}
 
 				return objects;
@@ -2229,12 +2209,9 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					dataSet.Tables[0].Rows
-						.ToList()
-						.ForEach(data =>
-						{
-							identities.Add(data[context.EntityDefinition.PrimaryKey].CastAs<string>());
-						});
+					identities = dataSet.Tables[0].Rows.ToList()
+						.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
+						.ToList();
 				}
 
 				return identities;
@@ -2291,12 +2268,9 @@ namespace net.vieapps.Components.Repository
 					else
 						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
 
-					dataSet.Tables[0].Rows
-						.ToList()
-						.ForEach(data =>
-						{
-							identities.Add(data[context.EntityDefinition.PrimaryKey].CastAs<string>());
-						});
+					identities = dataSet.Tables[0].Rows.ToList()
+						.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
+						.ToList();
 				}
 
 				return identities;
@@ -2565,10 +2539,10 @@ namespace net.vieapps.Components.Repository
 					try
 					{						
 						var command = connection.CreateCommand();
-						command.CommandText = "SELECT COUNT([name]) AS Total FROM sys.fulltext_catalogs WHERE [name] = '" + connection.Database + "'";
+						command.CommandText = "SELECT COUNT([name]) FROM sys.fulltext_catalogs WHERE [name] = '" + connection.Database.Replace("'", "") + "'";
 						if ((await command.ExecuteScalarAsync()).CastAs<int>() > 0)
 						{
-							command.CommandText = "CREATE FULLTEXT CATALOG [" + connection.Database + "] WITH ACCENT_SENSITIVITY = OFF AS DEFAULT AUTHORIZATION [dbo]";
+							command.CommandText = "CREATE FULLTEXT CATALOG [" + connection.Database.Replace("'", "") + "] WITH ACCENT_SENSITIVITY = OFF AS DEFAULT AUTHORIZATION [dbo]";
 							await command.ExecuteNonQueryAsync();
 						}
 					}
@@ -2630,7 +2604,7 @@ namespace net.vieapps.Components.Repository
 					break;
 
 				case "MySQL":
-					sql = @"CREATE TABLE " + context.EntityDefinition.MultipleParentAssociatesTable + " ("
+					sql = "CREATE TABLE " + context.EntityDefinition.MultipleParentAssociatesTable + " ("
 						+ string.Join(", ", columns.Select(info => info.Key + " " + info.Value.GetDbTypeString(dbProviderFactory) + " NOT  NULL"))
 						+ ", PRIMARY KEY (" + string.Join(", ", columns.Select(info => info.Key + " ASC")) + ")"
 						+ ")";
@@ -2724,7 +2698,7 @@ namespace net.vieapps.Components.Repository
 					break;
 
 				case "MySQL":
-					sql = @"CREATE TABLE " + tableName + " ("
+					sql = "CREATE TABLE " + tableName + " ("
 						+ string.Join(", ", columns.Select(info =>
 						{
 							var type = info.Value.Item1;
