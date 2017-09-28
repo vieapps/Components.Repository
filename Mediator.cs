@@ -1598,7 +1598,41 @@ namespace net.vieapps.Components.Repository
 
 		#region Find
 		/// <summary>
-		/// Finds intances of objects from repository
+		/// Finds the identity of objects from repository
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
+		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <returns></returns>
+		public static List<string> FindIdentities<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where T : class
+		{
+			// prepare
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			context.AliasTypeName = aliasTypeName;
+
+			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
+
+			// find identities
+			return context.EntityDefinition.CacheStorage != null && !string.IsNullOrWhiteSpace(cacheKey)
+				? context.EntityDefinition.CacheStorage.Get<List<string>>(cacheKey)
+				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+						? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+						: new List<string>();
+		}
+
+		/// <summary>
+		/// Finds the intance of objects from repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
@@ -1623,15 +1657,9 @@ namespace net.vieapps.Components.Repository
 			List<T> objects = null;
 
 			// find identities
-			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
+			var identities = context.EntityDefinition.CacheStorage == null
 				? null
-				: !string.IsNullOrWhiteSpace(cacheKey)
-					? context.EntityDefinition.CacheStorage.Get<List<string>>(cacheKey)
-					: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
-						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? context.SelectIdentities<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
-							: new List<string>();
+				: RepositoryMediator.FindIdentities<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType , cacheExpirationTime );
 
 #if DEBUG
 			RepositoryMediator.WriteLogs(new List<string>(){
@@ -1756,7 +1784,42 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds intances of objects from repository
+		/// Finds the identity of objects from repository
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
+		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			// prepare
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			context.AliasTypeName = aliasTypeName;
+
+			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
+
+			// find identities
+			return context.EntityDefinition.CacheStorage != null && !string.IsNullOrWhiteSpace(cacheKey)
+				? await context.EntityDefinition.CacheStorage.GetAsync<List<string>>(cacheKey)
+				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
+					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+						? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
+						: new List<string>();
+		}
+
+		/// <summary>
+		/// Finds the intance of objects from repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
@@ -1782,15 +1845,9 @@ namespace net.vieapps.Components.Repository
 			List<T> objects = null;
 
 			// find identities
-			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
+			var identities = context.EntityDefinition.CacheStorage == null
 				? null
-				: !string.IsNullOrWhiteSpace(cacheKey)
-					? await context.EntityDefinition.CacheStorage.GetAsync<List<string>>(cacheKey)
-					: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
-						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? await context.SelectIdentitiesAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
-							: new List<string>();
+				: await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
 
 #if DEBUG
 			RepositoryMediator.WriteLogs(new List<string>(){
@@ -2097,7 +2154,7 @@ namespace net.vieapps.Components.Repository
 			List<T> objects = null;
 
 			// search identities
-			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
+			var identities = context.EntityDefinition.CacheStorage == null
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? context.SearchIdentities<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
@@ -2244,7 +2301,7 @@ namespace net.vieapps.Components.Repository
 			List<T> objects = null;
 
 			// search identities
-			var identities = object.ReferenceEquals(context.EntityDefinition.CacheStorage, null)
+			var identities = context.EntityDefinition.CacheStorage == null
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? await context.SearchIdentitiesAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken)
