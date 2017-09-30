@@ -2392,7 +2392,7 @@ namespace net.vieapps.Components.Repository
 					break;
 
 				case "MySQL":
-					sql = @"CREATE TABLE " + context.EntityDefinition.TableName + " ("
+					sql = "CREATE TABLE " + context.EntityDefinition.TableName + " ("
 						+ string.Join(", ", context.EntityDefinition.Attributes.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL"))
 						+ ", PRIMARY KEY (" + context.EntityDefinition.PrimaryKey + "))";
 					break;
@@ -2539,8 +2539,8 @@ namespace net.vieapps.Components.Repository
 					try
 					{						
 						var command = connection.CreateCommand();
-						command.CommandText = "SELECT COUNT([name]) FROM sys.fulltext_catalogs WHERE [name] = '" + connection.Database.Replace("'", "") + "'";
-						if ((await command.ExecuteScalarAsync()).CastAs<int>() > 0)
+						command.CommandText = "SELECT COUNT(name) FROM sys.fulltext_catalogs WHERE name='" + connection.Database.Replace("'", "") + "'";
+						if ((await command.ExecuteScalarAsync()).CastAs<int>() < 1)
 						{
 							command.CommandText = "CREATE FULLTEXT CATALOG [" + connection.Database.Replace("'", "") + "] WITH ACCENT_SENSITIVITY = OFF AS DEFAULT AUTHORIZATION [dbo]";
 							await command.ExecuteNonQueryAsync();
@@ -2672,15 +2672,15 @@ namespace net.vieapps.Components.Repository
 				case "MicrosoftSQL":
 					sql = "CREATE TABLE [" + tableName + "] ("
 						+ string.Join(", ", columns.Select(info =>
-							{
-								var type = info.Value.Item1;
-								var precision = info.Value.Item2;
-								var asFixedLength = type.Equals(typeof(String)) && precision.Equals(32);
-								var asCLOB = type.Equals(typeof(String)) && precision.Equals(0);
-								return "[" + info.Key + "] "
-									+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
-									+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
-							}))
+						{
+							var type = info.Value.Item1;
+							var precision = info.Value.Item2;
+							var asFixedLength = type.Equals(typeof(String)) && precision.Equals(32);
+							var asCLOB = type.Equals(typeof(String)) && precision.Equals(0);
+							return "[" + info.Key + "] "
+								+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
+								+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
+						}))
 						+ ", CONSTRAINT [PK_" + tableName + "] PRIMARY KEY CLUSTERED ([ID] ASC) "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];\n"
 						+ "CREATE NONCLUSTERED INDEX [IDX_" + tableName + "] ON [" + tableName + "] ([ID] ASC, [SystemID] ASC, [RepositoryID] ASC, [EntityID] ASC)"
@@ -2750,7 +2750,7 @@ namespace net.vieapps.Components.Repository
 			{
 				case "MicrosoftSQL":
 				case "MySQL":
-					sql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='" + definition.TableName + "'";
+					sql = "SELECT COUNT(table_name) FROM information_schema.tables WHERE table_name='" + definition.TableName + "'";
 					break;
 			}
 

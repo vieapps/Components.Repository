@@ -1,8 +1,9 @@
 # Components.Repository
-Tiny ORM component to help POCO object can work with both NoSQL and SQL in a time on the fastest way...
+Tiny ORM-ish component to help POCO objects can work with both NoSQL and SQL in the same time
 
 Features:
-- Based on ActiveRecord pattern
-- Work with both type of database: NoSQL (MongoDB) and SQL (Microsoft SQL, MySQL, PostgreSQL, Oracle, and ODBC)
+- Work with NoSQL database (MongoDB) and SQL database (Microsoft SQL, MySQL, PostgreSQL, Oracle, and ODBC)
+- Attributes/Columns are mapped like the way of ActiveRecord
 - Integrated with caching component (Components.Caching) to reduce all I/O round trips
 - Built-in serializations with JSON and XML
+- Async supported
