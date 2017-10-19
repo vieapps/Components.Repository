@@ -43,34 +43,30 @@ namespace net.vieapps.Components.Repository
 
 		static bool IsMicrosoftSQL(this DbProviderFactory dbProviderFactory)
 		{
-			var name = dbProviderFactory != null
+			return (dbProviderFactory != null
 				? dbProviderFactory.GetType().GetTypeName(true)
-				: "";
-			return name.Equals("SqlClientFactory");
+				: "").Equals("SqlClientFactory");
 		}
 
 		static bool IsOracle(this DbProviderFactory dbProviderFactory)
 		{
-			var name = dbProviderFactory != null
+			return (dbProviderFactory != null
 				? dbProviderFactory.GetType().GetTypeName(true)
-				: "";
-			return name.Equals("OracleClientFactory");
+				: "").Equals("OracleClientFactory");
 		}
 
 		static bool IsMySQL(this DbProviderFactory dbProviderFactory)
 		{
-			var name = dbProviderFactory != null
+			return (dbProviderFactory != null
 				? dbProviderFactory.GetType().GetTypeName(true)
-				: "";
-			return name.Equals("MySqlClientFactory");
+				: "").Equals("MySqlClientFactory");
 		}
 
 		static bool IsPostgreSQL(this DbProviderFactory dbProviderFactory)
 		{
-			var name = dbProviderFactory != null
+			return (dbProviderFactory != null
 				? dbProviderFactory.GetType().GetTypeName(true)
-				: "";
-			return name.Equals("NpgsqlFactory");
+				: "").Equals("NpgsqlFactory");
 		}
 
 		static bool IsGotRowNumber(this DbProviderFactory dbProviderFactory)
@@ -86,7 +82,7 @@ namespace net.vieapps.Components.Repository
 		static string GetOffsetStatement(this DbProviderFactory dbProviderFactory, int pageSize, int pageNumber = 1)
 		{
 			return dbProviderFactory != null && dbProviderFactory.IsGotLimitOffset()
-				? "LIMIT " + pageSize.ToString() + " OFFSET " + ((pageNumber - 1) * pageSize).ToString()
+				? " LIMIT " + pageSize.ToString() + " OFFSET " + ((pageNumber - 1) * pageSize).ToString()
 				: "";
 		}
 
@@ -1905,6 +1901,7 @@ namespace net.vieapps.Components.Repository
 				searchTerms = "N'" + searchTerms + "'";
 			}
 
+			// MySQL
 			else if (dbProviderFactory.IsMySQL())
 			{
 				searchQuery.AndWords.ForEach(word => searchTerms += (searchTerms.Equals("") ? "" : " ") + "+" + word);
@@ -1955,7 +1952,7 @@ namespace net.vieapps.Components.Repository
 				+ (extendedProperties != null ? " LEFT JOIN " + definition.RepositoryDefinition.ExtendedPropertiesTableName + " AS Extent ON Origin." + definition.PrimaryKey + "=Extent.ID" : "");
 
 			// filtering expressions (WHERE)
-			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
+			var where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
 				? " WHERE " + statementsInfo.Item1.Item1
 				: "";
 
@@ -2783,8 +2780,8 @@ namespace net.vieapps.Components.Repository
 						await context.CreateTableFulltextIndexAsync(dataSource);
 
 					if (definition.ParentType != null && !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty)
-						&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable)
-						&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
+					&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable)
+					&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
 						await context.CreateMapTableAsync(dataSource);
 
 					if (definition.Extendable && definition.RepositoryDefinition != null)

@@ -1972,25 +1972,36 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public override JObject ToJson(bool addTypeOfExtendedProperties = false, Action<JObject> onPreCompleted = null)
 		{
-			// serialize
+			// serialize the original object
 			var json = (this as T).ToJson() as JObject;
-			if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
-				(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
-				{
-					var type = property.Value != null
-						? property.Value.GetType()
-						: null;
 
-					if (addTypeOfExtendedProperties && type != null)
-						json.Add(new JProperty(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
+			// serialize privileges & extended properties
+			if (this is IBusinessEntity)
+			{
+				// working privileges
+				if (json["Privileges"] == null && (this as IBusinessEntity).WorkingPrivileges != null)
+					json.Add(new JProperty("Privileges", JObject.FromObject(this.OriginalPrivileges)));
 
-					var value = type == null || type.IsPrimitiveType()
-						? property.Value
-						: property.Value is RepositoryBase
-							? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
-							: property.Value.ToJson();
-					json.Add(new JProperty(property.Key, value));
-				});
+				// extended properties
+				if ((this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
+					(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
+					{
+						var type = property.Value != null
+							? property.Value.GetType()
+							: null;
+
+						if (addTypeOfExtendedProperties && type != null)
+							json.Add(new JProperty(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
+
+						var value = type == null || type.IsPrimitiveType()
+							? property.Value
+							: property.Value is RepositoryBase
+								? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
+								: property.Value.ToJson();
+
+						json.Add(new JProperty(property.Key, value));
+					});
+			}
 
 			// run the handler on pre-completed
 			onPreCompleted?.Invoke(json);
@@ -2021,26 +2032,37 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public override XElement ToXml(bool addTypeOfExtendedProperties = false, Action<XElement> onPreCompleted = null)
 		{
-			// serialize
+			// serialize the original object
 			var xml = (this as T).ToXml();
-			if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
-				(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
-				{
-					Type type = property.Value != null
-						? property.Value.GetType()
-						: null;
 
-					var value = type == null || type.IsPrimitiveType()
-						? property.Value
-						: property.Value is RepositoryBase
-							? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
-							: property.Value.ToXml();
+			// serialize privileges & extended properties
+			if (this is IBusinessEntity)
+			{
+				// working privileges				
+				if (xml.Elements().FirstOrDefault(e => e.Name.Equals("Privileges")) == null && (this as IBusinessEntity).WorkingPrivileges != null)
+					xml.Add(new XElement("Privileges", (this as IBusinessEntity).WorkingPrivileges.ToXml()));
 
-					var element = addTypeOfExtendedProperties && type != null
-						? new XElement(XName.Get(property.Key), new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()), value)
-						: new XElement(XName.Get(property.Key), value);
-					xml.Add(element);
-				});
+				// extended properties
+				if ((this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
+					(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
+					{
+						var type = property.Value != null
+							? property.Value.GetType()
+							: null;
+
+						var value = type == null || type.IsPrimitiveType()
+							? property.Value
+							: property.Value is RepositoryBase
+								? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
+								: property.Value.ToXml();
+
+						var element = addTypeOfExtendedProperties && type != null
+							? new XElement(XName.Get(property.Key), new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()), value)
+							: new XElement(XName.Get(property.Key), value);
+
+						xml.Add(element);
+					});
+			}
 
 			// run the handler
 			onPreCompleted?.Invoke(xml);
