@@ -2685,7 +2685,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The expiration time (in minutes)</param>
-		public static bool Set<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
+		public static bool Set<T>(this Cache cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
 				? cacheStorage.Set(@object.GetCacheKey(), @object, expirationTime)
@@ -2698,7 +2698,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="objects">The collection of objects</param>
-		public static void Set<T>(this CacheManager cacheStorage, List<T> objects) where T : class
+		public static void Set<T>(this Cache cacheStorage, List<T> objects) where T : class
 		{
 			if (!object.ReferenceEquals(objects, null))
 				cacheStorage.Set(objects.ToDictionary(o => o.GetCacheKey()));
@@ -2711,7 +2711,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The expiration time (in minutes)</param>
-		public static Task<bool> SetAsync<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
+		public static Task<bool> SetAsync<T>(this Cache cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
 				? cacheStorage.SetAsync(@object.GetCacheKey(), @object, expirationTime)
@@ -2724,7 +2724,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="objects">The collection of objects</param>
-		public static Task SetAsync<T>(this CacheManager cacheStorage, IEnumerable<T> objects) where T : class
+		public static Task SetAsync<T>(this Cache cacheStorage, IEnumerable<T> objects) where T : class
 		{
 			return !object.ReferenceEquals(objects, null)
 				? cacheStorage.SetAsync(objects.ToDictionary(o => o.GetCacheKey()))
@@ -2738,7 +2738,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static bool SetAbsolute<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
+		public static bool SetAbsolute<T>(this Cache cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
 				? cacheStorage.SetAbsolute(@object.GetCacheKey(), @object, expirationTime)
@@ -2752,7 +2752,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static Task<bool> SetAbsoluteAsync<T>(this CacheManager cacheStorage, T @object, int expirationTime = 0) where T : class
+		public static Task<bool> SetAbsoluteAsync<T>(this Cache cacheStorage, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
 				? cacheStorage.SetAbsoluteAsync(@object.GetCacheKey(), @object, expirationTime)
@@ -2765,7 +2765,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static bool SetIfNotExists<T>(this CacheManager cacheStorage, T @object) where T : class
+		public static bool SetIfNotExists<T>(this Cache cacheStorage, T @object) where T : class
 		{
 			return @object != null
 				? cacheStorage.SetIfNotExists(@object.GetCacheKey(), @object)
@@ -2778,7 +2778,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> SetIfNotExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
+		public static Task<bool> SetIfNotExistsAsync<T>(this Cache cacheStorage, T @object) where T : class
 		{
 			return @object != null
 				? cacheStorage.SetIfNotExistsAsync(@object.GetCacheKey(), @object)
@@ -2791,7 +2791,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static bool SetIfAlreadyExists<T>(this CacheManager cacheStorage, T @object) where T : class
+		public static bool SetIfAlreadyExists<T>(this Cache cacheStorage, T @object) where T : class
 		{
 			return @object != null
 				? cacheStorage.SetIfAlreadyExists(@object.GetCacheKey(), @object)
@@ -2804,7 +2804,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> SetIfAlreadyExistsAsync<T>(this CacheManager cacheStorage, T @object) where T : class
+		public static Task<bool> SetIfAlreadyExistsAsync<T>(this Cache cacheStorage, T @object) where T : class
 		{
 			return @object != null
 				? cacheStorage.SetIfAlreadyExistsAsync(@object.GetCacheKey(), @object)
@@ -2818,7 +2818,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object need to get</param>
 		/// <returns></returns>
-		public static T Fetch<T>(this CacheManager cacheStorage, string identity) where T : class
+		public static T Fetch<T>(this Cache cacheStorage, string identity) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
 				? cacheStorage.Get<T>(identity.GetCacheKey<T>())
@@ -2832,7 +2832,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object need to get</param>
 		/// <returns></returns>
-		public static Task<T> FetchAsync<T>(this CacheManager cacheStorage, string identity) where T : class
+		public static Task<T> FetchAsync<T>(this Cache cacheStorage, string identity) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
 				? cacheStorage.GetAsync<T>(identity.GetCacheKey<T>())
@@ -2845,7 +2845,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object need to delete from cache storage</param>
-		public static bool Remove<T>(this CacheManager cacheStorage, T @object) where T : class
+		public static bool Remove<T>(this Cache cacheStorage, T @object) where T : class
 		{
 			return @object != null
 				? cacheStorage.Remove(@object.GetCacheKey())
@@ -2858,7 +2858,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object need to delete</param>
-		public static bool Remove<T>(this CacheManager cacheStorage, string identity) where T : class
+		public static bool Remove<T>(this Cache cacheStorage, string identity) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
 				? cacheStorage.Remove(identity.GetCacheKey<T>())
@@ -2871,7 +2871,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="object">The object need to delete from cache storage</param>
-		public static Task<bool> RemoveAsync<T>(this CacheManager cacheStorage, T @object) where T : class
+		public static Task<bool> RemoveAsync<T>(this Cache cacheStorage, T @object) where T : class
 		{
 			return @object != null
 				? cacheStorage.RemoveAsync(@object.GetCacheKey())
@@ -2884,7 +2884,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object need to delete</param>
-		public static Task<bool> RemoveAsync<T>(this CacheManager cacheStorage, string identity) where T : class
+		public static Task<bool> RemoveAsync<T>(this Cache cacheStorage, string identity) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
 				? cacheStorage.RemoveAsync(identity.GetCacheKey<T>())
@@ -2897,7 +2897,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object</param>
-		public static bool Exists<T>(this CacheManager cacheStorage, string identity) where T : class
+		public static bool Exists<T>(this Cache cacheStorage, string identity) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
 				? cacheStorage.Exists(identity.GetCacheKey<T>())
@@ -2910,7 +2910,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cacheStorage">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object</param>
-		public static Task<bool> ExistsAsync<T>(this CacheManager cacheStorage, string identity) where T : class
+		public static Task<bool> ExistsAsync<T>(this Cache cacheStorage, string identity) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
 				? cacheStorage.ExistsAsync(identity.GetCacheKey<T>())

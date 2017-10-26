@@ -365,7 +365,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the cache storage object for processing caching data of this entity
 		/// </summary>
-		public Caching.CacheManager CacheStorage { get; internal set; }
+		public Caching.Cache CacheStorage { get; internal set; }
 
 		/// <summary>
 		/// Gets the primary data-source
@@ -567,8 +567,8 @@ namespace net.vieapps.Components.Repository
 			if (definition.CacheStorageType != null && !string.IsNullOrWhiteSpace(definition.CacheStorageName))
 			{
 				var cacheStorage = definition.CacheStorageType.GetStaticObject(definition.CacheStorageName);
-				definition.CacheStorage = cacheStorage != null && cacheStorage is Caching.CacheManager
-					? cacheStorage as Caching.CacheManager
+				definition.CacheStorage = cacheStorage != null && cacheStorage is Caching.Cache
+					? cacheStorage as Caching.Cache
 					: null;
 			}
 
@@ -769,7 +769,7 @@ namespace net.vieapps.Components.Repository
 				var cacheActiveSynchronize = settings["cacheActiveSynchronize"] != null
 					? ((settings["cacheActiveSynchronize"] as JValue).Value as string).IsEquals("true")
 					: false;
-				RepositoryMediator.EntityDefinitions[typeName].CacheStorage = new Caching.CacheManager(cacheRegion, cacheExpirationType.IsEquals("absolute") ? "Absolute" : "Sliding", cacheExpirationTime, cacheActiveSynchronize);
+				RepositoryMediator.EntityDefinitions[typeName].CacheStorage = new Caching.Cache(cacheRegion, cacheExpirationType.IsEquals("absolute") ? "Absolute" : "Sliding", cacheExpirationTime, cacheActiveSynchronize);
 			}
 		}
 
@@ -778,7 +778,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="type">The type that presents information of an entity definition</param>
 		/// <param name="cacheStorage">The cache storage</param>
-		public void SetCacheStorage(Type type, Caching.CacheManager cacheStorage)
+		public void SetCacheStorage(Type type, Caching.Cache cacheStorage)
 		{
 			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type.GetTypeName()))
 				RepositoryMediator.EntityDefinitions[type.GetTypeName()].CacheStorage = cacheStorage;
