@@ -3106,15 +3106,6 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				try
 				{
-					RepositoryMediator.LogsPath = !string.IsNullOrWhiteSpace(System.Web.HttpRuntime.AppDomainAppPath)
-						? System.Web.HttpRuntime.AppDomainAppPath + @"\Logs\"
-						: null;
-				}
-				catch { }
-
-			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
-				try
-				{
 					RepositoryMediator.LogsPath = Directory.GetCurrentDirectory() + @"\Logs\";
 				}
 				catch { }
@@ -3124,7 +3115,7 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// build file path and write logs via other thread
-			var filePath = RepositoryMediator.LogsPath + DateTime.Now.ToString("yyyy-MM-dd-HH") + ".Repository.txt";
+			var filePath = RepositoryMediator.LogsPath + DateTime.Now.ToString("yyyy-MM-dd-HH") + ".repository.txt";
 			Task.Run(async () =>
 			{
 				await RepositoryMediator.WriteLogs(filePath, logs, ex);

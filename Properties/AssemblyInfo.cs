@@ -26,6 +26,6 @@ using System.Security.Permissions;
 //      Build Number
 //      Revision
 //
-[assembly: AssemblyVersion("10.1")]
-[assembly: AssemblyFileVersion("10.1")]
-[assembly: AssemblyInformationalVersion("10.1.hybr-2017.10.16")]
+[assembly: AssemblyVersion("10.1.0.2")]
+[assembly: AssemblyFileVersion("10.1.0.2")]
+[assembly: AssemblyInformationalVersion("10.1.lhbc-2017.10.24")]
