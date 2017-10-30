@@ -5,9 +5,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Configuration;
-
 using System.Data;
 using System.Data.Common;
+using System.Xml;
+using System.Reflection;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -389,7 +390,7 @@ namespace net.vieapps.Components.Repository
 			parameter.Value = attribute.IsStoredAsJson() 
 				? value == null
 					? ""
-					: value.ToJson().ToString(Formatting.None)
+					: value.ToJson().ToString(Newtonsoft.Json.Formatting.None)
 				: attribute.IsStoredAsString()
 					? value == null
 						? ""
@@ -2791,4 +2792,101 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 	}
+
+	#region --- DbProviderFactories -----
+	/// <summary>
+	/// The replacement for System.Data.Common.DbProviderFactories
+	/// </summary>
+	public class DbProviderFactories
+	{
+		public static DbProviderFactory GetFactory(string providerInvariantName)
+		{
+			if (string.IsNullOrWhiteSpace(providerInvariantName))
+				throw new ArgumentNullException(nameof(providerInvariantName));
+
+			if (DbProviderFactories.Providers == null)
+				DbProviderFactories.PrepareProviders();
+
+			var dbProvider = DbProviderFactories.Providers.ContainsKey(providerInvariantName)
+				? DbProviderFactories.Providers[providerInvariantName]
+				: null;
+
+			if (dbProvider == null)
+				throw new NotImplementedException("DbProvider ('" + providerInvariantName + "') is not installed");
+			else if (dbProvider.Type == null)
+				throw new InvalidCastException("DbProvider ('" + providerInvariantName + "') is invalid");
+
+			var fieldInfo = dbProvider.Type.GetField("Instance", BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public);
+			if (fieldInfo != null && fieldInfo.FieldType.IsSubclassOf(typeof(DbProviderFactory)))
+			{
+				var value = fieldInfo.GetValue(null);
+				if (value != null)
+					return (DbProviderFactory)value;
+			}
+
+			throw new NotImplementedException("DbProvider ('" + providerInvariantName + "') is not installed");
+		}
+
+		internal static Dictionary<string, DbProvider> Providers = null;
+
+		internal static void PrepareProviders()
+		{
+			DbProviderFactories.Providers = new Dictionary<string, DbProvider>();
+
+			if (ConfigurationManager.GetSection("dbProviderFactories") is AppConfigurationSectionHandler config)
+				if (config.Section.SelectNodes("./add") is XmlNodeList nodes)
+					foreach (XmlNode node in nodes)
+					{
+						var info = config.GetJson(node);
+						var invariant = info["invariant"] != null
+							? (info["invariant"] as JValue).Value as string
+							: null;
+						var name = info["name"] != null
+							? (info["name"] as JValue).Value as string
+							: null;
+						var description = info["description"] != null
+							? (info["description"] as JValue).Value as string
+							: null;
+						var type = info["type"] != null
+							? Type.GetType((info["type"] as JValue).Value as string)
+							: null;
+
+						if (!string.IsNullOrWhiteSpace(invariant) && type != null)
+						{
+							DbProviderFactories.Providers[invariant] = new DbProvider()
+							{
+								Invariant = invariant,
+								Type = type,
+								Name = name,
+								Description = description
+							};
+						}
+					}
+		}
+
+		internal class DbProvider
+		{
+			/// <summary>
+			/// The name of DbProvider object.
+			/// </summary>
+			public string Name { get; set; }
+
+			/// <summary>
+			/// The invariant of DbProvider object.
+			/// </summary>
+			public string Invariant { get; set; }
+
+			/// <summary>
+			/// The description of DbProvider object.
+			/// </summary>
+			public string Description { get; set; }
+
+			/// <summary>
+			/// The type of DbProvider object.
+			/// </summary>
+			public Type Type { get; set; }
+		}
+	}
+	#endregion
+
 }

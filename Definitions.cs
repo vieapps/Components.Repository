@@ -769,7 +769,7 @@ namespace net.vieapps.Components.Repository
 				var cacheActiveSynchronize = settings["cacheActiveSynchronize"] != null
 					? ((settings["cacheActiveSynchronize"] as JValue).Value as string).IsEquals("true")
 					: false;
-				RepositoryMediator.EntityDefinitions[typeName].CacheStorage = new Caching.Cache(cacheRegion, cacheExpirationType.IsEquals("absolute") ? "Absolute" : "Sliding", cacheExpirationTime, cacheActiveSynchronize);
+				RepositoryMediator.EntityDefinitions[typeName].CacheStorage = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize);
 			}
 		}
 
@@ -777,11 +777,11 @@ namespace net.vieapps.Components.Repository
 		/// Sets the cache storage of an entity definition
 		/// </summary>
 		/// <param name="type">The type that presents information of an entity definition</param>
-		/// <param name="cacheStorage">The cache storage</param>
-		public void SetCacheStorage(Type type, Caching.Cache cacheStorage)
+		/// <param name="cache">The cache storage</param>
+		public void SetCacheStorage(Type type, Caching.Cache cache)
 		{
 			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type.GetTypeName()))
-				RepositoryMediator.EntityDefinitions[type.GetTypeName()].CacheStorage = cacheStorage;
+				RepositoryMediator.EntityDefinitions[type.GetTypeName()].CacheStorage = cache;
 		}
 		#endregion
 
