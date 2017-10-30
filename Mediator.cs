@@ -2732,40 +2732,12 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Adds an object into cache storage as absolute expire item
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static bool SetAbsolute<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
-		{
-			return @object != null
-				? cache.Set(@object.GetCacheKey(), @object, expirationTime)
-				: false;
-		}
-
-		/// <summary>
-		/// Adds an object into cache storage as absolute expire item
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The integer number that present expiration times (in minutes)</param>
-		public static Task<bool> SetAbsoluteAsync<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
-		{
-			return @object != null
-				? cache.SetAsync(@object.GetCacheKey(), @object, expirationTime)
-				: Task.FromResult<bool>(false);
-		}
-
-		/// <summary>
 		/// Adds an object into cache storage (when its no cached)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static bool SetIfNotExists<T>(this Cache cache, T @object) where T : class
+		public static bool Add<T>(this Cache cache, T @object) where T : class
 		{
 			return @object != null
 				? cache.Add(@object.GetCacheKey(), @object)
@@ -2778,7 +2750,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> SetIfNotExistsAsync<T>(this Cache cache, T @object) where T : class
+		public static Task<bool> AddAsync<T>(this Cache cache, T @object) where T : class
 		{
 			return @object != null
 				? cache.AddAsync(@object.GetCacheKey(), @object)
@@ -2786,12 +2758,12 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Adds an object into cache storage (when its cached, means replace an existed item)
+		/// Replaces an object in the cache storage
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static bool SetIfAlreadyExists<T>(this Cache cache, T @object) where T : class
+		public static bool Replace<T>(this Cache cache, T @object) where T : class
 		{
 			return @object != null
 				? cache.Replace(@object.GetCacheKey(), @object)
@@ -2799,12 +2771,12 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Adds an object into cache storage (when its cached, means replace an existed item)
+		/// Replaces an object in the cache storage
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> SetIfAlreadyExistsAsync<T>(this Cache cache, T @object) where T : class
+		public static Task<bool> ReplaceAsync<T>(this Cache cache, T @object) where T : class
 		{
 			return @object != null
 				? cache.ReplaceAsync(@object.GetCacheKey(), @object)

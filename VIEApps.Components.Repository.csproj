@@ -4,7 +4,7 @@
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
-		<Description>The tiny .NET Standard 2.0 ORM-ish library to help POCO objects can work with both NoSQL and SQL in the same time</Description>
+		<Description>The tiny .NET Standard 2.0 ORM-ish library to help POCO objects work with both NoSQL and SQL databases in the same time</Description>
 		<Authors>VIEApps.net</Authors>
 		<Company>VIEApps.net</Company>
 		<Product>VIEApps NGX</Product>
@@ -12,9 +12,9 @@
 		<Version>10.1.0.1</Version>
 		<AssemblyVersion>10.1.0.1</AssemblyVersion>
 		<FileVersion>10.1.0.1</FileVersion>
-		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<PackageTags>security;utility;vieapps;vieapps.components</PackageTags>
+		<PackageTags>repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
 		<PackageProjectUrl>https://github.com/vieapps/Components.Repository</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
