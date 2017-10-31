@@ -2804,17 +2804,14 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(providerInvariantName))
 				throw new ArgumentNullException(nameof(providerInvariantName));
 
-			if (DbProviderFactories.Providers == null)
-				DbProviderFactories.PrepareProviders();
-
-			var dbProvider = DbProviderFactories.Providers.ContainsKey(providerInvariantName)
-				? DbProviderFactories.Providers[providerInvariantName]
+			var dbProvider = DbProviderFactories.ProviderFactories.ContainsKey(providerInvariantName)
+				? DbProviderFactories.ProviderFactories[providerInvariantName]
 				: null;
 
 			if (dbProvider == null)
-				throw new NotImplementedException("DbProvider ('" + providerInvariantName + "') is not installed");
+				throw new NotImplementedException("Provider ('" + providerInvariantName + "') is not installed");
 			else if (dbProvider.Type == null)
-				throw new InvalidCastException("DbProvider ('" + providerInvariantName + "') is invalid");
+				throw new InvalidCastException("Provider ('" + providerInvariantName + "') is invalid");
 
 			var fieldInfo = dbProvider.Type.GetField("Instance", BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public);
 			if (fieldInfo != null && fieldInfo.FieldType.IsSubclassOf(typeof(DbProviderFactory)))
@@ -2824,15 +2821,25 @@ namespace net.vieapps.Components.Repository
 					return (DbProviderFactory)value;
 			}
 
-			throw new NotImplementedException("DbProvider ('" + providerInvariantName + "') is not installed");
+			throw new NotImplementedException("Provider ('" + providerInvariantName + "') is not installed");
 		}
 
-		internal static Dictionary<string, DbProvider> Providers = null;
+		internal static Dictionary<string, ProviderFactory> _ProviderFactories = null;
 
-		internal static void PrepareProviders()
+		/// <summary>
+		/// Gest current listing of provider factory
+		/// </summary>
+		public static Dictionary<string, ProviderFactory> ProviderFactories
 		{
-			DbProviderFactories.Providers = new Dictionary<string, DbProvider>();
+			get
+			{
+				return DbProviderFactories._ProviderFactories ?? (DbProviderFactories._ProviderFactories = DbProviderFactories.GetProviders());
+			}
+		}
 
+		internal static Dictionary<string, ProviderFactory> GetProviders()
+		{
+			var providers = new Dictionary<string, ProviderFactory>();
 			if (ConfigurationManager.GetSection("dbProviderFactories") is AppConfigurationSectionHandler config)
 				if (config.Section.SelectNodes("./add") is XmlNodeList nodes)
 					foreach (XmlNode node in nodes)
@@ -2853,7 +2860,7 @@ namespace net.vieapps.Components.Repository
 
 						if (!string.IsNullOrWhiteSpace(invariant) && type != null)
 						{
-							DbProviderFactories.Providers[invariant] = new DbProvider()
+							providers[invariant] = new ProviderFactory()
 							{
 								Invariant = invariant,
 								Type = type,
@@ -2862,9 +2869,10 @@ namespace net.vieapps.Components.Repository
 							};
 						}
 					}
+			return providers;
 		}
 
-		internal class DbProvider
+		public class ProviderFactory
 		{
 			/// <summary>
 			/// The name of DbProvider object.

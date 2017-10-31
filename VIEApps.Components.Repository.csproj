@@ -9,10 +9,10 @@
 		<Company>VIEApps.net</Company>
 		<Product>VIEApps NGX</Product>
 		<Copyright>© 2017 VIEApps.net</Copyright>
-		<Version>10.1.0.1</Version>
-		<AssemblyVersion>10.1.0.1</AssemblyVersion>
-		<FileVersion>10.1.0.1</FileVersion>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<Version>10.1.0.3</Version>
+		<AssemblyVersion>10.1.0.3</AssemblyVersion>
+		<FileVersion>10.1.0.3</FileVersion>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
 		<PackageTags>repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
 		<PackageProjectUrl>https://github.com/vieapps/Components.Repository</PackageProjectUrl>
@@ -39,10 +39,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="MongoDB.Driver" Version="2.4.4" />
-		<PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.0.1" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.1.0.1" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.0.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.0.3" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.1.0.3" />
 	</ItemGroup>
 
 </Project>
