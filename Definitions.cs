@@ -298,7 +298,7 @@ namespace net.vieapps.Components.Repository
 	{
 		public EntityDefinition()
 		{
-			this.Attributes = new List<ObjectService.AttributeInfo>();
+			this.Attributes = new List<AttributeInfo>();
 			this.SortableAttributes = new List<string>() { "ID" };
 			this.Searchable = true;
 			this.ExtraSettings = new Dictionary<string, object>();
@@ -416,14 +416,14 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of all attributes (properties and fields)
 		/// </summary>
-		public List<ObjectService.AttributeInfo> Attributes { get; internal set; }
+		public List<AttributeInfo> Attributes { get; internal set; }
 
 		internal string PrimaryKey { get; set; }
 
 		/// <summary>
 		/// Gets the information of the primary key
 		/// </summary>
-		public ObjectService.AttributeInfo PrimaryKeyInfo
+		public AttributeInfo PrimaryKeyInfo
 		{
 			get
 			{
@@ -586,40 +586,41 @@ namespace net.vieapps.Components.Repository
 			// public properties
 			var numberOfKeys = 0;
 			var properties = ObjectService.GetProperties(type);
-			properties.ForEach(attribute =>
+			properties.Where(attr => !attr.IsIgnored()).ForEach(attr =>
 			{
-				if (!attribute.IsIgnored())
+				// create
+				var attribute = new AttributeInfo(attr);
+
+				// primary key
+				var attributes = attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true);
+				if (attributes.Length > 0)
 				{
-					// primary key
-					var attributes = attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true);
-					if (attributes.Length > 0)
-					{
-						attribute.Column = (attributes[0] as PrimaryKeyAttribute).Column;
-						attribute.NotNull = true;
-						attribute.MaxLength = (attributes[0] as PrimaryKeyAttribute).MaxLength;
-						attribute.IsCLOB = false;
+					attribute.Column = (attributes[0] as PrimaryKeyAttribute).Column;
+					attribute.NotNull = attribute.NotEmpty = true;
+					attribute.MaxLength = (attributes[0] as PrimaryKeyAttribute).MaxLength;
+					attribute.IsCLOB = false;
 
-						definition.PrimaryKey = attribute.Name;
-						numberOfKeys += attributes.Length;
-					}
-
-					// property
-					attributes = attribute.Info.GetCustomAttributes(typeof(PropertyAttribute), true);
-					if (attributes.Length > 0)
-					{
-						attribute.Column = (attributes[0] as PropertyAttribute).Column;
-						attribute.NotNull = (attributes[0] as PropertyAttribute).NotNull;
-						attribute.MaxLength = (attributes[0] as PropertyAttribute).MaxLength;
-						attribute.IsCLOB = (attributes[0] as PropertyAttribute).IsCLOB;
-					}
-
-					// sortable
-					if (attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true).Length > 0)
-						definition.SortableAttributes.Add(attribute.Name);
-
-					// update
-					definition.Attributes.Add(attribute);
+					definition.PrimaryKey = attribute.Name;
+					numberOfKeys += attributes.Length;
 				}
+
+				// property
+				attributes = attribute.Info.GetCustomAttributes(typeof(PropertyAttribute), true);
+				if (attributes.Length > 0)
+				{
+					attribute.Column = (attributes[0] as PropertyAttribute).Column;
+					attribute.NotNull = (attributes[0] as PropertyAttribute).NotNull;
+					attribute.NotEmpty = (attributes[0] as PropertyAttribute).NotEmpty;
+					attribute.MaxLength = (attributes[0] as PropertyAttribute).MaxLength;
+					attribute.IsCLOB = (attributes[0] as PropertyAttribute).IsCLOB;
+				}
+
+				// sortable
+				if (attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true).Length > 0)
+					definition.SortableAttributes.Add(attribute.Name);
+
+				// update
+				definition.Attributes.Add(attribute);
 			});
 
 			// check primary key
@@ -629,18 +630,25 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentException("The type [" + type.ToString() + "] has multiple primary-keys");
 
 			// fields
-			ObjectService.GetFields(type).ForEach(attribute =>
-			{
-				var attributes = attribute.Info.GetCustomAttributes(typeof(FieldAttribute), false);
-				if (attributes.Length > 0)
+			ObjectService.GetFields(type)
+				.Where(attr => !attr.IsIgnored())
+				.ForEach(attr =>
 				{
-					attribute.Column = (attributes[0] as FieldAttribute).Column;
-					attribute.NotNull = (attributes[0] as FieldAttribute).NotNull;
-					attribute.MaxLength = (attributes[0] as FieldAttribute).MaxLength;
-					attribute.IsCLOB = (attributes[0] as FieldAttribute).IsCLOB;
-					definition.Attributes.Add(attribute);
-				}
-			});
+					// create
+					var attribute = new AttributeInfo(attr);
+
+					// update info
+					var attributes = attribute.Info.GetCustomAttributes(typeof(FieldAttribute), false);
+					if (attributes.Length > 0)
+					{
+						attribute.Column = (attributes[0] as FieldAttribute).Column;
+						attribute.NotNull = (attributes[0] as FieldAttribute).NotNull;
+						attribute.NotEmpty = (attributes[0] as FieldAttribute).NotEmpty;
+						attribute.MaxLength = (attributes[0] as FieldAttribute).MaxLength;
+						attribute.IsCLOB = (attributes[0] as FieldAttribute).IsCLOB;
+						definition.Attributes.Add(attribute);
+					}
+				});
 
 			// parent (entity)
 			var parentEntity = definition.ParentType != null
@@ -783,6 +791,39 @@ namespace net.vieapps.Components.Repository
 			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type.GetTypeName()))
 				RepositoryMediator.EntityDefinitions[type.GetTypeName()].CacheStorage = cache;
 		}
+		#endregion
+
+	}
+
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
+	/// Presents information of an attribute of an entity
+	/// </summary>
+	[Serializable, DebuggerDisplay("Name = {Name}")]
+	public class AttributeInfo : ObjectService.AttributeInfo
+	{
+		public AttributeInfo() : this(null) { }
+
+		public AttributeInfo(ObjectService.AttributeInfo derived) : base(derived?.Name, derived?.Info)
+		{
+			this.NotNull = false;
+			this.NotEmpty = false;
+			this.Column = null;
+			this.MaxLength = 0;
+			this.IsCLOB = false;
+		}
+
+		#region Properties
+		public bool NotNull { get; internal set; }
+
+		public bool NotEmpty { get; internal set; }
+
+		public string Column { get; internal set; }
+
+		public int MaxLength { get; internal set; }
+
+		public bool IsCLOB { get; internal set; }
 		#endregion
 
 	}
@@ -1304,24 +1345,19 @@ namespace net.vieapps.Components.Repository
 			var dataSource = new DataSource()
 			{
 				Name = (settings["name"] as JValue).Value as string,
-				Mode = (RepositoryMode)Enum.Parse(typeof(RepositoryMode), (settings["mode"] as JValue).Value as string)
+				Mode = ((settings["mode"] as JValue).Value as string).ToEnum<RepositoryMode>()
 			};
 
-			// name of connection string (SQL and NoSQL)
-			if (dataSource.Mode.Equals(RepositoryMode.SQL) || dataSource.Mode.Equals(RepositoryMode.NoSQL))
-			{
-				if (settings["connectionStringName"] == null)
-					throw new ArgumentNullException("connectionStringName", "[connectionStringName] attribute of settings");
-				dataSource.ConnectionStringName = (settings["connectionStringName"] as JValue).Value as string;
-			}
+			// name of connection string
+			if (settings["connectionStringName"] == null)
+				throw new ArgumentNullException("connectionStringName", "[connectionStringName] attribute of settings");
+			dataSource.ConnectionStringName = (settings["connectionStringName"] as JValue).Value as string;
 
-			// name of database (NoSQL)
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-			{
-				if (settings["databaseName"] == null)
-					throw new ArgumentNullException("databaseName", "[databaseName] attribute of settings");
+			// name of database
+			if (settings["databaseName"] != null)
 				dataSource.DatabaseName = (settings["databaseName"] as JValue).Value as string;
-			}
+			else if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+				throw new ArgumentNullException("databaseName", "[databaseName] attribute of settings");
 
 			return dataSource;
 		}

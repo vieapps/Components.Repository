@@ -364,7 +364,7 @@ namespace net.vieapps.Components.Repository
 
 				else if (attribute.Type.IsStringType() && !attribute.IsCLOB)
 				{
-					if (attribute.IsEmptyNotAllowed() && string.IsNullOrWhiteSpace(value as string))
+					if (attribute.NotEmpty && string.IsNullOrWhiteSpace(value as string))
 						throw new InformationRequiredException("The value of the " + (attribute.IsPublic ? "property" : "attribute") + " named '" + attribute.Name + "' is required (doesn't allow empty or null)");
 
 					var maxLength = attribute.MaxLength > 0 ? attribute.MaxLength : 4000;
@@ -376,7 +376,8 @@ namespace net.vieapps.Components.Repository
 				}
 			}
 
-			// extended attribute
+			// extended properties
+			// .....
 
 			return changed;
 		}
@@ -2891,7 +2892,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Property/Attribute extension methods
-		internal static Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID, EntityDefinition definition = null, bool lowerCaseKeys = false) where T : class
+		internal static Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID, EntityDefinition definition = null, bool lowerCaseKeys = false) where T : class
 		{
 			definition = definition != null
 				? definition
@@ -2899,13 +2900,13 @@ namespace net.vieapps.Components.Repository
 
 			var standardProperties = definition != null
 				? definition.Attributes.ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
-				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name);
+				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name, attribute => new AttributeInfo(attribute));
 
 			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessEntityID, definition)
 				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
 				: null;
 
-			return new Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>>(standardProperties, extendedProperties);
+			return new Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>>(standardProperties, extendedProperties);
 		}
 
 		internal static List<string> GetAssociatedParentIDs<T>(this IFilterBy<T> filter, EntityDefinition definition = null) where T : class
@@ -2979,11 +2980,6 @@ namespace net.vieapps.Components.Repository
 		internal static bool IsIgnoredIfNull(this ObjectService.AttributeInfo attribute)
 		{
 			return attribute.Info.GetCustomAttributes(typeof(IgnoreIfNullAttribute), true).Length > 0;
-		}
-
-		internal static bool IsEmptyNotAllowed(this ObjectService.AttributeInfo attribute)
-		{
-			return attribute.Info.GetCustomAttributes(typeof(NotEmptyAttribute), true).Length > 0;
 		}
 
 		internal static bool IsStoredAsJson(this ObjectService.AttributeInfo attribute)

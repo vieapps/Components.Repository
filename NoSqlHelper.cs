@@ -1720,11 +1720,11 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare indexes
 			var prefix = "IDX_" + definition.CollectionName;
-			var indexes = new Dictionary<string, List<ObjectService.AttributeInfo>>()
+			var indexes = new Dictionary<string, List<AttributeInfo>>()
 			{
-				{ prefix, new List<ObjectService.AttributeInfo>() }
+				{ prefix, new List<AttributeInfo>() }
 			};
-			var uniqueIndexes = new Dictionary<string, List<ObjectService.AttributeInfo>>();
+			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>();
 
 			definition.Attributes.ForEach(attribute =>
 			{
@@ -1736,14 +1736,14 @@ namespace net.vieapps.Components.Repository
 					{
 						var name = prefix + "_" + attr.UniqueIndexName;
 						if (!uniqueIndexes.ContainsKey(name))
-							uniqueIndexes.Add(name, new List<ObjectService.AttributeInfo>());
+							uniqueIndexes.Add(name, new List<AttributeInfo>());
 						uniqueIndexes[name].Add(attribute);
 
 						if (!string.IsNullOrWhiteSpace(attr.IndexName))
 						{
 							name = prefix + "_" + attr.IndexName;
 							if (!indexes.ContainsKey(name))
-								indexes.Add(name, new List<ObjectService.AttributeInfo>());
+								indexes.Add(name, new List<AttributeInfo>());
 							indexes[name].Add(attribute);
 						}
 					}
@@ -1751,7 +1751,7 @@ namespace net.vieapps.Components.Repository
 					{
 						var name = prefix + (string.IsNullOrWhiteSpace(attr.IndexName) ? "" : "_" + attr.IndexName);
 						if (!indexes.ContainsKey(name))
-							indexes.Add(name, new List<ObjectService.AttributeInfo>());
+							indexes.Add(name, new List<AttributeInfo>());
 						indexes[name].Add(attribute);
 					}
 				}

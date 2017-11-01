@@ -117,7 +117,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with SQL
-		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, ObjectService.AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
+		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			if (string.IsNullOrEmpty(this.Attribute))
 				return null;
@@ -242,7 +242,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with No SQL
-		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties, EntityDefinition definition = null, List<string> parentIDs = null)
+		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
@@ -445,7 +445,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with statement of SQL
-		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, ObjectService.AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
+		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			if (this.Children == null || this.Children.Count < 1)
 				return null;
@@ -485,7 +485,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with statement of No SQL
-		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties, EntityDefinition definition = null, List<string> parentIDs = null)
+		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			FilterDefinition<T> filter = null;
 
@@ -820,7 +820,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with statement of SQL
-		internal string GetSqlStatement(Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
+		internal string GetSqlStatement(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
 		{
 			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
@@ -843,7 +843,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with statement of No SQL
-		internal SortDefinition<T> GetNoSqlStatement(SortDefinition<T> previous, Dictionary<string, ObjectService.AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null)
+		internal SortDefinition<T> GetNoSqlStatement(SortDefinition<T> previous, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null)
 		{
 			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
@@ -936,7 +936,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Statements of SQL
-		internal static Tuple<Tuple<string, Dictionary<string, object>>, string> PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		internal static Tuple<Tuple<string, Dictionary<string, object>>, string> PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition<T>();
 			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessEntityID, definition);
@@ -968,7 +968,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Statements of No SQL
-		internal static Tuple<FilterDefinition<T>, SortDefinition<T>> PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, ObjectService.AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		internal static Tuple<FilterDefinition<T>, SortDefinition<T>> PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
 		{
 			definition = definition ?? (autoAssociateWithMultipleParents ? RepositoryMediator.GetEntityDefinition<T>() : null);
 			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessEntityID, definition);

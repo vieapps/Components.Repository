@@ -117,7 +117,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			var connection = dbProviderFactory.CreateConnection();
-			connection.ConnectionString = connectionStringSettings?.ConnectionString;
+			connection.ConnectionString = connectionStringSettings?.ConnectionString.Replace(StringComparison.OrdinalIgnoreCase, "{database}", dataSource.DatabaseName).Replace(StringComparison.OrdinalIgnoreCase, "{DatabaseName}", dataSource.DatabaseName);
 			return connection;
 		}
 		#endregion
@@ -169,7 +169,7 @@ namespace net.vieapps.Components.Repository
 			return SqlHelper.DbTypes[type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)) ? Nullable.GetUnderlyingType(type) : type];
 		}
 
-		internal static DbType GetDbType(this ObjectService.AttributeInfo attribute)
+		internal static DbType GetDbType(this AttributeInfo attribute)
 		{
 			return (attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))) || attribute.IsStoredAsString()
 				? DbType.AnsiStringFixedLength
@@ -189,7 +189,7 @@ namespace net.vieapps.Components.Repository
 				: attribute.Type.GetDbType();
 		}
 
-		internal static string GetDbTypeString(this ObjectService.AttributeInfo attribute, DbProviderFactory dbProviderFactory)
+		internal static string GetDbTypeString(this AttributeInfo attribute, DbProviderFactory dbProviderFactory)
 		{
 			return attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))
 				? typeof(String).GetDbTypeString(dbProviderFactory, 32, true, false)
@@ -382,7 +382,7 @@ namespace net.vieapps.Components.Repository
 			return parameter;
 		}
 
-		static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory,ObjectService.AttributeInfo attribute, object value)
+		static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, AttributeInfo attribute, object value)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = "@" + attribute.Name;
@@ -414,7 +414,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Copy (DataReader)
-		static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			// create object
 			@object = @object ?? ObjectService.CreateInstance<T>();
@@ -466,7 +466,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Copy (DataRow)
-		static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, ObjectService.AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			@object = @object ?? ObjectService.CreateInstance<T>();
 
@@ -2418,11 +2418,11 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			var prefix = "IDX_" + context.EntityDefinition.TableName;
-			var indexes = new Dictionary<string, List<ObjectService.AttributeInfo>>()
+			var indexes = new Dictionary<string, List<AttributeInfo>>()
 			{
-				{ prefix, new List<ObjectService.AttributeInfo>() }
+				{ prefix, new List<AttributeInfo>() }
 			};
-			var uniqueIndexes = new Dictionary<string, List<ObjectService.AttributeInfo>>();
+			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>();
 
 			context.EntityDefinition.Attributes.ForEach(attribute =>
 			{
@@ -2434,14 +2434,14 @@ namespace net.vieapps.Components.Repository
 					{
 						var name = prefix + "_" + attr.UniqueIndexName;
 						if (!uniqueIndexes.ContainsKey(name))
-							uniqueIndexes.Add(name, new List<ObjectService.AttributeInfo>());
+							uniqueIndexes.Add(name, new List<AttributeInfo>());
 						uniqueIndexes[name].Add(attribute);
 
 						if (!string.IsNullOrWhiteSpace(attr.IndexName))
 						{
 							name = prefix + "_" + attr.IndexName;
 							if (!indexes.ContainsKey(name))
-								indexes.Add(name, new List<ObjectService.AttributeInfo>());
+								indexes.Add(name, new List<AttributeInfo>());
 							indexes[name].Add(attribute);
 						}
 					}
@@ -2449,7 +2449,7 @@ namespace net.vieapps.Components.Repository
 					{
 						var name = prefix + (string.IsNullOrWhiteSpace(attr.IndexName) ? "" : "_" + attr.IndexName);
 						if (!indexes.ContainsKey(name))
-							indexes.Add(name, new List<ObjectService.AttributeInfo>());
+							indexes.Add(name, new List<AttributeInfo>());
 						indexes[name].Add(attribute);
 					}
 				}

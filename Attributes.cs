@@ -187,6 +187,7 @@ namespace net.vieapps.Components.Repository
 		public PropertyAttribute()
 		{
 			this.NotNull = false;
+			this.NotEmpty = false;
 			this.MaxLength = 0;
 			this.IsCLOB = false;
 		}
@@ -200,6 +201,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets state that specified this property is required (not allow nullable value - default is false)
 		/// </summary>
 		public bool NotNull { get; set; }
+
+		/// <summary>
+		/// Gets or sets state that specified this string property is required (not allow empty value - default is false)
+		/// </summary>
+		public bool NotEmpty { get; set; }
 
 		/// <summary>
 		/// Gets or sets max-length (of the string property)
@@ -221,6 +227,7 @@ namespace net.vieapps.Components.Repository
 		public FieldAttribute()
 		{
 			this.NotNull = false;
+			this.NotEmpty = false;
 			this.MaxLength = 0;
 			this.IsCLOB = false;
 		}
@@ -231,9 +238,14 @@ namespace net.vieapps.Components.Repository
 		public string Column { get; set; }
 
 		/// <summary>
-		/// Gets or sets state that specified this property is required (not allow nullable value - default is false)
+		/// Gets or sets state that specified this field is required (not allow nullable value - default is false)
 		/// </summary>
 		public bool NotNull { get; set; }
+
+		/// <summary>
+		/// Gets or sets state that specified this string field is required (not allow empty value - default is false)
+		/// </summary>
+		public bool NotEmpty { get; set; }
 
 		/// <summary>
 		/// Gets or sets max-length (of the string field)
@@ -241,7 +253,7 @@ namespace net.vieapps.Components.Repository
 		public int MaxLength { get; set; }
 
 		/// <summary>
-		/// Gets or sets state that specified this string property is use CLOB (character of large object) - default is false
+		/// Gets or sets state that specified this string field is use CLOB (character of large object) - default is false
 		/// </summary>
 		public bool IsCLOB { get; set; }
 	}
@@ -262,15 +274,6 @@ namespace net.vieapps.Components.Repository
 	public class IgnoreIfNullAttribute : Attribute
 	{
 		public IgnoreIfNullAttribute() { }
-	}
-
-	/// <summary>
-	/// Specifies this property is not allow empty or null (only available for string)
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-	public class NotEmptyAttribute : Attribute
-	{
-		public NotEmptyAttribute() { }
 	}
 
 	/// <summary>
