@@ -167,7 +167,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		public static void Create<T>(this IMongoCollection<T> collection, T @object, InsertOneOptions options = null) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot create new because the object is null");
 
 			collection.InsertOne(@object, options);
@@ -197,7 +197,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task CreateAsync<T>(this IMongoCollection<T> collection, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot create new because the object is null");
 
 			return collection.InsertOneAsync(@object, options, cancellationToken);
@@ -295,7 +295,7 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort = null, FindOptions options = null) where T : class
 		{
 			var objects = collection.Find(filter, sort, 1, 1, options);
-			return !object.ReferenceEquals(objects, null) && objects.Count > 0
+			return objects != null && objects.Count > 0
 				? objects[0]
 				: null;
 		}
@@ -346,7 +346,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<T> GetAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var objects = await collection.FindAsync(filter, sort, 1, 1, options, cancellationToken);
-			return !object.ReferenceEquals(objects, null) && objects.Count > 0
+			return objects != null && objects.Count > 0
 				? objects[0]
 				: null;
 		}
@@ -434,7 +434,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static ReplaceOneResult Replace<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot update because the object is null");
 
 			return collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true });
@@ -465,7 +465,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot update because the object is null");
 
 			return collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken);
@@ -519,7 +519,7 @@ namespace net.vieapps.Components.Repository
 		public static void Update<T>(this IMongoCollection<T> collection, T @object, List<string> attributes, UpdateOptions options = null) where T : class
 		{
 			// check
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot update because the object is null");
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update");
@@ -601,7 +601,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		public static UpdateResult Update<T>(this IMongoCollection<T> collection, T @object, UpdateDefinition<T> update, UpdateOptions options = null) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot update because the object is null");
 			else if (update == null)
 				throw new ArgumentException("No definition to update");
@@ -635,7 +635,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task UpdateAsync<T>(this IMongoCollection<T> collection, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot update because the object is null");
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update");
@@ -722,7 +722,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<UpdateResult> UpdateAsync<T>(this IMongoCollection<T> collection, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot update because the object is null");
 			else if (update == null)
 				throw new ArgumentException("No definition to update");
@@ -785,7 +785,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DeleteResult Delete<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot delete because the object is null");
 
 			return collection.Delete(@object.GetEntityID(), options);
@@ -844,7 +844,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			if (object.ReferenceEquals(@object, null))
+			if (@object == null)
 				throw new NullReferenceException("Cannot delete because the object is null");
 
 			return collection.DeleteAsync(@object.GetEntityID(), options, cancellationToken);

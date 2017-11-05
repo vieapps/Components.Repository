@@ -38,7 +38,7 @@ namespace net.vieapps.Components.Repository
 			}
 			catch (ReflectionTypeLoadException ex)
 			{
-				if (ex.LoaderExceptions.FirstOrDefault(exception => exception is System.IO.FileNotFoundException) == null)
+				if (ex.LoaderExceptions.FirstOrDefault(e => e is System.IO.FileNotFoundException) == null)
 					throw ex;
 			}
 			catch (Exception)
@@ -122,10 +122,7 @@ namespace net.vieapps.Components.Repository
 				? selector()
 				: (new List<Assembly>() { Assembly.GetCallingAssembly() }).Concat(Assembly.GetCallingAssembly()
 					.GetReferencedAssemblies()
-					.Where(n => !n.Name.IsStartsWith("MsCorLib") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsStartsWith("System")
-						&& !n.Name.IsStartsWith("Newtonsoft") && !n.Name.IsStartsWith("MongoDB")
-						&& !n.Name.IsStartsWith("WampSharp") && !n.Name.IsStartsWith("VIEApps.Components.")
-					)
+					.Where(n => !n.Name.IsStartsWith("MsCorLib") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsStartsWith("System") && !n.Name.IsEquals("netstandard"))
 					.Select(n => Assembly.Load(n))
 				)
 			);
@@ -143,7 +140,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]: " + ex.Message, ex);
+						RepositoryMediator.WriteLogs($"Cannot ensure schemas of SQL [{definition.Type.GetTypeName(true)}]: {ex.Message}", ex);
 					}
 
 				dataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
@@ -154,7 +151,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure schemas of SQL [" + definition.Type.GetTypeName(true) + "]: " + ex.Message, ex);
+						RepositoryMediator.WriteLogs($"Cannot ensure schemas of SQL [{definition.Type.GetTypeName(true)}]: {ex.Message}", ex);
 					}
 			}, default(CancellationToken), true, false); 
 		}
@@ -171,7 +168,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]: " + ex.Message, ex);
+						RepositoryMediator.WriteLogs($"Cannot ensure indexes of NoSQL [{definition.Type.GetTypeName(true)}]: {ex.Message}", ex);
 					}
 
 				dataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
@@ -182,7 +179,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs("Cannot ensure indexes of NoSQL [" + definition.Type.GetTypeName(true) + "]: " + ex.Message, ex);
+						RepositoryMediator.WriteLogs($"Cannot ensure indexes of NoSQL [{definition.Type.GetTypeName(true)}]: {ex.Message}", ex);
 					}
 			}, default(CancellationToken), true, false);
 		}

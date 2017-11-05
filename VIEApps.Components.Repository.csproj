@@ -9,9 +9,9 @@
 		<Company>VIEApps.net</Company>
 		<Product>VIEApps NGX</Product>
 		<Copyright>© 2017 VIEApps.net</Copyright>
-		<Version>10.1.1.1711</Version>
-		<AssemblyVersion>10.1.1.1711</AssemblyVersion>
-		<FileVersion>10.1.1.1711</FileVersion>
+		<Version>10.1.2.1712</Version>
+		<AssemblyVersion>10.1.2.1712</AssemblyVersion>
+		<FileVersion>10.1.2.1712</FileVersion>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
 		<PackageTags>repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>

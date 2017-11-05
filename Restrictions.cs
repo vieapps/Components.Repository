@@ -133,8 +133,8 @@ namespace net.vieapps.Components.Repository
 				{
 					var surf = (!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString();
 					statement += (statement.Equals("") ? "" : " OR ")
-						+ "Origin." + this.Attribute + "=@" + this.Attribute + surf
-						+ " OR Link." + definition.MultipleParentAssociatesMapColumn + "=@" + this.Attribute + surf + "_L";
+						+ $"Origin.{this.Attribute}=@{this.Attribute + surf}"
+						+ $" OR Link.{definition.MultipleParentAssociatesMapColumn}=@{this.Attribute + surf}_L";
 
 					parameters.Add("@" + this.Attribute + surf, id);
 					parameters.Add("@" + this.Attribute + surf + "_L", id);
@@ -185,17 +185,17 @@ namespace net.vieapps.Components.Repository
 						break;
 
 					case CompareOperator.Contains:
-						@operator = "LIKE '%@" + name + "%'";
+						@operator = $"LIKE '%@{name}%'";
 						gotName = false;
 						break;
 
 					case CompareOperator.StartsWith:
-						@operator = "LIKE '@" + name + "%'";
+						@operator = $"LIKE '@{name}%'";
 						gotName = false;
 						break;
 
 					case CompareOperator.EndsWith:
-						@operator = "LIKE '%@" + name + "'";
+						@operator = $"LIKE '%@{name}'";
 						gotName = false;
 						break;
 
@@ -226,7 +226,7 @@ namespace net.vieapps.Components.Repository
 				}
 
 				statement = (extendedProperties != null && extendedProperties.ContainsKey(this.Attribute) ? "Extent" : "Origin") + "." + column
-					+ @operator + (gotName ? "@" + name : "");
+					+ @operator + (gotName ? $"@{name}" : "");
 
 				if (value != null)
 					parameters.Add("@" + name, value);

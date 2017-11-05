@@ -62,7 +62,9 @@ namespace net.vieapps.Components.Repository
 		public Exception Exception { get; internal set; }
 
 		Dictionary<string, Dictionary<string, object>> PreviousStateData { get; set; }
+
 		Dictionary<string, Dictionary<string, object>> CurrentStateData { get; set; }
+
 		TransactionScope Transaction { get; set; }
 		#endregion
 
@@ -180,51 +182,46 @@ namespace net.vieapps.Components.Repository
 			var stateData = new Dictionary<string, object>();
 
 			// standard properties
-			@object.GetProperties().ForEach(attribute =>
-			{
-				if (!attribute.IsIgnored())
-					try
-					{
-						stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
-					}
-					catch { }
-			});
-
-			// standard fields
-			@object.GetFields().ForEach(attribute =>
-			{
-				if (!attribute.IsIgnored())
-					try
-					{
-						stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
-					}
-					catch { }
-			});
-
-			// extended properties
-			if (@object is IBusinessEntity)
-				(@object as IBusinessEntity).ExtendedProperties?.ForEach(info =>
+			@object.GetProperties()
+				.Where(attribute => !attribute.IsIgnored())
+				.ForEach(attribute =>
 				{
 					try
 					{
-						stateData.Add("ExtendedProperties." + info.Key, info.Value);
+						stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
 					}
 					catch { }
 				});
+
+			// standard fields
+			@object.GetFields()
+				.Where(attribute => !attribute.IsIgnored())
+				.ForEach(attribute =>
+				{
+					try
+					{
+						stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
+					}
+					catch { }
+				});
+
+			// extended properties
+			(@object as IBusinessEntity)?.ExtendedProperties?.ForEach(info =>
+			{
+				try
+				{
+					stateData.Add($"ExtendedProperties.{info.Key}", info.Value);
+				}
+				catch { }
+			});
 
 			return stateData;
 		}
 
 		internal Dictionary<string, object> SetPreviousState(object @object, Dictionary<string, object> stateData = null)
 		{
-			var key = @object.GetCacheKey(true);
 			stateData = stateData ?? this.GetStateData(@object);
-
-			if (this.PreviousStateData.ContainsKey(key))
-				this.PreviousStateData[key] = stateData;
-			else
-				this.PreviousStateData.Add(key, stateData);
-
+			this.PreviousStateData[@object.GetCacheKey(true)] = stateData;
 			return stateData;
 		}
 
@@ -246,14 +243,8 @@ namespace net.vieapps.Components.Repository
 
 		internal Dictionary<string, object> SetCurrentState(object @object, Dictionary<string, object> stateData = null)
 		{
-			var key = @object.GetCacheKey(true);
 			stateData = stateData ?? this.GetStateData(@object);
-
-			if (this.CurrentStateData.ContainsKey(key))
-				this.CurrentStateData[key] = stateData;
-			else
-				this.CurrentStateData.Add(key, stateData);
-
+			this.CurrentStateData[@object.GetCacheKey(true)] = stateData;
 			return stateData;
 		}
 
