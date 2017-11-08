@@ -28,6 +28,7 @@ namespace net.vieapps.Components.Repository
 	/// </summary>
 	public static class RepositoryMediator
 	{
+
 #if DEBUG
 		public static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
 		public static Dictionary<string, EntityDefinition> EntityDefinitions = new Dictionary<string, EntityDefinition>();
@@ -1611,10 +1612,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <returns></returns>
-		public static List<string> FindIdentities<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where T : class
+		public static List<string> FindIdentities<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1645,10 +1645,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where T : class
+		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1660,7 +1659,7 @@ namespace net.vieapps.Components.Repository
 			// find identities
 			var identities = context.EntityDefinition.CacheStorage == null
 				? null
-				: RepositoryMediator.FindIdentities<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType , cacheExpirationTime );
+				: RepositoryMediator.FindIdentities<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime );
 
 #if DEBUG
 			RepositoryMediator.WriteLogs(new List<string>(){
@@ -1681,7 +1680,7 @@ namespace net.vieapps.Components.Repository
 				RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
 #endif
 				// get cached objects
-				var cached = context.EntityDefinition.CacheStorage.Get(identities.Select(id => id.GetCacheKey<T>()));
+				var cached = context.EntityDefinition.CacheStorage.Get<T>(identities.Select(id => id.GetCacheKey<T>()));
 				if (cached != null)
 				{
 #if DEBUG
@@ -1697,9 +1696,9 @@ namespace net.vieapps.Components.Repository
 					var ids = new List<string>();
 					cached.ForEach(item =>
 					{
-						var id = (item.Value as T).GetEntityID();
+						var id = item.Value.GetEntityID();
 						ids.Add(id);
-						results[id] = item.Value as T;
+						results[id] = item.Value;
 					});
 
 					// find missing objects
@@ -1724,7 +1723,7 @@ namespace net.vieapps.Components.Repository
 					}
 
 					// update the collection of objects
-					objects = results.Select(item => item.Value as T).ToList();
+					objects = results.Select(item => item.Value).ToList();
 				}
 			}
 
@@ -1742,7 +1741,7 @@ namespace net.vieapps.Components.Repository
 				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					if (!string.IsNullOrWhiteSpace(cacheKey))
-						context.EntityDefinition.CacheStorage.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheExpirationTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheExpirationTime);
+						context.EntityDefinition.CacheStorage.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
 					context.EntityDefinition.CacheStorage.Set(objects);
 #if DEBUG
 					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -1765,16 +1764,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where T : class
+		public static List<T> Find<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.Find<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
+					return RepositoryMediator.Find<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 				}
 				catch (Exception ex)
 				{
@@ -1797,11 +1795,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1832,11 +1829,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1848,7 +1844,7 @@ namespace net.vieapps.Components.Repository
 			// find identities
 			var identities = context.EntityDefinition.CacheStorage == null
 				? null
-				: await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
+				: await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 #if DEBUG
 			RepositoryMediator.WriteLogs(new List<string>(){
@@ -1869,7 +1865,7 @@ namespace net.vieapps.Components.Repository
 				RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
 #endif
 				// get cached objects
-				var cached = await context.EntityDefinition.CacheStorage.GetAsync(identities.Select(id => id.GetCacheKey<T>()));
+				var cached = await context.EntityDefinition.CacheStorage.GetAsync<T>(identities.Select(id => id.GetCacheKey<T>()));
 				if (cached != null)
 				{
 #if DEBUG
@@ -1885,9 +1881,9 @@ namespace net.vieapps.Components.Repository
 					var ids = new List<string>();
 					cached.ForEach(item =>
 					{
-						var id = (item.Value as T).GetEntityID();
+						var id = item.Value.GetEntityID();
 						ids.Add(id);
-						results[id] = item.Value as T;
+						results[id] = item.Value;
 					});
 
 					// find missing objects
@@ -1912,7 +1908,7 @@ namespace net.vieapps.Components.Repository
 					}
 
 					// update the collection of objects
-					objects = results.Select(item => item.Value as T).ToList();
+					objects = results.Select(item => item.Value).ToList();
 				}
 			}
 
@@ -1930,7 +1926,7 @@ namespace net.vieapps.Components.Repository
 				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					if (!string.IsNullOrWhiteSpace(cacheKey))
-						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheExpirationTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheExpirationTime);
+						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
 					await context.EntityDefinition.CacheStorage.SetAsync(objects);
 #if DEBUG
 					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -1953,17 +1949,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
+					return RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -1985,10 +1980,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where T : class
+		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -2020,7 +2014,7 @@ namespace net.vieapps.Components.Repository
 
 			// update cache and return
 			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
-				context.EntityDefinition.CacheStorage.Set(cacheKey, total, cacheExpirationTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheExpirationTime);
+				context.EntityDefinition.CacheStorage.Set(cacheKey, total, cacheTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
 			return total;
 		}
 
@@ -2033,16 +2027,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static long Count<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0) where T : class
+		public static long Count<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.Count<T>(context, aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime);
+					return RepositoryMediator.Count<T>(context, aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 				}
 				catch (Exception ex)
 				{
@@ -2062,11 +2055,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static async Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
@@ -2098,7 +2090,7 @@ namespace net.vieapps.Components.Repository
 
 			// update cache and return
 			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
-				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, cacheExpirationTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheExpirationTime);
+				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, cacheTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
 			return total;
 		}
 
@@ -2111,17 +2103,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
-		/// <param name="cacheExpirationType">The string that presents the expiration type (Sliding | Absolute)</param>
-		/// <param name="cacheExpirationTime">The number that presents the expiration time (in minutes)</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, string cacheExpirationType = null, int cacheExpirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheExpirationType, cacheExpirationTime, cancellationToken);
+					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -2685,7 +2676,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The expiration time (in minutes)</param>
+		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
 		public static bool Set<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
@@ -2701,7 +2692,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="objects">The collection of objects</param>
 		public static void Set<T>(this Cache cache, List<T> objects) where T : class
 		{
-			if (!object.ReferenceEquals(objects, null))
+			if (objects != null)
 				cache.Set(objects.ToDictionary(o => o.GetCacheKey()));
 		}
 
@@ -2711,7 +2702,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The expiration time (in minutes)</param>
+		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
 		public static Task<bool> SetAsync<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
@@ -2725,10 +2716,24 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="objects">The collection of objects</param>
-		public static Task SetAsync<T>(this Cache cache, IEnumerable<T> objects) where T : class
+		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
+		public static void Set<T>(this Cache cache, IEnumerable<T> objects, int expirationTime = 0) where T : class
 		{
-			return !object.ReferenceEquals(objects, null)
-				? cache.SetAsync(objects.ToDictionary(o => o.GetCacheKey()))
+			if (objects != null)
+				cache.Set(objects.ToDictionary(o => o.GetCacheKey()), null, expirationTime);
+		}
+
+		/// <summary>
+		/// Adds the collection of objects into cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cache">The cache storage</param>
+		/// <param name="objects">The collection of objects</param>
+		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
+		public static Task SetAsync<T>(this Cache cache, IEnumerable<T> objects, int expirationTime = 0) where T : class
+		{
+			return objects != null
+				? cache.SetAsync(objects.ToDictionary(o => o.GetCacheKey()), null, expirationTime)
 				: Task.CompletedTask;
 		}
 
@@ -2738,10 +2743,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static bool Add<T>(this Cache cache, T @object) where T : class
+		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
+		public static bool Add<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
-				? cache.Add(@object.GetCacheKey(), @object)
+				? cache.Add(@object.GetCacheKey(), @object, expirationTime)
 				: false;
 		}
 
@@ -2751,10 +2757,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> AddAsync<T>(this Cache cache, T @object) where T : class
+		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
+		public static Task<bool> AddAsync<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
-				? cache.AddAsync(@object.GetCacheKey(), @object)
+				? cache.AddAsync(@object.GetCacheKey(), @object, expirationTime)
 				: Task.FromResult<bool>(false);
 		}
 
@@ -2764,10 +2771,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static bool Replace<T>(this Cache cache, T @object) where T : class
+		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
+		public static bool Replace<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
-				? cache.Replace(@object.GetCacheKey(), @object)
+				? cache.Replace(@object.GetCacheKey(), @object, expirationTime)
 				: false;
 		}
 
@@ -2777,10 +2785,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> ReplaceAsync<T>(this Cache cache, T @object) where T : class
+		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
+		public static Task<bool> ReplaceAsync<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
 		{
 			return @object != null
-				? cache.ReplaceAsync(@object.GetCacheKey(), @object)
+				? cache.ReplaceAsync(@object.GetCacheKey(), @object, expirationTime)
 				: Task.FromResult<bool>(false);
 		}
 
