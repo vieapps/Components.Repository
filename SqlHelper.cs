@@ -2833,7 +2833,7 @@ namespace net.vieapps.Components.Repository
 				if (config.Section.SelectNodes("./add") is XmlNodeList nodes)
 					foreach (XmlNode node in nodes)
 					{
-						var info = config.GetJson(node);
+						var info = node.ToJson();
 						var invariant = info["invariant"] != null
 							? (info["invariant"] as JValue).Value as string
 							: null;

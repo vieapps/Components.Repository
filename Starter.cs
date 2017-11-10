@@ -68,7 +68,7 @@ namespace net.vieapps.Components.Repository
 				if (config.Section.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
 					foreach (XmlNode dataSourceNode in dataSourceNodes)
 					{
-						var dataSource = DataSource.FromJson(config.GetJson(dataSourceNode));
+						var dataSource = DataSource.FromJson(dataSourceNode.ToJson());
 						if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
 							RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
 					}
@@ -78,12 +78,12 @@ namespace net.vieapps.Components.Repository
 					foreach (XmlNode repositoryNode in repositoryNodes)
 					{
 						// update repository
-						RepositoryDefinition.Update(config.GetJson(repositoryNode));
+						RepositoryDefinition.Update(repositoryNode.ToJson());
 
 						// update repository entities
 						if (repositoryNode.SelectNodes("entity") is XmlNodeList entityNodes)
 							foreach (XmlNode repositoryEntityNode in entityNodes)
-								EntityDefinition.Update(config.GetJson(repositoryEntityNode));
+								EntityDefinition.Update(repositoryEntityNode.ToJson());
 					}
 
 				// schemas (SQL)
