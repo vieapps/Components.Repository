@@ -416,7 +416,7 @@ namespace net.vieapps.Components.Repository
 		{
 			var dataSource = definition.GetPrimaryDataSource();
 			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
-			var document = await collection.GetAsync(id, options, cancellationToken);
+			var document = await collection.GetAsync(id, options, cancellationToken).ConfigureAwait(false);
 			return document != null
 				? BsonSerializer.Deserialize(document, definition.Type)
 				: null;
@@ -1090,7 +1090,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<string>> SelectIdentitiesAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return (await collection.SelectAsync(null, filter, sort, pageSize, pageNumber, options, cancellationToken))
+			return (await collection.SelectAsync(null, filter, sort, pageSize, pageNumber, options, cancellationToken).ConfigureAwait(false))
 				.Select(doc => doc["_id"].AsString)
 				.ToList();
 		}
@@ -1779,9 +1779,9 @@ namespace net.vieapps.Components.Repository
 							? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
 							: index.Ascending(attribute.Name);
 					});
-					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true }, cancellationToken);
+					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true }, cancellationToken).ConfigureAwait(false);
 				}
-			});
+			}).ConfigureAwait(false);
 
 			await uniqueIndexes.ForEachAsync(async (info, cancellationToken) =>
 			{
@@ -1794,9 +1794,9 @@ namespace net.vieapps.Components.Repository
 							? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
 							: index.Ascending(attribute.Name);
 					});
-					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true, Unique = true }, cancellationToken);
+					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true, Unique = true }, cancellationToken).ConfigureAwait(false);
 				}
-			});
+			}).ConfigureAwait(false);
 
 			if (textIndexes.Count > 0)
 			{
@@ -1807,7 +1807,7 @@ namespace net.vieapps.Components.Repository
 						? Builders<BsonDocument>.IndexKeys.Text(attribute)
 						: index.Text(attribute);
 				});
-				await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }, CancellationToken.None);
+				await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }, CancellationToken.None).ConfigureAwait(false);
 			}
 
 			// create the blank document for ensuring the collection is created
@@ -1821,8 +1821,8 @@ namespace net.vieapps.Components.Repository
 						@object.ID = UtilityService.BlankUID;
 						await collection.InsertOneAsync(@object.ToBsonDocument(), null, CancellationToken.None).ContinueWith(async (t) =>
 						{
-							await Task.Delay(456, CancellationToken.None);
-							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, CancellationToken.None);
+							await Task.Delay(456, CancellationToken.None).ConfigureAwait(false);
+							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, CancellationToken.None).ConfigureAwait(false);
 						});
 					}
 					catch { }

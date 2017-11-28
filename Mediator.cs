@@ -496,27 +496,27 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// call pre-handlers
-			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken))
+			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false))
 				return;
 
 			// create
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.CreateAsync<T>(primaryDataSource, @object, null, cancellationToken);
+				await context.CreateAsync<T>(primaryDataSource, @object, null, cancellationToken).ConfigureAwait(false);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.CreateAsync<T>(primaryDataSource, @object, cancellationToken);
+				await context.CreateAsync<T>(primaryDataSource, @object, cancellationToken).ConfigureAwait(false);
 
 			// update in cache storage
 			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
-				if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
+				if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
 					RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				await context.EntityDefinition.CacheStorage.SetAsync(@object);
+				await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
 
 			// call post-handlers
-			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken);
+			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
 
 			// TO DO: sync to other data sources
 
@@ -658,12 +658,12 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// call pre-handlers
-			if (callHandlers && await RepositoryMediator.CallPreHandlersAsync(context, id, cancellationToken))
+			if (callHandlers && await RepositoryMediator.CallPreHandlersAsync(context, id, cancellationToken).ConfigureAwait(false))
 				return null;
 
 			// get cached object
 			var @object = processCache && context.EntityDefinition.CacheStorage != null
-				? await context.EntityDefinition.CacheStorage.FetchAsync<T>(id)
+				? await context.EntityDefinition.CacheStorage.FetchAsync<T>(id).ConfigureAwait(false)
 				: null;
 
 #if DEBUG
@@ -677,9 +677,9 @@ namespace net.vieapps.Components.Repository
 				// load from primary data source
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await context.GetAsync<T>(primaryDataSource, id, null, cancellationToken)
+					? await context.GetAsync<T>(primaryDataSource, id, null, cancellationToken).ConfigureAwait(false)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? await context.GetAsync<T>(primaryDataSource, id, cancellationToken)
+						? await context.GetAsync<T>(primaryDataSource, id, cancellationToken).ConfigureAwait(false)
 						: null;
 
 				// TO DO: check to get instance from secondary source if primary source is not available
@@ -687,10 +687,10 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (@object != null && processCache && context.EntityDefinition.CacheStorage != null)
 #if DEBUG
-					if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
+					if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
 						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-					await context.EntityDefinition.CacheStorage.SetAsync(@object);
+					await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
 			}
 
@@ -698,7 +698,7 @@ namespace net.vieapps.Components.Repository
 			if (callHandlers && @object != null)
 			{
 				context.SetCurrentState(@object);
-				await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken);
+				await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
 			}
 
 			// return the instance of object
@@ -916,7 +916,7 @@ namespace net.vieapps.Components.Repository
 
 			// get cached object
 			var @object = definition.CacheStorage != null
-				? await definition.CacheStorage.GetAsync(definition.Type.GetTypeName(true) + "#" + id.Trim().ToLower())
+				? await definition.CacheStorage.GetAsync(definition.Type.GetTypeName(true) + "#" + id.Trim().ToLower()).ConfigureAwait(false)
 				: null;
 
 #if DEBUG
@@ -929,9 +929,9 @@ namespace net.vieapps.Components.Repository
 			{
 				var primaryDataSource = definition.GetPrimaryDataSource();
 				@object = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await NoSqlHelper.GetAsync(definition, id, null, cancellationToken)
+					? await NoSqlHelper.GetAsync(definition, id, null, cancellationToken).ConfigureAwait(false)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? await SqlHelper.GetAsync(definition, id, cancellationToken)
+						? await SqlHelper.GetAsync(definition, id, cancellationToken).ConfigureAwait(false)
 						: null;
 
 				// TO DO: check to get instance from secondary source if primary source is not available
@@ -939,10 +939,10 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (@object != null && definition.CacheStorage != null)
 #if DEBUG
-					if (await definition.CacheStorage.SetAsync(@object))
+					if (await definition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
 						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-					await definition.CacheStorage.SetAsync(@object);
+					await definition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
 			}
 
@@ -1082,7 +1082,7 @@ namespace net.vieapps.Components.Repository
 
 			// check state
 			var previousInstance = @object != null
-				? await RepositoryMediator.GetAsync<T>(context, aliasTypeName, @object.GetEntityID(), false, cancellationToken)
+				? await RepositoryMediator.GetAsync<T>(context, aliasTypeName, @object.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
 				: null;
 
 			var previousState = previousInstance != null
@@ -1111,7 +1111,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// call pre-handlers
-			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken))
+			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false))
 				return;
 
 			// reset search score
@@ -1121,21 +1121,21 @@ namespace net.vieapps.Components.Repository
 			// update
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.ReplaceAsync<T>(primaryDataSource, @object, null, cancellationToken);
+				await context.ReplaceAsync<T>(primaryDataSource, @object, null, cancellationToken).ConfigureAwait(false);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.ReplaceAsync<T>(primaryDataSource, @object, cancellationToken);
+				await context.ReplaceAsync<T>(primaryDataSource, @object, cancellationToken).ConfigureAwait(false);
 
 			// update into cache storage
 			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
-				if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
+				if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
 					RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				await context.EntityDefinition.CacheStorage.SetAsync(@object);
+				await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
 
 			// call post-handlers
-			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken);
+			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
 
 			// TO DO: sync to other data sources
 		}
@@ -1276,7 +1276,7 @@ namespace net.vieapps.Components.Repository
 
 			// check state
 			var previousInstance = @object != null
-				? await RepositoryMediator.GetAsync<T>(context, aliasTypeName, @object.GetEntityID(), false)
+				? await RepositoryMediator.GetAsync<T>(context, aliasTypeName, @object.GetEntityID(), false).ConfigureAwait(false)
 				: null;
 
 			var previousState = previousInstance != null
@@ -1305,7 +1305,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// call pre-handlers
-			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken))
+			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false))
 				return;
 
 			// update
@@ -1313,21 +1313,21 @@ namespace net.vieapps.Components.Repository
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.UpdateAsync<T>(primaryDataSource, @object, updatedAttributes, null, cancellationToken);
+				await context.UpdateAsync<T>(primaryDataSource, @object, updatedAttributes, null, cancellationToken).ConfigureAwait(false);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.UpdateAsync<T>(primaryDataSource, @object, updatedAttributes, cancellationToken);
+				await context.UpdateAsync<T>(primaryDataSource, @object, updatedAttributes, cancellationToken).ConfigureAwait(false);
 
 			// update into cache storage
 			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
-				if (await context.EntityDefinition.CacheStorage.SetAsync(@object))
+				if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
 					RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-					await context.EntityDefinition.CacheStorage.SetAsync(@object);
+					await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
 
 			// call post-handlers
-			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken);
+			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
 
 			// TO DO: sync to other data sources
 		}
@@ -1441,33 +1441,33 @@ namespace net.vieapps.Components.Repository
 			context.AliasTypeName = aliasTypeName;
 
 			// check existing
-			var @object = await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, false, cancellationToken);
+			var @object = await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, false, cancellationToken).ConfigureAwait(false);
 			if (@object == null)
 				return;
 
 			// call pre-handlers
 			context.SetCurrentState(@object);
-			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken))
+			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false))
 				return;
 
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.DeleteAsync<T>(primaryDataSource, @object, null, cancellationToken);
+				await context.DeleteAsync<T>(primaryDataSource, @object, null, cancellationToken).ConfigureAwait(false);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.DeleteAsync<T>(primaryDataSource, @object, cancellationToken);
+				await context.DeleteAsync<T>(primaryDataSource, @object, cancellationToken).ConfigureAwait(false);
 
 			// remove from cache storage
 			if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG
-				if (await context.EntityDefinition.CacheStorage.RemoveAsync(@object))
+				if (await context.EntityDefinition.CacheStorage.RemoveAsync(@object).ConfigureAwait(false))
 					RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				await context.EntityDefinition.CacheStorage.RemoveAsync(@object);
+				await context.EntityDefinition.CacheStorage.RemoveAsync(@object).ConfigureAwait(false);
 #endif
 
 			// call post-handlers
-			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken);
+			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
 
 			// TO DO: sync to other data sources
 		}
@@ -1565,9 +1565,9 @@ namespace net.vieapps.Components.Repository
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.DeleteManyAsync<T>(primaryDataSource, filter, businessEntityID, null, cancellationToken);
+				await context.DeleteManyAsync<T>(primaryDataSource, filter, businessEntityID, null, cancellationToken).ConfigureAwait(false);
 			else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.DeleteManyAsync<T>(primaryDataSource, filter, businessEntityID, cancellationToken);
+				await context.DeleteManyAsync<T>(primaryDataSource, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 
 			// TO DO: sync to other data sources
 
@@ -1844,7 +1844,7 @@ namespace net.vieapps.Components.Repository
 			// find identities
 			var identities = context.EntityDefinition.CacheStorage == null
 				? null
-				: await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
+				: await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 
 #if DEBUG
 			RepositoryMediator.WriteLogs(new List<string>(){
@@ -1865,7 +1865,7 @@ namespace net.vieapps.Components.Repository
 				RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
 #endif
 				// get cached objects
-				var cached = await context.EntityDefinition.CacheStorage.GetAsync<T>(identities.Select(id => id.GetCacheKey<T>()));
+				var cached = await context.EntityDefinition.CacheStorage.GetAsync<T>(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
 				if (cached != null)
 				{
 #if DEBUG
@@ -1891,17 +1891,14 @@ namespace net.vieapps.Components.Repository
 					if (identities.Count > 0)
 					{
 						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? await context.FindAsync<T>(primaryDataSource, identities, sort, businessEntityID, null, cancellationToken)
+							? await context.FindAsync<T>(primaryDataSource, identities, sort, businessEntityID, null, cancellationToken).ConfigureAwait(false)
 							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-								? await context.FindAsync<T>(primaryDataSource, identities, sort, businessEntityID, cancellationToken)
+								? await context.FindAsync<T>(primaryDataSource, identities, sort, businessEntityID, cancellationToken).ConfigureAwait(false)
 								: new List<T>();
 
 						// update results & cache
-						missing.ForEach(obj =>
-						{
-							results[obj.GetEntityID()] = obj;
-						});
-						await context.EntityDefinition.CacheStorage.SetAsync(missing);
+						missing.ForEach(obj => results[obj.GetEntityID()] = obj);
+						await context.EntityDefinition.CacheStorage.SetAsync(missing).ConfigureAwait(false);
 #if DEBUG
 						RepositoryMediator.WriteLogs("FIND: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
 #endif
@@ -1917,17 +1914,17 @@ namespace net.vieapps.Components.Repository
 			{
 				objects = identities == null || identities.Count > 0
 					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
+						? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
+							? await context.FindAsync<T>(primaryDataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false)
 							: new List<T>()
 					: new List<T>();
 
 				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
 					if (!string.IsNullOrWhiteSpace(cacheKey))
-						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
-					await context.EntityDefinition.CacheStorage.SetAsync(objects);
+						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
+					await context.EntityDefinition.CacheStorage.SetAsync(objects).ConfigureAwait(false);
 #if DEBUG
 					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
 #endif
@@ -2066,7 +2063,7 @@ namespace net.vieapps.Components.Repository
 
 			// check cache
 			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && await context.EntityDefinition.CacheStorage.ExistsAsync(cacheKey)
-				? await context.EntityDefinition.CacheStorage.GetAsync<long>(cacheKey)
+				? await context.EntityDefinition.CacheStorage.GetAsync<long>(cacheKey).ConfigureAwait(false)
 				: -1;
 			if (total > -1)
 				return total;
@@ -2074,9 +2071,9 @@ namespace net.vieapps.Components.Repository
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			total = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? await context.CountAsync<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
+				? await context.CountAsync<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
 				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? await context.CountAsync<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
+					? await context.CountAsync<T>(primaryDataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false)
 					: 0;
 
 #if DEBUG
@@ -2090,7 +2087,7 @@ namespace net.vieapps.Components.Repository
 
 			// update cache and return
 			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
-				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, cacheTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
+				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, cacheTime < 1  ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
 			return total;
 		}
 
@@ -2296,9 +2293,9 @@ namespace net.vieapps.Components.Repository
 			var identities = context.EntityDefinition.CacheStorage == null
 				? null
 				: primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await context.SearchIdentitiesAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken)
+					? await context.SearchIdentitiesAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
 					: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-						? await context.SearchIdentitiesAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken)
+						? await context.SearchIdentitiesAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
 						: new List<string>();
 
 #if DEBUG
@@ -2320,7 +2317,7 @@ namespace net.vieapps.Components.Repository
 				RepositoryMediator.WriteLogs("SEARCH: Total " + identities.Count + " identities are searched [" + identities.ToString(" - ") + "]");
 #endif
 				// get cached objects
-				var cached = await context.EntityDefinition.CacheStorage.GetAsync(identities.Select(id => id.GetCacheKey<T>()));
+				var cached = await context.EntityDefinition.CacheStorage.GetAsync(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
 				if (cached != null)
 				{
 #if DEBUG
@@ -2346,17 +2343,14 @@ namespace net.vieapps.Components.Repository
 					if (identities.Count > 0)
 					{
 						var missing = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? await context.FindAsync<T>(primaryDataSource, identities, null, businessEntityID, null, cancellationToken)
+							? await context.FindAsync<T>(primaryDataSource, identities, null, businessEntityID, null, cancellationToken).ConfigureAwait(false)
 							: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-								? await context.FindAsync<T>(primaryDataSource, identities, null, businessEntityID, cancellationToken)
+								? await context.FindAsync<T>(primaryDataSource, identities, null, businessEntityID, cancellationToken).ConfigureAwait(false)
 								: new List<T>();
 
 						// update results & cache
-						missing.ForEach(obj =>
-						{
-							results[obj.GetEntityID()] = obj;
-						});
-						await context.EntityDefinition.CacheStorage.SetAsync(missing);
+						missing.ForEach(obj => results[obj.GetEntityID()] = obj);
+						await context.EntityDefinition.CacheStorage.SetAsync(missing).ConfigureAwait(false);
 #if DEBUG
 						RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
 #endif
@@ -2372,15 +2366,15 @@ namespace net.vieapps.Components.Repository
 			{
 				objects = identities == null || identities.Count > 0
 					? primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await context.SearchAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken)
+						? await context.SearchAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
 						: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-							? await context.SearchAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken)
+							? await context.SearchAsync<T>(primaryDataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
 							: new List<T>()
 					: new List<T>();
 
 				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
 				{
-					await context.EntityDefinition.CacheStorage.SetAsync(objects);
+					await context.EntityDefinition.CacheStorage.SetAsync(objects).ConfigureAwait(false);
 #if DEBUG
 					RepositoryMediator.WriteLogs("SEARCH: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
 #endif
@@ -2502,9 +2496,9 @@ namespace net.vieapps.Components.Repository
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			var total = primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? await context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, null, cancellationToken)
+				? await context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, null, cancellationToken).ConfigureAwait(false)
 				: primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? await context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, cancellationToken)
+					? await context.CountAsync<T>(primaryDataSource, query, filter, businessEntityID, cancellationToken).ConfigureAwait(false)
 					: 0;
 
 #if DEBUG
