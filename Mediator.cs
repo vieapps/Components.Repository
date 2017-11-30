@@ -1712,7 +1712,7 @@ namespace net.vieapps.Components.Repository
 								: new List<T>();
 
 						// update results & cache
-						missing.ForEach(obj =>
+						missing.Where(obj => obj != null).ForEach(obj =>
 						{
 							results[obj.GetEntityID()] = obj;
 						});
@@ -1897,7 +1897,7 @@ namespace net.vieapps.Components.Repository
 								: new List<T>();
 
 						// update results & cache
-						missing.ForEach(obj => results[obj.GetEntityID()] = obj);
+						missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
 						await context.EntityDefinition.CacheStorage.SetAsync(missing).ConfigureAwait(false);
 #if DEBUG
 						RepositoryMediator.WriteLogs("FIND: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -2714,7 +2714,7 @@ namespace net.vieapps.Components.Repository
 		public static void Set<T>(this Cache cache, IEnumerable<T> objects, int expirationTime = 0) where T : class
 		{
 			if (objects != null)
-				cache.Set(objects.ToDictionary(o => o.GetCacheKey()), null, expirationTime);
+				cache.Set(objects.Where(obj => obj != null).ToDictionary(obj => obj.GetCacheKey()), null, expirationTime);
 		}
 
 		/// <summary>
@@ -2727,7 +2727,7 @@ namespace net.vieapps.Components.Repository
 		public static Task SetAsync<T>(this Cache cache, IEnumerable<T> objects, int expirationTime = 0) where T : class
 		{
 			return objects != null
-				? cache.SetAsync(objects.ToDictionary(o => o.GetCacheKey()), null, expirationTime)
+				? cache.SetAsync(objects.Where(obj => obj != null).ToDictionary(obj => obj.GetCacheKey()), null, expirationTime)
 				: Task.CompletedTask;
 		}
 

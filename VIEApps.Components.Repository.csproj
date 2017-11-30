@@ -37,13 +37,15 @@
 		<None Remove=".DS_Store" />
 		<None Remove=".gitattributes" />
 		<None Remove=".gitignore" />
+		<None Remove="LICENSE" />
 		<None Remove="README.md" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="MongoDB.Driver" Version="2.4.4" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.5.1801" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.5.1801-rc" />
 		<PackageReference Include="VIEApps.Components.Security" Version="10.1.3.1712" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.4.1801-rc" />
 	</ItemGroup>
 
 </Project>
