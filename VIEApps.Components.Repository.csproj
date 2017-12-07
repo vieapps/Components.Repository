@@ -13,7 +13,10 @@
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.1.5.1801</Version>
+		<Version>10.1.5.1801-rc5</Version>
+		<SignAssembly>false</SignAssembly>
+		<DelaySign>false</DelaySign>
+		<AssemblyOriginatorKeyFile>..\VIEApps.Components.snk</AssemblyOriginatorKeyFile>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>The tiny ORM-ish library to help .NET Standard 2.0 POCO objects work with both NoSQL and SQL databases in the same time</Description>
 		<Authors>VIEApps.net</Authors>
@@ -43,9 +46,9 @@
 
 	<ItemGroup>
 		<PackageReference Include="MongoDB.Driver" Version="2.4.4" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.5.1801-rc" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.1.3.1712" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.4.1801-rc" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.5.1801-rc5" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.1.4.1801-rc5" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.4.1801-rc5" />
 	</ItemGroup>
 
 </Project>

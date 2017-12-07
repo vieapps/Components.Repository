@@ -528,18 +528,18 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object to create instance in repository</param>
-		public static Task CreateAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task CreateAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
 				try
 				{
-					return RepositoryMediator.CreateAsync(context, aliasTypeName, @object, cancellationToken);
+					await RepositoryMediator.CreateAsync(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -713,18 +713,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<T> GetAsync<T>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, true, cancellationToken);
+					return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, true, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<T>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -819,18 +819,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<T> GetAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.GetAsync<T>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken);
+					return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<T>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -1147,18 +1147,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task ReplaceAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task ReplaceAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
 				try
 				{
-					return RepositoryMediator.ReplaceAsync<T>(context, aliasTypeName, @object, cancellationToken);
+					await RepositoryMediator.ReplaceAsync<T>(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<T>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -1339,18 +1339,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task UpdateAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task UpdateAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
 				try
 				{
-					return RepositoryMediator.UpdateAsync<T>(context, aliasTypeName, @object);
+					await RepositoryMediator.UpdateAsync<T>(context, aliasTypeName, @object).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<T>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -1479,18 +1479,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task DeleteAsync<T>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteAsync<T>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
 				try
 				{
-					return RepositoryMediator.DeleteAsync<T>(context, aliasTypeName, id, cancellationToken);
+					await RepositoryMediator.DeleteAsync<T>(context, aliasTypeName, id, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<T>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -1581,18 +1581,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">Filter expression to filter instances to delete</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task DeleteManyAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteManyAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
 				try
 				{
-					return RepositoryMediator.DeleteManyAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken);
+					await RepositoryMediator.DeleteManyAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -1949,18 +1949,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
+					return await RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<List<T>>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -2062,7 +2062,7 @@ namespace net.vieapps.Components.Repository
 			context.AliasTypeName = aliasTypeName;
 
 			// check cache
-			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && await context.EntityDefinition.CacheStorage.ExistsAsync(cacheKey)
+			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && await context.EntityDefinition.CacheStorage.ExistsAsync(cacheKey).ConfigureAwait(false)
 				? await context.EntityDefinition.CacheStorage.GetAsync<long>(cacheKey).ConfigureAwait(false)
 				: -1;
 			if (total > -1)
@@ -2103,18 +2103,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
+					return await RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<long>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -2202,10 +2202,7 @@ namespace net.vieapps.Components.Repository
 								: new List<T>();
 
 						// update results & cache
-						missing.ForEach(obj =>
-						{
-							results[obj.GetEntityID()] = obj;
-						});
+						missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
 						context.EntityDefinition.CacheStorage.Set(missing);
 #if DEBUG
 						RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -2349,7 +2346,7 @@ namespace net.vieapps.Components.Repository
 								: new List<T>();
 
 						// update results & cache
-						missing.ForEach(obj => results[obj.GetEntityID()] = obj);
+						missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
 						await context.EntityDefinition.CacheStorage.SetAsync(missing).ConfigureAwait(false);
 #if DEBUG
 						RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
@@ -2396,18 +2393,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> SearchAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.SearchAsync<T>(context, aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
+					return await RepositoryMediator.SearchAsync<T>(context, aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<List<T>>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}
@@ -2524,18 +2521,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
-		public static Task<long> CountAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
 				try
 				{
-					return RepositoryMediator.CountAsync<T>(context, aliasTypeName, query, filter, businessEntityID, cancellationToken);
+					return await RepositoryMediator.CountAsync<T>(context, aliasTypeName, query, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					return Task.FromException<long>(new RepositoryOperationException(ex));
+					throw ex;
 				}
 			}
 		}

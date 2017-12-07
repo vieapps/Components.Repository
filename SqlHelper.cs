@@ -1267,7 +1267,6 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		public static void DeleteMany<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
-
 		}
 
 		/// <summary>
@@ -1328,12 +1327,12 @@ namespace net.vieapps.Components.Repository
 				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {definition.MultipleParentAssociatesTable} AS Link ON Origin.{definition.PrimaryKey}=Link.{definition.MultipleParentAssociatesLinkColumn}" : "");
 
 			// filtering expressions (WHERE)
-			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
+			var where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
 				? $" WHERE {statementsInfo.Item1.Item1}"
 				: "";
 
 			// ordering expressions (ORDER BY)
-			string orderby = statementsInfo.Item2;
+			var orderby = statementsInfo.Item2;
 
 			// statements
 			var select = $"SELECT {(gotAssociateWithMultipleParents ? "DISTINCT " : "")}" + string.Join(", ", columns) + tables + where;
@@ -1416,8 +1415,8 @@ namespace net.vieapps.Components.Repository
 
 		static void Append(this DataTable dataTable, DbDataReader dataReader)
 		{
-			object[] data = new object[dataReader.FieldCount];
-			for (int index = 0; index < dataReader.FieldCount; index++)
+			var data = new object[dataReader.FieldCount];
+			for (var index = 0; index < dataReader.FieldCount; index++)
 				data[index] = dataReader[index];
 			dataTable.LoadDataRow(data, true);
 		}
@@ -1663,7 +1662,7 @@ namespace net.vieapps.Components.Repository
 					.Distinct()
 					.ToList();
 
-				var objects = (await context.SelectAsync<T>(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken))
+				var objects = (await context.SelectAsync<T>(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToDictionary(@object => @object.GetEntityID(context.EntityDefinition.PrimaryKey));
 
@@ -1671,7 +1670,7 @@ namespace net.vieapps.Components.Repository
 				if (otherAttributes.Count > 0)
 				{
 					otherAttributes.Add(context.EntityDefinition.PrimaryKey);
-					(await context.SelectAsync<T>(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false, cancellationToken))
+					(await context.SelectAsync<T>(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false, cancellationToken).ConfigureAwait(false))
 						.ForEach(data =>
 						{
 							var id = data[context.EntityDefinition.PrimaryKey].CastAs<string>();

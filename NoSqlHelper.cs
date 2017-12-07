@@ -345,7 +345,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<T> GetAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var objects = await collection.FindAsync(filter, sort, 1, 1, options, cancellationToken);
+			var objects = await collection.FindAsync(filter, sort, 1, 1, options, cancellationToken).ConfigureAwait(false);
 			return objects != null && objects.Count > 0
 				? objects[0]
 				: null;
@@ -662,7 +662,7 @@ namespace net.vieapps.Components.Repository
 			// replace whole document when got a generic of primitive (workaround)
 			if (gotGenericPrimitives)
 			{
-				await collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken);
+				await collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken).ConfigureAwait(false);
 				return;
 			}
 
@@ -691,7 +691,7 @@ namespace net.vieapps.Components.Repository
 			});
 
 			if (updater != null)
-				await collection.UpdateOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options, cancellationToken);
+				await collection.UpdateOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options, cancellationToken).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -844,10 +844,9 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			if (@object == null)
-				throw new NullReferenceException("Cannot delete because the object is null");
-
-			return collection.DeleteAsync(@object.GetEntityID(), options, cancellationToken);
+			return @object == null
+				? throw new NullReferenceException("Cannot delete because the object is null")
+				: collection.DeleteAsync(@object.GetEntityID(), options, cancellationToken);
 		}
 
 		/// <summary>
@@ -1583,7 +1582,7 @@ namespace net.vieapps.Components.Repository
 				results = results.Limit(pageSize);
 			}
 
-			return (await results.Project(Builders<T>.Projection.MetaTextScore("SearchScore")).ToListAsync(cancellationToken))
+			return (await results.Project(Builders<T>.Projection.MetaTextScore("SearchScore")).ToListAsync(cancellationToken).ConfigureAwait(false))
 				.Select(doc => doc["_id"].AsString)
 				.ToList();
 		}
@@ -1811,7 +1810,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// create the blank document for ensuring the collection is created
-			if (await collection.CountAsync(Builders<BsonDocument>.Filter.Empty) < 1)
+			if (await collection.CountAsync(Builders<BsonDocument>.Filter.Empty).ConfigureAwait(false) < 1)
 			{
 				var task = Task.Run(async () =>
 				{
@@ -1823,7 +1822,7 @@ namespace net.vieapps.Components.Repository
 						{
 							await Task.Delay(456, CancellationToken.None).ConfigureAwait(false);
 							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, CancellationToken.None).ConfigureAwait(false);
-						});
+						}).ConfigureAwait(false);
 					}
 					catch { }
 				}).ConfigureAwait(false);
