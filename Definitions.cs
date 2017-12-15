@@ -762,9 +762,6 @@ namespace net.vieapps.Components.Repository
 			if (settings["cacheRegion"] != null)
 			{
 				var cacheRegion = (settings["cacheRegion"] as JValue).Value as string;
-				var cacheExpirationType = settings["cacheExpirationType"] != null
-					? (settings["cacheExpirationType"] as JValue).Value as string
-					: "Sliding";
 				var cacheExpirationTime = 30;
 				if (settings["cacheExpirationTime"] != null)
 					try
@@ -777,7 +774,10 @@ namespace net.vieapps.Components.Repository
 				var cacheActiveSynchronize = settings["cacheActiveSynchronize"] != null
 					? ((settings["cacheActiveSynchronize"] as JValue).Value as string).IsEquals("true")
 					: false;
-				RepositoryMediator.EntityDefinitions[typeName].CacheStorage = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize);
+				var cacheProvider = settings["cacheProvider"] != null
+					? (settings["cacheProvider"] as JValue).Value as string
+					: null;
+				RepositoryMediator.EntityDefinitions[typeName].CacheStorage = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
 			}
 		}
 
