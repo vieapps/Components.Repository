@@ -92,7 +92,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static EntityDefinition GetEntityDefinition<T>() where T : class
 		{
-			return RepositoryMediator.GetEntityDefinition(typeof(T));
+			return RepositoryMediator.GetEntityDefinition(typeof(T)) ?? throw new InformationNotFoundException($"The entity definition [{typeof(T).GetTypeName()}] is not found");
 		}
 		#endregion
 

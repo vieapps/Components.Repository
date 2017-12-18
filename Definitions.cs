@@ -195,7 +195,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Update settings
-		internal static void Update(JObject settings)
+		internal static void Update(JObject settings, Action<string, Exception> tracker = null)
 		{
 			// check settings
 			if (settings == null)
@@ -252,6 +252,7 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// update
+			tracker?.Invoke($"Update settings of repository [{typeName}]", null);
 			var data = settings["primaryDataSource"] != null
 				? (settings["primaryDataSource"] as JValue).Value as string
 				: null;
@@ -710,7 +711,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Update settings
-		internal static void Update(JObject settings)
+		internal static void Update(JObject settings, Action<string, Exception> tracker = null)
 		{
 			// check settings
 			if (settings == null)
@@ -728,6 +729,7 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// update
+			tracker?.Invoke($"Update settings of entity [{typeName}]", null);
 			var data = settings["primaryDataSource"] != null
 				? (settings["primaryDataSource"] as JValue).Value as string
 				: null;

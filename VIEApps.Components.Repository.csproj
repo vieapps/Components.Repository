@@ -46,7 +46,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="MongoDB.Driver" Version="2.5.0" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.5.1801-rc8" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.5.1801-rc9" />
 		<PackageReference Include="VIEApps.Components.Security" Version="10.1.4.1801-rc8" />
 		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.4.1801-rc8" />
 	</ItemGroup>

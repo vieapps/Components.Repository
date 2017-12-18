@@ -1715,7 +1715,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Schemas & Indexes
-		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource)
+		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null)
 		{
 			// prepare indexes
 			var prefix = "IDX_" + definition.CollectionName;

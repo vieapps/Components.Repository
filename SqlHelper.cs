@@ -2715,7 +2715,7 @@ namespace net.vieapps.Components.Repository
 				}
 		}
 
-		internal static async Task EnsureSchemasAsync(this EntityDefinition definition, DataSource dataSource)
+		internal static async Task EnsureSchemasAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null)
 		{
 			// check existed
 			var isExisted = true;
