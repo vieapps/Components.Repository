@@ -24,7 +24,7 @@ using net.vieapps.Components.Security;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Allow to use the Repository functionality without direct reference to <see cref="RepositoryBase">RepositoryBase</see>
+	/// Allow to use the Repository functionality without direct reference to <see cref="RepositoryBase"/> class
 	/// </summary>
 	public static class RepositoryMediator
 	{
@@ -459,7 +459,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -539,7 +539,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -631,7 +631,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -724,7 +724,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -777,7 +777,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -830,7 +830,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1060,7 +1060,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1158,7 +1158,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1254,7 +1254,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1350,7 +1350,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1420,7 +1420,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1490,7 +1490,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1541,7 +1541,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1592,7 +1592,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1777,7 +1777,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -1960,7 +1960,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -2037,7 +2037,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -2114,7 +2114,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -2259,7 +2259,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -2404,7 +2404,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -2468,7 +2468,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw new RepositoryOperationException(ex);
+					throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -2532,7 +2532,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 			}
 		}
@@ -3014,49 +3014,35 @@ namespace net.vieapps.Components.Repository
 		#region [Logs]
 		static string LogsPath = null;
 
-		internal static async Task WriteLogs(string filePath, List<string> logs, Exception ex)
+		internal static async Task WriteLogsAsync(string filePath, List<string> logs, Exception ex)
 		{
 			// prepare
 			var info = DateTime.Now.ToString("HH:mm:ss.fff") + "\t" + "[" + Process.GetCurrentProcess().Id.ToString()
 				+ " : " + AppDomain.CurrentDomain.Id.ToString() + " : " + Thread.CurrentThread.ManagedThreadId.ToString() + "]" + "\t";
 
 			var content = "";
-			if (logs != null)
-				logs.ForEach((log) =>
-				{
-					content += !string.IsNullOrWhiteSpace(log) ? info + log + "\r\n" : "";
-				});
+			logs?.ForEach(log => content += !string.IsNullOrWhiteSpace(log) ? info + log + "\r\n" : "");
 
 			if (ex != null)
 			{
-				content += info + "- " + (ex.Message != null ? ex.Message : "No error message") + " [" + ex.GetType().ToString() + "]" + "\r\n"
+				content += info + "- " + (ex.Message != null ? ex.Message : "No error message")
+					+ " [" + ex.GetType().ToString() + "]" + "\r\n"
 					+ info + "- " + (ex.StackTrace != null ? ex.StackTrace : "No stack trace");
 
-				ex = ex.InnerException;
+				var inner = ex.InnerException;
 				var counter = 1;
-				while (ex != null)
+				while (inner != null)
 				{
-					content += info + "- Inner (" + counter.ToString() + "): ----------------------------------" + "\r\n"
-						+ info + "- " + (ex.Message != null ? ex.Message : "No error message") + " [" + ex.GetType().ToString() + "]" + "\r\n"
-						+ info + "- " + (ex.StackTrace != null ? ex.StackTrace : "No stack trace");
-
+					content += info + $"- Inner ({counter}): ----------------------------------" + "\r\n"
+						+ info + "- " + (inner.Message != null ? inner.Message : "No error message") + " [" + inner.GetType().ToString() + "]" + "\r\n"
+						+ info + "- " + (inner.StackTrace != null ? inner.StackTrace : "No stack trace");
 					counter++;
-					ex = ex.InnerException;
+					inner = inner.InnerException;
 				}
 			}
 
 			// write logs into file
-			try
-			{
-				using (var fileStream = new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite, 4096, true))
-				{
-					using (var fileWriter = new System.IO.StreamWriter(fileStream, System.Text.Encoding.UTF8))
-					{
-						await fileWriter.WriteLineAsync(content);
-					}
-				}
-			}
-			catch { }
+			await UtilityService.WriteTextFileAsync(filePath, content, true).ConfigureAwait(false);
 		}
 
 		internal static void WriteLogs(List<string> logs, Exception ex)
@@ -3078,16 +3064,16 @@ namespace net.vieapps.Components.Repository
 				}
 				catch { }
 
-			// stop if a valid path is not found
-			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
-				return;
-
-			// build file path and write logs via other thread
-			var filePath = RepositoryMediator.LogsPath + DateTime.Now.ToString("yyyy-MM-dd-HH") + ".repository.txt";
-			Task.Run(async () =>
-			{
-				await RepositoryMediator.WriteLogs(filePath, logs, ex);
-			}).ConfigureAwait(false);
+			// write logs via other thread
+			if (!string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
+				Task.Run(async () =>
+				{
+					try
+					{
+						await RepositoryMediator.WriteLogsAsync(RepositoryMediator.LogsPath + DateTime.Now.ToString("yyyy-MM-dd-HH") + ".repository.txt", logs, ex).ConfigureAwait(false);
+					}
+					catch { }
+				}).ConfigureAwait(false);
 		}
 
 		internal static void WriteLogs(string log, Exception ex = null)
