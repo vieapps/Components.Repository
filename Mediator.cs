@@ -3052,15 +3052,15 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					RepositoryMediator.LogsPath = UtilityService.GetAppSetting("LogsPath");
-					if (!RepositoryMediator.LogsPath.EndsWith(@"\"))
-						RepositoryMediator.LogsPath += @"\";
+					if (!RepositoryMediator.LogsPath.EndsWith(Path.DirectorySeparatorChar.ToString()))
+						RepositoryMediator.LogsPath += Path.DirectorySeparatorChar.ToString();
 				}
 				catch { }
 
 			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				try
 				{
-					RepositoryMediator.LogsPath = Directory.GetCurrentDirectory() + @"\Logs\";
+					RepositoryMediator.LogsPath = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar.ToString() + "Logs" + Path.DirectorySeparatorChar.ToString();
 				}
 				catch { }
 
