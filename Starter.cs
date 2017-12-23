@@ -27,7 +27,7 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				tracker?.Invoke($"Initialize & registering types of the assembly: {assembly.GetName().Name}", null);
+				tracker?.Invoke($"Initialize the assembly: {assembly.GetName().Name}", null);
 
 				// repositories
 				assembly.GetTypes()
@@ -51,13 +51,13 @@ namespace net.vieapps.Components.Repository
 			{
 				if (ex.LoaderExceptions.FirstOrDefault(e => e is System.IO.FileNotFoundException) == null)
 				{
-					tracker?.Invoke($"Error occurred while registering types of the assembly: {assembly.GetName().Name}", ex);
+					tracker?.Invoke($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
 					throw ex;
 				}
 			}
 			catch (Exception ex)
 			{
-				tracker?.Invoke($"Error occurred while registering types of the assembly: {assembly.GetName().Name}", ex);
+				tracker?.Invoke($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
 				throw ex;
 			}
 		}
@@ -192,7 +192,7 @@ namespace net.vieapps.Components.Repository
 						tracker?.Invoke($"Error occurred while ensuring schemas: {ex.Message}", ex);
 						RepositoryMediator.WriteLogs($"Cannot ensure schemas of SQL [{definition.Type.GetTypeName(true)}]: {ex.Message}", ex);
 					}
-			}, default(CancellationToken), true, false);
+			}, default(CancellationToken), true, false).ConfigureAwait(false);
 		}
 
 		static async Task EnsureNoSqlIndexesAsync(Action<string, Exception> tracker = null)
@@ -224,7 +224,7 @@ namespace net.vieapps.Components.Repository
 						tracker?.Invoke($"Error occurred while ensuring indexes: {ex.Message}", ex);
 						RepositoryMediator.WriteLogs($"Cannot ensure indexes of NoSQL [{definition.Type.GetTypeName(true)}]: {ex.Message}", ex);
 					}
-			}, default(CancellationToken), true, false);
+			}, default(CancellationToken), true, false).ConfigureAwait(false);
 		}
 	}
 }
