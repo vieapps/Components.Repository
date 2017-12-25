@@ -8,7 +8,7 @@
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
 		<AssemblyVersion>10.1.5.1801</AssemblyVersion>
 		<FileVersion>10.1.5.1801</FileVersion>
-		<InformationalVersion>v10.1.netstandard-2+rev:2018.01.02</InformationalVersion>
+		<InformationalVersion>v10.1.netstandard-2+rev:2017.12.25</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
@@ -46,9 +46,9 @@
 
 	<ItemGroup>
 		<PackageReference Include="MongoDB.Driver" Version="2.5.0" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.5.1801-rc9" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.1.4.1801-rc8" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.4.1801-rc8" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.5.1801" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.1.5.1801" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.5.1801" />
 	</ItemGroup>
 
 </Project>
