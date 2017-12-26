@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
@@ -22,7 +23,7 @@ namespace net.vieapps.Components.Repository
 	{
 
 		#region Client
-		internal static Dictionary<string, IMongoClient> Clients = new Dictionary<string, IMongoClient>();
+		internal static ConcurrentDictionary<string, IMongoClient> Clients = new ConcurrentDictionary<string, IMongoClient>();
 
 		/// <summary>
 		/// Gets a client for working with MongoDB
@@ -34,15 +35,14 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(connectionString))
 				return null;
 
-			IMongoClient client = null;
 			var key = "MongoClient#" + connectionString.Trim().ToLower().GetMD5();
-			if (!NoSqlHelper.Clients.TryGetValue(key, out client))
+			if (!NoSqlHelper.Clients.TryGetValue(key, out IMongoClient client))
 				lock (NoSqlHelper.Clients)
 				{
 					if (!NoSqlHelper.Clients.TryGetValue(key, out client))
 					{
 						client = new MongoClient(connectionString);
-						NoSqlHelper.Clients.Add(key, client);
+						NoSqlHelper.Clients.TryAdd(key, client);
 					}
 				}
 			return client;
@@ -64,7 +64,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 		}
 
-		internal static Dictionary<string, IMongoDatabase> Databases = new Dictionary<string, IMongoDatabase>();
+		internal static ConcurrentDictionary<string, IMongoDatabase> Databases = new ConcurrentDictionary<string, IMongoDatabase>();
 
 		/// <summary>
 		/// Gets a database of MongoDB
@@ -78,15 +78,14 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(connectionString) || string.IsNullOrWhiteSpace(databaseName))
 				return null;
 
-			IMongoDatabase database = null;
 			var key = databaseName.Trim() + "#" + connectionString.Trim().ToLower().GetMD5();
-			if (!NoSqlHelper.Databases.TryGetValue(key, out database))
+			if (!NoSqlHelper.Databases.TryGetValue(key, out IMongoDatabase database))
 				lock (NoSqlHelper.Databases)
 				{
 					if (!NoSqlHelper.Databases.TryGetValue(key, out database))
 					{
 						database = NoSqlHelper.GetDatabase(NoSqlHelper.GetClient(connectionString), databaseName, databaseSettings);
-						NoSqlHelper.Databases.Add(key, database);
+						NoSqlHelper.Databases.TryAdd(key, database);
 					}
 				}
 			return database;
@@ -94,7 +93,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Collection
-		internal static Dictionary<string, object> Collections = new Dictionary<string, object>();
+		internal static ConcurrentDictionary<string, object> Collections = new ConcurrentDictionary<string, object>();
 
 		/// <summary>
 		/// Gets a collection of MongoDB
@@ -130,15 +129,14 @@ namespace net.vieapps.Components.Repository
 			if (disableCache)
 				return NoSqlHelper.GetCollection<T>(NoSqlHelper.GetDatabase(connectionString, databaseName, databaseSettings), collectionName, collectionSettings);
 
-			object collection = null;
 			var key = collectionName.Trim() + "#" + (databaseName.Trim() + "#" + connectionString.Trim()).ToLower().GetMD5();
-			if (!NoSqlHelper.Collections.TryGetValue(key, out collection))
+			if (!NoSqlHelper.Collections.TryGetValue(key, out object collection))
 				lock (NoSqlHelper.Collections)
 				{
 					if (!NoSqlHelper.Collections.TryGetValue(key, out collection))
 					{
 						collection = NoSqlHelper.GetCollection<T>(NoSqlHelper.GetDatabase(connectionString, databaseName, databaseSettings), collectionName, collectionSettings);
-						NoSqlHelper.Collections.Add(key, collection);
+						NoSqlHelper.Collections.TryAdd(key, collection);
 					}
 				}
 			return collection as IMongoCollection<T>;
@@ -168,7 +166,7 @@ namespace net.vieapps.Components.Repository
 		public static void Create<T>(this IMongoCollection<T> collection, T @object, InsertOneOptions options = null) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot create new because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
 			collection.InsertOne(@object, options);
 		}
@@ -198,7 +196,7 @@ namespace net.vieapps.Components.Repository
 		public static Task CreateAsync<T>(this IMongoCollection<T> collection, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot create new because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
 			return collection.InsertOneAsync(@object, options, cancellationToken);
 		}
@@ -435,7 +433,7 @@ namespace net.vieapps.Components.Repository
 		public static ReplaceOneResult Replace<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot update because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update because the object is null");
 
 			return collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true });
 		}
@@ -466,7 +464,7 @@ namespace net.vieapps.Components.Repository
 		public static Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot update because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update because the object is null");
 
 			return collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken);
 		}
@@ -520,7 +518,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// check
 			if (@object == null)
-				throw new NullReferenceException("Cannot update because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update because the object is null");
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update");
 
@@ -602,7 +600,7 @@ namespace net.vieapps.Components.Repository
 		public static UpdateResult Update<T>(this IMongoCollection<T> collection, T @object, UpdateDefinition<T> update, UpdateOptions options = null) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot update because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update because the object is null");
 			else if (update == null)
 				throw new ArgumentException("No definition to update");
 			return collection.UpdateOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), update, options);
@@ -636,7 +634,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task UpdateAsync<T>(this IMongoCollection<T> collection, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot update because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update because the object is null");
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update");
 
@@ -723,7 +721,7 @@ namespace net.vieapps.Components.Repository
 		public static Task<UpdateResult> UpdateAsync<T>(this IMongoCollection<T> collection, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot update because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update because the object is null");
 			else if (update == null)
 				throw new ArgumentException("No definition to update");
 			return collection.UpdateOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), update, options, cancellationToken);
@@ -786,7 +784,7 @@ namespace net.vieapps.Components.Repository
 		public static DeleteResult Delete<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot delete because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot delete because the object is null");
 
 			return collection.Delete(@object.GetEntityID(), options);
 		}
@@ -845,7 +843,7 @@ namespace net.vieapps.Components.Repository
 		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return @object == null
-				? throw new NullReferenceException("Cannot delete because the object is null")
+				? throw new ArgumentNullException(nameof(@object), "Cannot delete because the object is null")
 				: collection.DeleteAsync(@object.GetEntityID(), options, cancellationToken);
 		}
 

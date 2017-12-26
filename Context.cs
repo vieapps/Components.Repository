@@ -307,11 +307,11 @@ namespace net.vieapps.Components.Repository
 			{
 				ID = this.ID,
 				AliasTypeName = this.AliasTypeName,
-				EntityDefinition = this.EntityDefinition,
-				Operation = this.Operation,
-				PreviousStateData = this.PreviousStateData,
-				CurrentStateData = this.CurrentStateData,
-				Exception = this.Exception
+				EntityDefinition = this.EntityDefinition.Clone(),
+				Operation = this.Operation.Clone(),
+				PreviousStateData = this.PreviousStateData.Clone(),
+				CurrentStateData = this.CurrentStateData.Clone(),
+				Exception = this.Exception.Clone()
 			};
 		}
 		#endregion

@@ -153,7 +153,7 @@ namespace net.vieapps.Components.Repository
 				? selector()
 				: new List<Assembly>() { Assembly.GetCallingAssembly() }.Concat(Assembly.GetCallingAssembly()
 					.GetReferencedAssemblies()
-					.Where(n => !n.Name.IsStartsWith("MsCorLib") && !n.Name.IsStartsWith("System") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsEquals("NETStandard")
+					.Where(n => !n.Name.IsStartsWith("mscorlib") && !n.Name.IsStartsWith("System") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsEquals("NETStandard")
 						&& !n.Name.IsStartsWith("Newtonsoft") && !n.Name.IsStartsWith("WampSharp") && !n.Name.IsStartsWith("Castle.") && !n.Name.IsStartsWith("StackExchange.")
 						&& !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("MySql") && !n.Name.IsStartsWith("Oracle") && !n.Name.IsStartsWith("Npgsql")
 					)
@@ -172,7 +172,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						tracker?.Invoke($"Ensure schemas: {definition.Type.ToString()} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
-						await definition.EnsureSchemasAsync(dataSource);
+						await definition.EnsureSchemasAsync(dataSource).ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -185,7 +185,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						tracker?.Invoke($"Ensure schemas: {definition.Type.ToString()} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
-						await definition.EnsureSchemasAsync(dataSource);
+						await definition.EnsureSchemasAsync(dataSource).ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -204,7 +204,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						tracker?.Invoke($"Ensure indexes: {definition.Type.ToString()} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
-						await definition.EnsureIndexesAsync(dataSource);
+						await definition.EnsureIndexesAsync(dataSource).ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -217,7 +217,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						tracker?.Invoke($"Ensure indexes: {definition.Type.ToString()} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
-						await definition.EnsureIndexesAsync(dataSource);
+						await definition.EnsureIndexesAsync(dataSource).ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{

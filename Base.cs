@@ -150,7 +150,7 @@ namespace net.vieapps.Components.Repository
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -203,16 +203,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in the repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task CreateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task CreateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.CreateAsync<TEntity>(context, aliasTypeName, @object, cancellationToken);
+				await RepositoryMediator.CreateAsync<TEntity>(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				return Task.FromException(ex);
+				throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -285,7 +285,7 @@ namespace net.vieapps.Components.Repository
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -322,11 +322,17 @@ namespace net.vieapps.Components.Repository
 		protected virtual void Get(RepositoryContext context, string aliasTypeName)
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
-			{
-				var instance = RepositoryBase<T>.Get<T>(context, aliasTypeName, this.ID);
-				if (instance != null)
-					this.CopyFrom(instance);
-			}
+				try
+				{
+					var instance = RepositoryBase<T>.Get<T>(context, aliasTypeName, this.ID);
+					if (instance != null)
+						this.CopyFrom(instance);
+				}
+				catch (Exception ex)
+				{
+					context.Exception = ex;
+					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
+				}
 		}
 
 		/// <summary>
@@ -352,18 +358,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
 				return !string.IsNullOrWhiteSpace(id)
-					? RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id, true, cancellationToken)
+					? await RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id, true, cancellationToken).ConfigureAwait(false)
 					: null;
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				return Task.FromException<TEntity>(ex);
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -379,7 +385,7 @@ namespace net.vieapps.Components.Repository
 		{
 			return !string.IsNullOrWhiteSpace(id)
 				? RepositoryMediator.GetAsync<TEntity>(aliasTypeName, id, cancellationToken)
-				: null;
+				: Task.FromResult<TEntity>(null);
 		}
 
 		/// <summary>
@@ -406,14 +412,14 @@ namespace net.vieapps.Components.Repository
 			if (!string.IsNullOrWhiteSpace(this.ID))
 				try
 				{
-					var instance = await RepositoryBase<T>.GetAsync<T>(context, aliasTypeName, this.ID, cancellationToken);
+					var instance = await RepositoryBase<T>.GetAsync<T>(context, aliasTypeName, this.ID, cancellationToken).ConfigureAwait(false);
 					if (instance != null)
 						this.CopyFrom(instance);
 				}
 				catch (Exception ex)
 				{
 					context.Exception = ex;
-					throw ex;
+					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 				}
 		}
 
@@ -427,7 +433,7 @@ namespace net.vieapps.Components.Repository
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
 			{
-				var instance = await RepositoryBase<T>.GetAsync<T>(aliasTypeName, this.ID, cancellationToken);
+				var instance = await RepositoryBase<T>.GetAsync<T>(aliasTypeName, this.ID, cancellationToken).ConfigureAwait(false);
 				if (instance != null)
 					this.CopyFrom(instance);
 			}
@@ -454,7 +460,7 @@ namespace net.vieapps.Components.Repository
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -521,16 +527,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken);
+				return await RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				return Task.FromException<TEntity>(ex);
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -608,7 +614,7 @@ namespace net.vieapps.Components.Repository
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -661,16 +667,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.ReplaceAsync<TEntity>(context, aliasTypeName, @object, cancellationToken);
+				await RepositoryMediator.ReplaceAsync<TEntity>(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				return Task.FromException<TEntity>(ex);
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -739,7 +745,7 @@ namespace net.vieapps.Components.Repository
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -792,16 +798,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.UpdateAsync<TEntity>(context, aliasTypeName, @object, cancellationToken);
+				await RepositoryMediator.UpdateAsync<TEntity>(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				return Task.FromException<TEntity>(ex);
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -871,7 +877,7 @@ namespace net.vieapps.Components.Repository
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -926,16 +932,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task DeleteAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.DeleteAsync<TEntity>(context, aliasTypeName, id, cancellationToken);
+				await RepositoryMediator.DeleteAsync<TEntity>(context, aliasTypeName, id, cancellationToken).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				return Task.FromException(ex);
+				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -975,7 +981,7 @@ namespace net.vieapps.Components.Repository
 		{
 			return !string.IsNullOrWhiteSpace(this.ID)
 				? RepositoryBase<T>.DeleteAsync<T>(context, aliasTypeName, this.ID, cancellationToken)
-				: Task.FromException(new ArgumentNullException("ID", "The identity of the object is null or empty"));
+				: Task.FromException(new ArgumentException("The identity of the object is null or empty", nameof(this.ID)));
 		}
 
 		/// <summary>
@@ -988,7 +994,7 @@ namespace net.vieapps.Components.Repository
 		{
 			return !string.IsNullOrWhiteSpace(this.ID)
 				? RepositoryBase<T>.DeleteAsync<T>(aliasTypeName, this.ID, cancellationToken)
-				: Task.FromException(new ArgumentNullException("ID", "The identity of the object is null or empty"));
+				: Task.FromException(new ArgumentException("The identity of the object is null or empty", nameof(this.ID)));
 		}
 		#endregion
 
@@ -1010,7 +1016,7 @@ namespace net.vieapps.Components.Repository
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -1080,16 +1086,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task DeleteManyAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			try
 			{
-				return RepositoryMediator.DeleteManyAsync<TEntity>(context, aliasTypeName, filter, businessEntityID, cancellationToken);
+				await RepositoryMediator.DeleteManyAsync<TEntity>(context, aliasTypeName, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				return Task.FromException(ex);
+				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(TEntity).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
 			}
 		}
 
@@ -1850,7 +1856,7 @@ namespace net.vieapps.Components.Repository
 					return true;
 				}
 				else
-					return false;		
+					return false;
 			}
 			catch
 			{
@@ -1920,10 +1926,7 @@ namespace net.vieapps.Components.Repository
 				}
 				else if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null)
 				{
-					if ((this as IBusinessEntity).ExtendedProperties.ContainsKey(name))
-						(this as IBusinessEntity).ExtendedProperties[name] = value;
-					else
-						(this as IBusinessEntity).ExtendedProperties.Add(name, value);
+					(this as IBusinessEntity).ExtendedProperties[name] = value;
 					return true;
 				}
 				else
@@ -1967,23 +1970,24 @@ namespace net.vieapps.Components.Repository
 
 				// extended properties
 				if ((this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
-					(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
-					{
-						var type = property.Value != null
-							? property.Value.GetType()
-							: null;
+					(this as IBusinessEntity).ExtendedProperties
+						.ForEach(property =>
+						{
+							var type = property.Value != null
+								? property.Value.GetType()
+								: null;
 
-						if (addTypeOfExtendedProperties && type != null)
-							json.Add(new JProperty(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
+							if (addTypeOfExtendedProperties && type != null)
+								json.Add(new JProperty(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
 
-						var value = type == null || type.IsPrimitiveType()
-							? property.Value
-							: property.Value is RepositoryBase
-								? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
-								: property.Value.ToJson();
+							var value = type == null || type.IsPrimitiveType()
+								? property.Value
+								: property.Value is RepositoryBase
+									? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
+									: property.Value.ToJson();
 
-						json.Add(new JProperty(property.Key, value));
-					});
+							json.Add(new JProperty(property.Key, value));
+						});
 			}
 
 			// run the handler on pre-completed
@@ -2027,24 +2031,25 @@ namespace net.vieapps.Components.Repository
 
 				// extended properties
 				if ((this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
-					(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
-					{
-						var type = property.Value != null
-							? property.Value.GetType()
-							: null;
+					(this as IBusinessEntity).ExtendedProperties
+						.ForEach(property =>
+						{
+							var type = property.Value != null
+								? property.Value.GetType()
+								: null;
 
-						var value = type == null || type.IsPrimitiveType()
-							? property.Value
-							: property.Value is RepositoryBase
-								? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
-								: property.Value.ToXml();
+							var value = type == null || type.IsPrimitiveType()
+								? property.Value
+								: property.Value is RepositoryBase
+									? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
+									: property.Value.ToXml();
 
-						var element = addTypeOfExtendedProperties && type != null
-							? new XElement(XName.Get(property.Key), new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()), value)
-							: new XElement(XName.Get(property.Key), value);
+							var element = addTypeOfExtendedProperties && type != null
+								? new XElement(XName.Get(property.Key), new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()), value)
+								: new XElement(XName.Get(property.Key), value);
 
-						xml.Add(element);
-					});
+							xml.Add(element);
+						});
 			}
 
 			// run the handler
@@ -2126,9 +2131,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				if (this.Privileges == null)
-					this.Privileges = User.CombinePrivileges(this.OriginalPrivileges, this.Parent?.WorkingPrivileges);
-				return this.Privileges;
+				return this.Privileges ?? (this.Privileges = User.CombinePrivileges(this.OriginalPrivileges, this.Parent?.WorkingPrivileges));
 			}
 		}
 		#endregion

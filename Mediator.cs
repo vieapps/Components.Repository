@@ -396,8 +396,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Create;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// validate & re-update object
 			var currentState = context.SetCurrentState(@object);
@@ -475,8 +475,8 @@ namespace net.vieapps.Components.Repository
 		public static async Task CreateAsync<T>(RepositoryContext context, string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			context.Operation = RepositoryOperation.Create;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// validate & re-update object
 			var currentState = context.SetCurrentState(@object);
@@ -562,8 +562,8 @@ namespace net.vieapps.Components.Repository
 			if (callHandlers)
 			{
 				context.Operation = RepositoryOperation.Get;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				context.AliasTypeName = aliasTypeName;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			}
 
 			// call pre-handlers
@@ -653,8 +653,8 @@ namespace net.vieapps.Components.Repository
 			if (callHandlers)
 			{
 				context.Operation = RepositoryOperation.Get;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				context.AliasTypeName = aliasTypeName;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			}
 
 			// call pre-handlers
@@ -745,8 +745,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Get;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// find
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -797,8 +797,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Get;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// find
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -980,8 +980,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Update;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// check state
 			var previousInstance = @object != null
@@ -1077,8 +1077,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Update;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// check state
 			var previousInstance = @object != null
@@ -1176,8 +1176,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Update;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// check state
 			var previousInstance = @object != null
@@ -1271,8 +1271,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Update;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// check state
 			var previousInstance = @object != null
@@ -1368,8 +1368,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Delete;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// check existing
 			var @object = RepositoryMediator.Get<T>(context, aliasTypeName, id, false);
@@ -1437,8 +1437,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Delete;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// check existing
 			var @object = await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, false, cancellationToken).ConfigureAwait(false);
@@ -1509,8 +1509,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Delete;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -1559,8 +1559,8 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			context.Operation = RepositoryOperation.Delete;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// delete
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -1617,8 +1617,8 @@ namespace net.vieapps.Components.Repository
 		public static List<string> FindIdentities<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 
@@ -1650,8 +1650,8 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			List<T> objects = null;
@@ -1801,8 +1801,8 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 
@@ -1835,8 +1835,8 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			List<T> objects = null;
@@ -1982,8 +1982,8 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// check cache
 			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && context.EntityDefinition.CacheStorage.Exists(cacheKey)
@@ -2058,8 +2058,8 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// check cache
 			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && await context.EntityDefinition.CacheStorage.ExistsAsync(cacheKey).ConfigureAwait(false)
@@ -2136,8 +2136,8 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Search<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
 			List<T> objects = null;
@@ -2177,10 +2177,7 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs("SEARCH: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
 #endif
 					// prepare
-					var results = identities.ToDictionary<string, string, T>(
-							id => id,
-							id => default(T)
-						);
+					var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
 
 					// add cached objects
 					var ids = new List<string>();
@@ -2321,10 +2318,7 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs("SEARCH: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
 #endif
 					// prepare
-					var results = identities.ToDictionary<string, string, T>(
-							id => id,
-							id => default(T)
-						);
+					var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
 
 					// add cached objects
 					var ids = new List<string>();
@@ -2424,8 +2418,8 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);
@@ -2487,8 +2481,8 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 			context.AliasTypeName = aliasTypeName;
+			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 			// count
 			var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(context);

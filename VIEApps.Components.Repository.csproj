@@ -8,7 +8,7 @@
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
 		<AssemblyVersion>10.1.5.1801</AssemblyVersion>
 		<FileVersion>10.1.5.1801</FileVersion>
-		<InformationalVersion>v10.1.netstandard-2+rev:2017.12.25</InformationalVersion>
+		<InformationalVersion>v10.1.netstandard-2+rev:2017.12.26</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>

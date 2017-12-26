@@ -439,7 +439,7 @@ namespace net.vieapps.Components.Repository
 							var json = (value as string).StartsWith("[")
 								? JArray.Parse(value as string) as JToken
 								: JObject.Parse(value as string) as JToken;
-							value = (new JsonSerializer()).Deserialize(new JTokenReader(json), attribute.Type);
+							value = new JsonSerializer().Deserialize(new JTokenReader(json), attribute.Type);
 						}
 						else if (attribute.Type.IsEnum)
 							value = attribute.IsEnumString()
@@ -487,7 +487,7 @@ namespace net.vieapps.Components.Repository
 							var json = (value as string).StartsWith("[")
 								? JArray.Parse(value as string) as JToken
 								: JObject.Parse(value as string) as JToken;
-							value = (new JsonSerializer()).Deserialize(new JTokenReader(json), attribute.Type);
+							value = new JsonSerializer().Deserialize(new JTokenReader(json), attribute.Type);
 						}
 						else if (attribute.Type.IsEnum)
 							value = attribute.IsEnumString()
@@ -574,7 +574,7 @@ namespace net.vieapps.Components.Repository
 		public static void Create<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot create new because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -604,7 +604,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task CreateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot create new because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -933,7 +933,7 @@ namespace net.vieapps.Components.Repository
 		public static void Replace<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot replace because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -963,7 +963,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot replace because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -1046,7 +1046,7 @@ namespace net.vieapps.Components.Repository
 		public static void Update<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot update because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -1077,7 +1077,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (@object == null)
-				throw new NullReferenceException("Cannot update because the object is null");
+				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -2838,19 +2838,10 @@ namespace net.vieapps.Components.Repository
 				if (config.Section.SelectNodes("./add") is XmlNodeList nodes)
 					foreach (XmlNode node in nodes)
 					{
-						var info = node.ToJson();
-						var invariant = info["invariant"] != null
-							? (info["invariant"] as JValue).Value as string
-							: null;
-						var name = info["name"] != null
-							? (info["name"] as JValue).Value as string
-							: null;
-						var description = info["description"] != null
-							? (info["description"] as JValue).Value as string
-							: null;
-						var type = info["type"] != null
-							? Type.GetType((info["type"] as JValue).Value as string)
-							: null;
+						var invariant = node.Attributes["invariant"]?.Value;
+						var name = node.Attributes["name"]?.Value;
+						var description = node.Attributes["description"]?.Value;
+						var type = Type.GetType(node.Attributes["type"]?.Value);
 
 						if (!string.IsNullOrWhiteSpace(invariant) && type != null)
 						{
@@ -2871,22 +2862,22 @@ namespace net.vieapps.Components.Repository
 			/// <summary>
 			/// The name of DbProvider object.
 			/// </summary>
-			public string Name { get; set; }
+			public string Name { get; internal set; }
 
 			/// <summary>
 			/// The invariant of DbProvider object.
 			/// </summary>
-			public string Invariant { get; set; }
+			public string Invariant { get; internal set; }
 
 			/// <summary>
 			/// The description of DbProvider object.
 			/// </summary>
-			public string Description { get; set; }
+			public string Description { get; internal set; }
 
 			/// <summary>
 			/// The type of DbProvider object.
 			/// </summary>
-			public Type Type { get; set; }
+			public Type Type { get; internal set; }
 		}
 	}
 	#endregion
