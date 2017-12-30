@@ -3045,7 +3045,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				try
 				{
-					RepositoryMediator.LogsPath = UtilityService.GetAppSetting("LogsPath");
+					RepositoryMediator.LogsPath = UtilityService.GetAppSetting("Path:Logs");
 					if (!RepositoryMediator.LogsPath.EndsWith(Path.DirectorySeparatorChar.ToString()))
 						RepositoryMediator.LogsPath += Path.DirectorySeparatorChar.ToString();
 				}
@@ -3054,7 +3054,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				try
 				{
-					RepositoryMediator.LogsPath = Directory.GetCurrentDirectory() + Path.DirectorySeparatorChar.ToString() + "Logs" + Path.DirectorySeparatorChar.ToString();
+					RepositoryMediator.LogsPath = Path.Combine(Directory.GetCurrentDirectory(), "Logs") + Path.DirectorySeparatorChar.ToString();
 				}
 				catch { }
 
