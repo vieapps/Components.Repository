@@ -88,7 +88,7 @@ namespace net.vieapps.Components.Repository
 							var dataSource = DataSource.FromJson(dataSourceNode.ToJson());
 							if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
 							{
-								tracker?.Invoke($"Update setting of data-source [{dataSource.Name}]", null);
+								tracker?.Invoke($"Update settings of data-source [{dataSource.Name}]", null);
 								RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
 							}
 						}
