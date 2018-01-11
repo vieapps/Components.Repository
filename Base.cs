@@ -138,7 +138,41 @@ namespace net.vieapps.Components.Repository
 		/// Creates new an object
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in the repository</param>
+		public static void Create<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object) where TEntity : class
+		{
+			try
+			{
+				RepositoryMediator.Create<TEntity>(context, dataSource, @object);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Creates new an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in the repository</param>
+		public static void Create<TEntity>(DataSource dataSource, TEntity @object) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				RepositoryBase<T>.Create<TEntity>(context, dataSource, @object);
+			}
+		}
+
+		/// <summary>
+		/// Creates new an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object to create new instance in the repository</param>
 		public static void Create<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object) where TEntity : class
@@ -172,13 +206,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in the repository</param>
 		public static void Create<TEntity>(TEntity @object) where TEntity : class
 		{
-			RepositoryBase<T>.Create<TEntity>(null, @object);
+			RepositoryBase<T>.Create<TEntity>("", @object);
 		}
 
 		/// <summary>
 		/// Creates new the instance of this object
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		protected virtual void Create(RepositoryContext context, string aliasTypeName)
 		{
@@ -198,7 +232,43 @@ namespace net.vieapps.Components.Repository
 		/// Creates new an object
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in the repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task CreateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				await RepositoryMediator.CreateAsync<TEntity>(context, dataSource, @object, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Creates new an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in the repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task CreateAsync<TEntity>(DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				await RepositoryBase<T>.CreateAsync<TEntity>(context, dataSource, @object, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Creates new an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object to create new instance in the repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
@@ -238,13 +308,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task CreateAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.CreateAsync<TEntity>(null, @object);
+			return RepositoryBase<T>.CreateAsync<TEntity>("", @object);
 		}
 
 		/// <summary>
 		/// Creates new the instance of this object
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
@@ -270,7 +340,45 @@ namespace net.vieapps.Components.Repository
 		/// Gets an object
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <returns></returns>
+		public static TEntity Get<TEntity>(RepositoryContext context, DataSource dataSource, string id) where TEntity : class
+		{
+			try
+			{
+				return !string.IsNullOrWhiteSpace(id)
+					? RepositoryMediator.Get<TEntity>(context, dataSource, id)
+					: null;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <returns></returns>
+		public static TEntity Get<TEntity>(DataSource dataSource, string id) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryBase<T>.Get<TEntity>(context, dataSource, id);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <returns></returns>
@@ -311,13 +419,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static TEntity Get<TEntity>(string id) where TEntity : class
 		{
-			return RepositoryBase<T>.Get<TEntity>(null, id);
+			return RepositoryBase<T>.Get<TEntity>("", id);
 		}
 
 		/// <summary>
 		/// Gets the instance of this object
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		protected virtual void Get(RepositoryContext context, string aliasTypeName)
 		{
@@ -353,7 +461,47 @@ namespace net.vieapps.Components.Repository
 		/// Gets an object
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				return !string.IsNullOrWhiteSpace(id)
+					? await RepositoryMediator.GetAsync<TEntity>(context, dataSource, id, true, cancellationToken).ConfigureAwait(false)
+					: null;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryBase<T>.GetAsync<TEntity>(context, dataSource, id, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
@@ -397,13 +545,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<TEntity> GetAsync<TEntity>(string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.GetAsync<TEntity>(null, id, cancellationToken);
+			return RepositoryBase<T>.GetAsync<TEntity>("", id, cancellationToken);
 		}
 
 		/// <summary>
 		/// Gets the instance of this object
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
@@ -445,7 +593,47 @@ namespace net.vieapps.Components.Repository
 		/// Gets an object (the first matched with the filter)
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static TEntity Get<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null) where TEntity : class
+		{
+			try
+			{
+				return RepositoryMediator.Get<TEntity>(context, dataSource, filter, sort, businessEntityID);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static TEntity Get<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryBase<T>.Get<TEntity>(context, dataSource, filter, sort, businessEntityID);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
@@ -488,7 +676,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static TEntity Get<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null) where TEntity : class
 		{
-			return RepositoryBase<T>.Get<TEntity>(null, filter, sort, businessEntityID);
+			return RepositoryBase<T>.Get<TEntity>("", filter, sort, businessEntityID);
 		}
 
 		/// <summary>
@@ -513,14 +701,56 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static T Get(IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null)
 		{
-			return RepositoryBase<T>.Get(null, filter, sort, businessEntityID);
+			return RepositoryBase<T>.Get("", filter, sort, businessEntityID);
 		}
 
 		/// <summary>
 		/// Gets an object (the first matched with the filter)
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static async Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				return await RepositoryMediator.GetAsync<TEntity>(context, dataSource, filter, sort, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The first object that matched with the filter; otherwise null</returns>
+		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryBase<T>.GetAsync<TEntity>(context, dataSource, filter, sort, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Gets an object (the first matched with the filter)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="sort">The expression for sorting objects</param>
@@ -566,7 +796,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static Task<TEntity> GetAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.GetAsync<TEntity>(null, filter, sort, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.GetAsync<TEntity>("", filter, sort, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -593,7 +823,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static Task<T> GetAsync(IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.GetAsync(null, filter, sort, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.GetAsync("", filter, sort, businessEntityID, cancellationToken);
 		}
 		#endregion
 
@@ -602,7 +832,41 @@ namespace net.vieapps.Components.Repository
 		/// Updates an object (using replace method)
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		public static void Replace<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object) where TEntity : class
+		{
+			try
+			{
+				RepositoryMediator.Replace<TEntity>(context, dataSource, @object);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		public static void Replace<TEntity>(DataSource dataSource, TEntity @object) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				RepositoryBase<T>.Replace<TEntity>(context, dataSource, @object);
+			}
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		public static void Replace<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object) where TEntity : class
@@ -636,13 +900,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		public static void Replace<TEntity>(TEntity @object) where TEntity : class
 		{
-			RepositoryBase<T>.Replace<TEntity>(null, @object);
+			RepositoryBase<T>.Replace<TEntity>("", @object);
 		}
 
 		/// <summary>
 		/// Updates the instance of this object (using replace method)
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		protected virtual void Replace(RepositoryContext context, string aliasTypeName)
 		{
@@ -662,7 +926,45 @@ namespace net.vieapps.Components.Repository
 		/// Updates an object (using replace method)
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task ReplaceAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				await RepositoryMediator.ReplaceAsync<TEntity>(context, dataSource, @object, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				await RepositoryBase<T>.ReplaceAsync<TEntity>(context, dataSource, @object, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		/// <param name="cancellationToken">The cancellation token</param>
@@ -702,13 +1004,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task ReplaceAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.ReplaceAsync<TEntity>(null, @object, cancellationToken);
+			return RepositoryBase<T>.ReplaceAsync<TEntity>("", @object, cancellationToken);
 		}
 
 		/// <summary>
 		/// Updates the instance of this object (using replace method)
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		protected virtual Task ReplaceAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
@@ -733,7 +1035,41 @@ namespace net.vieapps.Components.Repository
 		/// Updates an object (only update changed attributes)
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		public static void Update<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object) where TEntity : class
+		{
+			try
+			{
+				RepositoryMediator.Update<TEntity>(context, dataSource, @object);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		public static void Update<TEntity>(DataSource dataSource, TEntity @object) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				RepositoryBase<T>.Update<TEntity>(context, dataSource, @object);
+			}
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		public static void Update<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object) where TEntity : class
@@ -767,13 +1103,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		public static void Update<TEntity>(TEntity @object) where TEntity : class
 		{
-			RepositoryBase<T>.Update<TEntity>(null, @object);
+			RepositoryBase<T>.Update<TEntity>("", @object);
 		}
 
 		/// <summary>
 		/// Updates the instance of this object (only update changed attributes)
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		protected virtual void Update(RepositoryContext context, string aliasTypeName)
 		{
@@ -793,7 +1129,45 @@ namespace net.vieapps.Components.Repository
 		/// Updates an object (only update changed attributes)
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task UpdateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				await RepositoryMediator.UpdateAsync<TEntity>(context, dataSource, @object, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				await RepositoryBase<T>.UpdateAsync<TEntity>(context, dataSource, @object, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		/// <param name="cancellationToken">The cancellation token</param>
@@ -833,13 +1207,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task UpdateAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.UpdateAsync<TEntity>(null, @object, cancellationToken);
+			return RepositoryBase<T>.UpdateAsync<TEntity>("", @object, cancellationToken);
 		}
 
 		/// <summary>
 		/// Updates the instance of this object (only update changed attributes)
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
@@ -865,7 +1239,41 @@ namespace net.vieapps.Components.Repository
 		/// Deletes an object
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		public static void Delete<TEntity>(RepositoryContext context, DataSource dataSource, string id) where TEntity : class
+		{
+			try
+			{
+				RepositoryMediator.Delete<TEntity>(context, dataSource, id);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Deletes an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		public static void Delete<TEntity>(DataSource dataSource, string id) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				RepositoryBase<T>.Delete<TEntity>(context, dataSource, id);
+			}
+		}
+
+		/// <summary>
+		/// Deletes an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
 		public static void Delete<TEntity>(RepositoryContext context, string aliasTypeName, string id) where TEntity : class
@@ -899,13 +1307,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
 		public static void Delete<TEntity>(string id) where TEntity : class
 		{
-			RepositoryBase<T>.Delete<TEntity>(null, id);
+			RepositoryBase<T>.Delete<TEntity>("", id);
 		}
 
 		/// <summary>
 		/// Deletes the instance of this object
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		protected virtual void Delete(RepositoryContext context, string aliasTypeName)
 		{
@@ -927,7 +1335,45 @@ namespace net.vieapps.Components.Repository
 		/// Deletes an object
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task DeleteAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				await RepositoryMediator.DeleteAsync<TEntity>(context, dataSource, id, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Deletes an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task DeleteAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				await RepositoryBase<T>.DeleteAsync<TEntity>(context, dataSource, id, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Deletes an object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
@@ -967,13 +1413,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task DeleteAsync<TEntity>(string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.DeleteAsync<TEntity>(null, id, cancellationToken);
+			return RepositoryBase<T>.DeleteAsync<TEntity>("", id, cancellationToken);
 		}
 
 		/// <summary>
 		/// Deletes the instance of this object
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
@@ -1003,7 +1449,43 @@ namespace net.vieapps.Components.Repository
 		/// Deletes many objects that matched with the filter
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
+		{
+			try
+			{
+				RepositoryMediator.DeleteMany<TEntity>(context, dataSource, filter, businessEntityID);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Deletes many objects that matched with the filter
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				RepositoryBase<T>.DeleteMany<TEntity>(context, dataSource, filter, businessEntityID);
+			}
+		}
+
+		/// <summary>
+		/// Deletes many objects that matched with the filter
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
@@ -1040,13 +1522,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		public static void DeleteMany<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null) where TEntity : class
 		{
-			RepositoryBase<T>.DeleteMany<TEntity>(null, filter, businessEntityID);
+			RepositoryBase<T>.DeleteMany<TEntity>("", filter, businessEntityID);
 		}
 
 		/// <summary>
 		/// Deletes many objects that matched with the filter
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
@@ -1073,14 +1555,54 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		protected static void DeleteMany(IFilterBy<T> filter, string businessEntityID = null)
 		{
-			RepositoryBase<T>.DeleteMany(null, filter, businessEntityID);
+			RepositoryBase<T>.DeleteMany("", filter, businessEntityID);
 		}
 
 		/// <summary>
 		/// Deletes many objects that matched with the filter
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task DeleteManyAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				await RepositoryMediator.DeleteManyAsync<TEntity>(context, dataSource, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(TEntity).ToString()}]", ex);
+			}
+		}
+
+		/// <summary>
+		/// Deletes many objects that matched with the filter
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task DeleteManyAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				await RepositoryBase<T>.DeleteManyAsync<TEntity>(context, dataSource, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Deletes many objects that matched with the filter
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
@@ -1123,13 +1645,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task DeleteManyAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.DeleteManyAsync<TEntity>(null, filter, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.DeleteManyAsync<TEntity>("", filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
 		/// Deletes many objects that matched with the filter
 		/// </summary>
-		/// <param name="context">Repository context that hold the transaction and state data</param>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for filtering objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
@@ -1162,11 +1684,61 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		protected static Task DeleteManyAsync(IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.DeleteManyAsync(null, filter, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.DeleteManyAsync("", filter, businessEntityID, cancellationToken);
 		}
 		#endregion
 
 		#region Find
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <returns>The collection of objects</returns>
+		public static List<TEntity> Find<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0) where TEntity : class
+		{
+			try
+			{
+				return RepositoryMediator.Find<TEntity>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while finding objects", ex);
+			}
+		}
+
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <returns>The collection of objects</returns>
+		public static List<TEntity> Find<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryBase<T>.Find<TEntity>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+			}
+		}
+
 		/// <summary>
 		/// Finds all the matched objects
 		/// </summary>
@@ -1201,7 +1773,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static List<TEntity> Find<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0) where TEntity : class
 		{
-			return RepositoryBase<T>.Find<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+			return RepositoryBase<T>.Find<TEntity>("", filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 		}
 
 		/// <summary>
@@ -1236,7 +1808,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static List<T> Find(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0)
 		{
-			return RepositoryBase<T>.Find(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+			return RepositoryBase<T>.Find("", filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 		}
 
 		/// <summary>
@@ -1266,6 +1838,58 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Find(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string cacheKey)
 		{
 			return RepositoryBase<T>.Find(filter, sort, pageSize, pageNumber, null, cacheKey);
+		}
+
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static async Task<List<TEntity>> FindAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				return await RepositoryMediator.FindAsync<TEntity>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while finding objects", ex);
+			}
+		}
+
+		/// <summary>
+		/// Finds all the matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static async Task<List<TEntity>> FindAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryBase<T>.FindAsync<TEntity>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+			}
 		}
 
 		/// <summary>
@@ -1304,7 +1928,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.FindAsync<TEntity>(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
+			return RepositoryBase<T>.FindAsync<TEntity>("", filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 		}
 
 		/// <summary>
@@ -1341,7 +1965,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.FindAsync(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
+			return RepositoryBase<T>.FindAsync("", filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 		}
 
 		/// <summary>
@@ -1381,6 +2005,50 @@ namespace net.vieapps.Components.Repository
 		/// Counts the number of all matched objects
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <returns>The number of all matched objects</returns>
+		public static long Count<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0) where TEntity : class
+		{
+			try
+			{
+				return RepositoryMediator.Count<TEntity>(context, dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while counting objects", ex);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <returns>The number of all matched objects</returns>
+		public static long Count<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryBase<T>.Count<TEntity>(context, dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
@@ -1405,7 +2073,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The number of all matched objects</returns>
 		public static long Count<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0) where TEntity : class
 		{
-			return RepositoryBase<T>.Count<TEntity>(null, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+			return RepositoryBase<T>.Count<TEntity>("", filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 		}
 
 		/// <summary>
@@ -1466,6 +2134,52 @@ namespace net.vieapps.Components.Repository
 		/// Counts the number of all matched objects
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The number of all matched objects</returns>
+		public static async Task<long> CountAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				return await RepositoryMediator.CountAsync<TEntity>(context, dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while counting objects", ex);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">The expression for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The number of all matched objects</returns>
+		public static async Task<long> CountAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryBase<T>.CountAsync<TEntity>(context, dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="filter">The expression for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
@@ -1492,7 +2206,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The number of all matched objects</returns>
 		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.CountAsync<TEntity>(null, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
+			return RepositoryBase<T>.CountAsync<TEntity>("", filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 		}
 
 		/// <summary>
@@ -1537,7 +2251,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The number of all matched objects</returns>
 		public static Task<long> CountAsync(IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.CountAsync(null, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
+			return RepositoryBase<T>.CountAsync("", filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 		}
 
 		/// <summary>
@@ -1570,6 +2284,48 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
 		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The collection of objects</returns>
+		public static List<TEntity> Search<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID) where TEntity : class
+		{
+			try
+			{
+				return RepositoryMediator.Search<TEntity>(context, dataSource, query, filter, pageSize, pageNumber, businessEntityID);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while searching objects", ex);
+			}
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The collection of objects</returns>
+		public static List<TEntity> Search<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryBase<T>.Search<TEntity>(context, dataSource, query, filter, pageSize, pageNumber, businessEntityID);
+			}
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
@@ -1593,7 +2349,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static List<TEntity> Search<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID) where TEntity : class
 		{
-			return RepositoryBase<T>.Search<TEntity>(null, query, filter, pageSize, pageNumber, businessEntityID);
+			return RepositoryBase<T>.Search<TEntity>("", query, filter, pageSize, pageNumber, businessEntityID);
 		}
 
 		/// <summary>
@@ -1622,7 +2378,51 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static List<T> Search(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null)
 		{
-			return RepositoryBase<T>.Search(null, query, filter, pageSize, pageNumber, businessEntityID);
+			return RepositoryBase<T>.Search("", query, filter, pageSize, pageNumber, businessEntityID);
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static async Task<List<TEntity>> SearchAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				return await RepositoryMediator.SearchAsync<TEntity>(context, dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while searching objects", ex);
+			}
+		}
+
+		/// <summary>
+		/// Searchs all the matched objects (using full-text search)
+		/// </summary>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="query">The expression for searching objects</param>
+		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The collection of objects</returns>
+		public static async Task<List<TEntity>> SearchAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryBase<T>.SearchAsync<TEntity>(context, dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
 		}
 
 		/// <summary>
@@ -1653,7 +2453,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.SearchAsync<TEntity>(null, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.SearchAsync<TEntity>("", query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1684,7 +2484,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.SearchAsync(null, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.SearchAsync("", query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1698,11 +2498,49 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The collection of objects</returns>
 		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.SearchAsync(null, query, filter, pageSize, pageNumber, null, cancellationToken);
+			return RepositoryBase<T>.SearchAsync("", query, filter, pageSize, pageNumber, null, cancellationToken);
 		}
 		#endregion
 
 		#region Count (by query)
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="query">The expression (full-text search) for counting objects</param>
+		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The number of all matched objects</returns>
+		public static long CountByQuery<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
+		{
+			try
+			{
+				return RepositoryMediator.Count<TEntity>(context, dataSource, query, filter, businessEntityID);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while counting objects by query", ex);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="query">The expression (full-text search) for counting objects</param>
+		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <returns>The number of all matched objects</returns>
+		public static long CountByQuery<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryBase<T>.CountByQuery<TEntity>(context, dataSource, query, filter, businessEntityID);
+			}
+		}
+
 		/// <summary>
 		/// Counts the number of all matched objects
 		/// </summary>
@@ -1725,7 +2563,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The number of all matched objects</returns>
 		public static long CountByQuery<TEntity>(string query, IFilterBy<TEntity> filter = null, string businessEntityID = null) where TEntity : class
 		{
-			return RepositoryBase<T>.CountByQuery<TEntity>(null, query, filter, businessEntityID);
+			return RepositoryBase<T>.CountByQuery<TEntity>("", query, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -1750,7 +2588,47 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The number of all matched objects</returns>
 		public static long CountByQuery(string query, IFilterBy<T> filter = null, string businessEntityID = null)
 		{
-			return RepositoryBase<T>.CountByQuery(null, query, filter, businessEntityID);
+			return RepositoryBase<T>.CountByQuery("", query, filter, businessEntityID);
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="query">The expression (full-text search) for counting objects</param>
+		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The number of all matched objects</returns>
+		public static async Task<long> CountByQueryAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			try
+			{
+				return await RepositoryMediator.CountAsync<TEntity>(context, dataSource, query, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while counting objects by query", ex);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of all matched objects
+		/// </summary>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="query">The expression (full-text search) for counting objects</param>
+		/// <param name="filter">The expression (additional filter) for counting objects</param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns>The number of all matched objects</returns>
+		public static async Task<long> CountByQueryAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryBase<T>.CountByQueryAsync<TEntity>(context, dataSource, query, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
 		}
 
 		/// <summary>
@@ -1777,7 +2655,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The number of all matched objects</returns>
 		public static Task<long> CountByQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.CountByQueryAsync<TEntity>(null, query, filter, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.CountByQueryAsync<TEntity>("", query, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1789,7 +2667,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The number of all matched objects</returns>
 		public static Task<long> CountByQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryBase<T>.CountByQueryAsync<TEntity>(null, query, filter, null, cancellationToken);
+			return RepositoryBase<T>.CountByQueryAsync<TEntity>("", query, filter, null, cancellationToken);
 		}
 
 		/// <summary>
@@ -1816,7 +2694,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The number of all matched objects</returns>
 		public static Task<long> CountByQueryAsync(string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.CountByQueryAsync(null, query, filter, businessEntityID, cancellationToken);
+			return RepositoryBase<T>.CountByQueryAsync("", query, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>

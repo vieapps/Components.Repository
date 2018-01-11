@@ -70,7 +70,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="updateFromConfigurationFile">true to update other settings from configuration file on the disc</param>
 		public static void Initialize(IEnumerable<Assembly> assemblies, Action<string, Exception> tracker = null, bool updateFromConfigurationFile = true)
 		{
-#if DEBUG
+#if DEBUG || PROCESSLOGS
 			RepositoryMediator.WriteLogs("Start to initialize repositories & entities [" + assemblies.Select(a => a.GetName().Name).ToString(", ") + "]");
 #endif
 

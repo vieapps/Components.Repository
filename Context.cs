@@ -32,7 +32,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the operation of the context
 		/// </summary>
-#if DEBUG
+#if DEBUG || PROCESSLOGS
 		public RepositoryOperation Operation { get; set; }
 #else
 		public RepositoryOperation Operation { get; internal set; }
@@ -41,7 +41,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the entity definition of the context
 		/// </summary>
-#if DEBUG
+#if DEBUG || PROCESSLOGS
 		public EntityDefinition EntityDefinition { get; set; }
 #else
 		public EntityDefinition EntityDefinition { get; internal set; }
@@ -50,7 +50,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the alias type name of the context (if got alias type name, means working with diffirent data source because the module is alias of other module)
 		/// </summary>
-#if DEBUG
+#if DEBUG || PROCESSLOGS
 		public string AliasTypeName { get; set; }
 #else
 		public string AliasTypeName { get; internal set; }
