@@ -11,11 +11,6 @@ namespace net.vieapps.Components.Repository
 		public RepositoryAttribute() { }
 
 		/// <summary>
-		/// Gets or sets the type of a class that implements interfaces of event handlers
-		/// </summary>
-		public Type EventHandlers { get; set; }
-
-		/// <summary>
 		/// Gets or sets the identity (when this object is defined as a module definition)
 		/// </summary>
 		public string ID { get; set; }
@@ -53,6 +48,7 @@ namespace net.vieapps.Components.Repository
 			this.Extendable = false;
 			this.Searchable = true;
 			this.MultipleParentAssociates = false;
+			this.CreateNewVersionWhenUpdated = true;
 		}
 
 		/// <summary>
@@ -144,6 +140,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the name of the column of SQL table that use to link the associate with this entity (when this object is defined as a content-type definition)
 		/// </summary>
 		public string MultipleParentAssociatesLinkColumn { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state to create new version when an entity object is updated
+		/// </summary>
+		public bool CreateNewVersionWhenUpdated { get; set; }
 
 		/// <summary>
 		/// Gets or sets the name of the property to use as short-name (when this object is defined as a content-type definition)
@@ -320,6 +321,15 @@ namespace net.vieapps.Components.Repository
 	public class AsJsonAttribute : Attribute
 	{
 		public AsJsonAttribute() { }
+	}
+
+	/// <summary>
+	/// Specifies this class is handler of repository events
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+	public class EventHandlersAttribute : Attribute
+	{
+		public EventHandlersAttribute() { }
 	}
 
 }

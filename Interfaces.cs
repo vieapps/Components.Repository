@@ -44,6 +44,11 @@ namespace net.vieapps.Components.Repository
 		string SystemID { get; }
 
 		/// <summary>
+		/// Gets the name of the service that associates with this repository
+		/// </summary>
+		string ServiceName { get; }
+
+		/// <summary>
 		/// Gets the definition of the repository (means module definition)
 		/// </summary>
 		RepositoryDefinition Definition { get; }
@@ -82,6 +87,16 @@ namespace net.vieapps.Components.Repository
 		/// Gets the identity of a business repository that the object is belong to
 		/// </summary>
 		string RepositoryID { get; }
+
+		/// <summary>
+		/// Gets the name of the service that associates with this repository entity
+		/// </summary>
+		string ServiceName { get; }
+
+		/// <summary>
+		/// Gets the state to create new version when an entity object is updated
+		/// </summary>
+		bool CreateNewVersionWhenUpdated { get; }
 
 		/// <summary>
 		/// Gets the definition of custom properties
@@ -139,6 +154,11 @@ namespace net.vieapps.Components.Repository
 		string EntityID { get; }
 
 		/// <summary>
+		/// Gets the name of the service that associates with this business entity
+		/// </summary>
+		string ServiceName { get; }
+
+		/// <summary>
 		/// Gets or sets the collection of extended properties
 		/// </summary>
 		Dictionary<string, object> ExtendedProperties { get; set; }
@@ -157,6 +177,26 @@ namespace net.vieapps.Components.Repository
 		/// Gets the actual privileges (mean the combined privileges) of this object
 		/// </summary>
 		Privileges WorkingPrivileges { get; }
+
+		/// <summary>
+		/// Gets the time when object is created
+		/// </summary>
+		DateTime Created { get; }
+
+		/// <summary>
+		/// Gets the identity of an user who creates this object at the first-time
+		/// </summary>
+		string CreatedID { get; }
+
+		/// <summary>
+		/// Gets the time when object is modified at the last-time
+		/// </summary>
+		DateTime LastModified { get; }
+
+		/// <summary>
+		/// Gets the identity of an user who modifies this object at the last-time
+		/// </summary>
+		string LastModifiedID { get; }
 		#endregion
 
 		#region Methods
@@ -208,17 +248,19 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object to create new instance</param>
+		/// <param name="isRestore">Specified this object is created new when restore from trash</param>
 		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		bool OnPreCreate(RepositoryContext context, object @object);
+		bool OnPreCreate(RepositoryContext context, object @object, bool isRestore);
 
 		/// <summary>
 		/// Fires before creating new instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object to create new instance</param>
+		/// <param name="isRestore">Specified this object is created new when restore from trash</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		Task<bool> OnPreCreateAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
+		Task<bool> OnPreCreateAsync(RepositoryContext context, object @object, bool isRestore, CancellationToken cancellationToken);
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -233,22 +275,24 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object that instance is created successful</param>
+		/// <param name="isRestore">Specified this object is created new when restore from trash</param>
 		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
+		/// This method will be ran by the thread-pool thread the best performance
 		/// </remarks>
-		void OnPostCreate(RepositoryContext context, object @object);
+		void OnPostCreate(RepositoryContext context, object @object, bool isRestore);
 
 		/// <summary>
 		/// Fires after creating new instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object that instance is created successful</param>
+		/// <param name="isRestore">Specified this object is created new when restore from trash</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
+		/// This method will be ran by the thread-pool thread the best performance
 		/// </remarks>
 		/// <returns></returns>
-		Task OnPostCreateAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
+		Task OnPostCreateAsync(RepositoryContext context, object @object, bool isRestore, CancellationToken cancellationToken);
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -289,7 +333,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object that instance is getted successful</param>
 		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
+		/// This method will be ran by the thread-pool thread the best performance
 		/// </remarks>
 		void OnPostGet(RepositoryContext context, object @object);
 
@@ -300,7 +344,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that instance is getted successful</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
+		/// This method will be ran by the thread-pool thread the best performance
 		/// </remarks>
 		/// <returns></returns>
 		Task OnPostGetAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
@@ -318,17 +362,19 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object to update instance</param>
+		/// <param name="isRollback">Specified this object is updated when rollback from a version</param>
 		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		bool OnPreUpdate(RepositoryContext context, object @object);
+		bool OnPreUpdate(RepositoryContext context, object @object, bool isRollback);
 
 		/// <summary>
 		/// Fires before updating instance of object (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object to update instance</param>
+		/// <param name="isRollback">Specified this object is updated when rollback from a version</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>true if the operation should be vetoed (means the operation will be cancelled when return value is true)</returns>
-		Task<bool> OnPreUpdateAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
+		Task<bool> OnPreUpdateAsync(RepositoryContext context, object @object, bool isRollback, CancellationToken cancellationToken);
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -343,22 +389,24 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object that instance is getted successful</param>
+		/// <param name="isRollback">Specified this object is updated when rollback from a version</param>
 		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
+		/// This method will be ran by the thread-pool thread the best performance
 		/// </remarks>
-		void OnPostUpdate(RepositoryContext context, object @object);
+		void OnPostUpdate(RepositoryContext context, object @object, bool isRollback);
 
 		/// <summary>
 		/// Fires after updating instance of object successful (called by <see cref="RepositoryMediator">RepositoryMediator</see> when process by asynchronous way)
 		/// </summary>
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object that instance is getted successful</param>
+		/// <param name="isRollback">Specified this object is updated when rollback from a version</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
+		/// This method will be ran by the thread-pool thread the best performance
 		/// </remarks>
 		/// <returns></returns>
-		Task OnPostUpdateAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);
+		Task OnPostUpdateAsync(RepositoryContext context, object @object, bool isRollback, CancellationToken cancellationToken);
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -399,7 +447,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">Repository context that hold the transaction and state data</param>
 		/// <param name="object">The object that instance is deleted successful</param>
 		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
+		/// This method will be ran by the thread-pool thread the best performance
 		/// </remarks>
 		void OnPostDelete(RepositoryContext context, object @object);
 
@@ -410,7 +458,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that instance is deleted successful</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <remarks>
-		/// This method will be called in a seperated task thread for the best performance
+		/// This method will be ran by the thread-pool thread the best performance
 		/// </remarks>
 		/// <returns></returns>
 		Task OnPostDeleteAsync(RepositoryContext context, object @object, CancellationToken cancellationToken);

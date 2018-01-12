@@ -35,14 +35,9 @@ namespace net.vieapps.Components.Repository
 
 		#region Properties
 		/// <summary>
-		/// Gets the type of a class that responsibility of the repository
+		/// Gets the type of the class that responsibility to process data of the repository
 		/// </summary>
 		public Type Type { get; internal set; }
-
-		/// <summary>
-		/// Gets the type of a class that responsibility to process all event handlers of the repository
-		/// </summary>
-		public Type EventHandlers { get; internal set; }
 
 		/// <summary>
 		/// Gets the name of the primary data source
@@ -58,6 +53,16 @@ namespace net.vieapps.Components.Repository
 		/// Gets the names of the all data-sources that available for sync
 		/// </summary>
 		public string SyncDataSourceNames { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the data source for storing information of versioning contents
+		/// </summary>
+		public string VersionDataSourceName { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the data source for storing information of trash contents
+		/// </summary>
+		public string TrashDataSourceName { get; internal set; }
 
 		/// <summary>
 		/// Gets that state that specified this repository is an alias of other repository
@@ -83,6 +88,7 @@ namespace net.vieapps.Components.Repository
 					: null;
 			}
 		}
+
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
@@ -95,6 +101,7 @@ namespace net.vieapps.Components.Repository
 					: null;
 			}
 		}
+
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
@@ -114,6 +121,33 @@ namespace net.vieapps.Components.Repository
 				}
 			}
 		}
+
+		/// <summary>
+		/// Gets the data-source that use to store versioning contents
+		/// </summary>
+		public DataSource VersionDataSource
+		{
+			get
+			{
+				return !string.IsNullOrWhiteSpace(this.VersionDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.VersionDataSourceName)
+					? RepositoryMediator.DataSources[this.VersionDataSourceName]
+					: null;
+			}
+		}
+
+		/// <summary>
+		/// Gets the data-source that use to store trash contents
+		/// </summary>
+		public DataSource TrashDataSource
+		{
+			get
+			{
+				return !string.IsNullOrWhiteSpace(this.TrashDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.TrashDataSourceName)
+					? RepositoryMediator.DataSources[this.TrashDataSourceName]
+					: null;
+			}
+		}
+
 		/// <summary>
 		/// Gets the definitions of all entities
 		/// </summary>
@@ -122,7 +156,7 @@ namespace net.vieapps.Components.Repository
 			get
 			{
 				return RepositoryMediator.EntityDefinitions
-					.Where(item => item.Value.RepositoryTypeName.Equals(this.Type.GetTypeName()))
+					.Where(item => item.Value.RepositoryType.Equals(this.Type))
 					.Select(item => item.Value)
 					.ToList();
 			}
@@ -164,8 +198,8 @@ namespace net.vieapps.Components.Repository
 		#region Register
 		internal static void Register(Type type)
 		{
-			// check existed
-			if (RepositoryMediator.RepositoryDefinitions.ContainsKey(type.GetTypeName()))
+			// check
+			if (type == null || RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
 				return;
 
 			// initialize
@@ -176,7 +210,6 @@ namespace net.vieapps.Components.Repository
 			var definition = new RepositoryDefinition()
 			{
 				Type = type,
-				EventHandlers = info.EventHandlers,
 				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
 				Path = !string.IsNullOrWhiteSpace(info.Path) ? info.Path : "",
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
@@ -184,27 +217,23 @@ namespace net.vieapps.Components.Repository
 				ExtendedPropertiesTableName = !string.IsNullOrWhiteSpace(info.ExtendedPropertiesTableName) ? info.ExtendedPropertiesTableName : "T_Data_Extended_Properties"
 			};
 
-			// check type of event-handlers
-			definition.EventHandlers = definition.EventHandlers != null && definition.EventHandlers.CreateInstance() != null
-				? definition.EventHandlers
-				: null;
-
 			// update into collection
-			RepositoryMediator.RepositoryDefinitions.Add(type.GetTypeName(), definition);
+			RepositoryMediator.RepositoryDefinitions.Add(type, definition);
 		}
 		#endregion
 
 		#region Update settings
 		internal static void Update(JObject settings, Action<string, Exception> tracker = null)
 		{
-			// check settings
+			// check
 			if (settings == null)
 				throw new ArgumentNullException("settings");
 			else if (settings["type"] == null)
 				throw new ArgumentNullException("type", "[type] attribute of settings");
 
+			// prepare
 			var isAlias = settings["isAlias"] != null
-				? ((settings["isAlias"] as JValue).Value as string).IsEquals("true")
+				? "true".IsEquals((settings["isAlias"] as JValue).Value as string)
 				: false;
 
 			Type targetType = null;
@@ -224,35 +253,31 @@ namespace net.vieapps.Components.Repository
 				}
 			}
 
-			// check type
 			var type = isAlias
 				? targetType
 				: Type.GetType((settings["type"] as JValue).Value as string);
+
+			// no type is found
 			if (type == null)
 				return;
 
-			// get type name
-			var typeName = isAlias
-				? (settings["type"] as JValue).Value as string
-				: type.GetTypeName();
-
 			// clone definition for new alias
-			if (isAlias && !RepositoryMediator.RepositoryDefinitions.ContainsKey(typeName))
+			if (isAlias)
 			{
-				if (!RepositoryMediator.RepositoryDefinitions.ContainsKey(type.GetTypeName()))
+				if (!RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
 					throw new ArgumentException("The target type named '" + type.GetTypeName() + "' is not available");
 
-				RepositoryMediator.RepositoryDefinitions.Add(typeName, RepositoryMediator.RepositoryDefinitions[type.GetTypeName()].Clone());
-				RepositoryMediator.RepositoryDefinitions[typeName].IsAlias = true;
-				RepositoryMediator.RepositoryDefinitions[typeName].ExtraSettings = RepositoryMediator.RepositoryDefinitions[type.GetTypeName()].ExtraSettings;
+				RepositoryMediator.RepositoryDefinitions.Add(type, RepositoryMediator.RepositoryDefinitions[type].Clone());
+				RepositoryMediator.RepositoryDefinitions[type].IsAlias = true;
+				RepositoryMediator.RepositoryDefinitions[type].ExtraSettings = RepositoryMediator.RepositoryDefinitions[type].ExtraSettings;
 			}
 
 			// check existing
-			if (!RepositoryMediator.RepositoryDefinitions.ContainsKey(typeName))
+			else if (!RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
 				return;
 
 			// update
-			tracker?.Invoke($"Update settings of repository [{typeName}]", null);
+			tracker?.Invoke($"Update settings of repository [{type.GetTypeName()}]", null);
 			var data = settings["primaryDataSource"] != null
 				? (settings["primaryDataSource"] as JValue).Value as string
 				: null;
@@ -260,14 +285,14 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException("primaryDataSource", "[primaryDataSource] attribute of settings");
 			else if (!RepositoryMediator.DataSources.ContainsKey(data))
 				throw new ArgumentException("The data source named '" + data + "' is not available");
-			RepositoryMediator.RepositoryDefinitions[typeName].PrimaryDataSourceName = data;
+			RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSourceName = data;
 
 			data = settings["secondaryDataSource"] != null
 				? (settings["secondaryDataSource"] as JValue).Value as string
 				: null;
-			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.DataSources.ContainsKey(data))
-				data = null;
-			RepositoryMediator.RepositoryDefinitions[typeName].SecondaryDataSourceName = data;
+			RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+				? data
+				: null;
 
 			data = settings["syncDataSources"] != null
 				? (settings["syncDataSources"] as JValue).Value as string
@@ -283,7 +308,21 @@ namespace net.vieapps.Components.Repository
 					names.ForEach(name => data += RepositoryMediator.DataSources.ContainsKey(name) ? (!data.Equals("") ? "," : "") + name : "");
 				}
 			}
-			RepositoryMediator.RepositoryDefinitions[typeName].SyncDataSourceNames = data;
+			RepositoryMediator.RepositoryDefinitions[type].SyncDataSourceNames = data;
+
+			data = settings["versionDataSource"] != null
+				? (settings["versionDataSource"] as JValue).Value as string
+				: null;
+			RepositoryMediator.RepositoryDefinitions[type].VersionDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+				? data
+				: null;
+
+			data = settings["trashDataSource"] != null
+				? (settings["trashDataSource"] as JValue).Value as string
+				: null;
+			RepositoryMediator.RepositoryDefinitions[type].TrashDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+				? data
+				: null;
 		}
 		#endregion
 
@@ -312,7 +351,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Properties
 		/// <summary>
-		/// Gets the type of the object for processing
+		/// Gets the type of the class that responsibility to process data of the repository entity
 		/// </summary>
 		public Type Type { get; internal set; }
 
@@ -330,6 +369,16 @@ namespace net.vieapps.Components.Repository
 		/// Gets the names of the all data-sources that available for sync
 		/// </summary>
 		public string SyncDataSourceNames { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the data source for storing information of versioning contents
+		/// </summary>
+		public string VersionDataSourceName { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the data source for storing information of trash contents
+		/// </summary>
+		public string TrashDataSourceName { get; internal set; }
 
 		/// <summary>
 		/// Gets or sets the name of the table in SQL database
@@ -355,6 +404,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the state that specifies this entity is able to search using full-text method
 		/// </summary>
 		public bool Searchable { get; internal set; }
+
+		/// <summary>
+		/// Gets the state to create new version when an entity object is updated
+		/// </summary>
+		public bool CreateNewVersionWhenUpdated { get; internal set; }
 
 		/// <summary>
 		/// Gets extra settings of of the entity definition
@@ -415,6 +469,32 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
+		/// Gets the data-source that use to store versioning contents
+		/// </summary>
+		public DataSource VersionDataSource
+		{
+			get
+			{
+				return !string.IsNullOrWhiteSpace(this.VersionDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.VersionDataSourceName)
+					? RepositoryMediator.DataSources[this.VersionDataSourceName]
+					: null;
+			}
+		}
+
+		/// <summary>
+		/// Gets the data-source that use to store trash contents
+		/// </summary>
+		public DataSource TrashDataSource
+		{
+			get
+			{
+				return !string.IsNullOrWhiteSpace(this.TrashDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.TrashDataSourceName)
+					? RepositoryMediator.DataSources[this.TrashDataSourceName]
+					: null;
+			}
+		}
+
+		/// <summary>
 		/// Gets the collection of all attributes (properties and fields)
 		/// </summary>
 		public List<AttributeInfo> Attributes { get; internal set; }
@@ -437,7 +517,10 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public List<string> SortableAttributes { get; internal set; }
 
-		internal string RepositoryTypeName { get; set; }
+		/// <summary>
+		/// Gets the type of the class that presents the repository of this repository entity
+		/// </summary>
+		public Type RepositoryType { get; internal set; }
 
 		/// <summary>
 		/// Gets the repository definition of this defintion
@@ -446,7 +529,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return RepositoryMediator.GetRepositoryDefinition(this.RepositoryTypeName);
+				return RepositoryMediator.GetRepositoryDefinition(this.RepositoryType);
 			}
 		}
 		#endregion
@@ -537,7 +620,7 @@ namespace net.vieapps.Components.Repository
 		internal static void Register(Type type)
 		{
 			// check existed
-			if (RepositoryMediator.EntityDefinitions.ContainsKey(type.GetTypeName()))
+			if (type == null || RepositoryMediator.EntityDefinitions.ContainsKey(type))
 				return;
 
 			// check table/collection name
@@ -561,6 +644,7 @@ namespace net.vieapps.Components.Repository
 				Extendable = info.Extendable,
 				Indexable = info.Indexable,
 				ParentType = info.ParentType,
+				CreateNewVersionWhenUpdated = info.CreateNewVersionWhenUpdated,
 				NavigatorType = info.NavigatorType
 			};
 
@@ -581,8 +665,8 @@ namespace net.vieapps.Components.Repository
 				parent = parent.BaseType;
 				grandparent = parent.BaseType;
 			}
-			definition.RepositoryTypeName = parent.GetTypeName();
-			definition.RepositoryTypeName = definition.RepositoryTypeName.Left(definition.RepositoryTypeName.IndexOf("[")) + definition.RepositoryTypeName.Substring(definition.RepositoryTypeName.IndexOf("]") + 2);
+			var typename = parent.GetTypeName();
+			definition.RepositoryType = Type.GetType(typename.Left(typename.IndexOf("[")) + typename.Substring(typename.IndexOf("]") + 2));
 
 			// public properties
 			var numberOfKeys = 0;
@@ -706,43 +790,39 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			// update into collection
-			RepositoryMediator.EntityDefinitions.Add(type.GetTypeName(), definition);
+			RepositoryMediator.EntityDefinitions.Add(type, definition);
 		}
 		#endregion
 
 		#region Update settings
 		internal static void Update(JObject settings, Action<string, Exception> tracker = null)
 		{
-			// check settings
+			// check
 			if (settings == null)
 				throw new ArgumentNullException("settings");
 			else if (settings["type"] == null)
 				throw new ArgumentNullException("type", "[type] attribute of settings");
 
-			// check type
+			// prepare
 			var type = Type.GetType((settings["type"] as JValue).Value as string);
-			if (type == null)
-				return;
-
-			var typeName = type.GetTypeName();
-			if (!RepositoryMediator.EntityDefinitions.ContainsKey(typeName))
+			if (type == null || !RepositoryMediator.EntityDefinitions.ContainsKey(type))
 				return;
 
 			// update
-			tracker?.Invoke($"Update settings of entity [{typeName}]", null);
+			tracker?.Invoke($"Update settings of entity [{type.GetTypeName()}]", null);
 			var data = settings["primaryDataSource"] != null
 				? (settings["primaryDataSource"] as JValue).Value as string
 				: null;
-			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.DataSources.ContainsKey(data))
-				data = null;
-			RepositoryMediator.EntityDefinitions[typeName].PrimaryDataSourceName = data;
+			RepositoryMediator.EntityDefinitions[type].PrimaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+				? data
+				: null;
 
 			data = settings["secondaryDataSource"] != null
 				? (settings["secondaryDataSource"] as JValue).Value as string
 				: null;
-			if (!string.IsNullOrEmpty(data) && !RepositoryMediator.DataSources.ContainsKey(data))
-				data = null;
-			RepositoryMediator.EntityDefinitions[typeName].SecondaryDataSourceName = data;
+			RepositoryMediator.EntityDefinitions[type].SecondaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+				? data
+				: null;
 
 			data = settings["syncDataSources"] != null
 				? (settings["syncDataSources"] as JValue).Value as string
@@ -758,7 +838,21 @@ namespace net.vieapps.Components.Repository
 					names.ForEach(name => data += RepositoryMediator.DataSources.ContainsKey(name) ? (!data.Equals("") ? "," : "") + name : "");
 				}
 			}
-			RepositoryMediator.EntityDefinitions[typeName].SyncDataSourceNames = data;
+			RepositoryMediator.EntityDefinitions[type].SyncDataSourceNames = data;
+
+			data = settings["versionDataSource"] != null
+				? (settings["versionDataSource"] as JValue).Value as string
+				: null;
+			RepositoryMediator.EntityDefinitions[type].VersionDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+				? data
+				: null;
+
+			data = settings["trashDataSource"] != null
+				? (settings["trashDataSource"] as JValue).Value as string
+				: null;
+			RepositoryMediator.EntityDefinitions[type].TrashDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+				? data
+				: null;
 
 			// individual cache storage
 			if (settings["cacheRegion"] != null)
@@ -779,7 +873,7 @@ namespace net.vieapps.Components.Repository
 				var cacheProvider = settings["cacheProvider"] != null
 					? (settings["cacheProvider"] as JValue).Value as string
 					: null;
-				RepositoryMediator.EntityDefinitions[typeName].CacheStorage = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
+				RepositoryMediator.EntityDefinitions[type].CacheStorage = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
 			}
 		}
 
@@ -790,8 +884,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		public void SetCacheStorage(Type type, Caching.Cache cache)
 		{
-			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type.GetTypeName()))
-				RepositoryMediator.EntityDefinitions[type.GetTypeName()].CacheStorage = cache;
+			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type))
+				RepositoryMediator.EntityDefinitions[type].CacheStorage = cache;
 		}
 		#endregion
 
@@ -838,7 +932,6 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
 	public sealed class ExtendedPropertyDefinition
 	{
-
 		public ExtendedPropertyDefinition(JObject json = null)
 		{
 			this.Name = "";
@@ -846,7 +939,6 @@ namespace net.vieapps.Components.Repository
 			this.Column = "";
 			this.DefaultValue = "";
 			this.DefaultValueFormula = "";
-
 			if (json != null)
 				this.CopyFrom(json);
 		}
@@ -1123,14 +1215,12 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public sealed class ExtendedUIDefinition
 	{
-
 		public ExtendedUIDefinition(JObject json = null)
 		{
 			this.Controls = new List<ExtendedUIControlDefinition>();
 			this.EditXslt = "";
 			this.ListXslt = "";
 			this.ViewXslt = "";
-
 			if (json != null)
 				this.CopyFrom(json);
 		}
@@ -1183,7 +1273,6 @@ namespace net.vieapps.Components.Repository
 			this.Shown = true;
 			this.Required = false;
 			this.AllowMultiple = false;
-
 			if (json != null)
 				this.CopyFrom(json);
 		}

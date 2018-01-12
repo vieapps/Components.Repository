@@ -46,12 +46,26 @@ namespace net.vieapps.Components.Repository
 						tracker?.Invoke($"Register the entity: {type.GetTypeName()}", null);
 						EntityDefinition.Register(type);
 					});
+
+				// event handlers
+				assembly.GetTypes()
+					.Where(type => type.IsDefined(typeof(EventHandlersAttribute), false))
+					.Where(type => typeof(IPreCreateHandler).IsAssignableFrom(type) || typeof(IPostCreateHandler).IsAssignableFrom(type)
+						|| typeof(IPreGetHandler).IsAssignableFrom(type) || typeof(IPostGetHandler).IsAssignableFrom(type)
+						|| typeof(IPreUpdateHandler).IsAssignableFrom(type) || typeof(IPostUpdateHandler).IsAssignableFrom(type)
+						|| typeof(IPreDeleteHandler).IsAssignableFrom(type) || typeof(IPostDeleteHandler).IsAssignableFrom(type))
+					.ForEach(type =>
+					{
+						tracker?.Invoke($"Register the event-handler: {type.GetTypeName()}", null);
+						RepositoryMediator.EventHandlers.Add(type);
+					});
 			}
 			catch (ReflectionTypeLoadException ex)
 			{
 				if (ex.LoaderExceptions.FirstOrDefault(e => e is System.IO.FileNotFoundException) == null)
 				{
 					tracker?.Invoke($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
+					ex.LoaderExceptions.ForEach(exception => tracker?.Invoke(null, exception));
 					throw ex;
 				}
 			}
@@ -106,13 +120,17 @@ namespace net.vieapps.Components.Repository
 									EntityDefinition.Update(repositoryEntityNode.ToJson(), tracker);
 						}
 
+					// default data sources
+					RepositoryMediator.DefaultVersionDataSourceName = config.Section.Attributes["versionDataSource"]?.Value;
+					RepositoryMediator.DefaultTrashDataSourceName = config.Section.Attributes["trashDataSource"]?.Value;
+
 					// schemas (SQL)
 					if ("true".IsEquals(config.Section.Attributes["ensureSchemas"]?.Value))
 						Task.Run(async () =>
 						{
 							try
 							{
-								await RepositoryStarter.EnsureSqlSchemasAsync(tracker);
+								await RepositoryStarter.EnsureSqlSchemasAsync(tracker).ConfigureAwait(false);
 							}
 							catch { }
 						}).ConfigureAwait(false);
@@ -123,7 +141,7 @@ namespace net.vieapps.Components.Repository
 						{
 							try
 							{
-								await RepositoryStarter.EnsureNoSqlIndexesAsync(tracker);
+								await RepositoryStarter.EnsureNoSqlIndexesAsync(tracker).ConfigureAwait(false);
 							}
 							catch { }
 						}).ConfigureAwait(false);
@@ -140,6 +158,9 @@ namespace net.vieapps.Components.Repository
 			tracker?.Invoke($"Total of registered repositories: {RepositoryMediator.RepositoryDefinitions.Count}", null);
 			tracker?.Invoke($"Total of registered entities: {RepositoryMediator.EntityDefinitions.Count}", null);
 			tracker?.Invoke($"Total of registered data-sources: {RepositoryMediator.DataSources.Count}", null);
+			tracker?.Invoke($"Total of registered event-handlers: {RepositoryMediator.EventHandlers.Count}", null);
+			tracker?.Invoke($"Name of default data-source for storing version contents: {RepositoryMediator.DefaultVersionDataSourceName ?? "(NULL)"}", null);
+			tracker?.Invoke($"Name of default data-source for storing trash contents: {RepositoryMediator.DefaultTrashDataSourceName ?? "(NULL)"}", null);
 		}
 
 		/// <summary>

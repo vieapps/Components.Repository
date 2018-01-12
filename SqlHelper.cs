@@ -371,7 +371,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Parameter
-		static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, KeyValuePair<string, object> info)
+		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, KeyValuePair<string, object> info)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = info.Key;
@@ -382,7 +382,7 @@ namespace net.vieapps.Components.Repository
 			return parameter;
 		}
 
-		static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, AttributeInfo attribute, object value)
+		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, AttributeInfo attribute, object value)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = "@" + attribute.Name;
@@ -399,7 +399,7 @@ namespace net.vieapps.Components.Repository
 			return parameter;
 		}
 
-		static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, ExtendedPropertyDefinition attribute, object value)
+		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, ExtendedPropertyDefinition attribute, object value)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = "@" + attribute.Name;
@@ -414,7 +414,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Copy (DataReader)
-		static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		internal static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			// create object
 			@object = @object ?? ObjectService.CreateInstance<T>();
@@ -464,7 +464,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Copy (DataRow)
-		static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		internal static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			@object = @object ?? ObjectService.CreateInstance<T>();
 
@@ -1383,7 +1383,7 @@ namespace net.vieapps.Components.Repository
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
-		static List<DataRow> ToList(this DataRowCollection dataRows)
+		internal static List<DataRow> ToList(this DataRowCollection dataRows)
 		{
 			var rows = new List<DataRow>();
 			foreach (DataRow row in dataRows)
@@ -1391,7 +1391,7 @@ namespace net.vieapps.Components.Repository
 			return rows;
 		}
 
-		static DataTable CreateDataTable(this DbDataReader dataReader, string name = "Table", bool doLoad = false)
+		internal static DataTable CreateDataTable(this DbDataReader dataReader, string name = "Table", bool doLoad = false)
 		{
 			var dataTable = new DataTable(name);
 
@@ -1413,7 +1413,7 @@ namespace net.vieapps.Components.Repository
 			return dataTable;
 		}
 
-		static void Append(this DataTable dataTable, DbDataReader dataReader)
+		internal static void Append(this DataTable dataTable, DbDataReader dataReader)
 		{
 			var data = new object[dataReader.FieldCount];
 			for (var index = 0; index < dataReader.FieldCount; index++)

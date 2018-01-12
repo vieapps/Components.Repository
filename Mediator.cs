@@ -33,25 +33,25 @@ namespace net.vieapps.Components.Repository
 		public static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
 		public static Dictionary<string, EntityDefinition> EntityDefinitions = new Dictionary<string, EntityDefinition>();
 		public static Dictionary<string, DataSource> DataSources = new Dictionary<string, DataSource>();
+		public static List<Type> EventHandlers = new List<Type>();
 #else
-		internal static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
-		internal static Dictionary<string, EntityDefinition> EntityDefinitions = new Dictionary<string, EntityDefinition>();
+		internal static Dictionary<Type, RepositoryDefinition> RepositoryDefinitions = new Dictionary<Type, RepositoryDefinition>();
+		internal static Dictionary<Type, EntityDefinition> EntityDefinitions = new Dictionary<Type, EntityDefinition>();
 		internal static Dictionary<string, DataSource> DataSources = new Dictionary<string, DataSource>();
+		internal static List<Type> EventHandlers = new List<Type>();
 #endif
 
-		#region Definitions
 		/// <summary>
-		/// Gets the repository definition that matched with the type
+		/// Gets the name of data-source that will be used as default storage of version contents
 		/// </summary>
-		/// <param name="name">The string that presents the type of repository</param>
-		/// <returns></returns>
-		public static RepositoryDefinition GetRepositoryDefinition(string name)
-		{
-			return !string.IsNullOrWhiteSpace(name) && RepositoryMediator.RepositoryDefinitions.ContainsKey(name)
-				? RepositoryMediator.RepositoryDefinitions[name]
-				: null;
-		}
+		public static string DefaultVersionDataSourceName { get; internal set; }
 
+		/// <summary>
+		/// Gets the name of data-source that will be used as default storage of trash contents
+		/// </summary>
+		public static string DefaultTrashDataSourceName { get; internal set; }
+
+		#region Definitions
 		/// <summary>
 		/// Gets the repository definition that matched with the type
 		/// </summary>
@@ -59,11 +59,13 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static RepositoryDefinition GetRepositoryDefinition(Type type)
 		{
-			return RepositoryMediator.GetRepositoryDefinition(type?.GetTypeName());
+			return type != null
+				? RepositoryMediator.RepositoryDefinitions[type]
+				: null;
 		}
 
 		/// <summary>
-		/// Gets the repository definition that matched with the type
+		/// Gets the repository definition that matched with the type name
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
@@ -79,9 +81,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static EntityDefinition GetEntityDefinition(Type type)
 		{
-			var name = type != null ? type.GetTypeName() : null;
-			return name != null && RepositoryMediator.EntityDefinitions.ContainsKey(name)
-				? RepositoryMediator.EntityDefinitions[name]
+			return type != null
+				? RepositoryMediator.EntityDefinitions[type]
 				: null;
 		}
 
@@ -161,11 +162,14 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DataSource GetPrimaryDataSource(string aliasTypeName, EntityDefinition definition)
 		{
+			if (definition == null)
+				return null;
+
 			var dataSource = definition.PrimaryDataSource;
 			if (dataSource == null)
 			{
 				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
-					? RepositoryMediator.GetRepositoryDefinition(aliasTypeName)
+					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
 					: definition.RepositoryDefinition;
 
 				if (parent != null)
@@ -216,11 +220,14 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DataSource GetSecondaryDataSource(string aliasTypeName, EntityDefinition definition)
 		{
+			if (definition == null)
+				return null;
+
 			var dataSource = definition.SecondaryDataSource;
 			if (dataSource == null)
 			{
 				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
-					? RepositoryMediator.GetRepositoryDefinition(aliasTypeName)
+					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
 					: definition.RepositoryDefinition;
 
 				if (parent != null)
@@ -258,6 +265,126 @@ namespace net.vieapps.Components.Repository
 		public static DataSource GetSecondaryDataSource<T>(string aliasTypeName = null)
 		{
 			return RepositoryMediator.GetSecondaryDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
+		}
+
+		/// <summary>
+		/// Gets the data source that use to store versioning contents
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
+		/// <param name="definition">The definition of a repository entity</param>
+		/// <returns></returns>
+		public static DataSource GetVersionDataSource(string aliasTypeName, EntityDefinition definition)
+		{
+			if (definition == null)
+				return null;
+
+			var dataSource = definition.VersionDataSource;
+			if (dataSource == null)
+			{
+				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
+					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
+					: definition.RepositoryDefinition;
+
+				if (parent != null)
+					dataSource = parent.VersionDataSource;
+			}
+
+			return dataSource != null
+				? dataSource
+				: !string.IsNullOrWhiteSpace(RepositoryMediator.DefaultVersionDataSourceName) && RepositoryMediator.DataSources.ContainsKey(RepositoryMediator.DefaultVersionDataSourceName)
+					? RepositoryMediator.DataSources[RepositoryMediator.DefaultVersionDataSourceName]
+					: null;
+		}
+
+		/// <summary>
+		/// Gets the data source that use to store versioning contents
+		/// </summary>
+		/// <param name="context">The working context of a repository entity</param>
+		/// <returns></returns>
+		public static DataSource GetVersionDataSource(this RepositoryContext context)
+		{
+			return RepositoryMediator.GetVersionDataSource(context.AliasTypeName, context.EntityDefinition);
+		}
+
+		/// <summary>
+		/// Gets the data source that use to store versioning contents
+		/// </summary>
+		/// <param name="definition">The definition of a repository entity</param>
+		/// <returns></returns>
+		public static DataSource GetVersionDataSource(this EntityDefinition definition)
+		{
+			return RepositoryMediator.GetVersionDataSource(null, definition);
+		}
+
+		/// <summary>
+		/// Gets the data source that use to store versioning contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
+		/// <returns></returns>
+		public static DataSource GetVersionDataSource<T>(string aliasTypeName = null)
+		{
+			return RepositoryMediator.GetVersionDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
+		}
+
+		/// <summary>
+		/// Gets the data source that use to store trash contents
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
+		/// <param name="definition">The definition of a repository entity</param>
+		/// <returns></returns>
+		public static DataSource GetTrashDataSource(string aliasTypeName, EntityDefinition definition)
+		{
+			if (definition == null)
+				return null;
+
+			var dataSource = definition.TrashDataSource;
+			if (dataSource == null)
+			{
+				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
+					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
+					: definition.RepositoryDefinition;
+
+				if (parent != null)
+					dataSource = parent.TrashDataSource;
+			}
+
+			return dataSource != null
+				? dataSource
+				: !string.IsNullOrWhiteSpace(RepositoryMediator.DefaultTrashDataSourceName) && RepositoryMediator.DataSources.ContainsKey(RepositoryMediator.DefaultTrashDataSourceName)
+					? RepositoryMediator.DataSources[RepositoryMediator.DefaultTrashDataSourceName]
+					: null;
+		}
+
+		/// <summary>
+		/// Gets the data source that use to store trash contents
+		/// </summary>
+		/// <param name="context">The working context of a repository entity</param>
+		/// <returns></returns>
+		public static DataSource GetTrashDataSource(this RepositoryContext context)
+		{
+			return RepositoryMediator.GetTrashDataSource(context.AliasTypeName, context.EntityDefinition);
+		}
+
+		/// <summary>
+		/// Gets the data source that use to store trash contents
+		/// </summary>
+		/// <param name="definition">The definition of a repository entity</param>
+		/// <returns></returns>
+		public static DataSource GetTrashDataSource(this EntityDefinition definition)
+		{
+			return RepositoryMediator.GetTrashDataSource(null, definition);
+		}
+
+		/// <summary>
+		/// Gets the data source that use to store trash contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
+		/// <returns></returns>
+		public static DataSource GetTrashDataSource<T>(string aliasTypeName = null)
+		{
+			return RepositoryMediator.GetTrashDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 		}
 		#endregion
 
@@ -394,51 +521,59 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in repository</param>
 		public static void Create<T>(RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
-			// update context
-			context.Operation = RepositoryOperation.Create;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
-			// validate & re-update object
-			var currentState = context.SetCurrentState(@object);
-			if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
+			try
 			{
-				// re-update object
-				currentState.ForEach(data =>
+				// update context
+				context.Operation = RepositoryOperation.Create;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				// validate & re-update object
+				var currentState = context.SetCurrentState(@object);
+				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					if (data.Key.StartsWith("ExtendedProperties."))
-						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
-					else
-						@object.SetAttributeValue(data.Key, data.Value);
-				});
+					// re-update object
+					currentState.ForEach(data =>
+					{
+						if (data.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						else
+							@object.SetAttributeValue(data.Key, data.Value);
+					});
 
-				// update state
-				context.SetCurrentState(@object, currentState);
-			}
+					// update state
+					context.SetCurrentState(@object, currentState);
+				}
 
-			// call pre-handlers
-			if (RepositoryMediator.CallPreHandlers(context, @object))
-				return;
+				// call pre-handlers
+				if (RepositoryMediator.CallPreHandlers(context, @object, false))
+					return;
 
-			// prepare data source
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				// prepare data source
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// create
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				context.Create<T>(dataSource, @object);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				context.Create<T>(dataSource, @object);
+				// create
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					context.Create<T>(dataSource, @object);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					context.Create<T>(dataSource, @object);
 
-			// update in cache storage
-			if (context.EntityDefinition.CacheStorage != null)
+				// update in cache storage
+				if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-				if (context.EntityDefinition.CacheStorage.Set(@object))
-					RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (context.EntityDefinition.CacheStorage.Set(@object))
+						RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				context.EntityDefinition.CacheStorage.Set(@object);
+					context.EntityDefinition.CacheStorage.Set(@object);
 #endif
 
-			// call post-handlers
-			RepositoryMediator.CallPostHandlers(context, @object);
+				// call post-handlers
+				RepositoryMediator.CallPostHandlers(context, @object, false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -468,15 +603,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					RepositoryMediator.Create(context, aliasTypeName, @object);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				RepositoryMediator.Create(context, aliasTypeName, @object);
 			}
 		}
 
@@ -490,51 +617,59 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task CreateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// update context
-			context.Operation = RepositoryOperation.Create;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
-			// validate & re-update object
-			var currentState = context.SetCurrentState(@object);
-			if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
+			try
 			{
-				// re-update object
-				currentState.ForEach(data =>
+				// update context
+				context.Operation = RepositoryOperation.Create;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				// validate & re-update object
+				var currentState = context.SetCurrentState(@object);
+				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					if (data.Key.StartsWith("ExtendedProperties."))
-						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
-					else
-						@object.SetAttributeValue(data.Key, data.Value);
-				});
+					// re-update object
+					currentState.ForEach(data =>
+					{
+						if (data.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						else
+							@object.SetAttributeValue(data.Key, data.Value);
+					});
 
-				// update state
-				context.SetCurrentState(@object, currentState);
-			}
+					// update state
+					context.SetCurrentState(@object, currentState);
+				}
 
-			// call pre-handlers
-			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false))
-				return;
+				// call pre-handlers
+				if (await RepositoryMediator.CallPreHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false))
+					return;
 
-			// prepare data source
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				// prepare data source
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// create
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.CreateAsync<T>(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.CreateAsync<T>(dataSource, @object, cancellationToken).ConfigureAwait(false);
+				// create
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					await context.CreateAsync<T>(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					await context.CreateAsync<T>(dataSource, @object, cancellationToken).ConfigureAwait(false);
 
-			// update in cache storage
-			if (context.EntityDefinition.CacheStorage != null)
+				// update in cache storage
+				if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-				if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-					RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
+						RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
+					await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
 
-			// call post-handlers
-			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
+				// call post-handlers
+				await RepositoryMediator.CallPostHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -565,15 +700,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					await RepositoryMediator.CreateAsync(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				await RepositoryMediator.CreateAsync(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
@@ -591,58 +718,66 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static T Get<T>(RepositoryContext context, DataSource dataSource, string id, bool callHandlers = true, bool processCache = true) where T : class
 		{
-			// prepare
-			if (callHandlers)
+			try
 			{
-				context.Operation = RepositoryOperation.Get;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			}
+				// prepare
+				if (callHandlers)
+				{
+					context.Operation = RepositoryOperation.Get;
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				}
 
-			// call pre-handlers
-			if (callHandlers && RepositoryMediator.CallPreHandlers(context, id))
-				return null;
+				// call pre-handlers
+				if (callHandlers && RepositoryMediator.CallPreHandlers(context, id))
+					return null;
 
-			// get cached object
-			var @object = processCache && context.EntityDefinition.CacheStorage != null
-				? context.EntityDefinition.CacheStorage.Fetch<T>(id)
-				: null;
+				// get cached object
+				var @object = processCache && context.EntityDefinition.CacheStorage != null
+					? context.EntityDefinition.CacheStorage.Fetch<T>(id)
+					: null;
 
 #if DEBUG || PROCESSLOGS
-			if (@object != null)
-				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
+				if (@object != null)
+					RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
 #endif
 
-			// load from data store if got no cached
-			if (@object == null)
-			{
-				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-				@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? context.Get<T>(dataSource, id, null)
-					: dataSource.Mode.Equals(RepositoryMode.SQL)
-						? context.Get<T>(dataSource, id)
-						: null;
+				// load from data store if got no cached
+				if (@object == null)
+				{
+					dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+					@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? context.Get<T>(dataSource, id, null)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? context.Get<T>(dataSource, id)
+							: null;
 
-				// TO DO: check to get instance from secondary source if primary source is not available
+					// TO DO: check to get instance from secondary source if primary source is not available
 
-				// update into cache storage
-				if (@object != null && processCache && context.EntityDefinition.CacheStorage != null)
+					// update into cache storage
+					if (@object != null && processCache && context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-					if (context.EntityDefinition.CacheStorage.Set(@object))
-						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+						if (context.EntityDefinition.CacheStorage.Set(@object))
+							RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-					context.EntityDefinition.CacheStorage.Set(@object);
+						context.EntityDefinition.CacheStorage.Set(@object);
 #endif
-			}
+				}
 
-			// update state & call post-handlers
-			if (callHandlers && @object != null)
+				// update state & call post-handlers
+				if (callHandlers && @object != null)
+				{
+					context.SetCurrentState(@object);
+					RepositoryMediator.CallPostHandlers(context, @object);
+				}
+
+				// return the instance of object
+				return @object;
+			}
+			catch (Exception ex)
 			{
-				context.SetCurrentState(@object);
-				RepositoryMediator.CallPostHandlers(context, @object);
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString()}]", ex);
 			}
-
-			// return the instance of object
-			return @object;
 		}
 
 		/// <summary>
@@ -672,15 +807,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				try
-				{
-					return RepositoryMediator.Get<T>(context, aliasTypeName, id);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				return RepositoryMediator.Get<T>(context, aliasTypeName, id);
 			}
 		}
 
@@ -697,59 +824,67 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, string id, bool callHandlers = true, CancellationToken cancellationToken = default(CancellationToken), bool processCache = true) where T : class
 		{
-			// prepare
-			if (callHandlers)
+			try
 			{
-				context.Operation = RepositoryOperation.Get;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			}
+				// prepare
+				if (callHandlers)
+				{
+					context.Operation = RepositoryOperation.Get;
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				}
 
-			// call pre-handlers
-			if (callHandlers && await RepositoryMediator.CallPreHandlersAsync(context, id, cancellationToken).ConfigureAwait(false))
-				return null;
+				// call pre-handlers
+				if (callHandlers && await RepositoryMediator.CallPreHandlersAsync(context, id, false, cancellationToken).ConfigureAwait(false))
+					return null;
 
-			// get cached object
-			var @object = processCache && context.EntityDefinition.CacheStorage != null
-				? await context.EntityDefinition.CacheStorage.FetchAsync<T>(id).ConfigureAwait(false)
-				: null;
+				// get cached object
+				var @object = processCache && context.EntityDefinition.CacheStorage != null
+					? await context.EntityDefinition.CacheStorage.FetchAsync<T>(id).ConfigureAwait(false)
+					: null;
 
 #if DEBUG || PROCESSLOGS
-			if (@object != null)
-				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey() + "]");
+				if (@object != null)
+					RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey() + "]");
 #endif
 
-			// load from data store if got no cached
-			if (@object == null)
-			{
-				// load from primary data source
-				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-				@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await context.GetAsync<T>(dataSource, id, null, cancellationToken).ConfigureAwait(false)
-					: dataSource.Mode.Equals(RepositoryMode.SQL)
-						? await context.GetAsync<T>(dataSource, id, cancellationToken).ConfigureAwait(false)
-						: null;
+				// load from data store if got no cached
+				if (@object == null)
+				{
+					// load from primary data source
+					dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+					@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? await context.GetAsync<T>(dataSource, id, null, cancellationToken).ConfigureAwait(false)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? await context.GetAsync<T>(dataSource, id, cancellationToken).ConfigureAwait(false)
+							: null;
 
-				// TO DO: check to get instance from secondary source if primary source is not available
+					// TO DO: check to get instance from secondary source if primary source is not available
 
-				// update into cache storage
-				if (@object != null && processCache && context.EntityDefinition.CacheStorage != null)
+					// update into cache storage
+					if (@object != null && processCache && context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+						if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
+							RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-					await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
+						await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
-			}
+				}
 
-			// update state & call post-handlers
-			if (callHandlers && @object != null)
+				// update state & call post-handlers
+				if (callHandlers && @object != null)
+				{
+					context.SetCurrentState(@object);
+					await RepositoryMediator.CallPostHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false);
+				}
+
+				// return the instance of object
+				return @object;
+			}
+			catch (Exception ex)
 			{
-				context.SetCurrentState(@object);
-				await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString()}]", ex);
 			}
-
-			// return the instance of object
-			return @object;
 		}
 
 		/// <summary>
@@ -781,15 +916,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				try
-				{
-					return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, true, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, true, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
@@ -807,17 +934,25 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static T Get<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Get;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+			try
+			{
+				// prepare
+				context.Operation = RepositoryOperation.Get;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// find
-			return dataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? context.Get<T>(dataSource, filter, sort, businessEntityID, null)
-				: dataSource.Mode.Equals(RepositoryMode.SQL)
-					? context.Get<T>(dataSource, filter, sort, businessEntityID)
-					: null;
+				// find
+				return dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? context.Get<T>(dataSource, filter, sort, businessEntityID, null)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? context.Get<T>(dataSource, filter, sort, businessEntityID)
+						: null;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while fetching first-matched object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -849,15 +984,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				try
-				{
-					return RepositoryMediator.Get<T>(context, aliasTypeName, filter, sort);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				return RepositoryMediator.Get<T>(context, aliasTypeName, filter, sort);
 			}
 		}
 
@@ -872,19 +999,27 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Get;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+			try
+			{
+				// prepare
+				context.Operation = RepositoryOperation.Get;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// find
-			return dataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? context.GetAsync<T>(dataSource, filter, sort, businessEntityID, null, cancellationToken)
-				: dataSource.Mode.Equals(RepositoryMode.SQL)
-					? context.GetAsync<T>(dataSource, filter, sort, businessEntityID, cancellationToken)
-					: Task.FromResult<T>(null);
+				// find
+				return dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? await context.GetAsync<T>(dataSource, filter, sort, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? await context.GetAsync<T>(dataSource, filter, sort, businessEntityID, cancellationToken).ConfigureAwait(false)
+						: null;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while fetching first-matched object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -918,15 +1053,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				try
-				{
-					return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
@@ -1096,70 +1223,95 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
-		public static void Replace<T>(RepositoryContext context, DataSource dataSource, T @object) where T : class
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Replace<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Update;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
-			// check state
-			var previousInstance = @object != null
-				? RepositoryMediator.Get<T>(context, dataSource, @object.GetEntityID(), false)
-				: null;
-
-			var previousState = previousInstance != null
-				? context.SetPreviousState(previousInstance)
-				: null;
-
-			var currentState = context.SetCurrentState(@object);
-			var dirtyAttributes = context.FindDirty(previousState, currentState);
-			if (dirtyAttributes.Count < 1)
-				return;
-
-			// validate & re-update object
-			if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
+			try
 			{
-				// re-update object
-				currentState.ForEach(data =>
+				// prepare
+				context.Operation = RepositoryOperation.Update;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				// check state
+				var previousInstance = @object != null
+					? RepositoryMediator.Get<T>(context, dataSource, @object.GetEntityID(), false)
+					: null;
+
+				var previousState = previousInstance != null
+					? context.SetPreviousState(previousInstance)
+					: null;
+
+				var currentState = context.SetCurrentState(@object);
+				var dirtyAttributes = context.FindDirty(previousState, currentState);
+				if (dirtyAttributes.Count < 1)
+					return;
+
+				// validate & re-update object
+				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					if (data.Key.StartsWith("ExtendedProperties."))
-						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
-					else
-						@object.SetAttributeValue(data.Key, data.Value);
-				});
+					// re-update object
+					currentState.ForEach(data =>
+					{
+						if (data.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						else
+							@object.SetAttributeValue(data.Key, data.Value);
+					});
 
-				// update state
-				context.SetCurrentState(@object, currentState);
-			}
+					// update state
+					context.SetCurrentState(@object, currentState);
+				}
 
-			// call pre-handlers
-			if (RepositoryMediator.CallPreHandlers(context, @object))
-				return;
+				// call pre-handlers
+				if (RepositoryMediator.CallPreHandlers(context, @object, false))
+					return;
 
-			// reset search score
-			if (@object is RepositoryBase)
-				(@object as RepositoryBase).SearchScore = null;
+				// reset search score
+				if (@object is RepositoryBase)
+					(@object as RepositoryBase).SearchScore = null;
 
-			// update
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				context.Replace<T>(dataSource, @object, null);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				context.Replace<T>(dataSource, @object);
+				// create new version
+				var createNewVersion = context.EntityDefinition.CreateNewVersionWhenUpdated;
+				if (@object is IBusinessEntity)
+				{
+					var runtimeEntity = RepositoryMediator.GetRuntimeRepositoryEntity((@object as IBusinessEntity).EntityID);
+					createNewVersion = runtimeEntity != null
+						? runtimeEntity.CreateNewVersionWhenUpdated
+						: true;
+				}
 
-			// update into cache storage
-			if (context.EntityDefinition.CacheStorage != null)
+				if (createNewVersion)
+				{
+					userID = userID ?? (@object is IBusinessEntity ? (@object as IBusinessEntity).LastModifiedID : @object.GetAttributeValue("LastModifiedID") as string);
+					RepositoryMediator.CreateVersion<T>(context, @object, userID);
+				}
+
+				// update
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					context.Replace<T>(dataSource, @object, null);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					context.Replace<T>(dataSource, @object);
+
+				// update into cache storage
+				if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
 				if (context.EntityDefinition.CacheStorage.Set(@object))
 					RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				context.EntityDefinition.CacheStorage.Set(@object);
+					context.EntityDefinition.CacheStorage.Set(@object);
 #endif
 
-			// call post-handlers
-			RepositoryMediator.CallPostHandlers(context, @object);
+				// call post-handlers
+				RepositoryMediator.CallPostHandlers(context, @object, false);
 
-			// TO DO: sync to other data sources
+				// TO DO: sync to other data sources
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -1169,10 +1321,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
-		public static void Replace<T>(RepositoryContext context, string aliasTypeName, T @object) where T : class
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Replace<T>(RepositoryContext context, string aliasTypeName, T @object, string userID = null) where T : class
 		{
 			context.AliasTypeName = aliasTypeName;
-			RepositoryMediator.Replace<T>(context, RepositoryMediator.GetPrimaryDataSource(context), @object);
+			RepositoryMediator.Replace<T>(context, RepositoryMediator.GetPrimaryDataSource(context), @object, userID);
 		}
 
 		/// <summary>
@@ -1181,19 +1334,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
-		public static void Replace<T>(string aliasTypeName, T @object) where T : class
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Replace<T>(string aliasTypeName, T @object, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					RepositoryMediator.Replace<T>(context, aliasTypeName, @object);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				RepositoryMediator.Replace<T>(context, aliasTypeName, @object, userID);
 			}
 		}
 
@@ -1204,69 +1350,94 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task ReplaceAsync<T>(RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task ReplaceAsync<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Update;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
-			// check state
-			var previousInstance = @object != null
-				? await RepositoryMediator.GetAsync<T>(context, dataSource, @object.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
-				: null;
-
-			var previousState = previousInstance != null
-				? context.SetPreviousState(previousInstance)
-				: null;
-
-			var currentState = context.SetCurrentState(@object);
-			var dirtyAttributes = context.FindDirty(previousState, currentState);
-			if (dirtyAttributes.Count < 1)
-				return;
-
-			// validate & re-update object
-			if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
+			try
 			{
-				// re-update object
-				currentState.ForEach(data =>
+				// prepare
+				context.Operation = RepositoryOperation.Update;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				// check state
+				var previousInstance = @object != null
+					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
+					: null;
+
+				var previousState = previousInstance != null
+					? context.SetPreviousState(previousInstance)
+					: null;
+
+				var currentState = context.SetCurrentState(@object);
+				var dirtyAttributes = context.FindDirty(previousState, currentState);
+				if (dirtyAttributes.Count < 1)
+					return;
+
+				// validate & re-update object
+				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					if (data.Key.StartsWith("ExtendedProperties."))
-						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
-					else
-						@object.SetAttributeValue(data.Key, data.Value);
-				});
+					// re-update object
+					currentState.ForEach(data =>
+					{
+						if (data.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						else
+							@object.SetAttributeValue(data.Key, data.Value);
+					});
 
-				// update state
-				context.SetCurrentState(@object, currentState);
-			}
+					// update state
+					context.SetCurrentState(@object, currentState);
+				}
 
-			// call pre-handlers
-			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false))
-				return;
+				// call pre-handlers
+				if (await RepositoryMediator.CallPreHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false))
+					return;
 
-			// reset search score
-			if (@object is RepositoryBase)
-				(@object as RepositoryBase).SearchScore = null;
+				// reset search score
+				if (@object is RepositoryBase)
+					(@object as RepositoryBase).SearchScore = null;
 
-			// update
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.ReplaceAsync<T>(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.ReplaceAsync<T>(dataSource, @object, cancellationToken).ConfigureAwait(false);
+				// create new version
+				var createNewVersion = context.EntityDefinition.CreateNewVersionWhenUpdated;
+				if (@object is IBusinessEntity)
+				{
+					var runtimeEntity = RepositoryMediator.GetRuntimeRepositoryEntity((@object as IBusinessEntity).EntityID);
+					createNewVersion = runtimeEntity != null
+						? runtimeEntity.CreateNewVersionWhenUpdated
+						: true;
+				}
 
-			// update into cache storage
-			if (context.EntityDefinition.CacheStorage != null)
+				if (createNewVersion)
+				{
+					userID = userID ?? (@object is IBusinessEntity ? (@object as IBusinessEntity).LastModifiedID : @object.GetAttributeValue("LastModifiedID") as string);
+					await RepositoryMediator.CreateVersionAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
+				}
+
+				// update
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					await context.ReplaceAsync<T>(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					await context.ReplaceAsync<T>(dataSource, @object, cancellationToken).ConfigureAwait(false);
+
+				// update into cache storage
+				if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-				if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-					RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
+						RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
+					await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
 
-			// call post-handlers
-			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
+				// call post-handlers
+				await RepositoryMediator.CallPostHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -1276,12 +1447,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task ReplaceAsync<T>(RepositoryContext context, string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task ReplaceAsync<T>(RepositoryContext context, string aliasTypeName, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prcoess
 			context.AliasTypeName = aliasTypeName;
-			await RepositoryMediator.ReplaceAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), @object, cancellationToken).ConfigureAwait(false);
+			await RepositoryMediator.ReplaceAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), @object, userID, cancellationToken).ConfigureAwait(false);
 
 			// TO DO: sync to other data sources
 			// ...
@@ -1293,20 +1465,13 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task ReplaceAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task ReplaceAsync<T>(string aliasTypeName, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					await RepositoryMediator.ReplaceAsync<T>(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				await RepositoryMediator.ReplaceAsync<T>(context, aliasTypeName, @object, userID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
@@ -1319,66 +1484,91 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
-		public static void Update<T>(RepositoryContext context, DataSource dataSource, T @object) where T : class
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Update<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Update;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
-			// check state
-			var previousInstance = @object != null
-				? RepositoryMediator.Get<T>(context, dataSource, @object.GetEntityID(), false)
-				: null;
-
-			var previousState = previousInstance != null
-				? context.SetPreviousState(previousInstance)
-				: null;
-
-			var currentState = context.SetCurrentState(@object);
-			var dirtyAttributes = context.FindDirty(previousState, currentState);
-			if (dirtyAttributes.Count < 1)
-				return;
-
-			// validate & re-update object
-			if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
+			try
 			{
-				// re-update object
-				currentState.ForEach(data =>
+				// prepare
+				context.Operation = RepositoryOperation.Update;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				// check state
+				var previousInstance = @object != null
+					? RepositoryMediator.Get<T>(context, dataSource, @object.GetEntityID(), false)
+					: null;
+
+				var previousState = previousInstance != null
+					? context.SetPreviousState(previousInstance)
+					: null;
+
+				var currentState = context.SetCurrentState(@object);
+				var dirtyAttributes = context.FindDirty(previousState, currentState);
+				if (dirtyAttributes.Count < 1)
+					return;
+
+				// validate & re-update object
+				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					if (data.Key.StartsWith("ExtendedProperties."))
-						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
-					else
-						@object.SetAttributeValue(data.Key, data.Value);
-				});
+					// re-update object
+					currentState.ForEach(data =>
+					{
+						if (data.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						else
+							@object.SetAttributeValue(data.Key, data.Value);
+					});
 
-				// update state
-				context.SetCurrentState(@object, currentState);
-			}
+					// update state
+					context.SetCurrentState(@object, currentState);
+				}
 
-			// call pre-handlers
-			if (RepositoryMediator.CallPreHandlers(context, @object))
-				return;
+				// call pre-handlers
+				if (RepositoryMediator.CallPreHandlers(context, @object, false))
+					return;
 
-			// update
-			var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				// create new version
+				var createNewVersion = context.EntityDefinition.CreateNewVersionWhenUpdated;
+				if (@object is IBusinessEntity)
+				{
+					var runtimeEntity = RepositoryMediator.GetRuntimeRepositoryEntity((@object as IBusinessEntity).EntityID);
+					createNewVersion = runtimeEntity != null
+						? runtimeEntity.CreateNewVersionWhenUpdated
+						: true;
+				}
 
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				context.Update<T>(dataSource, @object, updatedAttributes, null);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				context.Update<T>(dataSource, @object, updatedAttributes);
+				if (createNewVersion)
+				{
+					userID = userID ?? (@object is IBusinessEntity ? (@object as IBusinessEntity).LastModifiedID : @object.GetAttributeValue("LastModifiedID") as string);
+					RepositoryMediator.CreateVersion<T>(context, @object, userID);
+				}
 
-			// update into cache storage
-			if (context.EntityDefinition.CacheStorage != null)
+				// update
+				var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					context.Update<T>(dataSource, @object, updatedAttributes, null);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					context.Update<T>(dataSource, @object, updatedAttributes);
+
+				// update into cache storage
+				if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-				if (context.EntityDefinition.CacheStorage.Set(@object))
-					RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (context.EntityDefinition.CacheStorage.Set(@object))
+						RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				context.EntityDefinition.CacheStorage.Set(@object);
+					context.EntityDefinition.CacheStorage.Set(@object);
 #endif
 
-			// call post-handlers
-			RepositoryMediator.CallPostHandlers(context, @object);
+				// call post-handlers
+				RepositoryMediator.CallPostHandlers(context, @object, false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -1388,11 +1578,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
-		public static void Update<T>(RepositoryContext context, string aliasTypeName, T @object) where T : class
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Update<T>(RepositoryContext context, string aliasTypeName, T @object, string userID = null) where T : class
 		{
 			// process
 			context.AliasTypeName = aliasTypeName;
-			RepositoryMediator.Update<T>(context, RepositoryMediator.GetPrimaryDataSource(context), @object);
+			RepositoryMediator.Update<T>(context, RepositoryMediator.GetPrimaryDataSource(context), @object, userID);
 
 			// TO DO: sync to other data sources
 			// ...
@@ -1404,19 +1595,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
-		public static void Update<T>(string aliasTypeName, T @object) where T : class
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Update<T>(string aliasTypeName, T @object, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					RepositoryMediator.Update<T>(context, aliasTypeName, @object);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				RepositoryMediator.Update<T>(context, aliasTypeName, @object, userID);
 			}
 		}
 
@@ -1427,67 +1611,92 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task UpdateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task UpdateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Update;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
-			// check state
-			var previousInstance = @object != null
-				? await RepositoryMediator.GetAsync<T>(context, dataSource, @object.GetEntityID(), false).ConfigureAwait(false)
-				: null;
-
-			var previousState = previousInstance != null
-				? context.SetPreviousState(previousInstance)
-				: null;
-
-			var currentState = context.SetCurrentState(@object);
-			var dirtyAttributes = context.FindDirty(previousState, currentState);
-			if (dirtyAttributes.Count < 1)
-				return;
-
-			// validate & re-update object
-			if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
+			try
 			{
-				// re-update object
-				currentState.ForEach(data =>
+				// prepare
+				context.Operation = RepositoryOperation.Update;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				// check state
+				var previousInstance = @object != null
+					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object.GetEntityID(), false).ConfigureAwait(false)
+					: null;
+
+				var previousState = previousInstance != null
+					? context.SetPreviousState(previousInstance)
+					: null;
+
+				var currentState = context.SetCurrentState(@object);
+				var dirtyAttributes = context.FindDirty(previousState, currentState);
+				if (dirtyAttributes.Count < 1)
+					return;
+
+				// validate & re-update object
+				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					if (data.Key.StartsWith("ExtendedProperties."))
-						(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
-					else
-						@object.SetAttributeValue(data.Key, data.Value);
-				});
+					// re-update object
+					currentState.ForEach(data =>
+					{
+						if (data.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						else
+							@object.SetAttributeValue(data.Key, data.Value);
+					});
 
-				// update state
-				context.SetCurrentState(@object, currentState);
-			}
+					// update state
+					context.SetCurrentState(@object, currentState);
+				}
 
-			// call pre-handlers
-			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false))
-				return;
+				// call pre-handlers
+				if (await RepositoryMediator.CallPreHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false))
+					return;
 
-			// update
-			var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				// create new version
+				var createNewVersion = context.EntityDefinition.CreateNewVersionWhenUpdated;
+				if (@object is IBusinessEntity)
+				{
+					var runtimeEntity = RepositoryMediator.GetRuntimeRepositoryEntity((@object as IBusinessEntity).EntityID);
+					createNewVersion = runtimeEntity != null
+						? runtimeEntity.CreateNewVersionWhenUpdated
+						: true;
+				}
 
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.UpdateAsync<T>(dataSource, @object, updatedAttributes, null, cancellationToken).ConfigureAwait(false);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.UpdateAsync<T>(dataSource, @object, updatedAttributes, cancellationToken).ConfigureAwait(false);
+				if (createNewVersion)
+				{
+					userID = userID ?? (@object is IBusinessEntity ? (@object as IBusinessEntity).LastModifiedID : @object.GetAttributeValue("LastModifiedID") as string);
+					await RepositoryMediator.CreateVersionAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
+				}
 
-			// update into cache storage
-			if (context.EntityDefinition.CacheStorage != null)
+				// update
+				var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					await context.UpdateAsync<T>(dataSource, @object, updatedAttributes, null, cancellationToken).ConfigureAwait(false);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					await context.UpdateAsync<T>(dataSource, @object, updatedAttributes, cancellationToken).ConfigureAwait(false);
+
+				// update into cache storage
+				if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-				if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-					RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
+						RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
+					await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false);
 #endif
 
-			// call post-handlers
-			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
+				// call post-handlers
+				await RepositoryMediator.CallPostHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -1497,12 +1706,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task UpdateAsync<T>(RepositoryContext context, string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task UpdateAsync<T>(RepositoryContext context, string aliasTypeName, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// prepare
 			context.AliasTypeName = aliasTypeName;
-			await RepositoryMediator.UpdateAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), @object, cancellationToken).ConfigureAwait(false);
+			await RepositoryMediator.UpdateAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), @object, userID, cancellationToken).ConfigureAwait(false);
 
 			// TO DO: sync to other data sources
 			// ...
@@ -1514,20 +1724,13 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="object">The object that presents the instance in repository need to be updated</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task UpdateAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task UpdateAsync<T>(string aliasTypeName, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					await RepositoryMediator.UpdateAsync<T>(context, aliasTypeName, @object).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				await RepositoryMediator.UpdateAsync<T>(context, aliasTypeName, @object, userID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
@@ -1540,40 +1743,52 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
-		public static void Delete<T>(RepositoryContext context, DataSource dataSource, string id) where T : class
+		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
+		public static void Delete<T>(RepositoryContext context, DataSource dataSource, string id, string userID = null) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Delete;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			try
+			{
+				// prepare
+				context.Operation = RepositoryOperation.Delete;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
-			// check existing
-			var @object = RepositoryMediator.Get<T>(context, dataSource, id, false);
-			if (@object == null)
-				return;
+				// check existing
+				var @object = RepositoryMediator.Get<T>(context, dataSource, id, false);
+				if (@object == null)
+					return;
 
-			// call pre-handlers
-			context.SetCurrentState(@object);
-			if (RepositoryMediator.CallPreHandlers(context, @object))
-				return;
+				// call pre-handlers
+				context.SetCurrentState(@object);
+				if (RepositoryMediator.CallPreHandlers(context, @object, false))
+					return;
 
-			// delete
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				context.Delete<T>(dataSource, @object, null);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				context.Delete<T>(dataSource, @object);
+				// create trash content
+				RepositoryMediator.CreateTrashContent<T>(context, @object, userID);
 
-			// remove from cache storage
-			if (context.EntityDefinition.CacheStorage != null)
+				// delete
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					context.Delete<T>(dataSource, @object, null);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					context.Delete<T>(dataSource, @object);
+
+				// remove from cache storage
+				if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-				if (context.EntityDefinition.CacheStorage.Remove(@object))
-					RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (context.EntityDefinition.CacheStorage.Remove(@object))
+						RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				context.EntityDefinition.CacheStorage.Remove(@object);
+					context.EntityDefinition.CacheStorage.Remove(@object);
 #endif
 
-			// call post-handlers
-			RepositoryMediator.CallPostHandlers(context, @object);
+				// call post-handlers
+				RepositoryMediator.CallPostHandlers(context, @object, false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -1583,11 +1798,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
-		public static void Delete<T>(RepositoryContext context, string aliasTypeName, string id) where T : class
+		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
+		public static void Delete<T>(RepositoryContext context, string aliasTypeName, string id, string userID = null) where T : class
 		{
 			// process
 			context.AliasTypeName = aliasTypeName;
-			RepositoryMediator.Delete<T>(context, RepositoryMediator.GetPrimaryDataSource(context), id);
+			RepositoryMediator.Delete<T>(context, RepositoryMediator.GetPrimaryDataSource(context), id, userID);
 
 			// TO DO: sync to other data sources
 			// ...
@@ -1599,19 +1815,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
-		public static void Delete<T>(string aliasTypeName, string id) where T : class
+		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
+		public static void Delete<T>(string aliasTypeName, string id, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					RepositoryMediator.Delete<T>(context, aliasTypeName, id);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				RepositoryMediator.Delete<T>(context, aliasTypeName, id, userID);
 			}
 		}
 
@@ -1622,41 +1831,53 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task DeleteAsync<T>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteAsync<T>(RepositoryContext context, DataSource dataSource, string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Delete;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			try
+			{
+				// prepare
+				context.Operation = RepositoryOperation.Delete;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
-			// check existing
-			var @object = await RepositoryMediator.GetAsync<T>(context, dataSource, id, false, cancellationToken).ConfigureAwait(false);
-			if (@object == null)
-				return;
+				// check existing
+				var @object = await RepositoryMediator.GetAsync<T>(context, dataSource, id, false, cancellationToken).ConfigureAwait(false);
+				if (@object == null)
+					return;
 
-			// call pre-handlers
-			context.SetCurrentState(@object);
-			if (await RepositoryMediator.CallPreHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false))
-				return;
+				// call pre-handlers
+				context.SetCurrentState(@object);
+				if (await RepositoryMediator.CallPreHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false))
+					return;
 
-			// delete
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.DeleteAsync<T>(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.DeleteAsync<T>(dataSource, @object, cancellationToken).ConfigureAwait(false);
+				// create trash content
+				await RepositoryMediator.CreateTrashContentAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
 
-			// remove from cache storage
-			if (context.EntityDefinition.CacheStorage != null)
+				// delete
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					await context.DeleteAsync<T>(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					await context.DeleteAsync<T>(dataSource, @object, cancellationToken).ConfigureAwait(false);
+
+				// remove from cache storage
+				if (context.EntityDefinition.CacheStorage != null)
 #if DEBUG || PROCESSLOGS
-				if (await context.EntityDefinition.CacheStorage.RemoveAsync(@object).ConfigureAwait(false))
-					RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.CacheStorage.RemoveAsync(@object).ConfigureAwait(false))
+						RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
 #else
-				await context.EntityDefinition.CacheStorage.RemoveAsync(@object).ConfigureAwait(false);
+					await context.EntityDefinition.CacheStorage.RemoveAsync(@object).ConfigureAwait(false);
 #endif
 
-			// call post-handlers
-			await RepositoryMediator.CallPostHandlersAsync(context, @object, cancellationToken).ConfigureAwait(false);
+				// call post-handlers
+				await RepositoryMediator.CallPostHandlersAsync(context, @object, false, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -1666,12 +1887,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task DeleteAsync<T>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteAsync<T>(RepositoryContext context, string aliasTypeName, string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			// process
 			context.AliasTypeName = aliasTypeName;
-			await RepositoryMediator.DeleteAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), id, cancellationToken).ConfigureAwait(false);
+			await RepositoryMediator.DeleteAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), id, userID, cancellationToken).ConfigureAwait(false);
 
 			// TO DO: sync to other data sources
 			// ...
@@ -1683,20 +1905,13 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that presents object identity that want to delete instance from repository</param>
+		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task DeleteAsync<T>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteAsync<T>(string aliasTypeName, string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					await RepositoryMediator.DeleteAsync<T>(context, aliasTypeName, id, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				await RepositoryMediator.DeleteAsync<T>(context, aliasTypeName, id, userID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
@@ -1712,16 +1927,24 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		public static void DeleteMany<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Delete;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+			try
+			{
+				// prepare
+				context.Operation = RepositoryOperation.Delete;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// delete
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				context.DeleteMany<T>(dataSource, filter, businessEntityID, null);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				context.DeleteMany<T>(dataSource, filter, businessEntityID);
+				// delete
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					context.DeleteMany<T>(dataSource, filter, businessEntityID, null);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					context.DeleteMany<T>(dataSource, filter, businessEntityID);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -1753,15 +1976,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					RepositoryMediator.DeleteMany<T>(context, aliasTypeName, filter, businessEntityID);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				RepositoryMediator.DeleteMany<T>(context, aliasTypeName, filter, businessEntityID);
 			}
 		}
 
@@ -1776,16 +1991,24 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task DeleteManyAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.Operation = RepositoryOperation.Delete;
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+			try
+			{
+				// prepare
+				context.Operation = RepositoryOperation.Delete;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// delete
-			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-				await context.DeleteManyAsync<T>(dataSource, filter, businessEntityID, null, cancellationToken).ConfigureAwait(false);
-			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-				await context.DeleteManyAsync<T>(dataSource, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
+				// delete
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					await context.DeleteManyAsync<T>(dataSource, filter, businessEntityID, null, cancellationToken).ConfigureAwait(false);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					await context.DeleteManyAsync<T>(dataSource, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -1819,15 +2042,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext())
 			{
-				try
-				{
-					await RepositoryMediator.DeleteManyAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
-				}
-				catch (Exception ex)
-				{
-					context.Exception = ex;
-					throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-				}
+				await RepositoryMediator.DeleteManyAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
@@ -1850,18 +2065,26 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> FindIdentities<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// find identities
-			return context.EntityDefinition.CacheStorage != null && !string.IsNullOrWhiteSpace(cacheKey)
-				? context.EntityDefinition.CacheStorage.Get<List<string>>(cacheKey)
-				: dataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? context.SelectIdentities<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
-					: dataSource.Mode.Equals(RepositoryMode.SQL)
-						? context.SelectIdentities<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
-						: new List<string>();
+				// find identities
+				return context.EntityDefinition.CacheStorage != null && !string.IsNullOrWhiteSpace(cacheKey)
+					? context.EntityDefinition.CacheStorage.Get<List<string>>(cacheKey)
+					: dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? context.SelectIdentities<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? context.SelectIdentities<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+							: new List<string>();
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while finding identities of objects", ex);
+			}
 		}
 
 		/// <summary>
@@ -1881,16 +2104,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> FindIdentities<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return RepositoryMediator.FindIdentities<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException("Error occurred while finding identities of objects", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return RepositoryMediator.FindIdentities<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 		}
 
 		/// <summary>
@@ -1911,8 +2126,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				context.AliasTypeName = aliasTypeName;
-				return RepositoryMediator.FindIdentities<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+				return RepositoryMediator.FindIdentities<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 			}
 		}
 
@@ -1951,100 +2165,107 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Find<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			List<T> objects = null;
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				List<T> objects = null;
 
-			// find identities
-			var identities = context.EntityDefinition.CacheStorage == null
-				? null
-				: RepositoryMediator.FindIdentities<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
+				// find identities
+				var identities = context.EntityDefinition.CacheStorage == null
+					? null
+					: RepositoryMediator.FindIdentities<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 
 #if DEBUG || PROCESSLOGS
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-				"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-				"- Mode: " + primaryDataSource.Mode.ToString(),
-				"- Page Size: " + pageSize.ToString(),
-				"- Page Number: " + pageNumber.ToString(),
-				"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
-				"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
-			}, null);
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Page Size: " + pageSize.ToString(),
+					"- Page Number: " + pageNumber.ToString(),
+					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
+					"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
+				}, null);
 #endif
 
-			// process cache
-			if (identities != null && identities.Count > 0)
-			{
-#if DEBUG || PROCESSLOGS
-				RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
-#endif
-				// get cached objects
-				var cached = context.EntityDefinition.CacheStorage.Get<T>(identities.Select(id => id.GetCacheKey<T>()));
-				if (cached != null)
+				// process cache
+				if (identities != null && identities.Count > 0)
 				{
 #if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("FIND: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+					RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
 #endif
-					// prepare
-					var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
-
-					// add cached objects
-					var ids = new List<string>();
-					cached.ForEach(item =>
+					// get cached objects
+					var cached = context.EntityDefinition.CacheStorage.Get<T>(identities.Select(id => id.GetCacheKey<T>()));
+					if (cached != null)
 					{
-						var id = item.Value.GetEntityID();
-						ids.Add(id);
-						results[id] = item.Value;
-					});
-
-					// find missing objects
-					identities = identities.Except(ids).ToList();
-					if (identities.Count > 0)
-					{
-						var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? context.Find<T>(dataSource, identities, sort, businessEntityID, null)
-							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? context.Find<T>(dataSource, identities, sort, businessEntityID)
-								: new List<T>();
-
-						// update results & cache
-						missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
-						context.EntityDefinition.CacheStorage.Set(missing);
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("FIND: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+						RepositoryMediator.WriteLogs("FIND: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+#endif
+						// prepare
+						var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
+
+						// add cached objects
+						var ids = new List<string>();
+						cached.ForEach(item =>
+						{
+							var id = item.Value.GetEntityID();
+							ids.Add(id);
+							results[id] = item.Value;
+						});
+
+						// find missing objects
+						identities = identities.Except(ids).ToList();
+						if (identities.Count > 0)
+						{
+							var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+								? context.Find<T>(dataSource, identities, sort, businessEntityID, null)
+								: dataSource.Mode.Equals(RepositoryMode.SQL)
+									? context.Find<T>(dataSource, identities, sort, businessEntityID)
+									: new List<T>();
+
+							// update results & cache
+							missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
+							context.EntityDefinition.CacheStorage.Set(missing);
+#if DEBUG || PROCESSLOGS
+							RepositoryMediator.WriteLogs("FIND: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+#endif
+						}
+
+						// update the collection of objects
+						objects = results.Select(item => item.Value).ToList();
+					}
+				}
+
+				// fetch objects if has no cache
+				if (objects == null)
+				{
+					objects = identities == null || identities.Count > 0
+						? dataSource.Mode.Equals(RepositoryMode.NoSQL)
+							? context.Find<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
+							: dataSource.Mode.Equals(RepositoryMode.SQL)
+								? context.Find<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+								: new List<T>()
+						: new List<T>();
+
+					if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
+					{
+						if (!string.IsNullOrWhiteSpace(cacheKey))
+							context.EntityDefinition.CacheStorage.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
+						context.EntityDefinition.CacheStorage.Set(objects);
+#if DEBUG || PROCESSLOGS
+						RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
 #endif
 					}
-
-					// update the collection of objects
-					objects = results.Select(item => item.Value).ToList();
 				}
+				return objects;
 			}
-
-			// fetch objects if has no cache
-			if (objects == null)
+			catch (Exception ex)
 			{
-				objects = identities == null || identities.Count > 0
-					? dataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? context.Find<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
-						: dataSource.Mode.Equals(RepositoryMode.SQL)
-							? context.Find<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
-							: new List<T>()
-					: new List<T>();
-
-				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
-				{
-					if (!string.IsNullOrWhiteSpace(cacheKey))
-						context.EntityDefinition.CacheStorage.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
-					context.EntityDefinition.CacheStorage.Set(objects);
-#if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
-#endif
-				}
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T).ToString()}]", ex);
 			}
-
-			return objects;
 		}
 
 		/// <summary>
@@ -2064,16 +2285,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Find<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return RepositoryMediator.Find<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return RepositoryMediator.Find<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 		}
 
 		/// <summary>
@@ -2116,18 +2329,26 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// find identities
-			return context.EntityDefinition.CacheStorage != null && !string.IsNullOrWhiteSpace(cacheKey)
-				? await context.EntityDefinition.CacheStorage.GetAsync<List<string>>(cacheKey)
-				: dataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await context.SelectIdentitiesAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
-					: dataSource.Mode.Equals(RepositoryMode.SQL)
-						? await context.SelectIdentitiesAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
-						: new List<string>();
+				// find identities
+				return context.EntityDefinition.CacheStorage != null && !string.IsNullOrWhiteSpace(cacheKey)
+					? await context.EntityDefinition.CacheStorage.GetAsync<List<string>>(cacheKey)
+					: dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? await context.SelectIdentitiesAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? await context.SelectIdentitiesAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
+							: new List<string>();
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while finding identities of objects", ex);
+			}
 		}
 
 		/// <summary>
@@ -2148,16 +2369,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return await RepositoryMediator.FindIdentitiesAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException("Error occurred while finding identities of objects", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return await RepositoryMediator.FindIdentitiesAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -2179,8 +2392,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				context.AliasTypeName = aliasTypeName;
-				return await RepositoryMediator.FindIdentitiesAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+				return await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 			}
 		}
 
@@ -2221,100 +2433,107 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			List<T> objects = null;
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				List<T> objects = null;
 
-			// find identities
-			var identities = context.EntityDefinition.CacheStorage == null
-				? null
-				: await RepositoryMediator.FindIdentitiesAsync<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+				// find identities
+				var identities = context.EntityDefinition.CacheStorage == null
+					? null
+					: await RepositoryMediator.FindIdentitiesAsync<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 
 #if DEBUG || PROCESSLOGS
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-				"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-				"- Mode: " + primaryDataSource.Mode.ToString(),
-				"- Page Size: " + pageSize.ToString(),
-				"- Page Number: " + pageNumber.ToString(),
-				"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
-				"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
-			}, null);
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Page Size: " + pageSize.ToString(),
+					"- Page Number: " + pageNumber.ToString(),
+					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
+					"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
+				}, null);
 #endif
 
-			// process
-			if (identities != null && identities.Count > 0)
-			{
-#if DEBUG || PROCESSLOGS
-				RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
-#endif
-				// get cached objects
-				var cached = await context.EntityDefinition.CacheStorage.GetAsync<T>(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
-				if (cached != null)
+				// process
+				if (identities != null && identities.Count > 0)
 				{
 #if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("FIND: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+					RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
 #endif
-					// prepare
-					var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
-
-					// add cached objects
-					var ids = new List<string>();
-					cached.ForEach(item =>
+					// get cached objects
+					var cached = await context.EntityDefinition.CacheStorage.GetAsync<T>(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
+					if (cached != null)
 					{
-						var id = item.Value.GetEntityID();
-						ids.Add(id);
-						results[id] = item.Value;
-					});
-
-					// find missing objects
-					identities = identities.Except(ids).ToList();
-					if (identities.Count > 0)
-					{
-						var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? await context.FindAsync<T>(dataSource, identities, sort, businessEntityID, null, cancellationToken).ConfigureAwait(false)
-							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? await context.FindAsync<T>(dataSource, identities, sort, businessEntityID, cancellationToken).ConfigureAwait(false)
-								: new List<T>();
-
-						// update results & cache
-						missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
-						await context.EntityDefinition.CacheStorage.SetAsync(missing).ConfigureAwait(false);
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("FIND: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+						RepositoryMediator.WriteLogs("FIND: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+#endif
+						// prepare
+						var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
+
+						// add cached objects
+						var ids = new List<string>();
+						cached.ForEach(item =>
+						{
+							var id = item.Value.GetEntityID();
+							ids.Add(id);
+							results[id] = item.Value;
+						});
+
+						// find missing objects
+						identities = identities.Except(ids).ToList();
+						if (identities.Count > 0)
+						{
+							var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+								? await context.FindAsync<T>(dataSource, identities, sort, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+								: dataSource.Mode.Equals(RepositoryMode.SQL)
+									? await context.FindAsync<T>(dataSource, identities, sort, businessEntityID, cancellationToken).ConfigureAwait(false)
+									: new List<T>();
+
+							// update results & cache
+							missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
+							await context.EntityDefinition.CacheStorage.SetAsync(missing).ConfigureAwait(false);
+#if DEBUG || PROCESSLOGS
+							RepositoryMediator.WriteLogs("FIND: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+#endif
+						}
+
+						// update the collection of objects
+						objects = results.Select(item => item.Value).ToList();
+					}
+				}
+
+				// fetch objects if has no cache
+				if (objects == null)
+				{
+					objects = identities == null || identities.Count > 0
+						? dataSource.Mode.Equals(RepositoryMode.NoSQL)
+							? await context.FindAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
+							: dataSource.Mode.Equals(RepositoryMode.SQL)
+								? await context.FindAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false)
+								: new List<T>()
+						: new List<T>();
+
+					if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
+					{
+						if (!string.IsNullOrWhiteSpace(cacheKey))
+							await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
+						await context.EntityDefinition.CacheStorage.SetAsync(objects).ConfigureAwait(false);
+#if DEBUG || PROCESSLOGS
+						RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
 #endif
 					}
-
-					// update the collection of objects
-					objects = results.Select(item => item.Value).ToList();
 				}
+				return objects;
 			}
-
-			// fetch objects if has no cache
-			if (objects == null)
+			catch (Exception ex)
 			{
-				objects = identities == null || identities.Count > 0
-					? dataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await context.FindAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
-						: dataSource.Mode.Equals(RepositoryMode.SQL)
-							? await context.FindAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false)
-							: new List<T>()
-					: new List<T>();
-
-				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
-				{
-					if (!string.IsNullOrWhiteSpace(cacheKey))
-						await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
-					await context.EntityDefinition.CacheStorage.SetAsync(objects).ConfigureAwait(false);
-#if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
-#endif
-				}
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T).ToString()}]", ex);
 			}
-
-			return objects;
 		}
 
 		/// <summary>
@@ -2333,18 +2552,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return await RepositoryMediator.FindAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return RepositoryMediator.FindAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 		}
 
 		/// <summary>
@@ -2386,38 +2597,47 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
 		public static long Count<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
-			// check cache
-			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && context.EntityDefinition.CacheStorage.Exists(cacheKey)
-				? context.EntityDefinition.CacheStorage.Get<long>(cacheKey)
-				: -1;
-			if (total > -1)
-				return total;
+				// check cache
+				var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && context.EntityDefinition.CacheStorage.Exists(cacheKey)
+					? context.EntityDefinition.CacheStorage.Get<long>(cacheKey)
+					: -1;
+				if (total > -1)
+					return total;
 
-			// count
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? context.Count<T>(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null)
-				: dataSource.Mode.Equals(RepositoryMode.SQL)
-					? context.Count<T>(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents)
-					: 0;
+				// count
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? context.Count<T>(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? context.Count<T>(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents)
+						: 0;
 
 #if DEBUG || PROCESSLOGS
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-				"- Total: " + total.ToString(),
-				"- Mode: " + primaryDataSource.Mode.ToString(),
-				"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
-			}, null);
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + total.ToString(),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
 #endif
 
-			// update cache and return
-			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
-				context.EntityDefinition.CacheStorage.Set(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
-			return total;
+				// update cache and return
+				if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
+					context.EntityDefinition.CacheStorage.Set(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime);
+
+				return total;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -2434,16 +2654,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
 		public static long Count<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return RepositoryMediator.Count<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return RepositoryMediator.Count<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 		}
 
 		/// <summary>
@@ -2480,38 +2692,47 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
 		public static async Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
-			// check cache
-			var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && await context.EntityDefinition.CacheStorage.ExistsAsync(cacheKey).ConfigureAwait(false)
-				? await context.EntityDefinition.CacheStorage.GetAsync<long>(cacheKey).ConfigureAwait(false)
-				: -1;
-			if (total > -1)
-				return total;
+				// check cache
+				var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null && await context.EntityDefinition.CacheStorage.ExistsAsync(cacheKey).ConfigureAwait(false)
+					? await context.EntityDefinition.CacheStorage.GetAsync<long>(cacheKey).ConfigureAwait(false)
+					: -1;
+				if (total > -1)
+					return total;
 
-			// count
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? await context.CountAsync<T>(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
-				: dataSource.Mode.Equals(RepositoryMode.SQL)
-					? await context.CountAsync<T>(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false)
-					: 0;
+				// count
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? await context.CountAsync<T>(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? await context.CountAsync<T>(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false)
+						: 0;
 
 #if DEBUG || PROCESSLOGS
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-				"- Total: " + total.ToString(),
-				"- Mode: " + primaryDataSource.Mode.ToString(),
-				"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
-			}, null);
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + total.ToString(),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
 #endif
 
-			// update cache and return
-			if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
-				await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
-			return total;
+				// update cache and return
+				if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.CacheStorage != null)
+					await context.EntityDefinition.CacheStorage.SetAsync(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.CacheStorage.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
+
+				return total;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -2527,18 +2748,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
-		public static async Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return await RepositoryMediator.CountAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return RepositoryMediator.CountAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 		}
 
 		/// <summary>
@@ -2577,102 +2790,109 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Search<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			List<T> objects = null;
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				List<T> objects = null;
 
-			// search identities
-			var identities = context.EntityDefinition.CacheStorage == null
-				? null
-				: dataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? context.SearchIdentities<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
-					: dataSource.Mode.Equals(RepositoryMode.SQL)
-						? context.SearchIdentities<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
-						: new List<string>();
+				// search identities
+				var identities = context.EntityDefinition.CacheStorage == null
+					? null
+					: dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? context.SearchIdentities<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? context.SearchIdentities<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
+							: new List<string>();
 
 #if DEBUG || PROCESSLOGS
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-				"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-				"- Mode: " + primaryDataSource.Mode.ToString(),
-				"- Page Size: " + pageSize.ToString(),
-				"- Page Number: " + pageNumber.ToString(),
-				"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
-				"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-			}, null);
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Page Size: " + pageSize.ToString(),
+					"- Page Number: " + pageNumber.ToString(),
+					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
+					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
 #endif
 
-			// process
-			if (identities != null && identities.Count > 0)
-			{
-#if DEBUG || PROCESSLOGS
-				RepositoryMediator.WriteLogs("SEARCH: Total " + identities.Count + " identities are searched [" + identities.ToString(" - ") + "]");
-#endif
-				// get cached objects
-				var cached = context.EntityDefinition.CacheStorage.Get(identities.Select(id => id.GetCacheKey<T>()));
-				if (cached != null)
+				// process
+				if (identities != null && identities.Count > 0)
 				{
 #if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("SEARCH: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+					RepositoryMediator.WriteLogs("SEARCH: Total " + identities.Count + " identities are searched [" + identities.ToString(" - ") + "]");
 #endif
-					// prepare
-					var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
-
-					// add cached objects
-					var ids = new List<string>();
-					cached.ForEach(item =>
+					// get cached objects
+					var cached = context.EntityDefinition.CacheStorage.Get(identities.Select(id => id.GetCacheKey<T>()));
+					if (cached != null)
 					{
-						var id = (item.Value as T).GetEntityID();
-						ids.Add(id);
-						results[id] = item.Value as T;
-					});
-
-					// find missing objects
-					identities = identities.Except(ids).ToList();
-					if (identities.Count > 0)
-					{
-						var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? context.Find<T>(dataSource, identities, null, businessEntityID, null)
-							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? context.Find<T>(dataSource, identities, null, businessEntityID)
-								: new List<T>();
-
-						// update results & cache
-						missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
-						context.EntityDefinition.CacheStorage.Set(missing);
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+						RepositoryMediator.WriteLogs("SEARCH: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+#endif
+						// prepare
+						var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
+
+						// add cached objects
+						var ids = new List<string>();
+						cached.ForEach(item =>
+						{
+							var id = (item.Value as T).GetEntityID();
+							ids.Add(id);
+							results[id] = item.Value as T;
+						});
+
+						// find missing objects
+						identities = identities.Except(ids).ToList();
+						if (identities.Count > 0)
+						{
+							var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+								? context.Find<T>(dataSource, identities, null, businessEntityID, null)
+								: dataSource.Mode.Equals(RepositoryMode.SQL)
+									? context.Find<T>(dataSource, identities, null, businessEntityID)
+									: new List<T>();
+
+							// update results & cache
+							missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
+							context.EntityDefinition.CacheStorage.Set(missing);
+#if DEBUG || PROCESSLOGS
+							RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+#endif
+						}
+
+						// update the collection of objects
+						objects = results.Select(item => item.Value as T).ToList();
+					}
+				}
+
+				// search raw objects if has no cache
+				if (objects == null)
+				{
+					objects = identities == null || identities.Count > 0
+						? dataSource.Mode.Equals(RepositoryMode.NoSQL)
+							? context.Search<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
+							: dataSource.Mode.Equals(RepositoryMode.SQL)
+								? context.Search<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
+								: new List<T>()
+						: new List<T>();
+
+					if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
+					{
+						context.EntityDefinition.CacheStorage.Set(objects);
+#if DEBUG || PROCESSLOGS
+						RepositoryMediator.WriteLogs("SEARCH: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
 #endif
 					}
-
-					// update the collection of objects
-					objects = results.Select(item => item.Value as T).ToList();
 				}
+				return objects;
 			}
-
-			// search raw objects if has no cache
-			if (objects == null)
+			catch (Exception ex)
 			{
-				objects = identities == null || identities.Count > 0
-					? dataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? context.Search<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
-						: dataSource.Mode.Equals(RepositoryMode.SQL)
-							? context.Search<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
-							: new List<T>()
-					: new List<T>();
-
-				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
-				{
-					context.EntityDefinition.CacheStorage.Set(objects);
-#if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("SEARCH: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
-#endif
-				}
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T).ToString()}]", ex);
 			}
-
-			return objects;
 		}
 
 		/// <summary>
@@ -2689,16 +2909,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Search<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return RepositoryMediator.Search<T>(context, RepositoryMediator.GetPrimaryDataSource(context), query, filter, pageSize, pageNumber, businessEntityID);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return RepositoryMediator.Search<T>(context, RepositoryMediator.GetPrimaryDataSource(context), query, filter, pageSize, pageNumber, businessEntityID);
 		}
 
 		/// <summary>
@@ -2735,102 +2947,109 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> SearchAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
-			List<T> objects = null;
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+				List<T> objects = null;
 
-			// search identities
-			var identities = context.EntityDefinition.CacheStorage == null
-				? null
-				: dataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? await context.SearchIdentitiesAsync<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
-					: dataSource.Mode.Equals(RepositoryMode.SQL)
-						? await context.SearchIdentitiesAsync<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
-						: new List<string>();
+				// search identities
+				var identities = context.EntityDefinition.CacheStorage == null
+					? null
+					: dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? await context.SearchIdentitiesAsync<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? await context.SearchIdentitiesAsync<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
+							: new List<string>();
 
 #if DEBUG || PROCESSLOGS
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-				"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-				"- Mode: " + primaryDataSource.Mode.ToString(),
-				"- Page Size: " + pageSize.ToString(),
-				"- Page Number: " + pageNumber.ToString(),
-				"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
-				"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-			}, null);
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Page Size: " + pageSize.ToString(),
+					"- Page Number: " + pageNumber.ToString(),
+					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
+					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
 #endif
 
-			// process
-			if (identities != null && identities.Count > 0)
-			{
-#if DEBUG || PROCESSLOGS
-				RepositoryMediator.WriteLogs("SEARCH: Total " + identities.Count + " identities are searched [" + identities.ToString(" - ") + "]");
-#endif
-				// get cached objects
-				var cached = await context.EntityDefinition.CacheStorage.GetAsync(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
-				if (cached != null)
+				// process
+				if (identities != null && identities.Count > 0)
 				{
 #if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("SEARCH: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+					RepositoryMediator.WriteLogs("SEARCH: Total " + identities.Count + " identities are searched [" + identities.ToString(" - ") + "]");
 #endif
-					// prepare
-					var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
-
-					// add cached objects
-					var ids = new List<string>();
-					cached.ForEach(item =>
+					// get cached objects
+					var cached = await context.EntityDefinition.CacheStorage.GetAsync(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
+					if (cached != null)
 					{
-						var id = (item.Value as T).GetEntityID();
-						ids.Add(id);
-						results[id] = item.Value as T;
-					});
-
-					// find missing objects
-					identities = identities.Except(ids).ToList();
-					if (identities.Count > 0)
-					{
-						var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? await context.FindAsync<T>(dataSource, identities, null, businessEntityID, null, cancellationToken).ConfigureAwait(false)
-							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? await context.FindAsync<T>(dataSource, identities, null, businessEntityID, cancellationToken).ConfigureAwait(false)
-								: new List<T>();
-
-						// update results & cache
-						missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
-						await context.EntityDefinition.CacheStorage.SetAsync(missing).ConfigureAwait(false);
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+						RepositoryMediator.WriteLogs("SEARCH: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+#endif
+						// prepare
+						var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
+
+						// add cached objects
+						var ids = new List<string>();
+						cached.ForEach(item =>
+						{
+							var id = (item.Value as T).GetEntityID();
+							ids.Add(id);
+							results[id] = item.Value as T;
+						});
+
+						// find missing objects
+						identities = identities.Except(ids).ToList();
+						if (identities.Count > 0)
+						{
+							var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+								? await context.FindAsync<T>(dataSource, identities, null, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+								: dataSource.Mode.Equals(RepositoryMode.SQL)
+									? await context.FindAsync<T>(dataSource, identities, null, businessEntityID, cancellationToken).ConfigureAwait(false)
+									: new List<T>();
+
+							// update results & cache
+							missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
+							await context.EntityDefinition.CacheStorage.SetAsync(missing).ConfigureAwait(false);
+#if DEBUG || PROCESSLOGS
+							RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+#endif
+						}
+
+						// update the collection of objects
+						objects = results.Select(item => item.Value as T).ToList();
+					}
+				}
+
+				// search raw objects if has no cache
+				if (objects == null)
+				{
+					objects = identities == null || identities.Count > 0
+						? dataSource.Mode.Equals(RepositoryMode.NoSQL)
+							? await context.SearchAsync<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+							: dataSource.Mode.Equals(RepositoryMode.SQL)
+								? await context.SearchAsync<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
+								: new List<T>()
+						: new List<T>();
+
+					if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
+					{
+						await context.EntityDefinition.CacheStorage.SetAsync(objects).ConfigureAwait(false);
+#if DEBUG || PROCESSLOGS
+						RepositoryMediator.WriteLogs("SEARCH: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
 #endif
 					}
-
-					// update the collection of objects
-					objects = results.Select(item => item.Value as T).ToList();
 				}
+				return objects;
 			}
-
-			// search raw objects if has no cache
-			if (objects == null)
+			catch (Exception ex)
 			{
-				objects = identities == null || identities.Count > 0
-					? dataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await context.SearchAsync<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
-						: dataSource.Mode.Equals(RepositoryMode.SQL)
-							? await context.SearchAsync<T>(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
-							: new List<T>()
-					: new List<T>();
-
-				if (context.EntityDefinition.CacheStorage != null && objects.Count > 0)
-				{
-					await context.EntityDefinition.CacheStorage.SetAsync(objects).ConfigureAwait(false);
-#if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("SEARCH: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
-#endif
-				}
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T).ToString()}]", ex);
 			}
-
-			return objects;
 		}
 
 		/// <summary>
@@ -2848,16 +3067,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> SearchAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return await RepositoryMediator.SearchAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return await RepositoryMediator.SearchAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -2894,29 +3105,36 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
 		public static long Count<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// count
-			var total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? context.Count<T>(dataSource, query, filter, businessEntityID, null)
-				: dataSource.Mode.Equals(RepositoryMode.SQL)
-					? context.Count<T>(dataSource, query, filter, businessEntityID)
-					: 0;
+				// count
+				var total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? context.Count<T>(dataSource, query, filter, businessEntityID, null)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? context.Count<T>(dataSource, query, filter, businessEntityID)
+						: 0;
 
 #if DEBUG || PROCESSLOGS
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-				"- Total: " + total.ToString(),
-				"- Mode: " + primaryDataSource.Mode.ToString(),
-				"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
-				"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-			}, null);
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + total.ToString(),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
+					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
 #endif
-
-			return total;
+				return total;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while counting objects by query [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -2931,16 +3149,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
 		public static long Count<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return RepositoryMediator.Count<T>(context, RepositoryMediator.GetPrimaryDataSource(context), query, filter, businessEntityID);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while counting objects by query [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return RepositoryMediator.Count<T>(context, RepositoryMediator.GetPrimaryDataSource(context), query, filter, businessEntityID);
 		}
 
 		/// <summary>
@@ -2973,29 +3183,36 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
 		public static async Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
-			context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
+			try
+			{
+				// prepare
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetPrimaryDataSource(context);
 
-			// count
-			var total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? await context.CountAsync<T>(dataSource, query, filter, businessEntityID, null, cancellationToken).ConfigureAwait(false)
-				: dataSource.Mode.Equals(RepositoryMode.SQL)
-					? await context.CountAsync<T>(dataSource, query, filter, businessEntityID, cancellationToken).ConfigureAwait(false)
-					: 0;
+				// count
+				var total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? await context.CountAsync<T>(dataSource, query, filter, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? await context.CountAsync<T>(dataSource, query, filter, businessEntityID, cancellationToken).ConfigureAwait(false)
+						: 0;
 
 #if DEBUG || PROCESSLOGS
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
-				"- Total: " + total.ToString(),
-				"- Mode: " + primaryDataSource.Mode.ToString(),
-				"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
-				"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-			}, null);
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
+					"- Total: " + total.ToString(),
+					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
+					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
+				}, null);
 #endif
-
-			return total;
+				return total;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException($"Error occurred while counting objects by query [{typeof(T).ToString()}]", ex);
+			}
 		}
 
 		/// <summary>
@@ -3009,18 +3226,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
-		public static async Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(RepositoryContext context, string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			try
-			{
-				context.AliasTypeName = aliasTypeName;
-				return await RepositoryMediator.CountAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), query, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while counting objects by query [{typeof(T).ToString() + (!string.IsNullOrWhiteSpace(aliasTypeName) ? " (Alias: " + aliasTypeName + ")" : "")}]", ex);
-			}
+			context.AliasTypeName = aliasTypeName;
+			return RepositoryMediator.CountAsync<T>(context, RepositoryMediator.GetPrimaryDataSource(context), query, filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -3042,27 +3251,988 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Call pre-handlers
-		static bool CallPreHandlers(RepositoryContext context, object @object)
+		#region Create version
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		public static VersionContent CreateVersion<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null) where T : class
 		{
-			return false;
+			try
+			{
+				// prepare
+				if (@object == null)
+					throw new ArgumentNullException(nameof(@object), "The object is null");
+
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				dataSource = dataSource ?? RepositoryMediator.GetVersionDataSource(context);
+				if (dataSource == null)
+					return null;
+
+				// create new
+				var latest = VersionContent.Find<VersionContent>(dataSource, "Versions", Filters<VersionContent>.Equals("ObjectID", @object.GetEntityID()), Sorts<VersionContent>.Descending("VersionNumber"));
+				var version = ObjectService.CreateInstance<VersionContent>();
+				version.CopyFrom(VersionContent.Prepare(@object));
+
+				version.ID = UtilityService.NewUID;
+				version.VersionNumber = latest != null && latest.Count > 0 ? latest[0].VersionNumber + 1 : 0;
+				version.ObjectID = @object.GetEntityID();
+				version.CreatedID = userID ?? "";
+
+				VersionContent.Create(dataSource, "Versions", version);
+				return version;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while creating new version of an object", ex);
+			}
 		}
 
-		static Task<bool> CallPreHandlersAsync(RepositoryContext context, object @object, CancellationToken cancellationToken = default(CancellationToken))
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		public static VersionContent CreateVersion<T>(RepositoryContext context, T @object, string userID = null) where T : class
 		{
-			return Task.FromResult<bool>(false);
+			return RepositoryMediator.CreateVersion<T>(context, null, @object, userID);
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		public static VersionContent CreateVersion<T>(T @object, string userID = null) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				return RepositoryMediator.CreateVersion<T>(context, @object, userID);
+			}
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task<VersionContent> CreateVersionAsync<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			try
+			{
+				// prepare
+				if (@object == null)
+					throw new ArgumentNullException(nameof(@object), "The object is null");
+
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				dataSource = dataSource ?? RepositoryMediator.GetVersionDataSource(context);
+				if (dataSource == null)
+					return null;
+
+				// create new
+				var latest = await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", Filters<VersionContent>.Equals("ObjectID", @object.GetEntityID()), Sorts<VersionContent>.Descending("VersionNumber"), 1, 1, cancellationToken).ConfigureAwait(false);
+				var version = ObjectService.CreateInstance<VersionContent>();
+				version.CopyFrom(VersionContent.Prepare(@object));
+
+				version.ID = UtilityService.NewUID;
+				version.VersionNumber = latest != null && latest.Count > 0 ? latest[0].VersionNumber + 1 : 0;
+				version.ObjectID = @object.GetEntityID();
+				version.CreatedID = userID ?? "";
+
+				await VersionContent.CreateAsync(dataSource, "Versions", version, cancellationToken).ConfigureAwait(false);
+				return version;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while creating new version of an object", ex);
+			}
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static Task<VersionContent> CreateVersionAsync<T>(RepositoryContext context, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.CreateVersionAsync<T>(context, null, @object, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task<VersionContent> CreateVersionAsync<T>(T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				return await RepositoryMediator.CreateVersionAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
+			}
 		}
 		#endregion
 
-		#region Call post-handlers
-		static void CallPostHandlers(RepositoryContext context, object @object)
+		#region Get version contents
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> GetVersions<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
 		{
+			try
+			{
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
+				dataSource = dataSource ?? RepositoryMediator.GetVersionDataSource(context);
+				if (dataSource == null)
+					return null;
+
+				var filter = Filters<VersionContent>.And();
+				if (!string.IsNullOrWhiteSpace(objectID))
+					filter.Add(Filters<VersionContent>.Equals("ObjectID", objectID));
+				else
+				{
+					if (!string.IsNullOrWhiteSpace(serviceName))
+						filter.Add(Filters<VersionContent>.Equals("ServiceName", serviceName));
+					if (!string.IsNullOrWhiteSpace(systemID))
+						filter.Add(Filters<VersionContent>.Equals("SystemID", systemID));
+					if (!string.IsNullOrWhiteSpace(repositoryID))
+						filter.Add(Filters<VersionContent>.Equals("RepositoryID", repositoryID));
+					if (!string.IsNullOrWhiteSpace(entityID))
+						filter.Add(Filters<VersionContent>.Equals("EntityID", entityID));
+					if (!string.IsNullOrWhiteSpace(userID))
+						filter.Add(Filters<VersionContent>.Equals("CreatedID", userID));
+				}
+
+				return VersionContent.Find<VersionContent>(dataSource, "Versions", filter, Sorts<VersionContent>.Descending("VersionNumber"), pageSize, pageNumber);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while fetching version contents of an object", ex);
+			}
 		}
 
-		static Task CallPostHandlersAsync(RepositoryContext context, object @object, CancellationToken cancellationToken = default(CancellationToken))
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> GetVersions<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
 		{
-			return Task.CompletedTask;
+			return RepositoryMediator.GetVersions<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> GetVersions<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryMediator.GetVersions<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> GetVersions<T>(RepositoryContext context, DataSource dataSource, string objectID) where T : class
+		{
+			return string.IsNullOrWhiteSpace(objectID) || !objectID.IsValidUUID()
+				? throw new ArgumentNullException(nameof(objectID), "Object identity is invalid")
+				: RepositoryMediator.GetVersions<T>(context, dataSource, objectID, null, null, null, null, null, 0, 1);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> GetVersions<T>(RepositoryContext context, string objectID) where T : class
+		{
+			return RepositoryMediator.GetVersions<T>(context, null, objectID);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> GetVersions<T>(string objectID) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryMediator.GetVersions<T>(context, objectID);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<VersionContent>> GetVersionsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			try
+			{
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				dataSource = dataSource ?? RepositoryMediator.GetVersionDataSource(context);
+				if (dataSource == null)
+					return null;
+
+				var filter = Filters<VersionContent>.And();
+				if (!string.IsNullOrWhiteSpace(objectID))
+					filter.Add(Filters<VersionContent>.Equals("ObjectID", objectID));
+				else
+				{
+					if (!string.IsNullOrWhiteSpace(serviceName))
+						filter.Add(Filters<VersionContent>.Equals("ServiceName", serviceName));
+					if (!string.IsNullOrWhiteSpace(systemID))
+						filter.Add(Filters<VersionContent>.Equals("SystemID", systemID));
+					if (!string.IsNullOrWhiteSpace(repositoryID))
+						filter.Add(Filters<VersionContent>.Equals("RepositoryID", repositoryID));
+					if (!string.IsNullOrWhiteSpace(entityID))
+						filter.Add(Filters<VersionContent>.Equals("EntityID", entityID));
+					if (!string.IsNullOrWhiteSpace(userID))
+						filter.Add(Filters<VersionContent>.Equals("CreatedID", userID));
+				}
+
+				return await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", filter, Sorts<VersionContent>.Descending("VersionNumber"), pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while fetching version contents of an object", ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<List<VersionContent>> GetVersionsAsync<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.GetVersionsAsync<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<VersionContent>> GetVersionsAsync<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryMediator.GetVersionsAsync<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber, cancellationToken);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<List<VersionContent>> GetVersionsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return string.IsNullOrWhiteSpace(objectID) || !objectID.IsValidUUID()
+				? Task.FromException<List<VersionContent>>(new ArgumentNullException(nameof(objectID), "Object identity is invalid"))
+				: RepositoryMediator.GetVersionsAsync<T>(context, dataSource, objectID, null, null, null, null, null, 0, 1, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<List<VersionContent>> GetVersionsAsync<T>(RepositoryContext context, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.GetVersionsAsync<T>(context, null, objectID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<VersionContent>> GetVersionsAsync<T>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryMediator.GetVersionsAsync<T>(context, objectID, cancellationToken);
+			}
+		}
+		#endregion
+
+		#region Rollback
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="version">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <returns></returns>
+		public static T Rollback<T>(RepositoryContext context, VersionContent version, string userID) where T : class
+		{
+			// prepare
+			if (version == null)
+				throw new ArgumentNullException(nameof(version), "Version content is invalid");
+			else if (!(version.Object is T))
+				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T).GetTypeName()}]");
+
+			// process
+			try
+			{
+				// get current object
+				context.Operation = RepositoryOperation.Update;
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				var dataSource = RepositoryMediator.GetPrimaryDataSource(context);
+				var @object = RepositoryMediator.Get<T>(context, dataSource, version.ObjectID, false);
+
+				// call pre-handlers
+				if (RepositoryMediator.CallPreHandlers(context, @object, true))
+					return null;
+
+				// create new version of current object
+				if (@object is RepositoryBase)
+					(@object as RepositoryBase).SearchScore = null;
+				RepositoryMediator.CreateVersion(context, @object, userID);
+
+				// rollback (update) with original object
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					context.Replace<T>(dataSource, version.Object as T, null);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					context.Replace<T>(dataSource, version.Object as T);
+
+				// update into cache storage
+				if (context.EntityDefinition.CacheStorage != null)
+#if DEBUG || PROCESSLOGS
+					if (context.EntityDefinition.CacheStorage.Set(version.Object as T))
+						RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+#else
+					context.EntityDefinition.CacheStorage.Set(version.Object as T);
+#endif
+
+				// call post-handlers
+				RepositoryMediator.CallPostHandlers(context, version.Object as T, true);
+
+				// TO DO: sync to other data sources
+				// ...
+
+				// return the original object
+				return version.Object as T;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while performing rollback an object", ex);
+			}
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="versionID">The identity of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <returns></returns>
+		public static T Rollback<T>(RepositoryContext context, string versionID, string userID) where T : class
+		{
+			// prepare
+			if (string.IsNullOrWhiteSpace(versionID))
+				throw new ArgumentNullException(nameof(versionID), "The identity of version content is invalid");
+
+			if (context.EntityDefinition == null)
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			var dataSource = RepositoryMediator.GetVersionDataSource(context);
+			var versions = VersionContent.Find(dataSource, "Versions", Filters<VersionContent>.Equals("ID", versionID), null, 1, 1);
+
+			// rollback
+			return RepositoryMediator.Rollback<T>(context, versions != null && versions.Count > 0 ? versions[0] : null, userID);
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="version">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<T> RollbackAsync<T>(RepositoryContext context, VersionContent version, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			// prepare
+			if (version == null)
+				throw new ArgumentNullException(nameof(version), "Version content is invalid");
+			else if (!(version.Object is T))
+				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T).GetTypeName()}]");
+
+			// process
+			try
+			{
+				// get current object
+				context.Operation = RepositoryOperation.Update;
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				var dataSource = RepositoryMediator.GetPrimaryDataSource(context);
+				var @object = await RepositoryMediator.GetAsync<T>(context, dataSource, version.ObjectID, false, cancellationToken).ConfigureAwait(false);
+
+				// call pre-handlers
+				if (await RepositoryMediator.CallPreHandlersAsync(context, @object, true, cancellationToken).ConfigureAwait(false))
+					return null;
+
+				// create new version of current object
+				if (@object is RepositoryBase)
+					(@object as RepositoryBase).SearchScore = null;
+				await RepositoryMediator.CreateVersionAsync(context, @object, userID, cancellationToken).ConfigureAwait(false);
+
+				// rollback (update) with original object
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					await context.ReplaceAsync<T>(dataSource, version.Object as T, null, cancellationToken).ConfigureAwait(false);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					await context.ReplaceAsync<T>(dataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
+
+				// update into cache storage
+				if (context.EntityDefinition.CacheStorage != null)
+#if DEBUG || PROCESSLOGS
+					if (await context.EntityDefinition.CacheStorage.SetAsync(version.Object as T))
+						RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+#else
+					await context.EntityDefinition.CacheStorage.SetAsync(version.Object as T);
+#endif
+
+				// call post-handlers
+				await RepositoryMediator.CallPostHandlersAsync(context, version.Object as T, true, cancellationToken).ConfigureAwait(false);
+
+				// TO DO: sync to other data sources
+				// ...
+
+				// return the original object
+				return version.Object as T;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while performing rollback an object", ex);
+			}
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="versionID">The identity of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<T> RollbackAsync<T>(RepositoryContext context, string versionID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			// prepare
+			if (string.IsNullOrWhiteSpace(versionID))
+				throw new ArgumentNullException(nameof(versionID), "The identity of version content is invalid");
+
+			if (context.EntityDefinition == null)
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			var dataSource = RepositoryMediator.GetVersionDataSource(context);
+			var versions = await VersionContent.FindAsync(dataSource, "Versions", Filters<VersionContent>.Equals("ID", versionID), null, 1, 1, cancellationToken).ConfigureAwait(false);
+
+			// rollback
+			return await RepositoryMediator.RollbackAsync<T>(context, versions != null && versions.Count > 0 ? versions[0] : null, userID, cancellationToken).ConfigureAwait(false);
+		}
+		#endregion
+
+		#region Create trash content
+		/// <summary>
+		/// Creates new trash content of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this trash content of the object (means who deletes the object)</param>
+		public static TrashContent CreateTrashContent<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null) where T : class
+		{
+			try
+			{
+				// prepare
+				if (@object == null)
+					throw new ArgumentNullException(nameof(@object), "The object is null");
+
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				dataSource = dataSource ?? RepositoryMediator.GetTrashDataSource(context);
+				if (dataSource == null)
+					return null;
+
+				// create new
+				var trash = ObjectService.CreateInstance<TrashContent>();
+				trash.CopyFrom(TrashContent.Prepare(@object));
+				trash.CreatedID = userID ?? "";
+
+				try
+				{
+					TrashContent.Create(dataSource, "Trashs", trash);
+				}
+				catch
+				{
+					TrashContent.Delete(dataSource, "Trashs", Filters<TrashContent>.Equals("ID", trash.ID));
+					TrashContent.Create(dataSource, "Trashs", trash);
+				}
+				return trash;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while creating new trash content of an object", ex);
+			}
+		}
+
+		/// <summary>
+		/// Creates new trash content of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this trash content of the object (means who deletes the object)</param>
+		public static TrashContent CreateTrashContent<T>(RepositoryContext context, T @object, string userID = null) where T : class
+		{
+			return RepositoryMediator.CreateTrashContent<T>(context, null, @object, userID);
+		}
+
+		/// <summary>
+		/// Creates new trash content of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this trash content of the object (means who deletes the object)</param>
+		public static TrashContent CreateTrashContent<T>(T @object, string userID = null) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				return RepositoryMediator.CreateTrashContent<T>(context, @object, userID);
+			}
+		}
+
+		/// <summary>
+		/// Creates new trash content of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this trash content of the object (means who deletes the object)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task<TrashContent> CreateTrashContentAsync<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			try
+			{
+				// prepare
+				if (@object == null)
+					throw new ArgumentNullException(nameof(@object), "The object is null");
+
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+
+				dataSource = dataSource ?? RepositoryMediator.GetTrashDataSource(context);
+				if (dataSource == null)
+					return null;
+
+				// create new
+				var trash = ObjectService.CreateInstance<TrashContent>();
+				trash.CopyFrom(TrashContent.Prepare(@object));
+				trash.CreatedID = userID ?? "";
+
+				try
+				{
+					await TrashContent.CreateAsync(dataSource, "Trashs", trash, cancellationToken).ConfigureAwait(false);
+				}
+				catch
+				{
+					await TrashContent.DeleteAsync(dataSource, "Trashs", Filters<TrashContent>.Equals("ID", trash.ID), cancellationToken).ConfigureAwait(false);
+					await TrashContent.CreateAsync(dataSource, "Trashs", trash, cancellationToken).ConfigureAwait(false);
+				}
+				return trash;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while creating new trash content of an object", ex);
+			}
+		}
+
+		/// <summary>
+		/// Creates new trash content of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this trash content of the object (means who deletes the object)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static Task<TrashContent> CreateTrashContentAsync<T>(RepositoryContext context, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.CreateTrashContentAsync<T>(context, null, @object, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Creates new trash content of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this trash content of the object (means who deletes the object)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task<TrashContent> CreateTrashContentAsync<T>(T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				return await RepositoryMediator.CreateTrashContentAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
+			}
+		}
+		#endregion
+
+		#region Get trash contents
+		#endregion
+
+		#region Restore
+		#endregion
+
+		#region Call handlers
+		static List<Type> GetHandlers(Func<Type, bool> predicate)
+		{
+			return RepositoryMediator.EventHandlers.Where(type => predicate(type)).ToList();
+		}
+
+		static bool CallPreHandlers<T>(RepositoryContext context, T @object, bool isRestoreOrRollback = false) where T : class
+		{
+			var result = false;
+			switch (context.Operation)
+			{
+				case RepositoryOperation.Create:
+					var preCreateHandlers = RepositoryMediator.GetHandlers(type => typeof(IPreCreateHandler).IsAssignableFrom(type));
+					for (var index = 0; index < preCreateHandlers.Count; index++)
+					{
+						var handler = ObjectService.CreateInstance(preCreateHandlers[index]) as IPreCreateHandler;
+						result = handler.OnPreCreate(context, @object, isRestoreOrRollback);
+						if (result)
+							break;
+					}
+					break;
+
+				case RepositoryOperation.Get:
+					var preGetHandlers = RepositoryMediator.GetHandlers(type => typeof(IPreGetHandler).IsAssignableFrom(type));
+					for (var index = 0; index < preGetHandlers.Count; index++)
+					{
+						var handler = ObjectService.CreateInstance(preGetHandlers[index]) as IPreGetHandler;
+						result = handler.OnPreGet(context, @object.GetEntityID());
+						if (result)
+							break;
+					}
+					break;
+
+				case RepositoryOperation.Update:
+					var preUpdateHandlers = RepositoryMediator.GetHandlers(type => typeof(IPreUpdateHandler).IsAssignableFrom(type));
+					for (var index = 0; index < preUpdateHandlers.Count; index++)
+					{
+						var handler = ObjectService.CreateInstance(preUpdateHandlers[index]) as IPreUpdateHandler;
+						result = handler.OnPreUpdate(context, @object, isRestoreOrRollback);
+						if (result)
+							break;
+					}
+					break;
+
+				case RepositoryOperation.Delete:
+					var preDeleteHandlers = RepositoryMediator.GetHandlers(type => typeof(IPreDeleteHandler).IsAssignableFrom(type));
+					for (var index = 0; index < preDeleteHandlers.Count; index++)
+					{
+						var handler = ObjectService.CreateInstance(preDeleteHandlers[index]) as IPreDeleteHandler;
+						result = handler.OnPreDelete(context, @object);
+						if (result)
+							break;
+					}
+					break;
+			}
+			return result;
+		}
+
+		static async Task<bool> CallPreHandlersAsync<T>(RepositoryContext context, T @object, bool isRestoreOrRollback = false, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			var result = false;
+			switch (context.Operation)
+			{
+				case RepositoryOperation.Create:
+					var preCreateHandlers = RepositoryMediator.GetHandlers(type => typeof(IPreCreateHandler).IsAssignableFrom(type));
+					for (var index = 0; index < preCreateHandlers.Count; index++)
+					{
+						var handler = ObjectService.CreateInstance(preCreateHandlers[index]) as IPreCreateHandler;
+						result = await handler.OnPreCreateAsync(context, @object, isRestoreOrRollback, cancellationToken).ConfigureAwait(false);
+						if (result)
+							break;
+					}
+					break;
+
+				case RepositoryOperation.Get:
+					var preGetHandlers = RepositoryMediator.GetHandlers(type => typeof(IPreGetHandler).IsAssignableFrom(type));
+					for (var index = 0; index < preGetHandlers.Count; index++)
+					{
+						var handler = ObjectService.CreateInstance(preGetHandlers[index]) as IPreGetHandler;
+						result = await handler.OnPreGetAsync(context, @object.GetEntityID(), cancellationToken).ConfigureAwait(false);
+						if (result)
+							break;
+					}
+					break;
+
+				case RepositoryOperation.Update:
+					var preUpdateHandlers = RepositoryMediator.GetHandlers(type => typeof(IPreUpdateHandler).IsAssignableFrom(type));
+					for (var index = 0; index < preUpdateHandlers.Count; index++)
+					{
+						var handler = ObjectService.CreateInstance(preUpdateHandlers[index]) as IPreUpdateHandler;
+						result = await handler.OnPreUpdateAsync(context, @object, isRestoreOrRollback, cancellationToken).ConfigureAwait(false);
+						if (result)
+							break;
+					}
+					break;
+
+				case RepositoryOperation.Delete:
+					var preDeleteHandlers = RepositoryMediator.GetHandlers(type => typeof(IPreDeleteHandler).IsAssignableFrom(type));
+					for (var index = 0; index < preDeleteHandlers.Count; index++)
+					{
+						var handler = ObjectService.CreateInstance(preDeleteHandlers[index]) as IPreDeleteHandler;
+						result = await handler.OnPreDeleteAsync(context, @object, cancellationToken).ConfigureAwait(false);
+						if (result)
+							break;
+					}
+					break;
+			}
+			return result;
+		}
+
+		static void CallPostHandlers<T>(RepositoryContext context, T @object, bool isRestoreOrRollback = false) where T : class
+		{
+			switch (context.Operation)
+			{
+				case RepositoryOperation.Create:
+					RepositoryMediator.GetHandlers(type => typeof(IPostCreateHandler).IsAssignableFrom(type))
+						.Select(type => Task.Run(() =>
+						{
+							try
+							{
+								var handler = ObjectService.CreateInstance(type) as IPostCreateHandler;
+								handler.OnPostCreate(context, @object, isRestoreOrRollback);
+							}
+							catch { }
+						}))
+						.ToList();
+					break;
+
+				case RepositoryOperation.Get:
+					RepositoryMediator.GetHandlers(type => typeof(IPostGetHandler).IsAssignableFrom(type))
+						.Select(type => Task.Run(() =>
+						{
+							try
+							{
+								var handler = ObjectService.CreateInstance(type) as IPostGetHandler;
+								handler.OnPostGet(context, @object);
+							}
+							catch { }
+						}))
+						.ToList();
+					break;
+
+				case RepositoryOperation.Update:
+					RepositoryMediator.GetHandlers(type => typeof(IPostUpdateHandler).IsAssignableFrom(type))
+						.Select(type => Task.Run(() =>
+						{
+							try
+							{
+								var handler = ObjectService.CreateInstance(type) as IPostUpdateHandler;
+								handler.OnPostUpdate(context, @object, isRestoreOrRollback);
+							}
+							catch { }
+						}))
+						.ToList();
+					break;
+
+				case RepositoryOperation.Delete:
+					RepositoryMediator.GetHandlers(type => typeof(IPostDeleteHandler).IsAssignableFrom(type))
+						.Select(type => Task.Run(() =>
+						{
+							try
+							{
+								var handler = ObjectService.CreateInstance(type) as IPostDeleteHandler;
+								handler.OnPostDelete(context, @object);
+							}
+							catch { }
+						}))
+						.ToList();
+					break;
+			}
+		}
+
+		static async Task CallPostHandlersAsync<T>(RepositoryContext context, T @object, bool isRestoreOrRollback = false, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			switch (context.Operation)
+			{
+				case RepositoryOperation.Create:
+					await RepositoryMediator.GetHandlers(type => typeof(IPostCreateHandler).IsAssignableFrom(type))
+						.ForEachAsync(async (type, token) =>
+						{
+							try
+							{
+								var handler = ObjectService.CreateInstance(type) as IPostCreateHandler;
+								await handler.OnPostCreateAsync(context, @object, isRestoreOrRollback, token).ConfigureAwait(false);
+							}
+							catch { }
+						}, cancellationToken, false).ConfigureAwait(false);
+					break;
+
+				case RepositoryOperation.Get:
+					await RepositoryMediator.GetHandlers(type => typeof(IPostGetHandler).IsAssignableFrom(type))
+						.ForEachAsync(async (type, token) =>
+						{
+							try
+							{
+								var handler = ObjectService.CreateInstance(type) as IPostGetHandler;
+								await handler.OnPostGetAsync(context, @object, token).ConfigureAwait(false);
+							}
+							catch { }
+						}, cancellationToken, false).ConfigureAwait(false);
+					break;
+
+				case RepositoryOperation.Update:
+					await RepositoryMediator.GetHandlers(type => typeof(IPostUpdateHandler).IsAssignableFrom(type))
+						.ForEachAsync(async (type, token) =>
+						{
+							try
+							{
+								var handler = ObjectService.CreateInstance(type) as IPostUpdateHandler;
+								await handler.OnPostUpdateAsync(context, @object, isRestoreOrRollback, token).ConfigureAwait(false);
+							}
+							catch { }
+						}, cancellationToken, false).ConfigureAwait(false);
+					break;
+
+				case RepositoryOperation.Delete:
+					await RepositoryMediator.GetHandlers(type => typeof(IPostDeleteHandler).IsAssignableFrom(type))
+						.ForEachAsync(async (type, token) =>
+						{
+							try
+							{
+								var handler = ObjectService.CreateInstance(type) as IPostDeleteHandler;
+								await handler.OnPostDeleteAsync(context, @object, token).ConfigureAwait(false);
+							}
+							catch { }
+						}, cancellationToken, false).ConfigureAwait(false);
+					break;
+			}
 		}
 		#endregion
 
