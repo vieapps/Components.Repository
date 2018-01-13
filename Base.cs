@@ -134,7 +134,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public RepositoryBase() { }
 
-		#region Create
+		#region [Static] Create
 		/// <summary>
 		/// Creates new an object
 		/// </summary>
@@ -192,25 +192,6 @@ namespace net.vieapps.Components.Repository
 		public static void Create<TEntity>(TEntity @object) where TEntity : class
 		{
 			RepositoryBase<T>.Create<TEntity>("", @object);
-		}
-
-		/// <summary>
-		/// Creates new the instance of this object
-		/// </summary>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		protected virtual void Create(RepositoryContext context, string aliasTypeName)
-		{
-			RepositoryBase<T>.Create<T>(context, aliasTypeName, this as T);
-		}
-
-		/// <summary>
-		/// Creates new the instance of this object
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		protected virtual void Create(string aliasTypeName = null)
-		{
-			RepositoryBase<T>.Create<T>(aliasTypeName, this as T);
 		}
 
 		/// <summary>
@@ -279,9 +260,33 @@ namespace net.vieapps.Components.Repository
 		{
 			return RepositoryBase<T>.CreateAsync<TEntity>("", @object);
 		}
+		#endregion
+
+		#region [Protected] Create
+		/// <summary>
+		/// Creates new instance of this object
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		protected virtual void Create(RepositoryContext context, string aliasTypeName)
+		{
+			RepositoryBase<T>.Create<T>(context, aliasTypeName, this as T);
+		}
 
 		/// <summary>
-		/// Creates new the instance of this object
+		/// Creates new instance of this object
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		protected virtual void Create(string aliasTypeName = null)
+		{
+			using (var context = new RepositoryContext())
+			{
+				this.Create(context, aliasTypeName);
+			}
+		}
+
+		/// <summary>
+		/// Creates new instance of this object
 		/// </summary>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -293,18 +298,21 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new the instance of this object
+		/// Creates new instance of this object
 		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task CreateAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task CreateAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.CreateAsync<T>(aliasTypeName, this as T, cancellationToken);
+			using (var context = new RepositoryContext())
+			{
+				await this.CreateAsync(context, aliasTypeName, cancellationToken).ConfigureAwait(false);
+			}
 		}
 		#endregion
 
-		#region Get
+		#region [Static] Get
 		/// <summary>
 		/// Gets an object
 		/// </summary>
@@ -373,35 +381,6 @@ namespace net.vieapps.Components.Repository
 		public static TEntity Get<TEntity>(string id) where TEntity : class
 		{
 			return RepositoryBase<T>.Get<TEntity>("", id);
-		}
-
-		/// <summary>
-		/// Gets the instance of this object
-		/// </summary>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		protected virtual void Get(RepositoryContext context, string aliasTypeName)
-		{
-			if (!string.IsNullOrWhiteSpace(this.ID))
-			{
-				var instance = RepositoryBase<T>.Get<T>(context, aliasTypeName, this.ID);
-				if (instance != null)
-					this.CopyFrom(instance);
-			}
-		}
-
-		/// <summary>
-		/// Gets the instance of this object
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		protected virtual void Get(string aliasTypeName = null)
-		{
-			if (!string.IsNullOrWhiteSpace(this.ID))
-			{
-				var instance = RepositoryBase<T>.Get<T>(aliasTypeName, this.ID);
-				if (instance != null)
-					this.CopyFrom(instance);
-			}
 		}
 
 		/// <summary>
@@ -478,6 +457,35 @@ namespace net.vieapps.Components.Repository
 		{
 			return RepositoryBase<T>.GetAsync<TEntity>("", id, cancellationToken);
 		}
+		#endregion
+
+		#region [Protected] Get
+		/// <summary>
+		/// Gets the instance of this object
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		protected virtual void Get(RepositoryContext context, string aliasTypeName)
+		{
+			if (!string.IsNullOrWhiteSpace(this.ID))
+			{
+				var instance = RepositoryBase<T>.Get<T>(context, aliasTypeName, this.ID);
+				if (instance != null)
+					this.CopyFrom(instance);
+			}
+		}
+
+		/// <summary>
+		/// Gets the instance of this object
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		protected virtual void Get(string aliasTypeName = null)
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				this.Get(context, aliasTypeName);
+			}
+		}
 
 		/// <summary>
 		/// Gets the instance of this object
@@ -504,16 +512,14 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		protected virtual async Task GetAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			if (!string.IsNullOrWhiteSpace(this.ID))
+			using (var context = new RepositoryContext(false))
 			{
-				var instance = await RepositoryBase<T>.GetAsync<T>(aliasTypeName, this.ID, cancellationToken).ConfigureAwait(false);
-				if (instance != null)
-					this.CopyFrom(instance);
+				await this.GetAsync(context, aliasTypeName, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
 
-		#region Get (first match)
+		#region [Static] Get first match
 		/// <summary>
 		/// Gets an object (the first matched with the filter)
 		/// </summary>
@@ -720,7 +726,21 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Replace
+		#region [Static] Replace
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Replace<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
+		{
+			RepositoryMediator.Replace<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID);
+		}
+
 		/// <summary>
 		/// Updates an object (using replace method)
 		/// </summary>
@@ -731,7 +751,23 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Replace<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null) where TEntity : class
 		{
-			RepositoryMediator.Replace<TEntity>(context, dataSource, @object, userID);
+			RepositoryBase<T>.Replace<TEntity>(context, dataSource, @object, false, userID);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Replace<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				RepositoryBase<T>.Replace<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID);
+			}
 		}
 
 		/// <summary>
@@ -743,10 +779,21 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Replace<TEntity>(DataSource dataSource, TEntity @object, string userID = null) where TEntity : class
 		{
-			using (var context = new RepositoryContext())
-			{
-				RepositoryBase<T>.Replace<TEntity>(context, dataSource, @object, userID);
-			}
+			RepositoryBase<T>.Replace<TEntity>(dataSource, @object, false, userID);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Replace<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
+		{
+			RepositoryMediator.Replace<TEntity>(context, aliasTypeName, @object, dontCreateNewVersion, userID);
 		}
 
 		/// <summary>
@@ -759,7 +806,20 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Replace<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, string userID = null) where TEntity : class
 		{
-			RepositoryMediator.Replace<TEntity>(context, aliasTypeName, @object, userID);
+			RepositoryBase<T>.Replace<TEntity>(context, aliasTypeName, @object, false, userID);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Replace<TEntity>(string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
+		{
+			RepositoryMediator.Replace<TEntity>(aliasTypeName, @object, dontCreateNewVersion, userID);
 		}
 
 		/// <summary>
@@ -771,7 +831,19 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Replace<TEntity>(string aliasTypeName, TEntity @object, string userID = null) where TEntity : class
 		{
-			RepositoryMediator.Replace<TEntity>(aliasTypeName, @object, userID);
+			RepositoryBase<T>.Replace<TEntity>(aliasTypeName, @object, false, userID);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Replace<TEntity>(TEntity @object, bool dontCreateNewVersion, string userID = null) where TEntity : class
+		{
+			RepositoryBase<T>.Replace<TEntity>("", @object, dontCreateNewVersion, userID);
 		}
 
 		/// <summary>
@@ -782,28 +854,23 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Replace<TEntity>(TEntity @object, string userID = null) where TEntity : class
 		{
-			RepositoryBase<T>.Replace<TEntity>("", @object, userID);
+			RepositoryBase<T>.Replace<TEntity>(@object, false, userID);
 		}
 
 		/// <summary>
-		/// Updates the instance of this object (using replace method)
+		/// Updates an object (using replace method)
 		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
-		protected virtual void Replace(RepositoryContext context, string aliasTypeName, string userID = null)
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task ReplaceAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			RepositoryBase<T>.Replace<T>(context, aliasTypeName, this as T, userID);
-		}
-
-		/// <summary>
-		/// Updates the instance of this object (using replace method)
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
-		protected virtual void Replace(string aliasTypeName = null, string userID = null)
-		{
-			RepositoryBase<T>.Replace<T>(aliasTypeName, this as T, userID);
+			return RepositoryMediator.ReplaceAsync<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID, cancellationToken);
 		}
 
 		/// <summary>
@@ -818,7 +885,25 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task ReplaceAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.ReplaceAsync<TEntity>(context, dataSource, @object, userID, cancellationToken);
+			return RepositoryBase<T>.ReplaceAsync<TEntity>(context, dataSource, @object, false, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				await RepositoryBase<T>.ReplaceAsync<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false);
+			}
 		}
 
 		/// <summary>
@@ -830,12 +915,25 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			using (var context = new RepositoryContext())
-			{
-				await RepositoryBase<T>.ReplaceAsync<TEntity>(context, dataSource, @object, userID, cancellationToken).ConfigureAwait(false);
-			}
+			return RepositoryBase<T>.ReplaceAsync<TEntity>(dataSource, @object, false, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.ReplaceAsync<TEntity>(context, aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken);
 		}
 
 		/// <summary>
@@ -850,7 +948,22 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.ReplaceAsync<TEntity>(context, aliasTypeName, @object, userID, cancellationToken);
+			return RepositoryBase<T>.ReplaceAsync<TEntity>(context, aliasTypeName, @object, false, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task ReplaceAsync<TEntity>(string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.ReplaceAsync<TEntity>(aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken);
 		}
 
 		/// <summary>
@@ -864,7 +977,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task ReplaceAsync<TEntity>(string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.ReplaceAsync<TEntity>(aliasTypeName, @object, userID, cancellationToken);
+			return RepositoryBase<T>.ReplaceAsync<TEntity>(aliasTypeName, @object, false, userID, cancellationToken);
 		}
 
 		/// <summary>
@@ -878,6 +991,81 @@ namespace net.vieapps.Components.Repository
 		public static Task ReplaceAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryBase<T>.ReplaceAsync<TEntity>("", @object, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task ReplaceAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.ReplaceAsync<TEntity>("", @object, dontCreateNewVersion, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task ReplaceAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.ReplaceAsync<TEntity>(@object, dontCreateNewVersion, null, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (using replace method)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task ReplaceAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.ReplaceAsync<TEntity>(@object, false, cancellationToken);
+		}
+		#endregion
+
+		#region [Protected] Replace
+		/// <summary>
+		/// Updates the instance of this object (using replace method)
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		protected virtual void Replace(RepositoryContext context, string aliasTypeName, string userID = null)
+		{
+			RepositoryBase<T>.Replace<T>(context, aliasTypeName, this as T, userID);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (using replace method)
+		/// </summary>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		protected virtual void Replace(bool dontCreateNewVersion, string userID = null)
+		{
+			RepositoryBase<T>.Replace<T>(this as T, dontCreateNewVersion, userID);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (using replace method)
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		protected virtual void Replace(string aliasTypeName = null, string userID = null)
+		{
+			using (var context = new RepositoryContext())
+			{
+				this.Replace(context, aliasTypeName, userID);
+			}
 		}
 
 		/// <summary>
@@ -895,17 +1083,64 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Updates the instance of this object (using replace method)
 		/// </summary>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		protected virtual Task ReplaceAsync(bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.ReplaceAsync<T>(this as T, dontCreateNewVersion, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (using replace method)
+		/// </summary>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		protected virtual Task ReplaceAsync(bool dontCreateNewVersion, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return this.ReplaceAsync(dontCreateNewVersion, null, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (using replace method)
+		/// </summary>
+		/// <param name="cancellationToken">The cancellation token</param>
+		protected virtual Task ReplaceAsync(CancellationToken cancellationToken)
+		{
+			return this.ReplaceAsync(false, null, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (using replace method)
+		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task ReplaceAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task ReplaceAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.ReplaceAsync<T>(aliasTypeName, this as T, userID, cancellationToken);
+			using (var context = new RepositoryContext())
+			{
+				await this.ReplaceAsync(context, aliasTypeName, userID, cancellationToken).ConfigureAwait(false);
+			}
 		}
 		#endregion
 
-		#region Update
+		#region [Static] Update
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Update<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
+		{
+			RepositoryMediator.Update<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID);
+		}
+
 		/// <summary>
 		/// Updates an object (only update changed attributes)
 		/// </summary>
@@ -916,7 +1151,23 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Update<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null) where TEntity : class
 		{
-			RepositoryMediator.Update<TEntity>(context, dataSource, @object, userID);
+			RepositoryBase<T>.Update<TEntity>(context, dataSource, @object, false, userID);
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Update<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				RepositoryBase<T>.Update<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID);
+			}
 		}
 
 		/// <summary>
@@ -928,10 +1179,21 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Update<TEntity>(DataSource dataSource, TEntity @object, string userID = null) where TEntity : class
 		{
-			using (var context = new RepositoryContext())
-			{
-				RepositoryBase<T>.Update<TEntity>(context, dataSource, @object, userID);
-			}
+			RepositoryBase<T>.Update<TEntity>(dataSource, @object, false, userID);
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Update<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
+		{
+			RepositoryMediator.Update<TEntity>(context, aliasTypeName, @object, dontCreateNewVersion, userID);
 		}
 
 		/// <summary>
@@ -944,7 +1206,20 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Update<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, string userID = null) where TEntity : class
 		{
-			RepositoryMediator.Update<TEntity>(context, aliasTypeName, @object, userID);
+			RepositoryBase<T>.Update<TEntity>(context, aliasTypeName, @object, false, userID);
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		public static void Update<TEntity>(string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
+		{
+			RepositoryMediator.Update<TEntity>(aliasTypeName, @object, dontCreateNewVersion, userID);
 		}
 
 		/// <summary>
@@ -956,7 +1231,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static void Update<TEntity>(string aliasTypeName, TEntity @object, string userID = null) where TEntity : class
 		{
-			RepositoryMediator.Update<TEntity>(aliasTypeName, @object, userID);
+			RepositoryBase<T>.Update<TEntity>(aliasTypeName, @object, false, userID);
 		}
 
 		/// <summary>
@@ -971,24 +1246,31 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the instance of this object (only update changed attributes)
+		/// Updates an object (only update changed attributes)
 		/// </summary>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
-		protected virtual void Update(RepositoryContext context, string aliasTypeName, string userID = null)
+		public static void Update<TEntity>(TEntity @object, bool dontCreateNewVersion, string userID = null) where TEntity : class
 		{
-			RepositoryBase<T>.Update<T>(context, aliasTypeName, this as T, userID);
+			RepositoryBase<T>.Update<TEntity>("", @object, dontCreateNewVersion, userID);
 		}
 
 		/// <summary>
-		/// Updates the instance of this object (only update changed attributes)
+		/// Updates an object (only update changed attributes)
 		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
-		protected virtual void Update(string aliasTypeName = null, string userID = null)
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task UpdateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			RepositoryBase<T>.Update<T>(aliasTypeName, this as T, userID);
+			return RepositoryMediator.UpdateAsync<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1003,7 +1285,25 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task UpdateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.UpdateAsync<TEntity>(context, dataSource, @object, userID, cancellationToken);
+			return RepositoryBase<T>.UpdateAsync<TEntity>(context, dataSource, @object, false, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				await RepositoryBase<T>.UpdateAsync<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false);
+			}
 		}
 
 		/// <summary>
@@ -1015,12 +1315,25 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			using (var context = new RepositoryContext())
-			{
-				await RepositoryBase<T>.UpdateAsync<TEntity>(context, dataSource, @object, userID, cancellationToken).ConfigureAwait(false);
-			}
+			return RepositoryBase<T>.UpdateAsync<TEntity>(dataSource, @object, false, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.UpdateAsync<TEntity>(context, aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1035,7 +1348,22 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.UpdateAsync<TEntity>(context, aliasTypeName, @object, userID, cancellationToken);
+			return RepositoryBase<T>.UpdateAsync<TEntity>(context, aliasTypeName, @object, false, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task UpdateAsync<TEntity>(string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.UpdateAsync<TEntity>(aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1049,7 +1377,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task UpdateAsync<TEntity>(string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
-			return RepositoryMediator.UpdateAsync<TEntity>(aliasTypeName, @object, userID, cancellationToken);
+			return RepositoryBase<T>.UpdateAsync<TEntity>(aliasTypeName, @object, false, userID, cancellationToken);
 		}
 
 		/// <summary>
@@ -1063,6 +1391,69 @@ namespace net.vieapps.Components.Repository
 		public static Task UpdateAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			return RepositoryBase<T>.UpdateAsync<TEntity>("", @object, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task UpdateAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.UpdateAsync<TEntity>("", @object, dontCreateNewVersion, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates an object (only update changed attributes)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task UpdateAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryBase<T>.UpdateAsync<TEntity>(@object, dontCreateNewVersion, null, cancellationToken);
+		}
+		#endregion
+
+		#region [Protected] Update
+		/// <summary>
+		/// Updates the instance of this object (only update changed attributes)
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		protected virtual void Update(RepositoryContext context, string aliasTypeName, string userID = null)
+		{
+			RepositoryBase<T>.Update<T>(context, aliasTypeName, this as T, userID);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (only update changed attributes)
+		/// </summary>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		protected virtual void Update(bool dontCreateNewVersion, string userID = null)
+		{
+			RepositoryBase<T>.Update<T>(this as T, dontCreateNewVersion, userID);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (only update changed attributes)
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		protected virtual void Update(string aliasTypeName = null, string userID = null)
+		{
+			using (var context = new RepositoryContext())
+			{
+				this.Update(context, aliasTypeName, userID);
+			}
 		}
 
 		/// <summary>
@@ -1081,17 +1472,404 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Updates the instance of this object (only update changed attributes)
 		/// </summary>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		protected virtual Task UpdateAsync(bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.UpdateAsync<T>(this as T, dontCreateNewVersion, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (only update changed attributes)
+		/// </summary>
+		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		protected virtual Task UpdateAsync(bool dontCreateNewVersion, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return this.UpdateAsync(dontCreateNewVersion, null, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (only update changed attributes)
+		/// </summary>
+		/// <param name="cancellationToken">The cancellation token</param>
+		protected virtual Task UpdateAsync(CancellationToken cancellationToken)
+		{
+			return this.UpdateAsync(false, cancellationToken);
+		}
+
+		/// <summary>
+		/// Updates the instance of this object (only update changed attributes)
+		/// </summary>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task UpdateAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task UpdateAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return RepositoryBase<T>.UpdateAsync<T>(aliasTypeName, this as T, userID, cancellationToken);
+			using (var context = new RepositoryContext())
+			{
+				await this.UpdateAsync(context, aliasTypeName, userID, cancellationToken).ConfigureAwait(false);
+			}
 		}
 		#endregion
 
-		#region Delete
+		#region [Static] Create version
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		public static VersionContent CreateVersion<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null) where TEntity : class
+		{
+			return RepositoryMediator.CreateVersion(context, dataSource, @object, userID);
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		public static VersionContent CreateVersion<TEntity>(RepositoryContext context, TEntity @object, string userID = null) where TEntity : class
+		{
+			return RepositoryMediator.CreateVersion(context, @object, userID);
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		public static VersionContent CreateVersion<TEntity>(TEntity @object, string userID = null) where TEntity : class
+		{
+			return RepositoryMediator.CreateVersion(@object, userID);
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static Task<VersionContent> CreateVersionAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.CreateVersionAsync(context, dataSource, @object, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static Task<VersionContent> CreateVersionAsync<TEntity>(RepositoryContext context, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.CreateVersionAsync(context, @object, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Creates new version of object
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="object">The object to create new instance in repository</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static Task<VersionContent> CreateVersionAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.CreateVersionAsync(@object, userID, cancellationToken);
+		}
+		#endregion
+
+		#region [Protected] Create version
+		/// <summary>
+		/// Creates new version of this object
+		/// </summary>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		protected virtual VersionContent CreateVersion(string userID = null)
+		{
+			return RepositoryBase<T>.CreateVersion<T>(this as T, userID);
+		}
+
+		/// <summary>
+		/// Creates new version of this object
+		/// </summary>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		protected virtual Task<VersionContent> CreateVersionAsync(string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.CreateVersionAsync<T>(this as T, userID, cancellationToken);
+		}
+		#endregion
+
+		#region [Static] Rollback version
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="version">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <returns></returns>
+		public static TEntity Rollback<TEntity>(RepositoryContext context, VersionContent version, string userID) where TEntity : class
+		{
+			return RepositoryMediator.Rollback<TEntity>(context, version, userID);
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="version">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <returns></returns>
+		public static TEntity Rollback<TEntity>(VersionContent version, string userID) where TEntity : class
+		{
+			return RepositoryMediator.Rollback<TEntity>(version, userID);
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="versionID">The identity of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <returns></returns>
+		public static TEntity Rollback<TEntity>(RepositoryContext context, string versionID, string userID) where TEntity : class
+		{
+			return RepositoryMediator.Rollback<TEntity>(context, versionID, userID);
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="versionID">The identity of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <returns></returns>
+		public static TEntity Rollback<TEntity>(string versionID, string userID) where TEntity : class
+		{
+			return RepositoryMediator.Rollback<TEntity>(versionID, userID);
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="version">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<TEntity> RollbackAsync<TEntity>(RepositoryContext context, VersionContent version, string userID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.RollbackAsync<TEntity>(context, version, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="version">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<TEntity> RollbackAsync<TEntity>(VersionContent version, string userID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.RollbackAsync<TEntity>(version, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="versionID">The identity of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<TEntity> RollbackAsync<TEntity>(RepositoryContext context, string versionID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.RollbackAsync<TEntity>(context, versionID, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Rollbacks an object from a version content
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="versionID">The identity of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<TEntity> RollbackAsync<TEntity>(string versionID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.RollbackAsync<TEntity>(versionID, userID, cancellationToken);
+		}
+		#endregion
+
+		#region [Protected] Rollback version
+		/// <summary>
+		/// Rollbacks this object from a version content
+		/// </summary>
+		/// <param name="version">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <returns></returns>
+		protected virtual T Rollback(VersionContent version, string userID)
+		{
+			return RepositoryBase<T>.Rollback<T>(version, userID);
+		}
+
+		/// <summary>
+		/// Rollbacks this object from a version content
+		/// </summary>
+		/// <param name="versionID">The identity of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <returns></returns>
+		protected virtual T Rollback(string versionID, string userID)
+		{
+			return RepositoryBase<T>.Rollback<T>(versionID, userID);
+		}
+
+		/// <summary>
+		/// Rollbacks this object from a version content
+		/// </summary>
+		/// <param name="version">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected virtual Task<T> RollbackAsync(VersionContent version, string userID, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.RollbackAsync<T>(version, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Rollbacks this object from a version content
+		/// </summary>
+		/// <param name="versionID">The identity of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the rollback action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected virtual Task<T> RollbackAsync(string versionID, string userID, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryBase<T>.RollbackAsync<T>(versionID, userID, cancellationToken);
+		}
+		#endregion
+
+		#region [Static] Count versions
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <returns></returns>
+		public static long CountVersions<TEntity>(string objectID) where TEntity : class
+		{
+			return RepositoryMediator.CountVersionContents<TEntity>(objectID);
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<long> CountVersionsAsync<TEntity>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.CountVersionContentsAsync<TEntity>(objectID, cancellationToken);
+		}
+		#endregion
+
+		#region [Protected] Count versions
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <returns></returns>
+		protected long CountVersions()
+		{
+			this._totalVersions = string.IsNullOrWhiteSpace(this.ID)
+				? 0
+				: RepositoryBase<T>.CountVersions<T>(this.ID);
+			return this._totalVersions;
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected async Task<long> CountVersionsAsync(CancellationToken cancellationToken = default(CancellationToken))
+		{
+			this._totalVersions = string.IsNullOrWhiteSpace(this.ID)
+				? 0
+				: await RepositoryBase<T>.CountVersionsAsync<T>(this.ID, cancellationToken).ConfigureAwait(false);
+			return this._totalVersions;
+		}
+		#endregion
+
+		#region [Static] Find versions
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> FindVersions<TEntity>(string objectID) where TEntity : class
+		{
+			return RepositoryMediator.FindVersionContents<TEntity>(objectID);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<List<VersionContent>> FindVersionsAsync<TEntity>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.FindVersionContentsAsync<TEntity>(objectID, cancellationToken);
+		}
+		#endregion
+
+		#region [Protected] Find versions
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <returns></returns>
+		protected List<VersionContent> FindVersions()
+		{
+			return string.IsNullOrWhiteSpace(this.ID)
+				? null
+				: RepositoryBase<T>.FindVersions<T>(this.ID);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected Task<List<VersionContent>> FindVersionsAsync(CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return string.IsNullOrWhiteSpace(this.ID)
+				? Task.FromResult<List<VersionContent>>(null)
+				: RepositoryBase<T>.FindVersionsAsync<T>(this.ID, cancellationToken);
+		}
+		#endregion
+
+		#region [Static] Delete
 		/// <summary>
 		/// Deletes an object
 		/// </summary>
@@ -1154,29 +1932,6 @@ namespace net.vieapps.Components.Repository
 		public static void Delete<TEntity>(string id, string userID = null) where TEntity : class
 		{
 			RepositoryBase<T>.Delete<TEntity>("", id, userID);
-		}
-
-		/// <summary>
-		/// Deletes the instance of this object
-		/// </summary>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
-		protected virtual void Delete(RepositoryContext context, string aliasTypeName, string userID = null)
-		{
-			if (!string.IsNullOrWhiteSpace(this.ID))
-				RepositoryBase<T>.Delete<T>(context, aliasTypeName, this.ID, userID);
-		}
-
-		/// <summary>
-		/// Deletes the instance of this object
-		/// </summary>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
-		protected virtual void Delete(string aliasTypeName = null, string userID = null)
-		{
-			if (!string.IsNullOrWhiteSpace(this.ID))
-				RepositoryBase<T>.Delete<T>(aliasTypeName, this.ID, userID);
 		}
 
 		/// <summary>
@@ -1252,6 +2007,33 @@ namespace net.vieapps.Components.Repository
 		{
 			return RepositoryBase<T>.DeleteAsync<TEntity>("", id, userID, cancellationToken);
 		}
+		#endregion
+
+		#region [Protected] Delete
+		/// <summary>
+		/// Deletes the instance of this object
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
+		protected virtual void Delete(RepositoryContext context, string aliasTypeName, string userID = null)
+		{
+			if (!string.IsNullOrWhiteSpace(this.ID))
+				RepositoryBase<T>.Delete<T>(context, aliasTypeName, this.ID, userID);
+		}
+
+		/// <summary>
+		/// Deletes the instance of this object
+		/// </summary>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
+		protected virtual void Delete(string aliasTypeName = null, string userID = null)
+		{
+			using (var context = new RepositoryContext())
+			{
+				this.Delete(context, aliasTypeName, userID);
+			}
+		}
 
 		/// <summary>
 		/// Deletes the instance of this object
@@ -1275,15 +2057,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task DeleteAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task DeleteAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			return !string.IsNullOrWhiteSpace(this.ID)
-				? RepositoryBase<T>.DeleteAsync<T>(aliasTypeName, this.ID, userID, cancellationToken)
-				: Task.FromException(new ArgumentException("The identity of the object is null or empty", nameof(this.ID)));
+			using (var context = new RepositoryContext())
+			{
+				await this.DeleteAsync(context, aliasTypeName, userID, cancellationToken).ConfigureAwait(false);
+			}
 		}
 		#endregion
 
-		#region Delete (many)
+		#region [Static] Delete many
 		/// <summary>
 		/// Deletes many objects that matched with the filter
 		/// </summary>
@@ -1495,7 +2278,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Find
+		#region [Static] Find
 		/// <summary>
 		/// Finds all the matched objects
 		/// </summary>
@@ -1791,7 +2574,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Count
+		#region [Static] Count
 		/// <summary>
 		/// Counts the number of all matched objects
 		/// </summary>
@@ -2055,7 +2838,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Search (by query)
+		#region [Static] Search
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
 		/// </summary>
@@ -2261,7 +3044,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Count (by query)
+		#region [Static] Count by search query
 		/// <summary>
 		/// Counts the number of all matched objects
 		/// </summary>
@@ -2453,7 +3236,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Get/Set properties
+		#region [Public] Get/Set properties
 		/// <summary>
 		/// Gets the value of a specified property
 		/// </summary>
@@ -2570,7 +3353,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region JSON/XML conversions
+		#region [Public] JSON/XML conversions
 		/// <summary>
 		/// Serializes this object to JSON object
 		/// </summary>
@@ -2695,7 +3478,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Properties & Methods of IBussineEntity
+		#region [Public] IBussineEntitys' properties & methods
 		/// <summary>
 		/// Gets or sets the title
 		/// </summary>
@@ -2761,6 +3544,22 @@ namespace net.vieapps.Components.Repository
 				return this.Privileges ?? (this.Privileges = User.CombinePrivileges(this.OriginalPrivileges, this.Parent?.WorkingPrivileges));
 			}
 		}
+
+		long _totalVersions = -1;
+
+		/// <summary>
+		/// Gets the total number of version contents
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
+		public virtual long TotalVersions
+		{
+			get
+			{
+				if (this._totalVersions < 0)
+					this.CountVersions();
+				return this._totalVersions;
+			}
+		}
 		#endregion
 
 	}
@@ -2782,7 +3581,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the title
 		/// </summary>
-		public string TItle { get; set; }
+		public string Title { get; set; }
 
 		/// <summary>
 		/// Gets or sets the name of service that associates with
@@ -2794,7 +3593,7 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the identity of system that associates with
 		/// </summary>
 		[BsonIgnoreIfNull]
-		public string SystemID { get; set; } = null;
+		public string SystemID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of business repository (mean business module) that associates with
@@ -2819,9 +3618,9 @@ namespace net.vieapps.Components.Repository
 		public string CreatedID { get; set; }
 
 		/// <summary>
-		/// Gets or sets data of object (compressed bytes in Base64 string)
+		/// Gets the raw data of object (compressed bytes in Base64 string)
 		/// </summary>
-		public string ObjectData { get; set; }
+		public string ObjectData { get; internal set; }
 
 		[NonSerialized]
 		object _Object = null;
@@ -2840,6 +3639,7 @@ namespace net.vieapps.Components.Repository
 			}
 			internal set
 			{
+				this._Object = value;
 				this.ObjectData = value != null
 					? Caching.Helper.Serialize(value).Compress().ToBase64()
 					: null;
@@ -3034,12 +3834,13 @@ namespace net.vieapps.Components.Repository
 				return null;
 		}
 
-		internal static void Create<T>(DataSource dataSource, string name, T @object) where T : class
+		internal static T Create<T>(DataSource dataSource, string name, T @object) where T : class
 		{
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
 				collection.Create(@object);
+				return @object;
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
@@ -3064,15 +3865,18 @@ namespace net.vieapps.Components.Repository
 					});
 					command.ExecuteNonQuery();
 				}
+				return @object;
 			}
+			return null;
 		}
 
-		internal static async Task CreateAsync<T>(DataSource dataSource, string name, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		internal static async Task<T> CreateAsync<T>(DataSource dataSource, string name, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
 				await collection.CreateAsync(@object, null, cancellationToken).ConfigureAwait(false);
+				return @object;
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
@@ -3097,7 +3901,9 @@ namespace net.vieapps.Components.Repository
 					});
 					await command.ExecuteNonQueryAsync(cancellationToken);
 				}
+				return @object;
 			}
+			return null;
 		}
 
 		internal static void Delete<T>(DataSource dataSource, string name, IFilterBy<T> filter) where T : class
@@ -3146,7 +3952,7 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 
-		internal static TrashContent Prepare<T>(T @object) where T : class
+		internal static TrashContent Prepare<T>(T @object, Action<TrashContent> onPreCompleted = null) where T : class
 		{
 			string serviceName = null, systemID = null, repositoryID = null, entityID = null, objectID = null, title = null;
 
@@ -3180,18 +3986,17 @@ namespace net.vieapps.Components.Repository
 				systemID = @object.GetAttributeValue("SystemID") as string;
 				repositoryID = @object.GetAttributeValue("RepositoryID") as string;
 				entityID = @object.GetAttributeValue("EntityID") as string;
-				objectID = @object is RepositoryBase
-					? (@object as RepositoryBase).ID
-					: @object.GetEntityID();
+				objectID = @object.GetEntityID();
 				title = @object.GetAttributeValue("Title") as string;
 			}
 
 			if (string.IsNullOrWhiteSpace(title))
 				title = typeof(T).GetTypeName(true) + "#" + objectID;
 
-			return new TrashContent()
+			var content = new TrashContent()
 			{
-				ID = objectID,
+				ID = (typeof(T).GetTypeName() + "#" + objectID).GetMD5(),
+				Title = title,
 				ServiceName = serviceName,
 				SystemID = systemID,
 				RepositoryID = repositoryID,
@@ -3200,6 +4005,8 @@ namespace net.vieapps.Components.Repository
 				Created = DateTime.Now,
 				CreatedID = ""
 			};
+			onPreCompleted?.Invoke(content);
+			return content;
 		}
 	}
 
@@ -3217,6 +4024,16 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the identity of original object
 		/// </summary>
 		public string ObjectID { get; set; }
+
+		internal static new VersionContent Prepare<T>(T @object, Action<VersionContent> onPreCompleted = null) where T : class
+		{
+			var content = ObjectService.CreateInstance<VersionContent>();
+			content.CopyFrom(TrashContent.Prepare(@object));
+			content.ID = UtilityService.NewUID;
+			content.ObjectID = @object.GetEntityID();
+			onPreCompleted?.Invoke(content);
+			return content;
+		}
 	}
 	#endregion
 

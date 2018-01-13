@@ -8,7 +8,7 @@
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
 		<AssemblyVersion>10.1.6.1801</AssemblyVersion>
 		<FileVersion>10.1.6.1801</FileVersion>
-		<InformationalVersion>v10.1.netstandard-2+rev:2018.01.11</InformationalVersion>
+		<InformationalVersion>v10.1.netstandard-2+rev:2018.01.13-recyclebin</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
@@ -18,10 +18,10 @@
 		<DelaySign>false</DelaySign>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
 		<Title>VIEApps NGX Repository</Title>
-		<Description>The tiny ORM-ish library to help .NET Standard 2.0 POCO objects work with both NoSQL and SQL databases in the same time</Description>
+		<Description>The tiny polyglot library to help .NET Standard 2.0 POCO objects work with both NoSQL and SQL databases in the same time just like other ORM-ish library does</Description>
 		<Authors>VIEApps.net</Authors>
 		<Copyright>© 2018 VIEApps.net</Copyright>
-		<PackageTags>repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
+		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
 		<PackageProjectUrl>https://github.com/vieapps/Components.Repository</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 	</PropertyGroup>
