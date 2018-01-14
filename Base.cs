@@ -3911,7 +3911,7 @@ namespace net.vieapps.Components.Repository
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
-				collection.DeleteOne(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty);
+				collection.DeleteMany(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty);
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
@@ -3934,7 +3934,7 @@ namespace net.vieapps.Components.Repository
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
-				await collection.DeleteOneAsync(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty, cancellationToken).ConfigureAwait(false);
+				await collection.DeleteManyAsync(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty, cancellationToken).ConfigureAwait(false);
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{

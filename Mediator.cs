@@ -3261,7 +3261,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Create version content
+		#region Create version
 		/// <summary>
 		/// Creates new version of object
 		/// </summary>
@@ -3281,7 +3281,7 @@ namespace net.vieapps.Components.Repository
 				if (context.EntityDefinition == null)
 					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
-				dataSource = dataSource ?? RepositoryMediator.GetVersionDataSource(context);
+				dataSource = dataSource ?? context.GetVersionDataSource();
 				if (dataSource == null)
 					return null;
 
@@ -3353,7 +3353,7 @@ namespace net.vieapps.Components.Repository
 				if (context.EntityDefinition == null)
 					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
-				dataSource = dataSource ?? RepositoryMediator.GetVersionDataSource(context);
+				dataSource = dataSource ?? context.GetVersionDataSource();
 				if (dataSource == null)
 					return null;
 
@@ -3404,482 +3404,6 @@ namespace net.vieapps.Components.Repository
 			using (var context = new RepositoryContext())
 			{
 				return await RepositoryMediator.CreateVersionAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
-			}
-		}
-		#endregion
-
-		#region Count version contents
-		static IFilterBy<VersionContent> PrepareVersionFilter(string objectID, string serviceName, string systemID, string repositoryID, string entityID, string userID)
-		{
-			if (!string.IsNullOrWhiteSpace(objectID))
-				return Filters<VersionContent>.Equals("ObjectID", objectID);
-			else
-			{
-				var filter = Filters<VersionContent>.And();
-				if (!string.IsNullOrWhiteSpace(serviceName))
-					filter.Add(Filters<VersionContent>.Equals("ServiceName", serviceName));
-				if (!string.IsNullOrWhiteSpace(systemID))
-					filter.Add(Filters<VersionContent>.Equals("SystemID", systemID));
-				if (!string.IsNullOrWhiteSpace(repositoryID))
-					filter.Add(Filters<VersionContent>.Equals("RepositoryID", repositoryID));
-				if (!string.IsNullOrWhiteSpace(entityID))
-					filter.Add(Filters<VersionContent>.Equals("EntityID", entityID));
-				if (!string.IsNullOrWhiteSpace(userID))
-					filter.Add(Filters<VersionContent>.Equals("CreatedID", userID));
-				return filter;
-			}
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <returns></returns>
-		public static long CountVersionContents<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null) where T : class
-		{
-			try
-			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = RepositoryMediator.GetVersionDataSource(context);
-				}
-
-				// check
-				if (dataSource == null)
-					return 0;
-
-				// count
-				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				return VersionContent.Count<VersionContent>(dataSource, "Versions", filter);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException("Error occurred while counting version contents", ex);
-			}
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <returns></returns>
-		public static long CountVersionContents<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null) where T : class
-		{
-			return RepositoryMediator.CountVersionContents<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID);
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <returns></returns>
-		public static long CountVersionContents<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				return RepositoryMediator.CountVersionContents<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID);
-			}
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<long> CountVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			try
-			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = RepositoryMediator.GetVersionDataSource(context);
-				}
-
-				// check
-				if (dataSource == null)
-					return 0;
-
-				// count
-				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				return await VersionContent.CountAsync<VersionContent>(dataSource, "Versions", filter, cancellationToken).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException("Error occurred while counting version contents", ex);
-			}
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<long> CountVersionContentsAsync<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return RepositoryMediator.CountVersionContentsAsync<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, cancellationToken);
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<long> CountVersionContentsAsync<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				return await RepositoryMediator.CountVersionContentsAsync<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID, cancellationToken).ConfigureAwait(false);
-			}
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<long> CountVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return RepositoryMediator.CountVersionContentsAsync<T>(context, dataSource, objectID, null, null, null, null, null, cancellationToken);
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<long> CountVersionContentsAsync<T>(RepositoryContext context, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return RepositoryMediator.CountVersionContentsAsync<T>(context, null, objectID, cancellationToken);
-		}
-
-		/// <summary>
-		/// Counts the number of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<long> CountVersionContentsAsync<T>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				return await RepositoryMediator.CountVersionContentsAsync<T>(context, objectID, cancellationToken).ConfigureAwait(false);
-			}
-		}
-		#endregion
-
-		#region Find version contents
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="pageSize">The identity of business repository entity that associates with</param>
-		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
-		/// <returns></returns>
-		public static List<VersionContent> FindVersionContents<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
-		{
-			try
-			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = RepositoryMediator.GetVersionDataSource(context);
-				}
-
-				// check
-				if (dataSource == null)
-					return null;
-
-				// find
-				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
-				return VersionContent.Find<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException("Error occurred while fetching version contents", ex);
-			}
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="pageSize">The identity of business repository entity that associates with</param>
-		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
-		/// <returns></returns>
-		public static List<VersionContent> FindVersionContents<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
-		{
-			return RepositoryMediator.FindVersionContents<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber);
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="pageSize">The identity of business repository entity that associates with</param>
-		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
-		/// <returns></returns>
-		public static List<VersionContent> FindVersionContents<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				return RepositoryMediator.FindVersionContents<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber);
-			}
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <returns></returns>
-		public static List<VersionContent> FindVersionContents<T>(RepositoryContext context, DataSource dataSource, string objectID) where T : class
-		{
-			return string.IsNullOrWhiteSpace(objectID) || !objectID.IsValidUUID()
-				? throw new ArgumentNullException(nameof(objectID), "Object identity is invalid")
-				: RepositoryMediator.FindVersionContents<T>(context, dataSource, objectID, null, null, null, null, null, 0, 1);
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <returns></returns>
-		public static List<VersionContent> FindVersionContents<T>(RepositoryContext context, string objectID) where T : class
-		{
-			return RepositoryMediator.FindVersionContents<T>(context, null, objectID);
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <returns></returns>
-		public static List<VersionContent> FindVersionContents<T>(string objectID) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				return RepositoryMediator.FindVersionContents<T>(context, objectID);
-			}
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="pageSize">The identity of business repository entity that associates with</param>
-		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			try
-			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = RepositoryMediator.GetVersionDataSource(context);
-				}
-
-				// check
-				if (dataSource == null)
-					return null;
-
-				// find
-				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
-				return await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				throw new RepositoryOperationException("Error occurred while fetching version contents", ex);
-			}
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="pageSize">The identity of business repository entity that associates with</param>
-		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return RepositoryMediator.FindVersionContentsAsync<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber, cancellationToken);
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="serviceName">The name of service that associates with</param>
-		/// <param name="systemID">The identity of system that associates with</param>
-		/// <param name="repositoryID">The identity of repository that associates with</param>
-		/// <param name="entityID">The identity of business repository entity that associates with</param>
-		/// <param name="userID">The identity of user who created this verion of the object</param>
-		/// <param name="pageSize">The identity of business repository entity that associates with</param>
-		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				return await RepositoryMediator.FindVersionContentsAsync<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber, cancellationToken);
-			}
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return string.IsNullOrWhiteSpace(objectID) || !objectID.IsValidUUID()
-				? Task.FromException<List<VersionContent>>(new ArgumentNullException(nameof(objectID), "Object identity is invalid"))
-				: RepositoryMediator.FindVersionContentsAsync<T>(context, dataSource, objectID, null, null, null, null, null, 0, 1, cancellationToken);
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return RepositoryMediator.FindVersionContentsAsync<T>(context, null, objectID, cancellationToken);
-		}
-
-		/// <summary>
-		/// Gets the collection of version contents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="objectID">The identity of object that associates with</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-			{
-				return await RepositoryMediator.FindVersionContentsAsync<T>(context, objectID, cancellationToken);
 			}
 		}
 		#endregion
@@ -3982,7 +3506,7 @@ namespace net.vieapps.Components.Repository
 
 			if (context.EntityDefinition == null)
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			var dataSource = RepositoryMediator.GetVersionDataSource(context);
+			var dataSource = context.GetVersionDataSource();
 
 			var versions = VersionContent.Find(dataSource, "Versions", Filters<VersionContent>.Equals("ID", versionID), null, 0, 1);
 			if (versions == null || versions.Count < 1)
@@ -4107,7 +3631,7 @@ namespace net.vieapps.Components.Repository
 
 			if (context.EntityDefinition == null)
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			var dataSource = RepositoryMediator.GetVersionDataSource(context);
+			var dataSource = context.GetVersionDataSource();
 
 			var versions = await VersionContent.FindAsync(dataSource, "Versions", Filters<VersionContent>.Equals("ID", versionID), null, 0, 1, cancellationToken).ConfigureAwait(false);
 			if (versions == null || versions.Count < 1)
@@ -4131,6 +3655,570 @@ namespace net.vieapps.Components.Repository
 			{
 				return await RepositoryMediator.RollbackAsync<T>(context, versionID, userID, cancellationToken).ConfigureAwait(false);
 			}
+		}
+		#endregion
+
+		#region Count version contents
+		static IFilterBy<VersionContent> PrepareVersionFilter(string objectID, string serviceName, string systemID, string repositoryID, string entityID, string userID)
+		{
+			if (!string.IsNullOrWhiteSpace(objectID))
+				return Filters<VersionContent>.Equals("ObjectID", objectID);
+			else
+			{
+				var filter = Filters<VersionContent>.And();
+				if (!string.IsNullOrWhiteSpace(serviceName))
+					filter.Add(Filters<VersionContent>.Equals("ServiceName", serviceName));
+				if (!string.IsNullOrWhiteSpace(systemID))
+					filter.Add(Filters<VersionContent>.Equals("SystemID", systemID));
+				if (!string.IsNullOrWhiteSpace(repositoryID))
+					filter.Add(Filters<VersionContent>.Equals("RepositoryID", repositoryID));
+				if (!string.IsNullOrWhiteSpace(entityID))
+					filter.Add(Filters<VersionContent>.Equals("EntityID", entityID));
+				if (!string.IsNullOrWhiteSpace(userID))
+					filter.Add(Filters<VersionContent>.Equals("CreatedID", userID));
+				return filter;
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <returns></returns>
+		public static long CountVersionContents<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null) where T : class
+		{
+			try
+			{
+				// prepare
+				if (dataSource == null)
+				{
+					if (context.EntityDefinition == null)
+						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
+					dataSource = context.GetVersionDataSource();
+				}
+
+				// check
+				if (dataSource == null)
+					return 0;
+
+				// count
+				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
+				return VersionContent.Count<VersionContent>(dataSource, "Versions", filter);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while counting version contents", ex);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <returns></returns>
+		public static long CountVersionContents<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null) where T : class
+		{
+			return RepositoryMediator.CountVersionContents<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID);
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <returns></returns>
+		public static long CountVersionContents<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryMediator.CountVersionContents<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<long> CountVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			try
+			{
+				// prepare
+				if (dataSource == null)
+				{
+					if (context.EntityDefinition == null)
+						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
+					dataSource = context.GetVersionDataSource();
+				}
+
+				// check
+				if (dataSource == null)
+					return 0;
+
+				// count
+				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
+				return await VersionContent.CountAsync<VersionContent>(dataSource, "Versions", filter, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while counting version contents", ex);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<long> CountVersionContentsAsync<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.CountVersionContentsAsync<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<long> CountVersionContentsAsync<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryMediator.CountVersionContentsAsync<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<long> CountVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.CountVersionContentsAsync<T>(context, dataSource, objectID, null, null, null, null, null, cancellationToken);
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<long> CountVersionContentsAsync<T>(RepositoryContext context, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.CountVersionContentsAsync<T>(context, null, objectID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Counts the number of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<long> CountVersionContentsAsync<T>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryMediator.CountVersionContentsAsync<T>(context, objectID, cancellationToken).ConfigureAwait(false);
+			}
+		}
+		#endregion
+
+		#region Find version contents
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> FindVersionContents<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
+		{
+			try
+			{
+				// prepare
+				if (dataSource == null)
+				{
+					if (context.EntityDefinition == null)
+						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
+					dataSource = context.GetVersionDataSource();
+				}
+
+				// check
+				if (dataSource == null)
+					return null;
+
+				// find
+				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
+				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
+				return VersionContent.Find<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while fetching version contents", ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> FindVersionContents<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
+		{
+			return RepositoryMediator.FindVersionContents<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> FindVersionContents<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryMediator.FindVersionContents<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> FindVersionContents<T>(RepositoryContext context, DataSource dataSource, string objectID) where T : class
+		{
+			return string.IsNullOrWhiteSpace(objectID) || !objectID.IsValidUUID()
+				? throw new ArgumentNullException(nameof(objectID), "Object identity is invalid")
+				: RepositoryMediator.FindVersionContents<T>(context, dataSource, objectID, null, null, null, null, null, 0, 1);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> FindVersionContents<T>(RepositoryContext context, string objectID) where T : class
+		{
+			return RepositoryMediator.FindVersionContents<T>(context, null, objectID);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <returns></returns>
+		public static List<VersionContent> FindVersionContents<T>(string objectID) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return RepositoryMediator.FindVersionContents<T>(context, objectID);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			try
+			{
+				// prepare
+				if (dataSource == null)
+				{
+					if (context.EntityDefinition == null)
+						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
+					dataSource = context.GetVersionDataSource();
+				}
+
+				// check
+				if (dataSource == null)
+					return null;
+
+				// find
+				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
+				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
+				return await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while fetching version contents", ex);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.FindVersionContentsAsync<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="serviceName">The name of service that associates with</param>
+		/// <param name="systemID">The identity of system that associates with</param>
+		/// <param name="repositoryID">The identity of repository that associates with</param>
+		/// <param name="entityID">The identity of business repository entity that associates with</param>
+		/// <param name="userID">The identity of user who created this verion of the object</param>
+		/// <param name="pageSize">The identity of business repository entity that associates with</param>
+		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryMediator.FindVersionContentsAsync<T>(context, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber, cancellationToken);
+			}
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return string.IsNullOrWhiteSpace(objectID) || !objectID.IsValidUUID()
+				? Task.FromException<List<VersionContent>>(new ArgumentNullException(nameof(objectID), "Object identity is invalid"))
+				: RepositoryMediator.FindVersionContentsAsync<T>(context, dataSource, objectID, null, null, null, null, null, 0, 1, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return RepositoryMediator.FindVersionContentsAsync<T>(context, null, objectID, cancellationToken);
+		}
+
+		/// <summary>
+		/// Gets the collection of version contents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objectID">The identity of object that associates with</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+			{
+				return await RepositoryMediator.FindVersionContentsAsync<T>(context, objectID, cancellationToken);
+			}
+		}
+		#endregion
+
+		#region Clean version contents
+		/// <summary>
+		/// Cleans old version contents
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static void CleanVersionContents(RepositoryContext context, DataSource dataSource, int days = 30)
+		{
+			try
+			{
+				context.Operation = RepositoryOperation.Delete;
+				VersionContent.Delete(dataSource ?? context.GetVersionDataSource(), "Versions", Filters<VersionContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))));
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while cleaning old version contents", ex);
+			}
+		}
+
+		/// <summary>
+		/// Cleans old version contents
+		/// </summary>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static void CleanVersionContents(DataSource dataSource, int days = 30)
+		{
+			using (var context = new RepositoryContext())
+			{
+				RepositoryMediator.CleanVersionContents(context, dataSource, days);
+			}
+		}
+
+		/// <summary>
+		/// Cleans old version contents
+		/// </summary>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static void CleanVersionContents(string dataSource, int days = 30)
+		{
+			RepositoryMediator.CleanVersionContents(!string.IsNullOrWhiteSpace(dataSource) && RepositoryMediator.DataSources.ContainsKey(dataSource) ? RepositoryMediator.DataSources[dataSource] : null, days);
+		}
+
+		/// <summary>
+		/// Cleans old version contents
+		/// </summary>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static async Task CleanVersionContentsAsync(RepositoryContext context, DataSource dataSource, int days = 30, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			try
+			{
+				context.Operation = RepositoryOperation.Delete;
+				await VersionContent.DeleteAsync(dataSource ?? context.GetVersionDataSource(), "Versions", Filters<VersionContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))), cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while cleaning old version contents", ex);
+			}
+		}
+
+		/// <summary>
+		/// Cleans old version contents
+		/// </summary>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static async Task CleanVersionContentsAsync(DataSource dataSource, int days = 30, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			using (var context = new RepositoryContext())
+			{
+				await RepositoryMediator.CleanVersionContentsAsync(context, dataSource, days, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Cleans old version contents
+		/// </summary>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static Task CleanVersionContentsAsync(string dataSource, int days = 30, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryMediator.CleanVersionContentsAsync(!string.IsNullOrWhiteSpace(dataSource) && RepositoryMediator.DataSources.ContainsKey(dataSource) ? RepositoryMediator.DataSources[dataSource] : null, days, cancellationToken);
 		}
 		#endregion
 
@@ -4273,6 +4361,254 @@ namespace net.vieapps.Components.Repository
 			using (var context = new RepositoryContext())
 			{
 				return await RepositoryMediator.CreateTrashContentAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
+			}
+		}
+		#endregion
+
+		#region Restore trash
+		/// <summary>
+		/// Restores an object from a trash content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="trashContent">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the restore action</param>
+		/// <returns></returns>
+		public static T Restore<T>(RepositoryContext context, TrashContent trashContent, string userID) where T : class
+		{
+			// prepare
+			if (trashContent == null)
+				throw new ArgumentNullException(nameof(trashContent), "Trash content is invalid");
+			else if (!(trashContent.Object is T))
+				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T).GetTypeName()}]");
+
+			// process
+			try
+			{
+				// prepare
+				context.Operation = RepositoryOperation.Create;
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				var dataSource = RepositoryMediator.GetPrimaryDataSource(context);
+				if (dataSource == null)
+					return null;
+
+				// call pre-handlers
+				if (RepositoryMediator.CallPreHandlers(context, trashContent.Object, true))
+					return null;
+
+				// restore (create) with original object
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					context.Create<T>(dataSource, trashContent.Object as T, null);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					context.Create<T>(dataSource, trashContent.Object as T);
+
+				// update into cache storage
+				if (context.EntityDefinition.CacheStorage != null)
+#if DEBUG || PROCESSLOGS
+					if (context.EntityDefinition.CacheStorage.Set(trash.Object as T))
+						RepositoryMediator.WriteLogs("RESTORE: Add the object into the cache storage successful [" + (trash.Object as T).GetCacheKey(false) + "]");
+#else
+					context.EntityDefinition.CacheStorage.Set(trashContent.Object as T);
+#endif
+
+				// call post-handlers
+				RepositoryMediator.CallPostHandlers(context, trashContent.Object as T, true);
+
+				// TO DO: sync to other data sources
+				// ...
+
+				// delete trash content
+				TrashContent.Delete(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID));
+
+				// return the original object
+				return trashContent.Object as T;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while performing restore an object", ex);
+			}
+		}
+
+		/// <summary>
+		/// Restores an object from a trash content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="trashContent">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the restore action</param>
+		/// <returns></returns>
+		public static T Restore<T>(TrashContent trashContent, string userID) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				return RepositoryMediator.Restore<T>(context, trashContent, userID);
+			}
+		}
+
+		/// <summary>
+		/// Restores an object from a trash content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="trashContentID">The identity of a trash content that use to restore</param>
+		/// <param name="userID">The identity of user who performs the restore action</param>
+		/// <returns></returns>
+		public static T Restore<T>(RepositoryContext context, string trashContentID, string userID) where T : class
+		{
+			// prepare
+			if (string.IsNullOrWhiteSpace(trashContentID))
+				throw new ArgumentNullException(nameof(trashContentID), "The identity of trash content is invalid");
+
+			if (context.EntityDefinition == null)
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			var dataSource = RepositoryMediator.GetTrashDataSource(context);
+
+			var trashs = TrashContent.Find(dataSource, "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1);
+			if (trashs == null || trashs.Count < 1)
+				throw new InformationInvalidException("The identity of trash content is invalid");
+
+			// rollback
+			return RepositoryMediator.Restore<T>(context, trashs[0], userID);
+		}
+
+		/// <summary>
+		/// Restores an object from a trash content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="trashContentID">The identity of a trash content that use to restore</param>
+		/// <param name="userID">The identity of user who performs the restore action</param>
+		/// <returns></returns>
+		public static T Restore<T>(string trashContentID, string userID) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				return RepositoryMediator.Restore<T>(context, trashContentID, userID);
+			}
+		}
+
+		/// <summary>
+		/// Restores an object from a trash content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="trashContent">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the restore action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<T> RestoreAsync<T>(RepositoryContext context, TrashContent trashContent, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			// prepare
+			if (trashContent == null)
+				throw new ArgumentNullException(nameof(trashContent), "Trash content is invalid");
+			else if (!(trashContent.Object is T))
+				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T).GetTypeName()}]");
+
+			// process
+			try
+			{
+				// prepare
+				context.Operation = RepositoryOperation.Create;
+				if (context.EntityDefinition == null)
+					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				var dataSource = RepositoryMediator.GetPrimaryDataSource(context);
+				if (dataSource == null)
+					return null;
+
+				// call pre-handlers
+				if (await RepositoryMediator.CallPreHandlersAsync(context, trashContent.Object, true, cancellationToken).ConfigureAwait(false))
+					return null;
+
+				// restore (create) with original object
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					await context.CreateAsync<T>(dataSource, trashContent.Object as T, null, cancellationToken).ConfigureAwait(false);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					await context.CreateAsync<T>(dataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
+
+				// update into cache storage
+				if (context.EntityDefinition.CacheStorage != null)
+#if DEBUG || PROCESSLOGS
+					if (await context.EntityDefinition.CacheStorage.SetAsync(trash.Object as T).ConfigureAwait(false))
+						RepositoryMediator.WriteLogs("RESTORE: Add the object into the cache storage successful [" + (trash.Object as T).GetCacheKey(false) + "]");
+#else
+					await context.EntityDefinition.CacheStorage.SetAsync(trashContent.Object as T).ConfigureAwait(false);
+#endif
+
+				// call post-handlers
+				await RepositoryMediator.CallPostHandlersAsync(context, trashContent.Object as T, true, cancellationToken).ConfigureAwait(false);
+
+				// TO DO: sync to other data sources
+				// ...
+
+				// delete trash content
+				await TrashContent.DeleteAsync(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID), cancellationToken).ConfigureAwait(false);
+
+				// return the original object
+				return trashContent.Object as T;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				throw new RepositoryOperationException("Error occurred while performing restore an object", ex);
+			}
+		}
+
+		/// <summary>
+		/// Restores an object from a trash content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="trashContent">The object that presents information of a version content that use to rollback</param>
+		/// <param name="userID">The identity of user who performs the restore action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<T> RestoreAsync<T>(TrashContent trashContent, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				return await RepositoryMediator.RestoreAsync<T>(context, trashContent, userID, cancellationToken).ConfigureAwait(false);
+			}
+		}
+
+		/// <summary>
+		/// Restores an object from a trash content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="trashContentID">The identity of a trash content that use to restore</param>
+		/// <param name="userID">The identity of user who performs the restore action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<T> RestoreAsync<T>(RepositoryContext context, string trashContentID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			// prepare
+			if (string.IsNullOrWhiteSpace(trashContentID))
+				throw new ArgumentNullException(nameof(trashContentID), "The identity of trash content is invalid");
+
+			if (context.EntityDefinition == null)
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			var dataSource = RepositoryMediator.GetTrashDataSource(context);
+
+			var trashs = await TrashContent.FindAsync(dataSource, "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1, cancellationToken).ConfigureAwait(false);
+			if (trashs == null || trashs.Count < 1)
+				throw new InformationInvalidException("The identity of trash content is invalid");
+
+			// rollback
+			return await RepositoryMediator.RestoreAsync<T>(context, trashs[0], userID, cancellationToken).ConfigureAwait(false);
+		}
+
+		/// <summary>
+		/// Restores an object from a trash content
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="trashContentID">The identity of a trash content that use to restore</param>
+		/// <param name="userID">The identity of user who performs the restore action</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<T> RestoreAsync<T>(string trashContentID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				return await RepositoryMediator.RestoreAsync<T>(context, trashContentID, userID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
@@ -4756,251 +5092,91 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Restore trash
+		#region Clean trash contents
 		/// <summary>
-		/// Restores an object from a trash content
+		/// Cleans old trash contents
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="trashContent">The object that presents information of a version content that use to rollback</param>
-		/// <param name="userID">The identity of user who performs the restore action</param>
-		/// <returns></returns>
-		public static T Restore<T>(RepositoryContext context, TrashContent trashContent, string userID) where T : class
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static void CleanTrashContents(RepositoryContext context, DataSource dataSource, int days = 30)
 		{
-			// prepare
-			if (trashContent == null)
-				throw new ArgumentNullException(nameof(trashContent), "Trash content is invalid");
-			else if (!(trashContent.Object is T))
-				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T).GetTypeName()}]");
-
-			// process
 			try
 			{
-				// prepare
-				context.Operation = RepositoryOperation.Create;
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-				var dataSource = RepositoryMediator.GetPrimaryDataSource(context);
-				if (dataSource == null)
-					return null;
-
-				// call pre-handlers
-				if (RepositoryMediator.CallPreHandlers(context, trashContent.Object, true))
-					return null;
-
-				// restore (create) with original object
-				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					context.Create<T>(dataSource, trashContent.Object as T, null);
-				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-					context.Create<T>(dataSource, trashContent.Object as T);
-
-				// update into cache storage
-				if (context.EntityDefinition.CacheStorage != null)
-#if DEBUG || PROCESSLOGS
-					if (context.EntityDefinition.CacheStorage.Set(trash.Object as T))
-						RepositoryMediator.WriteLogs("RESTORE: Add the object into the cache storage successful [" + (trash.Object as T).GetCacheKey(false) + "]");
-#else
-					context.EntityDefinition.CacheStorage.Set(trashContent.Object as T);
-#endif
-
-				// call post-handlers
-				RepositoryMediator.CallPostHandlers(context, trashContent.Object as T, true);
-
-				// TO DO: sync to other data sources
-				// ...
-
-				// delete trash content
-				TrashContent.Delete(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID));
-
-				// return the original object
-				return trashContent.Object as T;
+				context.Operation = RepositoryOperation.Delete;
+				TrashContent.Delete(dataSource ?? context.GetTrashDataSource(), "Trashs", Filters<TrashContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))));
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException("Error occurred while performing restore an object", ex);
+				throw new RepositoryOperationException("Error occurred while cleaning old trash contents", ex);
 			}
 		}
 
 		/// <summary>
-		/// Restores an object from a trash content
+		/// Cleans old trash contents
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="trashContent">The object that presents information of a version content that use to rollback</param>
-		/// <param name="userID">The identity of user who performs the restore action</param>
-		/// <returns></returns>
-		public static T Restore<T>(TrashContent trashContent, string userID) where T : class
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static void CleanTrashContents(DataSource dataSource, int days = 30)
 		{
 			using (var context = new RepositoryContext())
 			{
-				return RepositoryMediator.Restore<T>(context, trashContent, userID);
+				RepositoryMediator.CleanTrashContents(context, dataSource, days);
 			}
 		}
 
 		/// <summary>
-		/// Restores an object from a trash content
+		/// Cleans old trash contents
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="trashContentID">The identity of a trash content that use to restore</param>
-		/// <param name="userID">The identity of user who performs the restore action</param>
-		/// <returns></returns>
-		public static T Restore<T>(RepositoryContext context, string trashContentID, string userID) where T : class
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static void CleanTrashContents(string dataSource, int days = 30)
 		{
-			// prepare
-			if (string.IsNullOrWhiteSpace(trashContentID))
-				throw new ArgumentNullException(nameof(trashContentID), "The identity of trash content is invalid");
-
-			if (context.EntityDefinition == null)
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			var dataSource = RepositoryMediator.GetTrashDataSource(context);
-
-			var trashs = TrashContent.Find(dataSource, "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1);
-			if (trashs == null || trashs.Count < 1)
-				throw new InformationInvalidException("The identity of trash content is invalid");
-
-			// rollback
-			return RepositoryMediator.Restore<T>(context, trashs[0], userID);
+			RepositoryMediator.CleanTrashContents(!string.IsNullOrWhiteSpace(dataSource) && RepositoryMediator.DataSources.ContainsKey(dataSource) ? RepositoryMediator.DataSources[dataSource] : null, days);
 		}
 
 		/// <summary>
-		/// Restores an object from a trash content
+		/// Cleans old trash contents
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="trashContentID">The identity of a trash content that use to restore</param>
-		/// <param name="userID">The identity of user who performs the restore action</param>
-		/// <returns></returns>
-		public static T Restore<T>(string trashContentID, string userID) where T : class
-		{
-			using (var context = new RepositoryContext())
-			{
-				return RepositoryMediator.Restore<T>(context, trashContentID, userID);
-			}
-		}
-
-		/// <summary>
-		/// Restores an object from a trash content
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="trashContent">The object that presents information of a version content that use to rollback</param>
-		/// <param name="userID">The identity of user who performs the restore action</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<T> RestoreAsync<T>(RepositoryContext context, TrashContent trashContent, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static async Task CleanTrashContentsAsync(RepositoryContext context, DataSource dataSource, int days = 30, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			// prepare
-			if (trashContent == null)
-				throw new ArgumentNullException(nameof(trashContent), "Trash content is invalid");
-			else if (!(trashContent.Object is T))
-				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T).GetTypeName()}]");
-
-			// process
 			try
 			{
-				// prepare
-				context.Operation = RepositoryOperation.Create;
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-				var dataSource = RepositoryMediator.GetPrimaryDataSource(context);
-				if (dataSource == null)
-					return null;
-
-				// call pre-handlers
-				if (await RepositoryMediator.CallPreHandlersAsync(context, trashContent.Object, true, cancellationToken).ConfigureAwait(false))
-					return null;
-
-				// restore (create) with original object
-				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					await context.CreateAsync<T>(dataSource, trashContent.Object as T, null, cancellationToken).ConfigureAwait(false);
-				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-					await context.CreateAsync<T>(dataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
-
-				// update into cache storage
-				if (context.EntityDefinition.CacheStorage != null)
-#if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.CacheStorage.SetAsync(trash.Object as T).ConfigureAwait(false))
-						RepositoryMediator.WriteLogs("RESTORE: Add the object into the cache storage successful [" + (trash.Object as T).GetCacheKey(false) + "]");
-#else
-					await context.EntityDefinition.CacheStorage.SetAsync(trashContent.Object as T).ConfigureAwait(false);
-#endif
-
-				// call post-handlers
-				await RepositoryMediator.CallPostHandlersAsync(context, trashContent.Object as T, true, cancellationToken).ConfigureAwait(false);
-
-				// TO DO: sync to other data sources
-				// ...
-
-				// delete trash content
-				await TrashContent.DeleteAsync(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID), cancellationToken).ConfigureAwait(false);
-
-				// return the original object
-				return trashContent.Object as T;
+				context.Operation = RepositoryOperation.Delete;
+				await TrashContent.DeleteAsync(dataSource ?? context.GetTrashDataSource(), "Trashs", Filters<TrashContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))), cancellationToken).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException("Error occurred while performing restore an object", ex);
+				throw new RepositoryOperationException("Error occurred while cleaning old trash contents", ex);
 			}
 		}
 
 		/// <summary>
-		/// Restores an object from a trash content
+		/// Cleans old trash contents
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="trashContent">The object that presents information of a version content that use to rollback</param>
-		/// <param name="userID">The identity of user who performs the restore action</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<T> RestoreAsync<T>(TrashContent trashContent, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static async Task CleanTrashContentsAsync(DataSource dataSource, int days = 30, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			using (var context = new RepositoryContext())
 			{
-				return await RepositoryMediator.RestoreAsync<T>(context, trashContent, userID, cancellationToken).ConfigureAwait(false);
+				await RepositoryMediator.CleanTrashContentsAsync(context, dataSource, days, cancellationToken).ConfigureAwait(false);
 			}
 		}
 
 		/// <summary>
-		/// Restores an object from a trash content
+		/// Cleans old trash contents
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="trashContentID">The identity of a trash content that use to restore</param>
-		/// <param name="userID">The identity of user who performs the restore action</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<T> RestoreAsync<T>(RepositoryContext context, string trashContentID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="days">The remain days</param>
+		public static Task CleanTrashContentsAsync(string dataSource, int days = 30, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			// prepare
-			if (string.IsNullOrWhiteSpace(trashContentID))
-				throw new ArgumentNullException(nameof(trashContentID), "The identity of trash content is invalid");
-
-			if (context.EntityDefinition == null)
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			var dataSource = RepositoryMediator.GetTrashDataSource(context);
-
-			var trashs = await TrashContent.FindAsync(dataSource, "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1, cancellationToken).ConfigureAwait(false);
-			if (trashs == null || trashs.Count < 1)
-				throw new InformationInvalidException("The identity of trash content is invalid");
-
-			// rollback
-			return await RepositoryMediator.RestoreAsync<T>(context, trashs[0], userID, cancellationToken).ConfigureAwait(false);
-		}
-
-		/// <summary>
-		/// Restores an object from a trash content
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="trashContentID">The identity of a trash content that use to restore</param>
-		/// <param name="userID">The identity of user who performs the restore action</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<T> RestoreAsync<T>(string trashContentID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			using (var context = new RepositoryContext())
-			{
-				return await RepositoryMediator.RestoreAsync<T>(context, trashContentID, userID, cancellationToken).ConfigureAwait(false);
-			}
+			return RepositoryMediator.CleanTrashContentsAsync(!string.IsNullOrWhiteSpace(dataSource) && RepositoryMediator.DataSources.ContainsKey(dataSource) ? RepositoryMediator.DataSources[dataSource] : null, days, cancellationToken);
 		}
 		#endregion
 
