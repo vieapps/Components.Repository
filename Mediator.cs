@@ -3274,7 +3274,7 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
+				// check
 				if (@object == null)
 					throw new ArgumentNullException(nameof(@object), "The object is null");
 
@@ -3285,13 +3285,20 @@ namespace net.vieapps.Components.Repository
 				if (dataSource == null)
 					return null;
 
+				// prepare
+				var version = VersionContent.Prepare(@object);
+				var filter = !string.IsNullOrWhiteSpace(version.ServiceName) || !string.IsNullOrWhiteSpace(version.EntityID)
+					? Filters<VersionContent>.And(
+						Filters<VersionContent>.Equals("ObjectID", version.ObjectID),
+						!string.IsNullOrWhiteSpace(version.EntityID) ? Filters<VersionContent>.Equals("EntityID", version.EntityID) : Filters<VersionContent>.Equals("ServiceName", version.ServiceName)
+					) as IFilterBy<VersionContent>
+					: Filters<VersionContent>.Equals("ObjectID", version.ObjectID) as IFilterBy<VersionContent>;
+				var latest = VersionContent.Find<VersionContent>(dataSource, "Versions", filter, Sorts<VersionContent>.Descending("VersionNumber"), 1, 1);
+				version.VersionNumber = latest != null && latest.Count > 0 ? latest[0].VersionNumber + 1 : 1;
+				version.CreatedID = userID ?? "";
+
 				// create new
-				return VersionContent.Create(dataSource, "Versions", VersionContent.Prepare(@object, (content) =>
-				{
-					var latest = VersionContent.Find<VersionContent>(dataSource, "Versions", Filters<VersionContent>.Equals("ObjectID", content.ObjectID), Sorts<VersionContent>.Descending("VersionNumber"));
-					content.VersionNumber = latest != null && latest.Count > 0 ? latest[0].VersionNumber + 1 : 1;
-					content.CreatedID = userID ?? "";
-				}));
+				return VersionContent.Create(dataSource, "Versions", version);
 			}
 			catch (Exception ex)
 			{
@@ -3339,7 +3346,7 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
+				// check
 				if (@object == null)
 					throw new ArgumentNullException(nameof(@object), "The object is null");
 
@@ -3350,13 +3357,20 @@ namespace net.vieapps.Components.Repository
 				if (dataSource == null)
 					return null;
 
+				// prepare
+				var version = VersionContent.Prepare(@object);
+				var filter = !string.IsNullOrWhiteSpace(version.ServiceName) || !string.IsNullOrWhiteSpace(version.EntityID)
+					? Filters<VersionContent>.And(
+						Filters<VersionContent>.Equals("ObjectID", version.ObjectID),
+						!string.IsNullOrWhiteSpace(version.EntityID) ? Filters<VersionContent>.Equals("EntityID", version.EntityID) : Filters<VersionContent>.Equals("ServiceName", version.ServiceName)
+					) as IFilterBy<VersionContent>
+					: Filters<VersionContent>.Equals("ObjectID", version.ObjectID) as IFilterBy<VersionContent>;
+				var latest = await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", filter, Sorts<VersionContent>.Descending("VersionNumber"), 1, 1, cancellationToken).ConfigureAwait(false);
+				version.VersionNumber = latest != null && latest.Count > 0 ? latest[0].VersionNumber + 1 : 1;
+				version.CreatedID = userID ?? "";
+
 				// create new
-				return await VersionContent.CreateAsync(dataSource, "Versions", VersionContent.Prepare(@object, async (content) =>
-				{
-					var latest = await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", Filters<VersionContent>.Equals("ObjectID", content.ObjectID), Sorts<VersionContent>.Descending("VersionNumber"), 0, 1, cancellationToken).ConfigureAwait(false);
-					content.VersionNumber = latest != null && latest.Count > 0 ? latest[0].VersionNumber + 1 : 1;
-					content.CreatedID = userID ?? "";
-				}), cancellationToken).ConfigureAwait(false);
+				return await VersionContent.CreateAsync(dataSource, "Versions", version, cancellationToken).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
