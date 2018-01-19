@@ -97,15 +97,7 @@ namespace net.vieapps.Components.Repository
 				{
 					// update settings of data sources
 					if (config.Section.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
-						foreach (XmlNode dataSourceNode in dataSourceNodes)
-						{
-							var dataSource = DataSource.FromJson(dataSourceNode.ToJson());
-							if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
-							{
-								tracker?.Invoke($"Update settings of data-source [{dataSource.Name}]", null);
-								RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
-							}
-						}
+						RepositoryMediator.ConstructDataSources(dataSourceNodes, tracker);
 
 					// update settings of repositories
 					if (config.Section.SelectNodes("repository") is XmlNodeList repositoryNodes)
@@ -182,6 +174,26 @@ namespace net.vieapps.Components.Repository
 				), 
 				tracker
 			);
+		}
+
+		/// <summary>
+		/// Constructs data-sources
+		/// </summary>
+		/// <param name="datasourceNodes"></param>
+		/// <param name="tracker"></param>
+		public static void ConstructDataSources(XmlNodeList datasourceNodes, Action<string, Exception> tracker = null)
+		{
+			RepositoryMediator.ConstructDataSources(datasourceNodes, tracker);
+		}
+
+		/// <summary>
+		/// Constructs SQL database factory providers
+		/// </summary>
+		/// <param name="dbProviderFactoryNodes"></param>
+		/// <param name="tracker"></param>
+		public static void ConstructDbProviderFactories(XmlNodeList dbProviderFactoryNodes, Action<string, Exception> tracker = null)
+		{
+			DbProviderFactories.ConstructDbProviderFactories(dbProviderFactoryNodes, tracker);
 		}
 
 		static async Task EnsureSqlSchemasAsync(Action<string, Exception> tracker = null)

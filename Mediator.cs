@@ -154,6 +154,19 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Data Source
+		internal static void ConstructDataSources(XmlNodeList nodes, Action<string, Exception> tracker = null)
+		{
+			foreach (XmlNode node in nodes)
+			{
+				var dataSource = DataSource.FromJson(node.ToJson());
+				if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
+				{
+					tracker?.Invoke($"Update settings of data-source [{dataSource.Name}] - {!string.IsNullOrWhiteSpace(dataSource.ConnectionString)}", null);
+					RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
+				}
+			}
+		}
+
 		/// <summary>
 		/// Gets the primary data source
 		/// </summary>
@@ -414,10 +427,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static string GetConnectionString(this DataSource dataSource)
 		{
-			var connectionStringSettings = RepositoryMediator.GetConnectionStringSettings(dataSource);
-			return connectionStringSettings != null
-				? connectionStringSettings.ConnectionString
-				: null;
+			return dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString;
 		}
 
 		/// <summary>

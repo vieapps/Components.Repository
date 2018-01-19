@@ -3908,6 +3908,9 @@ namespace net.vieapps.Components.Repository
 
 		internal static void Delete<T>(DataSource dataSource, string name, IFilterBy<T> filter) where T : class
 		{
+			if (dataSource == null)
+				throw new ArgumentNullException(nameof(dataSource), "Data source is null");
+
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
@@ -3931,6 +3934,9 @@ namespace net.vieapps.Components.Repository
 
 		internal static async Task DeleteAsync<T>(DataSource dataSource, string name, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			if (dataSource == null)
+				throw new ArgumentNullException(nameof(dataSource), "Data source is null");
+
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);

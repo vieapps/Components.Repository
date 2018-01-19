@@ -1446,7 +1446,7 @@ namespace net.vieapps.Components.Repository
 				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
-				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
 					var command = connection.CreateCommand(info);
 					using (var dataReader = command.ExecuteReader())
@@ -1460,15 +1460,10 @@ namespace net.vieapps.Components.Repository
 				// generic SQL
 				else
 				{
+					var dataSet = new DataSet();
 					var dataAdapter = dbProviderFactory.CreateDataAdapter();
 					dataAdapter.SelectCommand = connection.CreateCommand(info);
-
-					var dataSet = new DataSet();
-					if (pageSize > 0)
-						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
-					else
-						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
-
+					dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 					dataTable = dataSet.Tables[0];
 				}
 
@@ -1502,13 +1497,13 @@ namespace net.vieapps.Components.Repository
 				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
-				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
 					var command = connection.CreateCommand(info);
-					using (var dataReader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 					{
 						dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
-						while (await dataReader.ReadAsync().ConfigureAwait(false))
+						while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 							dataTable.Append(dataReader);
 					}
 				}
@@ -1516,15 +1511,10 @@ namespace net.vieapps.Components.Repository
 				// generic SQL
 				else
 				{
+					var dataSet = new DataSet();
 					var dataAdapter = dbProviderFactory.CreateDataAdapter();
 					dataAdapter.SelectCommand = connection.CreateCommand(info);
-
-					var dataSet = new DataSet();
-					if (pageSize > 0)
-						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
-					else
-						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
-
+					dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 					dataTable = dataSet.Tables[0];
 				}
 
@@ -2827,34 +2817,43 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return DbProviderFactories._Providers ?? (DbProviderFactories._Providers = DbProviderFactories.GetProviders());
+				if (DbProviderFactories._Providers == null)
+					DbProviderFactories.ConstructProviders();
+				return DbProviderFactories._Providers;
 			}
 		}
 
-		internal static Dictionary<string, Provider> GetProviders()
+		internal static void ConstructProviders()
 		{
-			var providers = new Dictionary<string, Provider>();
 			if (ConfigurationManager.GetSection("dbProviderFactories") is AppConfigurationSectionHandler config)
 				if (config.Section.SelectNodes("./add") is XmlNodeList nodes)
-					foreach (XmlNode node in nodes)
-					{
-						var invariant = node.Attributes["invariant"]?.Value;
-						var name = node.Attributes["name"]?.Value;
-						var description = node.Attributes["description"]?.Value;
-						var type = Type.GetType(node.Attributes["type"]?.Value);
+					DbProviderFactories.ConstructDbProviderFactories(nodes);
+		}
 
-						if (!string.IsNullOrWhiteSpace(invariant) && type != null)
-						{
-							providers[invariant] = new Provider()
-							{
-								Invariant = invariant,
-								Type = type,
-								Name = name,
-								Description = description
-							};
-						}
-					}
-			return providers;
+		internal static void ConstructDbProviderFactories(XmlNodeList nodes, Action<string, Exception> tracker = null)
+		{
+			DbProviderFactories._Providers = DbProviderFactories._Providers ?? new Dictionary<string, Provider>();
+			foreach (XmlNode node in nodes)
+			{
+				var invariant = node.Attributes["invariant"]?.Value;
+				var name = node.Attributes["name"]?.Value;
+				var description = node.Attributes["description"]?.Value;
+				var type = !string.IsNullOrWhiteSpace(invariant) && !DbProviderFactories._Providers.ContainsKey(invariant)
+					? Type.GetType(node.Attributes["type"]?.Value)
+					: null;
+
+				if (!string.IsNullOrWhiteSpace(invariant) && type != null)
+				{
+					DbProviderFactories._Providers[invariant] = new Provider()
+					{
+						Invariant = invariant,
+						Type = type,
+						Name = name,
+						Description = description
+					};
+					tracker?.Invoke($"Construct SQL Provider Factory [{invariant}]", null);
+				}
+			}
 		}
 
 		public class Provider

@@ -1417,6 +1417,11 @@ namespace net.vieapps.Components.Repository
 		public string ConnectionStringName { get; internal set; }
 
 		/// <summary>
+		/// Gets or sets the connection string (for working with database server)
+		/// </summary>
+		public string ConnectionString { get; set; }
+
+		/// <summary>
 		/// Gets the name of the database (for working with database server)
 		/// </summary>
 		public string DatabaseName { get; internal set; }
@@ -1443,6 +1448,11 @@ namespace net.vieapps.Components.Repository
 			if (settings["connectionStringName"] == null)
 				throw new ArgumentNullException("connectionStringName", "[connectionStringName] attribute of settings");
 			dataSource.ConnectionStringName = (settings["connectionStringName"] as JValue).Value as string;
+
+			// connection string
+			dataSource.ConnectionString = settings["connectionString"] != null
+				? (settings["connectionString"] as JValue).Value as string
+				: null;
 
 			// name of database
 			if (settings["databaseName"] != null)
