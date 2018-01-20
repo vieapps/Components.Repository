@@ -83,9 +83,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.PrimaryDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.PrimaryDataSourceName)
-					? RepositoryMediator.DataSources[this.PrimaryDataSourceName]
-					: null;
+				return RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
 			}
 		}
 
@@ -96,9 +94,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.SecondaryDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.SecondaryDataSourceName)
-					? RepositoryMediator.DataSources[this.SecondaryDataSourceName]
-					: null;
+				return RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
 			}
 		}
 
@@ -109,16 +105,13 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				if (string.IsNullOrWhiteSpace(this.SyncDataSourceNames))
-					return new List<DataSource>();
-				else
-				{
-					HashSet<string> dataSources = this.SyncDataSourceNames.ToHashSet(',');
-					return RepositoryMediator.DataSources
-						.Where(item => dataSources.Contains(item.Key))
-						.Select(item => item.Value)
+				return string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
+					? new List<DataSource>()
+					: this.SyncDataSourceNames.ToList()
+						.Distinct(StringComparer.OrdinalIgnoreCase)
+						.Where(name => RepositoryMediator.DataSources.ContainsKey(name))
+						.Select(name => RepositoryMediator.DataSources[name])
 						.ToList();
-				}
 			}
 		}
 
@@ -129,9 +122,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.VersionDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.VersionDataSourceName)
-					? RepositoryMediator.DataSources[this.VersionDataSourceName]
-					: null;
+				return RepositoryMediator.GetDataSource(this.VersionDataSourceName);
 			}
 		}
 
@@ -142,9 +133,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.TrashDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.TrashDataSourceName)
-					? RepositoryMediator.DataSources[this.TrashDataSourceName]
-					: null;
+				return RepositoryMediator.GetDataSource(this.TrashDataSourceName);
 			}
 		}
 
@@ -391,16 +380,6 @@ namespace net.vieapps.Components.Repository
 		public string CollectionName { get; internal set; }
 
 		/// <summary>
-		/// Gets the type of a static class that contains information of the cache storage for processing caching data
-		/// </summary>
-		public Type CacheStorageType { get; internal set; }
-
-		/// <summary>
-		/// Gets the name of the object in the static class that contains information of the cache storage for processing caching data
-		/// </summary>
-		public string CacheStorageName { get; internal set; }
-
-		/// <summary>
 		/// Gets or sets the state that specifies this entity is able to search using full-text method
 		/// </summary>
 		public bool Searchable { get; internal set; }
@@ -418,9 +397,9 @@ namespace net.vieapps.Components.Repository
 
 		#region Properties [Helpers]
 		/// <summary>
-		/// Gets the cache storage object for processing caching data of this entity
+		/// Gets the caching object for processing with caching data of this entity
 		/// </summary>
-		public Caching.Cache CacheStorage { get; internal set; }
+		public Caching.Cache Cache { get; internal set; }
 
 		/// <summary>
 		/// Gets the primary data-source
@@ -429,9 +408,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.PrimaryDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.PrimaryDataSourceName)
-					? RepositoryMediator.DataSources[this.PrimaryDataSourceName]
-					: null;
+				return RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
 			}
 		}
 
@@ -442,9 +419,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.SecondaryDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.SecondaryDataSourceName)
-					? RepositoryMediator.DataSources[this.SecondaryDataSourceName]
-					: null;
+				return RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
 			}
 		}
 
@@ -455,16 +430,13 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				if (string.IsNullOrWhiteSpace(this.SyncDataSourceNames))
-					return new List<DataSource>();
-				else
-				{
-					var dataSources = this.SyncDataSourceNames.ToHashSet();
-					return RepositoryMediator.DataSources
-						.Where(item => dataSources.Contains(item.Key))
-						.Select(item => item.Value)
+				return string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
+					? new List<DataSource>()
+					: this.SyncDataSourceNames.ToList()
+						.Distinct(StringComparer.OrdinalIgnoreCase)
+						.Where(name => RepositoryMediator.DataSources.ContainsKey(name))
+						.Select(name => RepositoryMediator.DataSources[name])
 						.ToList();
-				}
 			}
 		}
 
@@ -475,9 +447,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.VersionDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.VersionDataSourceName)
-					? RepositoryMediator.DataSources[this.VersionDataSourceName]
-					: null;
+				return RepositoryMediator.GetDataSource(this.VersionDataSourceName);
 			}
 		}
 
@@ -488,9 +458,7 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return !string.IsNullOrWhiteSpace(this.TrashDataSourceName) && RepositoryMediator.DataSources.ContainsKey(this.TrashDataSourceName)
-					? RepositoryMediator.DataSources[this.TrashDataSourceName]
-					: null;
+				return RepositoryMediator.GetDataSource(this.TrashDataSourceName);
 			}
 		}
 
@@ -634,8 +602,6 @@ namespace net.vieapps.Components.Repository
 				Type = type,
 				TableName = info.TableName,
 				CollectionName = info.CollectionName,
-				CacheStorageType = info.CacheStorageType,
-				CacheStorageName = info.CacheStorageName,
 				Searchable = info.Searchable,
 				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
@@ -648,12 +614,12 @@ namespace net.vieapps.Components.Repository
 				NavigatorType = info.NavigatorType
 			};
 
-			// set cache storage
-			if (definition.CacheStorageType != null && !string.IsNullOrWhiteSpace(definition.CacheStorageName))
+			// cache
+			if (info.CacheClass != null && !string.IsNullOrWhiteSpace(info.CacheName))
 			{
-				var cacheStorage = definition.CacheStorageType.GetStaticObject(definition.CacheStorageName);
-				definition.CacheStorage = cacheStorage != null && cacheStorage is Caching.Cache
-					? cacheStorage as Caching.Cache
+				var cache = info.CacheClass.GetStaticObject(info.CacheName);
+				definition.Cache = cache != null && cache is Caching.Cache
+					? cache as Caching.Cache
 					: null;
 			}
 
@@ -854,7 +820,7 @@ namespace net.vieapps.Components.Repository
 				? data
 				: null;
 
-			// individual cache storage
+			// individual caching storage
 			if (settings["cacheRegion"] != null)
 			{
 				var cacheRegion = (settings["cacheRegion"] as JValue).Value as string;
@@ -873,7 +839,7 @@ namespace net.vieapps.Components.Repository
 				var cacheProvider = settings["cacheProvider"] != null
 					? (settings["cacheProvider"] as JValue).Value as string
 					: null;
-				RepositoryMediator.EntityDefinitions[type].CacheStorage = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
+				RepositoryMediator.EntityDefinitions[type].Cache = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
 			}
 		}
 
@@ -885,7 +851,7 @@ namespace net.vieapps.Components.Repository
 		public void SetCacheStorage(Type type, Caching.Cache cache)
 		{
 			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type))
-				RepositoryMediator.EntityDefinitions[type].CacheStorage = cache;
+				RepositoryMediator.EntityDefinitions[type].Cache = cache;
 		}
 		#endregion
 

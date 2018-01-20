@@ -3708,12 +3708,12 @@ namespace net.vieapps.Components.Repository
 				{
 					connection.Open();
 
-					var objects = new List<T>();
 					var info = filter?.GetSqlStatement();
 					var statement = $"SELECT * FROM T_Data_{name}"
 						+ (info != null ? " WHERE " + info.Item1 : "")
 						+ (sort != null ? " ORDER BY " + sort.GetSqlStatement() : "");
 
+					DataTable dataTable = null;
 					if (pageSize == 0)
 					{
 						var command = connection.CreateCommand();
@@ -3721,17 +3721,7 @@ namespace net.vieapps.Components.Repository
 						info?.Item2.ForEach(kvp => command.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
 						using (var dataReader = command.ExecuteReader())
 						{
-							while (dataReader.Read())
-							{
-								var @object = ObjectService.CreateInstance<T>();
-								for (var index = 0; index < dataReader.FieldCount; index++)
-									try
-									{
-										@object.SetAttributeValue(dataReader.GetName(index), dataReader[index]);
-									}
-									catch { }
-								objects.Add(@object);
-							}
+							dataTable = dataReader.ToDataTable<T>();
 						}
 					}
 					else
@@ -3743,8 +3733,12 @@ namespace net.vieapps.Components.Repository
 
 						var dataSet = new DataSet();
 						adapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
+						dataTable = dataSet.Tables[0];
+					}
 
-						foreach (DataRow dataRow in dataSet.Tables[0].Rows)
+					return dataTable.Rows
+						.ToList()
+						.Select(dataRow =>
 						{
 							var @object = ObjectService.CreateInstance<T>();
 							for (var index = 0; index < dataRow.Table.Columns.Count; index++)
@@ -3753,11 +3747,9 @@ namespace net.vieapps.Components.Repository
 									@object.SetAttributeValue(dataRow.Table.Columns[index].ColumnName, dataRow[name]);
 								}
 								catch { }
-							objects.Add(@object);
-						}
-					}
-
-					return objects;
+							return @object;
+						})
+						.ToList();
 				}
 			}
 			else
@@ -3778,12 +3770,12 @@ namespace net.vieapps.Components.Repository
 				{
 					await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-					var objects = new List<T>();
 					var info = filter?.GetSqlStatement();
 					var statement = $"SELECT * FROM T_Data_{name}"
 						+ (info != null ? " WHERE " + info.Item1 : "")
 						+ (sort != null ? " ORDER BY " + sort.GetSqlStatement() : "");
 
+					DataTable dataTable = null;
 					if (pageSize == 0)
 					{
 						var command = connection.CreateCommand();
@@ -3791,17 +3783,7 @@ namespace net.vieapps.Components.Repository
 						info?.Item2.ForEach(kvp => command.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 						{
-							while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-							{
-								var @object = ObjectService.CreateInstance<T>();
-								for (var index = 0; index < dataReader.FieldCount; index++)
-									try
-									{
-										@object.SetAttributeValue(dataReader.GetName(index), dataReader[index]);
-									}
-									catch { }
-								objects.Add(@object);
-							}
+							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
 						}
 					}
 					else
@@ -3813,8 +3795,12 @@ namespace net.vieapps.Components.Repository
 
 						var dataSet = new DataSet();
 						adapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
+						dataTable = dataSet.Tables[0];
+					}
 
-						foreach (DataRow dataRow in dataSet.Tables[0].Rows)
+					return dataTable.Rows
+						.ToList()
+						.Select(dataRow =>
 						{
 							var @object = ObjectService.CreateInstance<T>();
 							for (var index = 0; index < dataRow.Table.Columns.Count; index++)
@@ -3823,11 +3809,9 @@ namespace net.vieapps.Components.Repository
 									@object.SetAttributeValue(dataRow.Table.Columns[index].ColumnName, dataRow[name]);
 								}
 								catch { }
-							objects.Add(@object);
-						}
-					}
-
-					return objects;
+							return @object;
+						})
+						.ToList();
 				}
 			}
 			else
@@ -3909,7 +3893,7 @@ namespace net.vieapps.Components.Repository
 		internal static void Delete<T>(DataSource dataSource, string name, IFilterBy<T> filter) where T : class
 		{
 			if (dataSource == null)
-				throw new ArgumentNullException(nameof(dataSource), "Data source is null");
+				throw new ArgumentNullException(nameof(dataSource), "Data source is invalid");
 
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
@@ -3935,7 +3919,7 @@ namespace net.vieapps.Components.Repository
 		internal static async Task DeleteAsync<T>(DataSource dataSource, string name, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (dataSource == null)
-				throw new ArgumentNullException(nameof(dataSource), "Data source is null");
+				throw new ArgumentNullException(nameof(dataSource), "Data source is invalid");
 
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{

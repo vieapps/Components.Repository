@@ -1383,14 +1383,6 @@ namespace net.vieapps.Components.Repository
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
-		internal static List<DataRow> ToList(this DataRowCollection dataRows)
-		{
-			var rows = new List<DataRow>();
-			foreach (DataRow row in dataRows)
-				rows.Add(row);
-			return rows;
-		}
-
 		internal static DataTable CreateDataTable(this DbDataReader dataReader, string name = "Table", bool doLoad = false)
 		{
 			var dataTable = new DataTable(name);
@@ -1419,6 +1411,30 @@ namespace net.vieapps.Components.Repository
 			for (var index = 0; index < dataReader.FieldCount; index++)
 				data[index] = dataReader[index];
 			dataTable.LoadDataRow(data, true);
+		}
+
+		internal static DataTable ToDataTable<T>(this DbDataReader dataReader) where T : class
+		{
+			var dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
+			while (dataReader.Read())
+				dataTable.Append(dataReader);
+			return dataTable;
+		}
+
+		internal static async Task<DataTable> ToDataTableAsync<T>(this DbDataReader dataReader, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			var dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
+			while (await dataReader.ReadAsync(cancellationToken))
+				dataTable.Append(dataReader);
+			return dataTable;
+		}
+
+		internal static List<DataRow> ToList(this DataRowCollection dataRows)
+		{
+			var rows = new List<DataRow>();
+			foreach (DataRow row in dataRows)
+				rows.Add(row);
+			return rows;
 		}
 
 		/// <summary>
@@ -1451,9 +1467,7 @@ namespace net.vieapps.Components.Repository
 					var command = connection.CreateCommand(info);
 					using (var dataReader = command.ExecuteReader())
 					{
-						dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
-						while (dataReader.Read())
-							dataTable.Append(dataReader);
+						dataTable = dataReader.ToDataTable<T>();
 					}
 				}
 
@@ -1502,9 +1516,7 @@ namespace net.vieapps.Components.Repository
 					var command = connection.CreateCommand(info);
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 					{
-						dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
-						while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-							dataTable.Append(dataReader);
+						dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
 					}
 				}
 

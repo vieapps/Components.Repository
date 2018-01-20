@@ -62,14 +62,14 @@ namespace net.vieapps.Components.Repository
 		public string CollectionName { get; set; }
 
 		/// <summary>
-		/// Gets or sets the type of a static class that contains information of the cache storage for processing caching data
+		/// Gets or sets the type of a static class that contains information of the caching storage for processing caching data
 		/// </summary>
-		public Type CacheStorageType { get; set; }
+		public Type CacheClass { get; set; }
 
 		/// <summary>
-		/// Gets or sets the name of the object in the static class that contains information of the cache storage for processing caching data
+		/// Gets or sets the name of the object in the static class that contains information of the caching storage for processing caching data
 		/// </summary>
-		public string CacheStorageName { get; set; }
+		public string CacheName { get; set; }
 
 		/// <summary>
 		/// Gets or sets the state that specifies this entity is able to search using full-text method
