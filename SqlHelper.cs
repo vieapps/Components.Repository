@@ -227,144 +227,146 @@ namespace net.vieapps.Components.Repository
 				? 4000
 				: precision;
 
-			var dbTypeString = !string.IsNullOrWhiteSpace(dbProviderFactoryName) && SqlHelper.DbTypeStrings.ContainsKey(type) && SqlHelper.DbTypeStrings[type].ContainsKey(dbProviderFactoryName)
-				? SqlHelper.DbTypeStrings[type][dbProviderFactoryName]
-				: "";
+			var dbTypeString = "";
+			var dbTypeStrings = !string.IsNullOrWhiteSpace(dbProviderFactoryName) && SqlHelper.DbTypeStrings.ContainsKey(type)
+				? SqlHelper.DbTypeStrings[type]
+				: null;
+			if (dbTypeStrings != null)
+			{
+				if (!dbTypeStrings.TryGetValue(dbProviderFactoryName, out dbTypeString))
+					if (!dbTypeStrings.TryGetValue("Default", out dbTypeString))
+						dbTypeString = "";
+			}
 
-			if (dbTypeString.IndexOf("{0}") > 0 && precision > 0)
-				dbTypeString = string.Format(dbTypeString, "(" + precision.ToString() + ")");
-
-			return dbTypeString;
+			return dbTypeString.IndexOf("{0}") > 0 && precision > 0
+				? string.Format(dbTypeString, "(" + precision.ToString() + ")")
+				: dbTypeString;
 		}
 
 		internal static Dictionary<Type, Dictionary<string, string>> DbTypeStrings = new Dictionary<Type, Dictionary<string, string>>()
 		{
 			{
 				typeof(String), 
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "NVARCHAR{0}" },
-					{ "MySQL", "VARCHAR{0}" },
+					{ "Default", "VARCHAR{0}" },
 				}
 			},
 			{
 				typeof(Char),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "CHAR{0}" },
-					{ "MySQL", "CHAR{0}" },
+					{ "Default", "CHAR{0}" },
 				}
 			},
 			{
 				typeof(Char?),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "NTEXT" },
-					{ "MySQL", "TEXT" },
+					{ "Default", "TEXT" },
 				}
 			},
 			{
 				typeof(Byte),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "TINYINT" },
-					{ "MySQL", "TINYINT" },
+					{ "Default", "TINYINT" },
 				}
 			},
 			{
 				typeof(SByte),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "TINYINT" },
 					{ "MySQL", "TINYINT UNSIGNED" },
+					{ "Default", "TINYINT" },
 				}
 			},
 			{
 				typeof(Int16),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "SMALLINT" },
-					{ "MySQL", "SMALLINT" },
+					{ "Default", "SMALLINT" },
 				}
 			},
 			{
 				typeof(UInt16),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "SMALLINT" },
-					{ "MySQL", "SMALLINT" },
+					{ "Default", "SMALLINT" },
 				}
 			},
 			{
 				typeof(Int32),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "INT" },
-					{ "MySQL", "INT" },
+					{ "Default", "INT" },
 				}
 			},
 			{
 				typeof(UInt32),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "INT" },
-					{ "MySQL", "INT" },
+					{ "Default", "INT" },
 				}
 			},
 			{
 				typeof(Int64),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "BIGINT" },
-					{ "MySQL", "BIGINT" },
+					{ "Default", "BIGINT" },
 				}
 			},
 			{
 				typeof(UInt64),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "BIGINT" },
-					{ "MySQL", "BIGINT" },
+					{ "Default", "BIGINT" },
 				}
 			},
 			{
 				typeof(Single),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "FLOAT(24)" },
 					{ "MySQL", "FLOAT" },
+					{ "Default", "FLOAT" },
 				}
 			},
 			{
 				typeof(Double),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "FLOAT(53)" },
 					{ "MySQL", "DOUBLE" },
+					{ "Default", "DOUBLE" },
 				}
 			},
 			{
 				typeof(Decimal),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "DECIMAL(19,5)" },
 					{ "MySQL", "NUMERIC(19,5)" },
+					{ "Default", "NUMERIC(19,5)" },
 				}
 			},
 			{
 				typeof(Boolean),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "BIT" },
 					{ "MySQL", "TINYINT(1)" },
+					{ "Default", "TINYINT(1)" },
 				}
 			},
 			{
 				typeof(DateTime),
-				new Dictionary<string, string>()
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "DATETIME" },
-					{ "MySQL", "DATETIME" },
+					{ "Default", "DATETIME" },
 				}
 			}
 		};
