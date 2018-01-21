@@ -620,7 +620,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								context.Create<T>(secondaryDataSource, @object);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source", ex);
+						}
 					}).ConfigureAwait(false);
 
 				// sync data sources
@@ -636,7 +639,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									context.Create<T>(syncDataSource, @object);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source", ex);
+							}
 						}).ConfigureAwait(false);
 					});
 			}
@@ -749,7 +755,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								await context.CreateAsync<T>(secondaryDataSource, @object, cancellationToken).ConfigureAwait(false);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source", ex);
+						}
 					}));
 
 				// sync data sources
@@ -765,7 +774,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.CreateAsync<T>(syncDataSource, @object, cancellationToken).ConfigureAwait(false);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source", ex);
+							}
 						}));
 					});
 
@@ -1467,7 +1479,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								context.Replace<T>(secondaryDataSource, @object);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+						}
 					}).ConfigureAwait(false);
 
 				// sync data sources
@@ -1483,7 +1498,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									context.Replace<T>(syncDataSource, @object);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+							}
 						}).ConfigureAwait(false);
 					});
 			}
@@ -1633,7 +1651,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								await context.ReplaceAsync<T>(secondaryDataSource, @object, cancellationToken).ConfigureAwait(false);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+						}
 					}));
 
 				// sync data sources
@@ -1649,7 +1670,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.ReplaceAsync<T>(syncDataSource, @object, cancellationToken).ConfigureAwait(false);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+							}
 						}));
 					});
 
@@ -1801,7 +1825,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								context.Update<T>(secondaryDataSource, @object, result.Item2);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+						}
 					}).ConfigureAwait(false);
 
 				// sync data sources
@@ -1817,7 +1844,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									context.Update<T>(syncDataSource, @object, result.Item2);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+							}
 						}).ConfigureAwait(false);
 					});
 			}
@@ -1966,7 +1996,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								await context.UpdateAsync<T>(secondaryDataSource, @object, result.Item2, cancellationToken).ConfigureAwait(false);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+						}
 					}));
 
 				// sync data sources
@@ -1982,7 +2015,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.UpdateAsync<T>(syncDataSource, @object, result.Item2, cancellationToken).ConfigureAwait(false);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+							}
 						}));
 					});
 
@@ -2092,7 +2128,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								context.Create<T>(secondaryDataSource, @object);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+						}
 					}).ConfigureAwait(false);
 
 				// sync data sources
@@ -2108,7 +2147,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									context.Create<T>(syncDataSource, @object);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+							}
 						}).ConfigureAwait(false);
 					});
 			}
@@ -2214,7 +2256,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								await context.DeleteAsync<T>(secondaryDataSource, @object, cancellationToken).ConfigureAwait(false);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+						}
 					}));
 
 				// sync data sources
@@ -2230,7 +2275,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.DeleteAsync<T>(syncDataSource, @object, cancellationToken).ConfigureAwait(false);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+							}
 						}));
 					});
 
@@ -2292,7 +2340,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								context.DeleteMany<T>(secondaryDataSource, filter, businessEntityID);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+						}
 					}).ConfigureAwait(false);
 
 				// delete from sync data sources
@@ -2309,7 +2360,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									context.DeleteMany<T>(syncDataSource, filter, businessEntityID);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+							}
 						}).ConfigureAwait(false);
 					});
 			}
@@ -2386,7 +2440,10 @@ namespace net.vieapps.Components.Repository
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								await context.DeleteManyAsync<T>(secondaryDataSource, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 						}
-						catch { }
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+						}
 					}));
 
 				// delete from sync data sources
@@ -2403,7 +2460,10 @@ namespace net.vieapps.Components.Repository
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.DeleteManyAsync<T>(syncDataSource, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 							}
-							catch { }
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+							}
 						}));
 					});
 
@@ -3859,8 +3919,43 @@ namespace net.vieapps.Components.Repository
 				// call post-handlers
 				context.CallPostUpdateHandlers(version.Object as T, changed, true);
 
-				// TO DO: sync to other data sources
-				// ...
+				// secondary data source
+				var secondaryDataSource = context.GetSecondaryDataSource();
+				if (secondaryDataSource != null)
+					Task.Run(() =>
+					{
+						try
+						{
+							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
+								context.Replace<T>(secondaryDataSource, version.Object as T);
+							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
+								context.Replace<T>(secondaryDataSource, version.Object as T);
+						}
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source when rollback", ex);
+						}
+					}).ConfigureAwait(false);
+
+				// sync data sources
+				context.GetSyncDataSources()
+					.ForEach(syncDataSource =>
+					{
+						Task.Run(() =>
+						{
+							try
+							{
+								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
+									context.Replace<T>(syncDataSource, version.Object as T);
+								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
+									context.Replace<T>(syncDataSource, version.Object as T);
+							}
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source when rollback", ex);
+							}
+						}).ConfigureAwait(false);
+					});
 
 				// return the original object
 				return version.Object as T;
@@ -3983,8 +4078,47 @@ namespace net.vieapps.Components.Repository
 				// call post-handlers
 				await context.CallPostUpdateHandlersAsync(version.Object as T, changed, true, cancellationToken).ConfigureAwait(false);
 
-				// TO DO: sync to other data sources
-				// ...
+				// secondary data source
+				var tasks = new List<Task>();
+				var secondaryDataSource = context.GetSecondaryDataSource();
+				if (secondaryDataSource != null)
+					tasks.Add(Task.Run(async () =>
+					{
+						try
+						{
+							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
+								await context.ReplaceAsync<T>(secondaryDataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
+							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
+								await context.ReplaceAsync<T>(secondaryDataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
+						}
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source when rollback", ex);
+						}
+					}));
+
+				// sync data sources
+				context.GetSyncDataSources()
+					.ForEach(syncDataSource =>
+					{
+						tasks.Add(Task.Run(async () =>
+						{
+							try
+							{
+								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
+									await context.ReplaceAsync<T>(syncDataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
+								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
+									await context.ReplaceAsync<T>(syncDataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
+							}
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source when rollback", ex);
+							}
+						}));
+					});
+
+				// force al tasks to run
+				var task = Task.Run(async () => await Task.WhenAll(tasks).ConfigureAwait(false));
 
 				// return the original object
 				return version.Object as T;
@@ -4813,11 +4947,46 @@ namespace net.vieapps.Components.Repository
 				// call post-handlers
 				context.CallPostCreateHandlers(trashContent.Object as T, true);
 
-				// TO DO: sync to other data sources
-				// ...
-
 				// delete trash content
 				TrashContent.Delete(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID));
+
+				// secondary data source
+				var secondaryDataSource = context.GetSecondaryDataSource();
+				if (secondaryDataSource != null)
+					Task.Run(() =>
+					{
+						try
+						{
+							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
+								context.Create<T>(secondaryDataSource, trashContent.Object as T);
+							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
+								context.Create<T>(secondaryDataSource, trashContent.Object as T);
+						}
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source when restore", ex);
+						}
+					}).ConfigureAwait(false);
+
+				// sync data sources
+				context.GetSyncDataSources()
+					.ForEach(syncDataSource =>
+					{
+						Task.Run(() =>
+						{
+							try
+							{
+								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
+									context.Create<T>(syncDataSource, trashContent.Object as T);
+								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
+									context.Create<T>(syncDataSource, trashContent.Object as T);
+							}
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source when restore", ex);
+							}
+						}).ConfigureAwait(false);
+					});
 
 				// return the original object
 				return trashContent.Object as T;
@@ -4935,11 +5104,50 @@ namespace net.vieapps.Components.Repository
 				// call post-handlers
 				await context.CallPostCreateHandlersAsync(trashContent.Object as T, true, cancellationToken).ConfigureAwait(false);
 
-				// TO DO: sync to other data sources
-				// ...
-
 				// delete trash content
 				await TrashContent.DeleteAsync(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID), cancellationToken).ConfigureAwait(false);
+
+				// secondary data source
+				var tasks = new List<Task>();
+				var secondaryDataSource = context.GetSecondaryDataSource();
+				if (secondaryDataSource != null)
+					tasks.Add(Task.Run(async () =>
+					{
+						try
+						{
+							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
+								await context.CreateAsync<T>(secondaryDataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
+							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
+								await context.CreateAsync<T>(secondaryDataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
+						}
+						catch (Exception ex)
+						{
+							RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source when restore", ex);
+						}
+					}));
+
+				// sync data sources
+				context.GetSyncDataSources()
+					.ForEach(syncDataSource =>
+					{
+						tasks.Add(Task.Run(async () =>
+						{
+							try
+							{
+								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
+									await context.CreateAsync<T>(syncDataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
+								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
+									await context.CreateAsync<T>(syncDataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
+							}
+							catch (Exception ex)
+							{
+								RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source when restore", ex);
+							}
+						}));
+					});
+
+				// force al tasks to run
+				var task = Task.Run(async () => await Task.WhenAll(tasks).ConfigureAwait(false));
 
 				// return the original object
 				return trashContent.Object as T;
