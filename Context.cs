@@ -17,7 +17,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Working context for holding the transaction and state while processing
+	/// Context for holding the transaction and state while processing
 	/// </summary>
 	[DebuggerDisplay("Operation = {Operation}, Type = {EntityDefinition.Type.FullName}")]
 	public class RepositoryContext : IDisposable
@@ -160,18 +160,6 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Disposers
-		public void Dispose()
-		{
-			this.CommitTransaction();
-		}
-
-		~RepositoryContext ()
-		{
-			this.Dispose();
-		}
-		#endregion
-
 		#region State data
 		internal Dictionary<string, object> GetStateData(object @object)
 		{
@@ -300,22 +288,6 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Clone the context (for working with event handlers)
-		internal RepositoryContext Clone()
-		{
-			return new RepositoryContext()
-			{
-				ID = this.ID,
-				AliasTypeName = this.AliasTypeName,
-				EntityDefinition = this.EntityDefinition.Clone(),
-				Operation = this.Operation.Clone(),
-				PreviousStateData = this.PreviousStateData.Clone(),
-				CurrentStateData = this.CurrentStateData.Clone(),
-				Exception = this.Exception.Clone()
-			};
-		}
-		#endregion
-
 		#region Helper for working with database
 		/// <summary>
 		/// Gets the connection of SQL database of a specified data-source
@@ -325,7 +297,7 @@ namespace net.vieapps.Components.Repository
 		public DbConnection GetSqlConnection(DataSource dataSource)
 		{
 			return dataSource != null
-				? SqlHelper.GetProviderFactory(dataSource).CreateConnection(dataSource)
+				? dataSource.GetProviderFactory().CreateConnection(dataSource)
 				: null;
 		}
 
@@ -350,6 +322,19 @@ namespace net.vieapps.Components.Repository
 		public IMongoCollection<T> GetNoSqlCollection<T>() where T : class
 		{
 			return this.GetNoSqlCollection<T>(RepositoryMediator.GetPrimaryDataSource(RepositoryMediator.GetEntityDefinition<T>()));
+		}
+		#endregion
+
+		#region Disposal
+		public void Dispose()
+		{
+			this.CommitTransaction();
+			GC.SuppressFinalize(this);
+		}
+
+		~RepositoryContext()
+		{
+			this.Dispose();
 		}
 		#endregion
 

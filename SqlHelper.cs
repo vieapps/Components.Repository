@@ -109,8 +109,9 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dbProviderFactory">The object that presents information of a database provider factory</param>
 		/// <param name="dataSource">The object that presents related information of a data source in SQL database</param>
+		/// <param name="openWhenCreated">true to open the connection when its created</param>
 		/// <returns></returns>
-		public static DbConnection CreateConnection(this DbProviderFactory dbProviderFactory, DataSource dataSource)
+		public static DbConnection CreateConnection(this DbProviderFactory dbProviderFactory, DataSource dataSource, bool openWhenCreated = false)
 		{		
 			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
 				? RepositoryMediator.GetConnectionStringSettings(dataSource)
@@ -118,26 +119,42 @@ namespace net.vieapps.Components.Repository
 
 			var connection = dbProviderFactory.CreateConnection();
 			connection.ConnectionString = connectionStringSettings?.ConnectionString.Replace(StringComparison.OrdinalIgnoreCase, "{database}", dataSource.DatabaseName).Replace(StringComparison.OrdinalIgnoreCase, "{DatabaseName}", dataSource.DatabaseName);
+
+			if (openWhenCreated)
+				connection.Open();
+
+			return connection;
+		}
+
+		/// <summary>
+		/// Creates the connection for working with SQL database
+		/// </summary>
+		/// <param name="dbProviderFactory">The object that presents information of a database provider factory</param>
+		/// <param name="dataSource">The object that presents related information of a data source in SQL database</param>
+		/// <param name="openWhenCreated">true to open the connection when its created</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<DbConnection> CreateConnectionAsync(this DbProviderFactory dbProviderFactory, DataSource dataSource, bool openWhenCreated = false, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			var connection = dbProviderFactory.CreateConnection(dataSource);
+			if (openWhenCreated)
+				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 			return connection;
 		}
 		#endregion
 
 		#region Command
-		static DbCommand CreateCommand(this DbConnection connection, Tuple<string, List<DbParameter>> info)
+		internal static DbCommand CreateCommand(this DbConnection connection, string commandText, List<DbParameter> commandParameters = null)
 		{
 			var command = connection.CreateCommand();
-			command.CommandText = info.Item1;
-			info.Item2.ForEach(parameter => command.Parameters.Add(parameter));
+			command.CommandText = commandText;
+			commandParameters?.ForEach(parameter => command.Parameters.Add(parameter));
 			return command;
 		}
 
-		static DbCommand CreateCommand(this DbProviderFactory dbProviderFactory, Tuple<string, List<DbParameter>> info, DbConnection connection = null)
+		internal static DbCommand CreateCommand(this DbConnection connection, Tuple<string, List<DbParameter>> info)
 		{
-			var command = dbProviderFactory.CreateCommand();
-			command.Connection = connection;
-			command.CommandText = info.Item1;
-			info.Item2.ForEach(parameter => command.Parameters.Add(parameter));
-			return command;
+			return connection.CreateCommand(info.Item1, info.Item2);
 		}
 		#endregion
 
@@ -373,23 +390,23 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Parameter
-		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, KeyValuePair<string, object> info)
+		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, string name, DbType dbType, object value)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
-			parameter.ParameterName = info.Key;
-			parameter.Value = info.Value;
-			parameter.DbType = info.Key.EndsWith("ID") || info.Key.EndsWith("Id")
-				? DbType.AnsiStringFixedLength
-				: info.Value.GetType().GetDbType();
+			parameter.ParameterName = (!name.IsStartsWith("@") ? "@" : "") + name;
+			parameter.DbType = dbType;
+			parameter.Value = value;
 			return parameter;
+		}
+
+		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, KeyValuePair<string, object> info)
+		{
+			return dbProviderFactory.CreateParameter(info.Key, info.Key.EndsWith("ID") || info.Key.EndsWith("Id") ? DbType.AnsiStringFixedLength : info.Value.GetType().GetDbType(), info.Value);
 		}
 
 		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, AttributeInfo attribute, object value)
 		{
-			var parameter = dbProviderFactory.CreateParameter();
-			parameter.ParameterName = "@" + attribute.Name;
-			parameter.DbType = attribute.GetDbType();
-			parameter.Value = attribute.IsStoredAsJson() 
+			return dbProviderFactory.CreateParameter(attribute.Name, attribute.GetDbType(), attribute.IsStoredAsJson() 
 				? value == null
 					? ""
 					: value.ToJson().ToString(Newtonsoft.Json.Formatting.None)
@@ -397,21 +414,16 @@ namespace net.vieapps.Components.Repository
 					? value == null
 						? ""
 						: ((DateTime)value).ToDTString()
-					: value;
-			return parameter;
+					: value);
 		}
 
 		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, ExtendedPropertyDefinition attribute, object value)
 		{
-			var parameter = dbProviderFactory.CreateParameter();
-			parameter.ParameterName = "@" + attribute.Name;
-			parameter.DbType = attribute.GetDbType();
-			parameter.Value = attribute.Type.Equals(typeof(DateTime))
+			return dbProviderFactory.CreateParameter(attribute.Name, attribute.GetDbType(), attribute.Type.Equals(typeof(DateTime))
 				? value == null
 					? ""
 					: ((DateTime)value).ToDTString()
-				: value;
-			return parameter;
+				: value);
 		}
 		#endregion
 
@@ -579,10 +591,8 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
 				var command = connection.CreateCommand(@object.PrepareCreateOrigin(dbProviderFactory));
 				command.ExecuteNonQuery();
 
@@ -609,10 +619,8 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 				var command = connection.CreateCommand(@object.PrepareCreateOrigin(dbProviderFactory));
 				await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
@@ -670,10 +678,8 @@ namespace net.vieapps.Components.Repository
 
 			var @object = ObjectService.CreateInstance<T>();
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
 				var command = connection.CreateCommand(@object.PrepareGetOrigin<T>(id, dbProviderFactory));
 				using (var dataReader = command.ExecuteReader())
 				{
@@ -711,10 +717,8 @@ namespace net.vieapps.Components.Repository
 
 			var @object = ObjectService.CreateInstance<T>();
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 				var command = connection.CreateCommand(@object.PrepareGetOrigin<T>(id, dbProviderFactory));
 				using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 				{
@@ -789,18 +793,14 @@ namespace net.vieapps.Components.Repository
 
 			var dataSource = definition.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
 				var standardProperties = definition.Attributes
 					.Where(attribute => !attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null)
 					.ToDictionary(attribute => attribute.Name);
 
 				var fields = standardProperties.Select(info => "Origin." + (string.IsNullOrEmpty(info.Value.Column) ? info.Value.Name : info.Value.Column + " AS " + info.Value.Name));
-
-				var command = connection.CreateCommand();
-				command.CommandText = $"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'";
+				var command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 
 				using (var dataReader = command.ExecuteReader())
 				{
@@ -812,9 +812,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
 					fields = extendedProperties.Select(info => $"Origin.{info.Value.Column} AS {info.Value.Name}");
-
-					command = connection.CreateCommand();
-					command.CommandText = $"SELECT {string.Join(", ", fields)} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'";
+					command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 
 					using (var dataReader = command.ExecuteReader())
 					{
@@ -840,18 +838,14 @@ namespace net.vieapps.Components.Repository
 
 			var dataSource = definition.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 				var standardProperties = definition.Attributes
 					.Where(attribute => !attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null)
 					.ToDictionary(attribute => attribute.Name);
 
 				var fields = standardProperties.Select(info => "Origin." + (string.IsNullOrEmpty(info.Value.Column) ? info.Value.Name : info.Value.Column + " AS " + info.Value.Name));
-
-				var command = connection.CreateCommand();
-				command.CommandText = $"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'";
+				var command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 
 				using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 				{
@@ -863,9 +857,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
 					fields = extendedProperties.Select(info => $"Origin.{info.Value.Column} AS {info.Value.Name}");
-
-					command = connection.CreateCommand();
-					command.CommandText = $"SELECT {string.Join(", ", fields)} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'";
+					command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 					{
@@ -938,10 +930,8 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
 				var command = connection.CreateCommand(@object.PrepareReplaceOrigin(dbProviderFactory));
 				command.ExecuteNonQuery();
 
@@ -968,10 +958,8 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 				var command = connection.CreateCommand(@object.PrepareReplaceOrigin(dbProviderFactory));
 				await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
@@ -1051,10 +1039,8 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
 				var command = connection.CreateCommand(@object.PrepareUpdateOrigin(attributes, dbProviderFactory));
 				command.ExecuteNonQuery();
 
@@ -1082,10 +1068,8 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 				var command = connection.CreateCommand(@object.PrepareUpdateOrigin(attributes, dbProviderFactory));
 				await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
@@ -1111,26 +1095,26 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
-				var statement = $"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}";
-				var parameters = new List<DbParameter>()
-				{
-					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey)))
-				};
-				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+				var command = connection.CreateCommand(
+					$"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}",
+					new List<DbParameter>()
+					{
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey)))
+					}
+				);
 				command.ExecuteNonQuery();
 
 				if (@object.IsGotExtendedProperties())
 				{
-					statement = $"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID";
-					parameters = new List<DbParameter>()
-					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID))
-					};
-					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+					command = connection.CreateCommand(
+						$"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
+						new List<DbParameter>()
+						{
+							dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", (@object as IBusinessEntity).ID))
+						}
+					);
 					command.ExecuteNonQuery();
 				}
 			}
@@ -1150,26 +1134,26 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-				var statement = $"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}";
-				var parameters = new List<DbParameter>()
-				{
-					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey)))
-				};
-				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+				var command = connection.CreateCommand(
+					$"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}",
+					new List<DbParameter>()
+					{
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey)))
+					}
+				);
 				await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
 				if (@object.IsGotExtendedProperties())
 				{
-					statement = $"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID";
-					parameters = new List<DbParameter>()
-					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID))
-					};
-					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+					command = connection.CreateCommand(
+						$"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
+						new List<DbParameter>()
+						{
+							dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", (@object as IBusinessEntity).ID))
+						}
+					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 				}
 			}
@@ -1190,26 +1174,26 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
-				var statement = $"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}";
-				var parameters = new List<DbParameter>()
-				{
-					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, id))
-				};
-				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+				var command = connection.CreateCommand(
+					$"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}",
+					new List<DbParameter>()
+					{
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(definition.PrimaryKey, id))
+					}
+				);
 				command.ExecuteNonQuery();
 
 				if (definition.Extendable && definition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(definition.RepositoryDefinition.ExtendedPropertiesTableName))
 				{
-					statement = $"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID";
-					parameters = new List<DbParameter>()
-					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", id))
-					};
-					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+					command = connection.CreateCommand(
+						$"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
+						new List<DbParameter>()
+						{
+							dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", id))
+						}
+					);
 					command.ExecuteNonQuery();
 				}
 			}
@@ -1232,26 +1216,26 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-				var statement = $"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}";
-				var parameters = new List<DbParameter>()
-				{
-					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, id))
-				};
-				var command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+				var command = connection.CreateCommand(
+					$"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}",
+					new List<DbParameter>()
+					{
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(definition.PrimaryKey, id))
+					}
+				);
 				await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
 				if (definition.Extendable && definition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(definition.RepositoryDefinition.ExtendedPropertiesTableName))
 				{
-					statement = $"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID";
-					parameters = new List<DbParameter>()
-					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", id))
-					};
-					command = connection.CreateCommand((new Tuple<string, List<DbParameter>>(statement, parameters)));
+					command = connection.CreateCommand(
+						$"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
+						new List<DbParameter>()
+						{
+							dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", id))
+						}
+					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 				}
 			}
@@ -1269,6 +1253,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		public static void DeleteMany<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
+			if (filter == null)
+				return;
+
+			var dbProviderFactory = dataSource.GetProviderFactory();
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			var info = filter.GetSqlStatement();
+
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
+			{
+				var command = connection.CreateCommand(info.Item1, info.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+				command.ExecuteNonQuery();
+			}
 		}
 
 		/// <summary>
@@ -1281,9 +1277,20 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return Task.CompletedTask;
+			if (filter == null)
+				return;
+
+			var dbProviderFactory = dataSource.GetProviderFactory();
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			var info = filter.GetSqlStatement();
+
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
+			{
+				var command = connection.CreateCommand(info.Item1, info.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+				await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+			}
 		}
 		#endregion
 
@@ -1426,7 +1433,7 @@ namespace net.vieapps.Components.Repository
 		internal static async Task<DataTable> ToDataTableAsync<T>(this DbDataReader dataReader, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
-			while (await dataReader.ReadAsync(cancellationToken))
+			while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 				dataTable.Append(dataReader);
 			return dataTable;
 		}
@@ -1456,10 +1463,8 @@ namespace net.vieapps.Components.Repository
 		public static List<DataRow> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
 				DataTable dataTable = null;
 				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
@@ -1505,10 +1510,8 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 				DataTable dataTable = null;
 				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
@@ -1778,10 +1781,8 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents));
 				return command.ExecuteScalar().CastAs<long>();
 			}
@@ -1801,10 +1802,8 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents));
 				return (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
 			}
@@ -2038,42 +2037,35 @@ namespace net.vieapps.Components.Repository
 			var extendedProperties = propertiesInfo.Item2;
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
-				var objects = new List<T>();
 				var info = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
+				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
-				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
 					var command = connection.CreateCommand(info);
 					using (var dataReader = command.ExecuteReader())
 					{
-						while (dataReader.Read())
-							objects.Add(ObjectService.CreateInstance<T>().Copy(dataReader, standardProperties, extendedProperties));
+						dataTable = dataReader.ToDataTable<T>();
 					}
 				}
 
 				// generic SQL
 				else
 				{
+					var dataSet = new DataSet();
 					var dataAdapter = dbProviderFactory.CreateDataAdapter();
 					dataAdapter.SelectCommand = connection.CreateCommand(info);
-
-					var dataSet = new DataSet();
-					if (pageSize > 0)
-						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
-					else
-						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
-
-					objects = dataSet.Tables[0].Rows.ToList()
-						.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
-						.ToList();
+					dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
+					dataTable = dataSet.Tables[0];
 				}
 
-				return objects;
+				return dataTable.Rows
+					.ToList()
+					.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
+					.ToList();
 			}
 		}
 
@@ -2097,42 +2089,35 @@ namespace net.vieapps.Components.Repository
 			var extendedProperties = propertiesInfo.Item2;
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-				var objects = new List<T>();
 				var info = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
+				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
-				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
 					var command = connection.CreateCommand(info);
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 					{
-						while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-							objects.Add(ObjectService.CreateInstance<T>().Copy(dataReader, standardProperties, extendedProperties));
+						dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
 					}
 				}
 
 				// generic SQL
 				else
 				{
+					var dataSet = new DataSet();
 					var dataAdapter = dbProviderFactory.CreateDataAdapter();
 					dataAdapter.SelectCommand = connection.CreateCommand(info);
-
-					var dataSet = new DataSet();
-					if (pageSize > 0)
-						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
-					else
-						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
-
-					objects = dataSet.Tables[0].Rows.ToList()
-						.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
-						.ToList();
+					dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
+					dataTable = dataSet.Tables[0];
 				}
 
-				return objects;
+				return dataTable.Rows
+					.ToList()
+					.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
+					.ToList();
 			}
 		}
 		#endregion
@@ -2157,15 +2142,13 @@ namespace net.vieapps.Components.Repository
 			var extendedProperties = propertiesInfo.Item2;
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
-
 				var identities = new List<string>();
 				var info = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
-				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
 					var command = connection.CreateCommand(info);
 					using (var dataReader = command.ExecuteReader())
@@ -2178,14 +2161,11 @@ namespace net.vieapps.Components.Repository
 				// generic SQL
 				else
 				{
+					var dataSet = new DataSet();
 					var dataAdapter = dbProviderFactory.CreateDataAdapter();
 					dataAdapter.SelectCommand = connection.CreateCommand(info);
 
-					var dataSet = new DataSet();
-					if (pageSize > 0)
-						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
-					else
-						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
+					dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 
 					identities = dataSet.Tables[0].Rows.ToList()
 						.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
@@ -2216,15 +2196,13 @@ namespace net.vieapps.Components.Repository
 			var extendedProperties = propertiesInfo.Item2;
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 				var identities = new List<string>();
 				var info = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
-				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset())
+				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
 					var command = connection.CreateCommand(info);
 					using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
@@ -2237,14 +2215,10 @@ namespace net.vieapps.Components.Repository
 				// generic SQL
 				else
 				{
+					var dataSet = new DataSet();
 					var dataAdapter = dbProviderFactory.CreateDataAdapter();
 					dataAdapter.SelectCommand = connection.CreateCommand(info);
-
-					var dataSet = new DataSet();
-					if (pageSize > 0)
-						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
-					else
-						dataAdapter.Fill(dataSet, typeof(T).GetTypeName(true));
+					dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 
 					identities = dataSet.Tables[0].Rows.ToList()
 						.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
@@ -2323,9 +2297,8 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 			{
-				connection.Open();
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
 				return command.ExecuteScalar().CastAs<long>();
 			}
@@ -2345,9 +2318,8 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 			{
-				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
 				return (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
 			}
@@ -2379,13 +2351,11 @@ namespace net.vieapps.Components.Repository
 
 			// create table
 			if (!sql.Equals(""))
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true).ConfigureAwait(false))
 				{
-					await connection.OpenAsync().ConfigureAwait(false);
 					try
 					{
-						var command = connection.CreateCommand();
-						command.CommandText = sql;
+						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 					}
 					catch (Exception ex)
@@ -2482,13 +2452,11 @@ namespace net.vieapps.Components.Repository
 
 			// create index
 			if (!sql.Equals(""))
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true).ConfigureAwait(false))
 				{
-					await connection.OpenAsync().ConfigureAwait(false);
 					try
 					{
-						var command = connection.CreateCommand();
-						command.CommandText = sql;
+						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 					}
 					catch (Exception ex)
@@ -2513,9 +2481,8 @@ namespace net.vieapps.Components.Repository
 
 			// check to create default fulltext catalog on Microsoft SQL Server
 			if (dbProviderFactory.GetName() == "MicrosoftSQL")
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true).ConfigureAwait(false))
 				{
-					await connection.OpenAsync().ConfigureAwait(false);
 					try
 					{						
 						var command = connection.CreateCommand();
@@ -2547,13 +2514,11 @@ namespace net.vieapps.Components.Repository
 
 			// create full-text index
 			if (!sql.Equals(""))
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true).ConfigureAwait(false))
 				{
-					await connection.OpenAsync().ConfigureAwait(false);
 					try
 					{
-						var command = connection.CreateCommand();
-						command.CommandText = sql;
+						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 					}
 					catch (Exception ex)
@@ -2591,13 +2556,11 @@ namespace net.vieapps.Components.Repository
 
 			// create table
 			if (!sql.Equals(""))
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true).ConfigureAwait(false))
 				{
-					await connection.OpenAsync().ConfigureAwait(false);
 					try
 					{
-						var command = connection.CreateCommand();
-						command.CommandText = sql;
+						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 					}
 					catch (Exception ex)
@@ -2735,13 +2698,11 @@ namespace net.vieapps.Components.Repository
 			}
 
 			if (!sql.Equals(""))
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true).ConfigureAwait(false))
 				{
 					try
 					{
-						await connection.OpenAsync().ConfigureAwait(false);
-						var command = connection.CreateCommand();
-						command.CommandText = sql;
+						var command = connection.CreateCommand(sql);
 						isExisted = (await command.ExecuteScalarAsync().ConfigureAwait(false)).CastAs<int>() > 0;
 					}
 					catch (Exception ex)

@@ -3656,13 +3656,10 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 				{
-					connection.Open();
 					var info = filter?.GetSqlStatement();
-					var command = connection.CreateCommand();
-					command.CommandText = $"COUNT (ID) AS Total FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : "");
-					info?.Item2.ForEach(kvp => command.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
+					var command = connection.CreateCommand($"COUNT (ID) AS Total FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""), info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 					return command.ExecuteScalar().CastAs<long>();
 				}
 			}
@@ -3680,13 +3677,10 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 				{
-					await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 					var info = filter?.GetSqlStatement();
-					var command = connection.CreateCommand();
-					command.CommandText = $"COUNT (ID) AS Total FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : "");
-					info?.Item2.ForEach(kvp => command.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
+					var command = connection.CreateCommand($"COUNT (ID) AS Total FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""), info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 					return (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
 				}
 			}
@@ -3704,10 +3698,8 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 				{
-					connection.Open();
-
 					var info = filter?.GetSqlStatement();
 					var statement = $"SELECT * FROM T_Data_{name}"
 						+ (info != null ? " WHERE " + info.Item1 : "")
@@ -3716,9 +3708,7 @@ namespace net.vieapps.Components.Repository
 					DataTable dataTable = null;
 					if (pageSize == 0)
 					{
-						var command = connection.CreateCommand();
-						command.CommandText = statement;
-						info?.Item2.ForEach(kvp => command.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
+						var command = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 						using (var dataReader = command.ExecuteReader())
 						{
 							dataTable = dataReader.ToDataTable<T>();
@@ -3726,13 +3716,10 @@ namespace net.vieapps.Components.Repository
 					}
 					else
 					{
-						var adapter = dbProviderFactory.CreateDataAdapter();
-						adapter.SelectCommand = connection.CreateCommand();
-						adapter.SelectCommand.CommandText = statement;
-						info?.Item2.ForEach(kvp => adapter.SelectCommand.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
-
 						var dataSet = new DataSet();
-						adapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
+						var dataAdapter = dbProviderFactory.CreateDataAdapter();
+						dataAdapter.SelectCommand = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
 					}
 
@@ -3766,10 +3753,8 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 				{
-					await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 					var info = filter?.GetSqlStatement();
 					var statement = $"SELECT * FROM T_Data_{name}"
 						+ (info != null ? " WHERE " + info.Item1 : "")
@@ -3778,9 +3763,7 @@ namespace net.vieapps.Components.Repository
 					DataTable dataTable = null;
 					if (pageSize == 0)
 					{
-						var command = connection.CreateCommand();
-						command.CommandText = statement;
-						info?.Item2.ForEach(kvp => command.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
+						var command = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 						{
 							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
@@ -3788,13 +3771,10 @@ namespace net.vieapps.Components.Repository
 					}
 					else
 					{
-						var adapter = dbProviderFactory.CreateDataAdapter();
-						adapter.SelectCommand = connection.CreateCommand();
-						adapter.SelectCommand.CommandText = statement;
-						info?.Item2.ForEach(kvp => adapter.SelectCommand.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
-
 						var dataSet = new DataSet();
-						adapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
+						var dataAdapter = dbProviderFactory.CreateDataAdapter();
+						dataAdapter.SelectCommand = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
 					}
 
@@ -3829,24 +3809,15 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 				{
 					var attributes = ObjectService.GetProperties(typeof(T))
 						.Where(attribute => attribute.Info.GetCustomAttributes(typeof(JsonIgnoreAttribute), true).Length < 0)
 						.ToList();
-
-					connection.Open();
-
-					var command = connection.CreateCommand();
-					command.CommandText = $"INSERT INTO T_Data_{name} ({string.Join(", ", attributes.Select(attribute => attribute.Name))}) VALUES ({string.Join(", ", attributes.Select(attribute => "@" + attribute.Name))})";
-					attributes.ForEach(attribute =>
-					{
-						var parameter = command.CreateParameter();
-						parameter.ParameterName = "@" + attribute.Name;
-						parameter.DbType = SqlHelper.DbTypes[attribute.Name.EndsWith("ID") ? typeof(char) : attribute.Info.GetType()];
-						parameter.Value = @object.GetAttributeValue(attribute);
-						command.Parameters.Add(parameter);
-					});
+					var command = connection.CreateCommand(
+						$"INSERT INTO T_Data_{name} ({string.Join(", ", attributes.Select(attribute => attribute.Name))}) VALUES ({string.Join(", ", attributes.Select(attribute => "@" + attribute.Name))})",
+						attributes.Select(attribute => dbProviderFactory.CreateParameter(attribute.Name, SqlHelper.DbTypes[attribute.Name.EndsWith("ID") ? typeof(char) : attribute.Info.GetType()], @object.GetAttributeValue(attribute))).ToList()
+					);
 					command.ExecuteNonQuery();
 				}
 				return @object;
@@ -3865,24 +3836,15 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 				{
 					var attributes = ObjectService.GetProperties(typeof(T))
 						.Where(attribute => attribute.Info.GetCustomAttributes(typeof(JsonIgnoreAttribute), true).Length < 0)
 						.ToList();
-
-					await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-					var command = connection.CreateCommand();
-					command.CommandText = $"INSERT INTO T_Data_{name} ({string.Join(", ", attributes.Select(attribute => attribute.Name))}) VALUES ({string.Join(", ", attributes.Select(attribute => "@" + attribute.Name))})";
-					attributes.ForEach(attribute =>
-					{
-						var parameter = command.CreateParameter();
-						parameter.ParameterName = "@" + attribute.Name;
-						parameter.DbType = SqlHelper.DbTypes[attribute.Name.EndsWith("ID") ? typeof(char) : attribute.Info.GetType()];
-						parameter.Value = @object.GetAttributeValue(attribute);
-						command.Parameters.Add(parameter);
-					});
+					var command = connection.CreateCommand(
+						$"INSERT INTO T_Data_{name} ({string.Join(", ", attributes.Select(attribute => attribute.Name))}) VALUES ({string.Join(", ", attributes.Select(attribute => "@" + attribute.Name))})",
+						attributes.Select(attribute => dbProviderFactory.CreateParameter(attribute.Name, SqlHelper.DbTypes[attribute.Name.EndsWith("ID") ? typeof(char) : attribute.Info.GetType()], @object.GetAttributeValue(attribute))).ToList()
+					);
 					await command.ExecuteNonQueryAsync(cancellationToken);
 				}
 				return @object;
@@ -3903,14 +3865,13 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
 				{
-					connection.Open();
-
 					var info = filter?.GetSqlStatement();
-					var command = connection.CreateCommand();
-					command.CommandText = $"DELETE FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : "");
-					info?.Item2.ForEach(kvp => command.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
+					var command = connection.CreateCommand(
+						$"DELETE FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""),
+						info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+					);
 					command.ExecuteNonQuery();
 				}
 			}
@@ -3929,14 +3890,13 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
 				{
-					await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
 					var info = filter?.GetSqlStatement();
-					var command = connection.CreateCommand();
-					command.CommandText = $"DELETE FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : "");
-					info?.Item2.ForEach(kvp => command.Parameters.Add(dbProviderFactory.CreateParameter(kvp)));
+					var command = connection.CreateCommand(
+						$"DELETE FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""),
+						info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 				}
 			}
