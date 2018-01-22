@@ -146,12 +146,24 @@ namespace net.vieapps.Components.Repository
 		/// Gets a collection in NoSQL database (MongoDB collection)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="entityDefinition">The entity definition</param>
+		/// <returns></returns>
+		public static IMongoCollection<T> GetCollection<T>(DataSource dataSource, EntityDefinition entityDefinition) where T : class
+		{
+			return NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, entityDefinition.CollectionName);
+		}
+
+		/// <summary>
+		/// Gets a collection in NoSQL database (MongoDB collection)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
 		public static IMongoCollection<T> GetCollection<T>(this RepositoryContext context, DataSource dataSource) where T : class
 		{
-			return NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, context.EntityDefinition.CollectionName);
+			return NoSqlHelper.GetCollection<T>(dataSource, context.EntityDefinition);
 		}
 		#endregion
 
@@ -169,6 +181,29 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
 			collection.InsertOne(@object, options);
+		}
+
+		/// <summary>
+		/// Creates new a document of an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="object">The object for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static void Create<T>(DataSource dataSource, T @object, InsertOneOptions options = null) where T : class
+		{
+			NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).Create(@object, options);
+		}
+
+		/// <summary>
+		/// Creates new a document of an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object">The object for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static void Create<T>(T @object, InsertOneOptions options = null) where T : class
+		{
+			NoSqlHelper.Create<T>(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options);
 		}
 
 		/// <summary>
@@ -199,6 +234,29 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
 			return collection.InsertOneAsync(@object, options, cancellationToken);
+		}
+
+		/// <summary>
+		/// Creates new a document of an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="object">The object for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static Task CreateAsync<T>(DataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).CreateAsync(@object, options, cancellationToken);
+		}
+
+		/// <summary>
+		/// Creates new a document of an object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object">The object for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static Task CreateAsync<T>(T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			return NoSqlHelper.CreateAsync<T>(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options, cancellationToken);
 		}
 
 		/// <summary>
@@ -388,13 +446,14 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets an object by definition and identity
 		/// </summary>
+		/// <param name="dataSource">The data source</param>
 		/// <param name="definition">The definition</param>
 		/// <param name="id">The identity</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static object Get(EntityDefinition definition, string id, FindOptions options = null)
+		public static object Get(DataSource dataSource, EntityDefinition definition, string id, FindOptions options = null)
 		{
-			var dataSource = definition.GetPrimaryDataSource();
+			dataSource = dataSource ?? definition.GetPrimaryDataSource();
 			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
 			var document = collection.Get(id, options);
 			return document != null
@@ -408,16 +467,42 @@ namespace net.vieapps.Components.Repository
 		/// <param name="definition">The definition</param>
 		/// <param name="id">The identity</param>
 		/// <param name="options">The options</param>
+		/// <returns></returns>
+		public static object Get(EntityDefinition definition, string id, FindOptions options = null)
+		{
+			return NoSqlHelper.Get(definition?.GetPrimaryDataSource(), definition, id);
+		}
+
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="definition">The definition</param>
+		/// <param name="id">The identity</param>
+		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<object> GetAsync(EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static async Task<object> GetAsync(DataSource dataSource, EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
-			var dataSource = definition.GetPrimaryDataSource();
+			dataSource = dataSource ?? definition.GetPrimaryDataSource();
 			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
 			var document = await collection.GetAsync(id, options, cancellationToken).ConfigureAwait(false);
 			return document != null
 				? BsonSerializer.Deserialize(document, definition.Type)
 				: null;
+		}
+
+		/// <summary>
+		/// Gets an object by definition and identity
+		/// </summary>
+		/// <param name="definition">The definition</param>
+		/// <param name="id">The identity</param>
+		/// <param name="options">The options</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<object> GetAsync(EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return NoSqlHelper.GetAsync(definition?.GetPrimaryDataSource(), definition, id, options, cancellationToken);
 		}
 		#endregion
 
@@ -1713,7 +1798,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Schemas & Indexes
-		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null)
+		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default(CancellationToken))
 		{
 			// prepare indexes
 			var prefix = "IDX_" + definition.CollectionName;
@@ -1765,7 +1850,7 @@ namespace net.vieapps.Components.Repository
 			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
 
 			// create indexes
-			await indexes.ForEachAsync(async (info, cancellationToken) =>
+			await indexes.ForEachAsync(async (info, token) =>
 			{
 				if (info.Value.Count > 0)
 				{
@@ -1776,11 +1861,12 @@ namespace net.vieapps.Components.Repository
 							? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
 							: index.Ascending(attribute.Name);
 					});
-					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true }, cancellationToken).ConfigureAwait(false);
+					tracker?.Invoke($"Create index of No SQL: {info.Key}", null);
+					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true }, token).ConfigureAwait(false);
 				}
-			}).ConfigureAwait(false);
+			}, cancellationToken, true, false).ConfigureAwait(false);
 
-			await uniqueIndexes.ForEachAsync(async (info, cancellationToken) =>
+			await uniqueIndexes.ForEachAsync(async (info, token) =>
 			{
 				if (info.Value.Count > 0)
 				{
@@ -1791,9 +1877,10 @@ namespace net.vieapps.Components.Repository
 							? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
 							: index.Ascending(attribute.Name);
 					});
-					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true, Unique = true }, cancellationToken).ConfigureAwait(false);
+					tracker?.Invoke($"Create unique index of No SQL: {info.Key}", null);
+					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true, Unique = true }, token).ConfigureAwait(false);
 				}
-			}).ConfigureAwait(false);
+			}, cancellationToken, true, false).ConfigureAwait(false);
 
 			if (textIndexes.Count > 0)
 			{
@@ -1804,7 +1891,8 @@ namespace net.vieapps.Components.Repository
 						? Builders<BsonDocument>.IndexKeys.Text(attribute)
 						: index.Text(attribute);
 				});
-				await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }, CancellationToken.None).ConfigureAwait(false);
+				tracker?.Invoke($"Create text index of No SQL: {prefix + "_Text_Search"}", null);
+				await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }, cancellationToken).ConfigureAwait(false);
 			}
 
 			// create the blank document for ensuring the collection is created
@@ -1816,10 +1904,10 @@ namespace net.vieapps.Components.Repository
 					{
 						var @object = definition.Type.CreateInstance() as RepositoryBase;
 						@object.ID = UtilityService.BlankUID;
-						await collection.InsertOneAsync(@object.ToBsonDocument(), null, CancellationToken.None).ContinueWith(async (t) =>
+						await collection.InsertOneAsync(@object.ToBsonDocument(), null, cancellationToken).ContinueWith(async (t) =>
 						{
-							await Task.Delay(456, CancellationToken.None).ConfigureAwait(false);
-							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, CancellationToken.None).ConfigureAwait(false);
+							await Task.Delay(456, cancellationToken).ConfigureAwait(false);
+							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, cancellationToken).ConfigureAwait(false);
 						}).ConfigureAwait(false);
 					}
 					catch { }

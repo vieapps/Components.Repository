@@ -29,7 +29,7 @@ namespace net.vieapps.Components.Repository
 	public static class RepositoryMediator
 	{
 
-#if DEBUG || PROCESSLOGS
+#if DEBUG
 		public static Dictionary<string, RepositoryDefinition> RepositoryDefinitions = new Dictionary<string, RepositoryDefinition>();
 		public static Dictionary<string, EntityDefinition> EntityDefinitions = new Dictionary<string, EntityDefinition>();
 		public static Dictionary<string, DataSource> DataSources = new Dictionary<string, DataSource>();
@@ -579,8 +579,8 @@ namespace net.vieapps.Components.Repository
 				// update in cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (context.EntityDefinition.CacheStorage.Set(@object))
-						RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (context.EntityDefinition.Cache.Set(@object))
+						RepositoryMediator.WriteLogs($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
 #else
 					context.EntityDefinition.Cache.Set(@object);
 #endif
@@ -589,10 +589,15 @@ namespace net.vieapps.Components.Repository
 				context.CallPostCreateHandlers(@object, false);
 				return true;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while creating new [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 			}
 		}
 
@@ -622,7 +627,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source", ex);
+							RepositoryMediator.WriteLogs($"CREATE: Error occurred while creating new in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 						}
 					}).ConfigureAwait(false);
 
@@ -641,7 +646,7 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source", ex);
+								RepositoryMediator.WriteLogs($"CREATE: Error occurred while creating new in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 							}
 						}).ConfigureAwait(false);
 					});
@@ -711,8 +716,8 @@ namespace net.vieapps.Components.Repository
 				// update in cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-						RepositoryMediator.WriteLogs("CREATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false))
+						await RepositoryMediator.WriteLogsAsync($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
 					await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false);
 #endif
@@ -721,10 +726,15 @@ namespace net.vieapps.Components.Repository
 				await context.CallPostCreateHandlersAsync(@object, false, cancellationToken).ConfigureAwait(false);
 				return true;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while creating new object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while creating new [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 			}
 		}
 
@@ -757,7 +767,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source", ex);
+							await RepositoryMediator.WriteLogsAsync($"CREATE: Error occurred while creating new in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
 						}
 					}));
 
@@ -776,7 +786,7 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source", ex);
+								await RepositoryMediator.WriteLogsAsync($"CREATE: Error occurred while creating new in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
 							}
 						}));
 					});
@@ -834,7 +844,7 @@ namespace net.vieapps.Components.Repository
 
 #if DEBUG || PROCESSLOGS
 				if (@object != null)
-					RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
+					RepositoryMediator.WriteLogs($"GET: The cached object is found [{@object.GetCacheKey(false)}]");
 #endif
 
 				// load from data store if got no cached
@@ -860,12 +870,20 @@ namespace net.vieapps.Components.Repository
 									: null;
 
 							// re-create object at primary data source
-							if (@object == null)
+							if (@object != null)
 							{
 								if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-									context.Create<T>(dataSource, @object);
+									context.Create<T>(dataSource, @object, null);
 								else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 									context.Create<T>(dataSource, @object);
+
+#if DEBUG || PROCESSLOGS
+								RepositoryMediator.WriteLogs(new List<string>()
+								{
+									$"GET: The object is found in secondary data source [{typeof(T)}#{@object.GetEntityID()}]",
+									$"GET: Re-create the object in primary data source successful [{typeof(T)}#{@object.GetEntityID()}]"
+								});
+#endif
 							}
 						}
 					}
@@ -873,8 +891,8 @@ namespace net.vieapps.Components.Repository
 					// update into cache storage
 					if (@object != null && processCache && context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-						if (context.EntityDefinition.CacheStorage.Set(@object))
-							RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+						if (context.EntityDefinition.Cache.Set(@object))
+							RepositoryMediator.WriteLogs($"GET: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
 #else
 						context.EntityDefinition.Cache.Set(@object);
 #endif
@@ -890,10 +908,15 @@ namespace net.vieapps.Components.Repository
 				// return the instance of object
 				return @object;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T)}#{id}]", ex);
 			}
 		}
 
@@ -961,7 +984,7 @@ namespace net.vieapps.Components.Repository
 
 #if DEBUG || PROCESSLOGS
 				if (@object != null)
-					RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey() + "]");
+					await RepositoryMediator.WriteLogsAsync($"GET: The cached object is found [{@object.GetCacheKey()}]").ConfigureAwait(false);
 #endif
 
 				// load from data store if got no cached
@@ -976,7 +999,7 @@ namespace net.vieapps.Components.Repository
 							: null;
 
 					// when the object is not found, then get instance from secondary source
-					if (@object == null)
+					if (@object != null)
 					{
 						var secondaryDataSource = context.GetSecondaryDataSource();
 						if (secondaryDataSource != null && !secondaryDataSource.Name.IsEquals(dataSource.Name))
@@ -988,12 +1011,20 @@ namespace net.vieapps.Components.Repository
 									: null;
 
 							// re-create object at primary data source
-							if (@object == null)
+							if (@object != null)
 							{
 								if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 									await context.CreateAsync<T>(dataSource, @object, cancellationToken).ConfigureAwait(false);
 								else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.CreateAsync<T>(dataSource, @object, cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+								await RepositoryMediator.WriteLogsAsync(new List<string>()
+								{
+									$"GET: The object is found in secondary data source [{typeof(T)}#{@object.GetEntityID()}]",
+									$"GET: Re-create the object in primary data source successful [{typeof(T)}#{@object.GetEntityID()}]"
+								}).ConfigureAwait(false);
+#endif
 							}
 						}
 					}
@@ -1001,8 +1032,8 @@ namespace net.vieapps.Components.Repository
 					// update into cache storage
 					if (@object != null && processCache && context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-						if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-							RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+						if (await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false))
+							await RepositoryMediator.WriteLogsAsync($"GET: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
 						await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false);
 #endif
@@ -1018,10 +1049,15 @@ namespace net.vieapps.Components.Repository
 				// return the instance of object
 				return @object;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while fetching object [{typeof(T)}#{id}]", ex);
 			}
 		}
 
@@ -1086,10 +1122,15 @@ namespace net.vieapps.Components.Repository
 						? context.Get<T>(dataSource, filter, sort, businessEntityID)
 						: null;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while fetching first-matched object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while fetching first-matched object [{typeof(T)}]", ex);
 			}
 		}
 
@@ -1153,10 +1194,15 @@ namespace net.vieapps.Components.Repository
 						? await context.GetAsync<T>(dataSource, filter, sort, businessEntityID, cancellationToken).ConfigureAwait(false)
 						: null;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while fetching first-matched object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while fetching first-matched object [{typeof(T)}]", ex);
 			}
 		}
 
@@ -1217,7 +1263,7 @@ namespace net.vieapps.Components.Repository
 
 #if DEBUG || PROCESSLOGS
 			if (@object != null)
-				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
+				RepositoryMediator.WriteLogs($"GET: The cached object is found [{@object.GetCacheKey(false)}]");
 #endif
 
 			// load from data store if got no cached
@@ -1225,18 +1271,47 @@ namespace net.vieapps.Components.Repository
 			{
 				dataSource = dataSource ?? definition.GetPrimaryDataSource();
 				@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? NoSqlHelper.Get(definition, id)
+					? NoSqlHelper.Get(dataSource, definition, id)
 					: dataSource.Mode.Equals(RepositoryMode.SQL)
-						? SqlHelper.Get(definition, id)
+						? SqlHelper.Get(dataSource, definition, id)
 						: null;
 
-				// TO DO: check to get instance from secondary source if primary source is not available
+				// when the object is not found, then get instance from secondary source
+				if (@object == null)
+				{
+					var secondaryDataSource = definition.GetSecondaryDataSource();
+					if (secondaryDataSource != null && !secondaryDataSource.Name.IsEquals(dataSource.Name))
+					{
+						@object = secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+							? NoSqlHelper.Get(secondaryDataSource, definition, id)
+							: dataSource.Mode.Equals(RepositoryMode.SQL)
+								? SqlHelper.Get(secondaryDataSource, definition, id)
+								: null;
+
+						// re-create object at primary data source
+						if (@object != null)
+						{
+							if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+								NoSqlHelper.Create(dataSource, @object);
+							else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+								SqlHelper.Create(dataSource, @object);
+
+#if DEBUG || PROCESSLOGS
+							RepositoryMediator.WriteLogs(new List<string>()
+							{
+								$"GET: The object is found in secondary data source [{@object.GetType()}#{@object.GetEntityID()}]",
+								$"GET: Re-create object in primary data source successful [{@object.GetType()}#{@object.GetEntityID()}]"
+							});
+#endif
+						}
+					}
+				}
 
 				// update into cache storage
 				if (@object != null && definition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (definition.CacheStorage.Set(@object))
-						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (definition.Cache.Set(@object))
+						RepositoryMediator.WriteLogs($"GET: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
 #else
 					definition.Cache.Set(@object);
 #endif
@@ -1294,7 +1369,7 @@ namespace net.vieapps.Components.Repository
 
 #if DEBUG || PROCESSLOGS
 			if (@object != null)
-				RepositoryMediator.WriteLogs("GET: The cached object is found [" + @object.GetCacheKey(false) + "]");
+				await RepositoryMediator.WriteLogsAsync($"GET: The cached object is found [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #endif
 
 			// load from data store if got no cached
@@ -1307,13 +1382,42 @@ namespace net.vieapps.Components.Repository
 						? await SqlHelper.GetAsync(definition, id, cancellationToken).ConfigureAwait(false)
 						: null;
 
-				// TO DO: check to get instance from secondary source if primary source is not available
+				// when the object is not found, then get instance from secondary source
+				if (@object == null)
+				{
+					var secondaryDataSource = definition.GetSecondaryDataSource();
+					if (secondaryDataSource != null && !secondaryDataSource.Name.IsEquals(dataSource.Name))
+					{
+						@object = secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+							? await NoSqlHelper.GetAsync(secondaryDataSource, definition, id, null, cancellationToken).ConfigureAwait(false)
+							: dataSource.Mode.Equals(RepositoryMode.SQL)
+								? await SqlHelper.GetAsync(secondaryDataSource, definition, id, cancellationToken).ConfigureAwait(false)
+								: null;
+
+						// re-create object at primary data source
+						if (@object != null)
+						{
+							if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+								await NoSqlHelper.CreateAsync(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
+							else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+								await SqlHelper.CreateAsync(dataSource, @object, cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+							await RepositoryMediator.WriteLogsAsync(new List<string>()
+							{
+								$"GET: The object is found in secondary data source [{@object.GetType()}#{@object.GetEntityID()}]",
+								$"GET: Re-create object in primary data source successful [{@object.GetType()}#{@object.GetEntityID()}]"
+							}).ConfigureAwait(false);
+#endif
+						}
+					}
+				}
 
 				// update into cache storage
 				if (@object != null && definition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await definition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-						RepositoryMediator.WriteLogs("GET: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await definition.Cache.SetAsync(@object).ConfigureAwait(false))
+						await RepositoryMediator.WriteLogsAsync($"GET: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
 					await definition.Cache.SetAsync(@object).ConfigureAwait(false);
 #endif
@@ -1373,7 +1477,7 @@ namespace net.vieapps.Components.Repository
 
 				// check state
 				var previousInstance = @object != null
-					? RepositoryMediator.Get<T>(context, dataSource, @object.GetEntityID(), false)
+					? RepositoryMediator.Get<T>(context, dataSource, @object?.GetEntityID(), false)
 					: null;
 
 				var previousState = previousInstance != null
@@ -1436,8 +1540,8 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (context.EntityDefinition.CacheStorage.Set(@object))
-						RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (context.EntityDefinition.Cache.Set(@object))
+						RepositoryMediator.WriteLogs($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
 #else
 					context.EntityDefinition.Cache.Set(@object);
 #endif
@@ -1446,10 +1550,15 @@ namespace net.vieapps.Components.Repository
 				context.CallPostUpdateHandlers(@object, dirtyAttributes, false);
 				return true;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 			}
 		}
 
@@ -1481,7 +1590,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+							RepositoryMediator.WriteLogs($"REPLACE: Error occurred while updating in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 						}
 					}).ConfigureAwait(false);
 
@@ -1500,7 +1609,7 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+								RepositoryMediator.WriteLogs($"REPLACE: Error occurred while updating in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 							}
 						}).ConfigureAwait(false);
 					});
@@ -1543,7 +1652,7 @@ namespace net.vieapps.Components.Repository
 
 				// check state
 				var previousInstance = @object != null
-					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
+					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
 					: null;
 
 				var previousState = previousInstance != null
@@ -1606,8 +1715,8 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-						RepositoryMediator.WriteLogs("REPLACE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false))
+						await RepositoryMediator.WriteLogsAsync($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
 					await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false);
 #endif
@@ -1616,10 +1725,15 @@ namespace net.vieapps.Components.Repository
 				await context.CallPostUpdateHandlersAsync(@object, dirtyAttributes, false, cancellationToken).ConfigureAwait(false);
 				return true;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 			}
 		}
 
@@ -1653,7 +1767,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+							await RepositoryMediator.WriteLogsAsync($"REPLACE: Error occurred while updating in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
 						}
 					}));
 
@@ -1672,7 +1786,7 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+								await RepositoryMediator.WriteLogsAsync($"REPLACE: Error occurred while updating in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
 							}
 						}));
 					});
@@ -1720,7 +1834,7 @@ namespace net.vieapps.Components.Repository
 
 				// check state
 				var previousInstance = @object != null
-					? RepositoryMediator.Get<T>(context, dataSource, @object.GetEntityID(), false)
+					? RepositoryMediator.Get<T>(context, dataSource, @object?.GetEntityID(), false)
 					: null;
 
 				var previousState = previousInstance != null
@@ -1781,8 +1895,8 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (context.EntityDefinition.CacheStorage.Set(@object))
-						RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (context.EntityDefinition.Cache.Set(@object))
+						RepositoryMediator.WriteLogs($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
 #else
 					context.EntityDefinition.Cache.Set(@object);
 #endif
@@ -1791,10 +1905,15 @@ namespace net.vieapps.Components.Repository
 				context.CallPostUpdateHandlers(@object, dirtyAttributes, false);
 				return new Tuple<bool, List<string>>(true, updatedAttributes);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 			}
 		}
 
@@ -1827,7 +1946,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+							RepositoryMediator.WriteLogs($"UPDATE: Error occurred while updating in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 						}
 					}).ConfigureAwait(false);
 
@@ -1846,7 +1965,7 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+								RepositoryMediator.WriteLogs($"UPDATE: Error occurred while updating in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 							}
 						}).ConfigureAwait(false);
 					});
@@ -1889,7 +2008,7 @@ namespace net.vieapps.Components.Repository
 
 				// check state
 				var previousInstance = @object != null
-					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object.GetEntityID(), false).ConfigureAwait(false)
+					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false).ConfigureAwait(false)
 					: null;
 
 				var previousState = previousInstance != null
@@ -1950,8 +2069,8 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.CacheStorage.SetAsync(@object).ConfigureAwait(false))
-						RepositoryMediator.WriteLogs("UPDATE: Add the object into the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false))
+						await RepositoryMediator.WriteLogsAsync($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
 					await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false);
 #endif
@@ -1960,10 +2079,15 @@ namespace net.vieapps.Components.Repository
 				await context.CallPostUpdateHandlersAsync(@object, dirtyAttributes, false, cancellationToken).ConfigureAwait(false);
 				return new Tuple<bool, List<string>>(true, updatedAttributes);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 			}
 		}
 
@@ -1998,7 +2122,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+							await RepositoryMediator.WriteLogsAsync($"UPDATE: Error occurred while updating in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
 						}
 					}));
 
@@ -2017,7 +2141,7 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source", ex);
+								await RepositoryMediator.WriteLogsAsync($"UPDATE: Error occurred while updating in other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
 							}
 						}));
 					});
@@ -2085,8 +2209,8 @@ namespace net.vieapps.Components.Repository
 				// remove from cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (context.EntityDefinition.CacheStorage.Remove(@object))
-						RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (context.EntityDefinition.Cache.Remove(@object))
+						RepositoryMediator.WriteLogs($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey(false)}]");
 #else
 					context.EntityDefinition.Cache.Remove(@object);
 #endif
@@ -2095,10 +2219,15 @@ namespace net.vieapps.Components.Repository
 				context.CallPostDeleteHandlers(@object);
 				return @object;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T)}#{id}]", ex);
 			}
 		}
 
@@ -2124,13 +2253,13 @@ namespace net.vieapps.Components.Repository
 						try
 						{
 							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-								context.Delete<T>(secondaryDataSource, @object);
+								context.Delete<T>(secondaryDataSource, @object, null);
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								context.Create<T>(secondaryDataSource, @object);
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+							RepositoryMediator.WriteLogs($"DELETE: Error occurred while deleting from other data source [{typeof(T)}#{id}]", ex);
 						}
 					}).ConfigureAwait(false);
 
@@ -2143,13 +2272,13 @@ namespace net.vieapps.Components.Repository
 							try
 							{
 								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
-									context.Create<T>(syncDataSource, @object);
+									context.Delete<T>(syncDataSource, @object, null);
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
-									context.Create<T>(syncDataSource, @object);
+									context.Delete<T>(syncDataSource, @object);
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+								RepositoryMediator.WriteLogs($"DELETE: Error occurred while deleting from other data source [{typeof(T)}#{id}]", ex);
 							}
 						}).ConfigureAwait(false);
 					});
@@ -2211,8 +2340,8 @@ namespace net.vieapps.Components.Repository
 				// remove from cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.CacheStorage.RemoveAsync(@object).ConfigureAwait(false))
-						RepositoryMediator.WriteLogs("DELETE: Remove the cached object from the cache storage successful [" + @object.GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.Cache.RemoveAsync(@object).ConfigureAwait(false))
+						await RepositoryMediator.WriteLogsAsync($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
 					await context.EntityDefinition.Cache.RemoveAsync(@object).ConfigureAwait(false);
 #endif
@@ -2221,10 +2350,15 @@ namespace net.vieapps.Components.Repository
 				await context.CallPostDeleteHandlersAsync(@object, cancellationToken).ConfigureAwait(false);
 				return @object;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while deleting object [{typeof(T)}#{id}]", ex);
 			}
 		}
 
@@ -2252,13 +2386,13 @@ namespace net.vieapps.Components.Repository
 						try
 						{
 							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-								await context.DeleteAsync<T>(secondaryDataSource, @object, cancellationToken).ConfigureAwait(false);
+								await context.DeleteAsync<T>(secondaryDataSource, @object, null, cancellationToken).ConfigureAwait(false);
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								await context.DeleteAsync<T>(secondaryDataSource, @object, cancellationToken).ConfigureAwait(false);
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+							await RepositoryMediator.WriteLogsAsync($"DELETE: Error occurred while deleting from other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
 						}
 					}));
 
@@ -2271,13 +2405,13 @@ namespace net.vieapps.Components.Repository
 							try
 							{
 								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
-									await context.DeleteAsync<T>(syncDataSource, @object, cancellationToken).ConfigureAwait(false);
+									await context.DeleteAsync<T>(syncDataSource, @object, null, cancellationToken).ConfigureAwait(false);
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.DeleteAsync<T>(syncDataSource, @object, cancellationToken).ConfigureAwait(false);
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+								await RepositoryMediator.WriteLogsAsync($"DELETE: Error occurred while deleting from other data source [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
 							}
 						}));
 					});
@@ -2342,7 +2476,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+							RepositoryMediator.WriteLogs("DELETE: Error occurred while deleting multiple objects from other data source", ex);
 						}
 					}).ConfigureAwait(false);
 
@@ -2362,15 +2496,20 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+								RepositoryMediator.WriteLogs("DELETE: Error occurred while deleting multiple objects from other data source", ex);
 							}
 						}).ConfigureAwait(false);
 					});
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T)}]", ex);
 			}
 		}
 
@@ -2442,7 +2581,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+							await RepositoryMediator.WriteLogsAsync("DELETE: Error occurred while deleting multiple objects from other data source", ex).ConfigureAwait(false);
 						}
 					}));
 
@@ -2462,7 +2601,7 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while deleting from other data source", ex);
+								await RepositoryMediator.WriteLogsAsync("DELETE: Error occurred while deleting multiple objects from other data source", ex).ConfigureAwait(false);
 							}
 						}));
 					});
@@ -2470,10 +2609,15 @@ namespace net.vieapps.Components.Repository
 				// force al tasks to run
 				var task = Task.Run(async () => await Task.WhenAll(tasks).ConfigureAwait(false));
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while deleting multiple objects [{typeof(T)}]", ex);
 			}
 		}
 
@@ -2488,12 +2632,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task DeleteManyAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// prepare
 			context.AliasTypeName = aliasTypeName;
 			await RepositoryMediator.DeleteManyAsync<T>(context, context.GetPrimaryDataSource(), filter, businessEntityID, cancellationToken).ConfigureAwait(false);
-
-			// TO DO: sync to other data sources
-			// ...
 		}
 
 		/// <summary>
@@ -2545,6 +2685,11 @@ namespace net.vieapps.Components.Repository
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? context.SelectIdentities<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 							: new List<string>();
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -2648,26 +2793,26 @@ namespace net.vieapps.Components.Repository
 				{
 					"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
 					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Mode: " + dataSource.Mode.ToString(),
 					"- Page Size: " + pageSize.ToString(),
 					"- Page Number: " + pageNumber.ToString(),
 					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
 					"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
-				}, null);
+				});
 #endif
 
 				// process cache
 				if (identities != null && identities.Count > 0)
 				{
 #if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
+					RepositoryMediator.WriteLogs($"FIND: Total {identities.Count} identities are fetched [{identities.ToString(" - ")}]");
 #endif
 					// get cached objects
 					var cached = context.EntityDefinition.Cache.Get<T>(identities.Select(id => id.GetCacheKey<T>()));
 					if (cached != null)
 					{
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("FIND: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+						RepositoryMediator.WriteLogs($"FIND: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
 #endif
 						// prepare
 						var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
@@ -2695,7 +2840,7 @@ namespace net.vieapps.Components.Repository
 							missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
 							context.EntityDefinition.Cache.Set(missing);
 #if DEBUG || PROCESSLOGS
-							RepositoryMediator.WriteLogs("FIND: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+							RepositoryMediator.WriteLogs($"FIND: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 #endif
 						}
 
@@ -2721,16 +2866,22 @@ namespace net.vieapps.Components.Repository
 							context.EntityDefinition.Cache.Set(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime);
 						context.EntityDefinition.Cache.Set(objects);
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+						RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 #endif
 					}
 				}
+
 				return objects;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T)}]", ex);
 			}
 		}
 
@@ -2809,6 +2960,11 @@ namespace net.vieapps.Components.Repository
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? await context.SelectIdentitiesAsync<T>(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
 							: new List<string>();
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -2912,30 +3068,30 @@ namespace net.vieapps.Components.Repository
 					: await RepositoryMediator.FindIdentitiesAsync<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 
 #if DEBUG || PROCESSLOGS
-				RepositoryMediator.WriteLogs(new List<string>()
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
 				{
 					"FIND: Find objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
 					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Mode: " + dataSource.Mode.ToString(),
 					"- Page Size: " + pageSize.ToString(),
 					"- Page Number: " + pageNumber.ToString(),
 					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
 					"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
-				}, null);
+				}).ConfigureAwait(false);
 #endif
 
 				// process
 				if (identities != null && identities.Count > 0)
 				{
 #if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("FIND: Total " + identities.Count + " identities are fetched [" + identities.ToString(" - ") + "]");
+					await RepositoryMediator.WriteLogsAsync($"FIND: Total {identities.Count} identities are fetched [{identities.ToString(" - ")}]").ConfigureAwait(false);
 #endif
 					// get cached objects
 					var cached = await context.EntityDefinition.Cache.GetAsync<T>(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
 					if (cached != null)
 					{
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("FIND: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+						await RepositoryMediator.WriteLogsAsync($"FIND: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]").ConfigureAwait(false);
 #endif
 						// prepare
 						var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
@@ -2962,8 +3118,9 @@ namespace net.vieapps.Components.Repository
 							// update results & cache
 							missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
 							await context.EntityDefinition.Cache.SetAsync(missing).ConfigureAwait(false);
+
 #if DEBUG || PROCESSLOGS
-							RepositoryMediator.WriteLogs("FIND: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+							await RepositoryMediator.WriteLogsAsync($"FIND: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]").ConfigureAwait(false);
 #endif
 						}
 
@@ -2988,17 +3145,24 @@ namespace net.vieapps.Components.Repository
 						if (!string.IsNullOrWhiteSpace(cacheKey))
 							await context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
 						await context.EntityDefinition.Cache.SetAsync(objects).ConfigureAwait(false);
+
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("FIND: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+						await RepositoryMediator.WriteLogsAsync($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]").ConfigureAwait(false);
 #endif
 					}
 				}
+
 				return objects;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while finding objects [{typeof(T)}]", ex);
 			}
 		}
 
@@ -3088,9 +3252,9 @@ namespace net.vieapps.Components.Repository
 				{
 					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
 					"- Total: " + total.ToString(),
-					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Mode: " + dataSource.Mode.ToString(),
 					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
-				}, null);
+				});
 #endif
 
 				// update cache and return
@@ -3099,10 +3263,15 @@ namespace net.vieapps.Components.Repository
 
 				return total;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T)}]", ex);
 			}
 		}
 
@@ -3179,13 +3348,13 @@ namespace net.vieapps.Components.Repository
 						: 0;
 
 #if DEBUG || PROCESSLOGS
-				RepositoryMediator.WriteLogs(new List<string>()
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
 				{
 					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
 					"- Total: " + total.ToString(),
-					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Mode: " + dataSource.Mode.ToString(),
 					"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
-				}, null);
+				}).ConfigureAwait(false);
 #endif
 
 				// update cache and return
@@ -3194,10 +3363,15 @@ namespace net.vieapps.Components.Repository
 
 				return total;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while counting objects [{typeof(T)}]", ex);
 			}
 		}
 
@@ -3277,26 +3451,26 @@ namespace net.vieapps.Components.Repository
 				{
 					"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
 					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Mode: " + dataSource.Mode.ToString(),
 					"- Page Size: " + pageSize.ToString(),
 					"- Page Number: " + pageNumber.ToString(),
 					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
 					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-				}, null);
+				});
 #endif
 
 				// process
 				if (identities != null && identities.Count > 0)
 				{
 #if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("SEARCH: Total " + identities.Count + " identities are searched [" + identities.ToString(" - ") + "]");
+					RepositoryMediator.WriteLogs($"SEARCH: Total {identities.Count} identities are searched [{identities.ToString(" - ")}]");
 #endif
 					// get cached objects
 					var cached = context.EntityDefinition.Cache.Get(identities.Select(id => id.GetCacheKey<T>()));
 					if (cached != null)
 					{
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("SEARCH: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+						RepositoryMediator.WriteLogs($"SEARCH: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
 #endif
 						// prepare
 						var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
@@ -3323,8 +3497,9 @@ namespace net.vieapps.Components.Repository
 							// update results & cache
 							missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
 							context.EntityDefinition.Cache.Set(missing);
+
 #if DEBUG || PROCESSLOGS
-							RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 #endif
 						}
 
@@ -3348,16 +3523,22 @@ namespace net.vieapps.Components.Repository
 					{
 						context.EntityDefinition.Cache.Set(objects);
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("SEARCH: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+						RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 #endif
 					}
 				}
+
 				return objects;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T)}]", ex);
 			}
 		}
 
@@ -3430,30 +3611,30 @@ namespace net.vieapps.Components.Repository
 							: new List<string>();
 
 #if DEBUG || PROCESSLOGS
-				RepositoryMediator.WriteLogs(new List<string>()
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
 				{
 					"SEARCH: Search objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
 					"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Mode: " + dataSource.Mode.ToString(),
 					"- Page Size: " + pageSize.ToString(),
 					"- Page Number: " + pageNumber.ToString(),
 					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
 					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-				}, null);
+				}).ConfigureAwait(false);
 #endif
 
 				// process
 				if (identities != null && identities.Count > 0)
 				{
 #if DEBUG || PROCESSLOGS
-					RepositoryMediator.WriteLogs("SEARCH: Total " + identities.Count + " identities are searched [" + identities.ToString(" - ") + "]");
+					await RepositoryMediator.WriteLogsAsync($"SEARCH: Total {identities.Count} identities are searched [{identities.ToString(" - ")}]").ConfigureAwait(false);
 #endif
 					// get cached objects
 					var cached = await context.EntityDefinition.Cache.GetAsync(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
 					if (cached != null)
 					{
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("SEARCH: Total " + cached.Count + " cached object(s) are found [" + cached.Select(item => item.Key).ToString(" - ") + "]");
+						await RepositoryMediator.WriteLogsAsync($"SEARCH: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]").ConfigureAwait(false);
 #endif
 						// prepare
 						var results = identities.ToDictionary<string, string, T>(id => id, id => default(T));
@@ -3481,7 +3662,7 @@ namespace net.vieapps.Components.Repository
 							missing.Where(obj => obj != null).ForEach(obj => results[obj.GetEntityID()] = obj);
 							await context.EntityDefinition.Cache.SetAsync(missing).ConfigureAwait(false);
 #if DEBUG || PROCESSLOGS
-							RepositoryMediator.WriteLogs("SEARCH: Add " + missing.Count + " missing object(s) into cache storage successful [" + missing.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+							await RepositoryMediator.WriteLogsAsync($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]").ConfigureAwait(false);
 #endif
 						}
 
@@ -3504,17 +3685,24 @@ namespace net.vieapps.Components.Repository
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
 					{
 						await context.EntityDefinition.Cache.SetAsync(objects).ConfigureAwait(false);
+
 #if DEBUG || PROCESSLOGS
-						RepositoryMediator.WriteLogs("SEARCH: Add " + objects.Count + " raw object(s) into cache storage successful [" + objects.Select(o => o.GetCacheKey()).ToString(" - ") + "]");
+						await RepositoryMediator.WriteLogsAsync($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]").ConfigureAwait(false);
 #endif
 					}
 				}
+
 				return objects;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while searching objects [{typeof(T)}]", ex);
 			}
 		}
 
@@ -3589,17 +3777,22 @@ namespace net.vieapps.Components.Repository
 				{
 					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
 					"- Total: " + total.ToString(),
-					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Mode: " + dataSource.Mode.ToString(),
 					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
 					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-				}, null);
+				});
 #endif
 				return total;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while counting objects by query [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while counting objects by query [{typeof(T)}]", ex);
 			}
 		}
 
@@ -3663,21 +3856,26 @@ namespace net.vieapps.Components.Repository
 						: 0;
 
 #if DEBUG || PROCESSLOGS
-				RepositoryMediator.WriteLogs(new List<string>()
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
 				{
 					"COUNT: Count objects of [" + context.EntityDefinition.Type.GetTypeName() + "]",
 					"- Total: " + total.ToString(),
-					"- Mode: " + primaryDataSource.Mode.ToString(),
+					"- Mode: " + dataSource.Mode.ToString(),
 					"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
 					"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-				}, null);
+				}).ConfigureAwait(false);
 #endif
 				return total;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
-				throw new RepositoryOperationException($"Error occurred while counting objects by query [{typeof(T).ToString()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while counting objects by query [{typeof(T)}]", ex);
 			}
 		}
 
@@ -3756,6 +3954,11 @@ namespace net.vieapps.Components.Repository
 				// create new
 				return VersionContent.Create(dataSource, "Versions", version);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -3828,6 +4031,11 @@ namespace net.vieapps.Components.Repository
 				// create new
 				return await VersionContent.CreateAsync(dataSource, "Versions", version, cancellationToken).ConfigureAwait(false);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -3879,7 +4087,7 @@ namespace net.vieapps.Components.Repository
 			if (version == null)
 				throw new ArgumentNullException(nameof(version), "Version content is invalid");
 			else if (!(version.Object is T))
-				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T).GetTypeName()}]");
+				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T)}]");
 
 			// process
 			try
@@ -3910,8 +4118,8 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (context.EntityDefinition.CacheStorage.Set(version.Object as T))
-						RepositoryMediator.WriteLogs("ROLLBACK: Add the object into the cache storage successful [" + (version.Object as T).GetCacheKey(false) + "]");
+					if (context.EntityDefinition.Cache.Set(version.Object as T))
+						RepositoryMediator.WriteLogs($"ROLLBACK: Add the object into the cache storage successful [{(version.Object as T).GetCacheKey(false)}]");
 #else
 					context.EntityDefinition.Cache.Set(version.Object as T);
 #endif
@@ -3933,7 +4141,7 @@ namespace net.vieapps.Components.Repository
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source when rollback", ex);
+							RepositoryMediator.WriteLogs($"ROLLBACK: Error occurred while updating in other data source when rollback [{typeof(T)}#{version.Object?.GetEntityID()}]", ex);
 						}
 					}).ConfigureAwait(false);
 
@@ -3952,13 +4160,18 @@ namespace net.vieapps.Components.Repository
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source when rollback", ex);
+								RepositoryMediator.WriteLogs($"ROLLBACK: Error occurred while updating in other data source when rollback [{typeof(T)}#{version.Object?.GetEntityID()}]", ex);
 							}
 						}).ConfigureAwait(false);
 					});
 
 				// return the original object
 				return version.Object as T;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -4038,7 +4251,7 @@ namespace net.vieapps.Components.Repository
 			if (version == null)
 				throw new ArgumentNullException(nameof(version), "Version content is invalid");
 			else if (!(version.Object is T))
-				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T).GetTypeName()}]");
+				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T)}]");
 
 			// process
 			try
@@ -4069,8 +4282,8 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.CacheStorage.SetAsync(version.Object as T))
-						RepositoryMediator.WriteLogs("ROLLBACK: Add the object into the cache storage successful [" + (version.Object as T).GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.Cache.SetAsync(version.Object as T))
+						await RepositoryMediator.WriteLogsAsync($"ROLLBACK: Add the object into the cache storage successful [{(version.Object as T).GetCacheKey(false)}]").ConfigureAwait(true);
 #else
 					await context.EntityDefinition.Cache.SetAsync(version.Object as T);
 #endif
@@ -4087,13 +4300,13 @@ namespace net.vieapps.Components.Repository
 						try
 						{
 							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-								await context.ReplaceAsync<T>(secondaryDataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
+								await context.ReplaceAsync<T>(secondaryDataSource, version.Object as T, null, cancellationToken).ConfigureAwait(false);
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								await context.ReplaceAsync<T>(secondaryDataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source when rollback", ex);
+							await RepositoryMediator.WriteLogsAsync($"ROLLBACK: Error occurred while updating in other data source when rollback [{typeof(T)}#{version.Object?.GetEntityID()}]", ex).ConfigureAwait(false);
 						}
 					}));
 
@@ -4106,13 +4319,13 @@ namespace net.vieapps.Components.Repository
 							try
 							{
 								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
-									await context.ReplaceAsync<T>(syncDataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
+									await context.ReplaceAsync<T>(syncDataSource, version.Object as T, null, cancellationToken).ConfigureAwait(false);
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.ReplaceAsync<T>(syncDataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while updating an instance of other data source when rollback", ex);
+								await RepositoryMediator.WriteLogsAsync($"ROLLBACK: Error occurred while updating in other data source when rollback [{typeof(T)}#{version.Object?.GetEntityID()}]", ex).ConfigureAwait(false);
 							}
 						}));
 					});
@@ -4122,6 +4335,11 @@ namespace net.vieapps.Components.Repository
 
 				// return the original object
 				return version.Object as T;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -4245,6 +4463,11 @@ namespace net.vieapps.Components.Repository
 				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
 				return VersionContent.Count<VersionContent>(dataSource, "Versions", filter);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -4321,6 +4544,11 @@ namespace net.vieapps.Components.Repository
 				// count
 				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
 				return await VersionContent.CountAsync<VersionContent>(dataSource, "Versions", filter, cancellationToken).ConfigureAwait(false);
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -4447,6 +4675,11 @@ namespace net.vieapps.Components.Repository
 				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
 				return VersionContent.Find<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -4572,6 +4805,11 @@ namespace net.vieapps.Components.Repository
 				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
 				return await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -4680,6 +4918,11 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Delete;
 				VersionContent.Delete(dataSource ?? context.GetVersionDataSource(), "Versions", Filters<VersionContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))));
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -4722,6 +4965,11 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Operation = RepositoryOperation.Delete;
 				await VersionContent.DeleteAsync(dataSource ?? context.GetVersionDataSource(), "Versions", Filters<VersionContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))), cancellationToken).ConfigureAwait(false);
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -4790,6 +5038,11 @@ namespace net.vieapps.Components.Repository
 					TrashContent.Create(dataSource, "Trashs", trash);
 				}
 				return trash;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -4861,6 +5114,11 @@ namespace net.vieapps.Components.Repository
 				}
 				return trash;
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -4912,7 +5170,7 @@ namespace net.vieapps.Components.Repository
 			if (trashContent == null)
 				throw new ArgumentNullException(nameof(trashContent), "Trash content is invalid");
 			else if (!(trashContent.Object is T))
-				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T).GetTypeName()}]");
+				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T)}]");
 
 			// process
 			try
@@ -4938,8 +5196,8 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (context.EntityDefinition.CacheStorage.Set(trash.Object as T))
-						RepositoryMediator.WriteLogs("RESTORE: Add the object into the cache storage successful [" + (trash.Object as T).GetCacheKey(false) + "]");
+					if (context.EntityDefinition.Cache.Set(trashContent.Object as T))
+						RepositoryMediator.WriteLogs($"RESTORE: Add the object into the cache storage successful [{(trashContent.Object as T).GetCacheKey(false)}]");
 #else
 					context.EntityDefinition.Cache.Set(trashContent.Object as T);
 #endif
@@ -4958,13 +5216,13 @@ namespace net.vieapps.Components.Repository
 						try
 						{
 							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-								context.Create<T>(secondaryDataSource, trashContent.Object as T);
+								context.Create<T>(secondaryDataSource, trashContent.Object as T, null);
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								context.Create<T>(secondaryDataSource, trashContent.Object as T);
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source when restore", ex);
+							RepositoryMediator.WriteLogs($"RESTORE: Error occurred while creating new in other data source when restore [{typeof(T)}#{trashContent.Object?.GetEntityID()}]", ex);
 						}
 					}).ConfigureAwait(false);
 
@@ -4977,19 +5235,24 @@ namespace net.vieapps.Components.Repository
 							try
 							{
 								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
-									context.Create<T>(syncDataSource, trashContent.Object as T);
+									context.Create<T>(syncDataSource, trashContent.Object as T, null);
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									context.Create<T>(syncDataSource, trashContent.Object as T);
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source when restore", ex);
+								RepositoryMediator.WriteLogs($"RESTORE: Error occurred while creating new in other data source when restore [{typeof(T)}#{trashContent.Object?.GetEntityID()}]", ex);
 							}
 						}).ConfigureAwait(false);
 					});
 
 				// return the original object
 				return trashContent.Object as T;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -5069,7 +5332,7 @@ namespace net.vieapps.Components.Repository
 			if (trashContent == null)
 				throw new ArgumentNullException(nameof(trashContent), "Trash content is invalid");
 			else if (!(trashContent.Object is T))
-				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T).GetTypeName()}]");
+				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T)}]");
 
 			// process
 			try
@@ -5095,8 +5358,8 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.CacheStorage.SetAsync(trash.Object as T).ConfigureAwait(false))
-						RepositoryMediator.WriteLogs("RESTORE: Add the object into the cache storage successful [" + (trash.Object as T).GetCacheKey(false) + "]");
+					if (await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T).ConfigureAwait(false))
+						await RepositoryMediator.WriteLogsAsync($"RESTORE: Add the object into the cache storage successful [{(trashContent.Object as T).GetCacheKey(false)}]").ConfigureAwait(false);
 #else
 					await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T).ConfigureAwait(false);
 #endif
@@ -5116,13 +5379,13 @@ namespace net.vieapps.Components.Repository
 						try
 						{
 							if (secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-								await context.CreateAsync<T>(secondaryDataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
+								await context.CreateAsync<T>(secondaryDataSource, trashContent.Object as T, null, cancellationToken).ConfigureAwait(false);
 							else if (secondaryDataSource.Mode.Equals(RepositoryMode.SQL))
 								await context.CreateAsync<T>(secondaryDataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
 						}
 						catch (Exception ex)
 						{
-							RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source when restore", ex);
+							await RepositoryMediator.WriteLogsAsync($"RESTORE: Error occurred while creating new in other data source when restore [{typeof(T)}#{trashContent.Object?.GetEntityID()}]", ex).ConfigureAwait(false);
 						}
 					}));
 
@@ -5135,13 +5398,13 @@ namespace net.vieapps.Components.Repository
 							try
 							{
 								if (syncDataSource.Mode.Equals(RepositoryMode.NoSQL))
-									await context.CreateAsync<T>(syncDataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
+									await context.CreateAsync<T>(syncDataSource, trashContent.Object as T, null, cancellationToken).ConfigureAwait(false);
 								else if (syncDataSource.Mode.Equals(RepositoryMode.SQL))
 									await context.CreateAsync<T>(syncDataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
 							}
 							catch (Exception ex)
 							{
-								RepositoryMediator.WriteLogs("Error occurred while creating new instance of other data source when restore", ex);
+								await RepositoryMediator.WriteLogsAsync($"RESTORE: Error occurred while creating new in other data source when restore [{typeof(T)}#{trashContent.Object?.GetEntityID()}]", ex).ConfigureAwait(false);
 							}
 						}));
 					});
@@ -5151,6 +5414,11 @@ namespace net.vieapps.Components.Repository
 
 				// return the original object
 				return trashContent.Object as T;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -5268,6 +5536,11 @@ namespace net.vieapps.Components.Repository
 				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
 				return TrashContent.Count<TrashContent>(dataSource, "Trashs", filter);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -5341,6 +5614,11 @@ namespace net.vieapps.Components.Repository
 				// count
 				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
 				return await TrashContent.CountAsync<TrashContent>(dataSource, "Trashs", filter, cancellationToken).ConfigureAwait(false);
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -5466,6 +5744,11 @@ namespace net.vieapps.Components.Repository
 				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
 				var sort = Sorts<TrashContent>.Descending("Created");
 				return TrashContent.Find<TrashContent>(dataSource, "Trashs", filter, sort, pageSize, pageNumber);
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -5597,6 +5880,11 @@ namespace net.vieapps.Components.Repository
 				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
 				var sort = Sorts<TrashContent>.Descending("Created");
 				return await TrashContent.FindAsync<TrashContent>(dataSource, "Trashs", filter, sort, pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (Exception ex)
 			{
@@ -5755,6 +6043,11 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Delete;
 				await TrashContent.DeleteAsync(dataSource ?? context.GetTrashDataSource(), "Trashs", Filters<TrashContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))), cancellationToken).ConfigureAwait(false);
 			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (Exception ex)
 			{
 				context.Exception = ex;
@@ -5804,7 +6097,10 @@ namespace net.vieapps.Components.Repository
 					if (handler.OnPreCreate(context, @object, isRestore))
 						return true;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-create handler \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				}
 			return false;
 		}
 
@@ -5818,7 +6114,10 @@ namespace net.vieapps.Components.Repository
 					if (await handler.OnPreCreateAsync(context, @object, isRestore, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					await RepositoryMediator.WriteLogsAsync($"Error occurred while running the pre-create handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
+				}
 			return false;
 		}
 
@@ -5832,7 +6131,10 @@ namespace net.vieapps.Components.Repository
 						var handler = ObjectService.CreateInstance(type) as IPostCreateHandler;
 						handler.OnPostCreate(context, @object, isRestore);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-create handler \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					}
 				}))
 				.ToList();
 		}
@@ -5847,7 +6149,10 @@ namespace net.vieapps.Components.Repository
 						var handler = ObjectService.CreateInstance(type) as IPostCreateHandler;
 						await handler.OnPostCreateAsync(context, @object, isRestore, token).ConfigureAwait(false);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						await RepositoryMediator.WriteLogsAsync($"Error occurred while running the post-create handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
+					}
 				}, cancellationToken, false).ConfigureAwait(false);
 		}
 		#endregion
@@ -5863,7 +6168,10 @@ namespace net.vieapps.Components.Repository
 					if (handler.OnPreGet<T>(context, id))
 						return true;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-get handler \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]", ex);
+				}
 			return false;
 		}
 
@@ -5877,7 +6185,10 @@ namespace net.vieapps.Components.Repository
 					if (await handler.OnPreGetAsync<T>(context, id, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					await RepositoryMediator.WriteLogsAsync($"Error occurred while running the pre-get handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]", ex).ConfigureAwait(false);
+				}
 			return false;
 		}
 
@@ -5891,7 +6202,10 @@ namespace net.vieapps.Components.Repository
 						var handler = ObjectService.CreateInstance(type) as IPostGetHandler;
 						handler.OnPostGet(context, @object);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-get handler \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					}
 				}))
 				.ToList();
 		}
@@ -5906,7 +6220,10 @@ namespace net.vieapps.Components.Repository
 						var handler = ObjectService.CreateInstance(type) as IPostGetHandler;
 						await handler.OnPostGetAsync(context, @object, token).ConfigureAwait(false);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						await RepositoryMediator.WriteLogsAsync($"Error occurred while running the post-get handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
+					}
 				}, cancellationToken, false).ConfigureAwait(false);
 		}
 		#endregion
@@ -5922,7 +6239,10 @@ namespace net.vieapps.Components.Repository
 					if (handler.OnPreUpdate(context, @object, changed, isRollback))
 						return true;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-update handler \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				}
 			return false;
 		}
 
@@ -5936,7 +6256,10 @@ namespace net.vieapps.Components.Repository
 					if (await handler.OnPreUpdateAsync(context, @object, changed, isRestore, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					await RepositoryMediator.WriteLogsAsync($"Error occurred while running the pre-update handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
+				}
 			return false;
 		}
 
@@ -5950,7 +6273,10 @@ namespace net.vieapps.Components.Repository
 						var handler = ObjectService.CreateInstance(type) as IPostUpdateHandler;
 						handler.OnPostUpdate(context, @object, changed, isRestore);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-update handler \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					}
 				}))
 				.ToList();
 		}
@@ -5965,7 +6291,10 @@ namespace net.vieapps.Components.Repository
 						var handler = ObjectService.CreateInstance(type) as IPostUpdateHandler;
 						await handler.OnPostUpdateAsync(context, @object, changed, isRestore, token).ConfigureAwait(false);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						await RepositoryMediator.WriteLogsAsync($"Error occurred while running the post-update handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
+					}
 				}, cancellationToken, false).ConfigureAwait(false);
 		}
 		#endregion
@@ -5981,7 +6310,10 @@ namespace net.vieapps.Components.Repository
 					if (handler.OnPreDelete(context, @object))
 						return true;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-delete handler \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				}
 			return false;
 		}
 
@@ -5995,7 +6327,10 @@ namespace net.vieapps.Components.Repository
 					if (await handler.OnPreDeleteAsync(context, @object, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					await RepositoryMediator.WriteLogsAsync($"Error occurred while running the pre-delete handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
+				}
 			return false;
 		}
 
@@ -6009,7 +6344,10 @@ namespace net.vieapps.Components.Repository
 						var handler = ObjectService.CreateInstance(type) as IPostDeleteHandler;
 						handler.OnPostDelete(context, @object);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-delete handler \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					}
 				}))
 				.ToList();
 		}
@@ -6024,7 +6362,10 @@ namespace net.vieapps.Components.Repository
 						var handler = ObjectService.CreateInstance(type) as IPostDeleteHandler;
 						await handler.OnPostDeleteAsync(context, @object, token).ConfigureAwait(false);
 					}
-					catch { }
+					catch (Exception ex)
+					{
+						await RepositoryMediator.WriteLogsAsync($"Error occurred while running the post-delete handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
+					}
 				}, cancellationToken, false).ConfigureAwait(false);
 		}
 		#endregion
@@ -6056,7 +6397,7 @@ namespace net.vieapps.Components.Repository
 		public static JObject ToJsonObject<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemPreCompleted = null) where T : class
 		{
 			var json = new JObject();
-			objects.ForEach(@object => json.Add(new JProperty(@object.GetEntityID(), @object is RepositoryBase ? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object.ToJson())));
+			objects.ForEach(@object => json.Add(new JProperty(@object?.GetEntityID(), @object is RepositoryBase ? (@object as RepositoryBase).ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object.ToJson())));
 			return json;
 		}
 
@@ -6108,7 +6449,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The string that present a key</returns>
 		public static string GetCacheKey<T>(this T @object, bool useFullTypeName = false) where T : class
 		{
-			var key = @object.GetEntityID();
+			var key = @object?.GetEntityID();
 			if (string.IsNullOrWhiteSpace(key))
 				key = @object.GetHashCode().ToString();
 			return @object.GetType().GetTypeName(!useFullTypeName) + "#" + key;
@@ -6481,38 +6822,7 @@ namespace net.vieapps.Components.Repository
 		#region [Logs]
 		static string LogsPath = null;
 
-		internal static async Task WriteLogsAsync(string filePath, List<string> logs, Exception ex)
-		{
-			// prepare
-			var info = DateTime.Now.ToString("HH:mm:ss.fff") + "\t" + "[" + Process.GetCurrentProcess().Id.ToString()
-				+ " : " + AppDomain.CurrentDomain.Id.ToString() + " : " + Thread.CurrentThread.ManagedThreadId.ToString() + "]" + "\t";
-
-			var content = "";
-			logs?.ForEach(log => content += !string.IsNullOrWhiteSpace(log) ? info + log + "\r\n" : "");
-
-			if (ex != null)
-			{
-				content += info + "- " + (ex.Message != null ? ex.Message : "No error message")
-					+ " [" + ex.GetType().ToString() + "]" + "\r\n"
-					+ info + "- " + (ex.StackTrace != null ? ex.StackTrace : "No stack trace");
-
-				var inner = ex.InnerException;
-				var counter = 1;
-				while (inner != null)
-				{
-					content += info + $"- Inner ({counter}): ----------------------------------" + "\r\n"
-						+ info + "- " + (inner.Message != null ? inner.Message : "No error message") + " [" + inner.GetType().ToString() + "]" + "\r\n"
-						+ info + "- " + (inner.StackTrace != null ? inner.StackTrace : "No stack trace");
-					counter++;
-					inner = inner.InnerException;
-				}
-			}
-
-			// write logs into file
-			await UtilityService.WriteTextFileAsync(filePath, content, true).ConfigureAwait(false);
-		}
-
-		internal static void WriteLogs(List<string> logs, Exception ex)
+		internal static void PrepareLogsPath()
 		{
 			// prepare path of all log files
 			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
@@ -6530,8 +6840,43 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.LogsPath = Path.Combine(Directory.GetCurrentDirectory(), "Logs") + Path.DirectorySeparatorChar.ToString();
 				}
 				catch { }
+		}
 
-			// write logs via other thread
+		internal static async Task WriteLogsAsync(string filePath, List<string> logs, Exception ex = null)
+		{
+			// prepare
+			var info = DateTime.Now.ToString("HH:mm:ss.fff") + "\t" + "[" + Process.GetCurrentProcess().Id.ToString()
+				+ " : " + AppDomain.CurrentDomain.Id.ToString() + " : " + Thread.CurrentThread.ManagedThreadId.ToString() + "]" + "\t";
+
+			var content = "";
+			logs?.ForEach(log => content += !string.IsNullOrWhiteSpace(log) ? info + log + "\r\n" : "");
+
+			if (ex != null)
+			{
+				content += info + "[" + ex.GetType().ToString() + "]: " + (ex.Message ?? "No error message");
+				if (ex is RepositoryOperationException && !string.IsNullOrWhiteSpace((ex as RepositoryOperationException).Info))
+					content += "\r\n" + info + "- Operation Info: " + (ex as RepositoryOperationException).Info;
+				content += "\r\n" + info + "- Stack: " + (ex.StackTrace ?? "No stack");
+
+				var inner = ex.InnerException;
+				var counter = 1;
+				while (inner != null)
+				{
+					content += info + $"- Inner ({counter}): ----------------------------------" + "\r\n"
+						+ info + "[" + inner.GetType().ToString() + "]: " + (inner.Message ?? "No error message") + "\r\n"
+						+ info + "- Stack: " + (inner.StackTrace ?? "No stack");
+					counter++;
+					inner = inner.InnerException;
+				}
+			}
+
+			// write logs into file
+			await UtilityService.WriteTextFileAsync(filePath, content, true).ConfigureAwait(false);
+		}
+
+		internal static void WriteLogs(List<string> logs, Exception ex = null)
+		{
+			RepositoryMediator.PrepareLogsPath();
 			if (!string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
 				Task.Run(async () =>
 				{
@@ -6546,6 +6891,22 @@ namespace net.vieapps.Components.Repository
 		internal static void WriteLogs(string log, Exception ex = null)
 		{
 			RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex);
+		}
+
+		internal static async Task WriteLogsAsync(List<string> logs, Exception ex = null)
+		{
+			RepositoryMediator.PrepareLogsPath();
+			if (!string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
+				try
+				{
+					await RepositoryMediator.WriteLogsAsync(RepositoryMediator.LogsPath + DateTime.Now.ToString("yyyy-MM-dd-HH") + ".repository.txt", logs, ex).ConfigureAwait(false);
+				}
+				catch { }
+		}
+
+		internal static Task WriteLogsAsync(string log, Exception ex = null)
+		{
+			return RepositoryMediator.WriteLogsAsync(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex);
 		}
 		#endregion
 

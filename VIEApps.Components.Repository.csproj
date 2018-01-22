@@ -8,12 +8,12 @@
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
 		<AssemblyVersion>10.1.7.1802</AssemblyVersion>
 		<FileVersion>10.1.7.1802</FileVersion>
-		<InformationalVersion>v10.1.netstandard-2+rev:2018.01.21-datasources</InformationalVersion>
+		<InformationalVersion>v10.1.netstandard-2+rev:2018.01.22-sync</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.1.7.1802-beta</Version>
+		<Version>10.1.7.1802</Version>
 		<SignAssembly>false</SignAssembly>
 		<DelaySign>false</DelaySign>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
@@ -34,6 +34,7 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<WarningLevel>3</WarningLevel>
 		<DocumentationFile>bin\Release\netstandard2.0\VIEApps.Components.Repository.xml</DocumentationFile>
+		<DefineConstants>TRACE;RELEASE;NETSTANDARD2_0;PROCESSLOGS</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
