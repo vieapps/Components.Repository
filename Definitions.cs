@@ -109,8 +109,8 @@ namespace net.vieapps.Components.Repository
 					? new List<DataSource>()
 					: this.SyncDataSourceNames.ToList()
 						.Distinct(StringComparer.OrdinalIgnoreCase)
-						.Where(name => RepositoryMediator.DataSources.ContainsKey(name))
-						.Select(name => RepositoryMediator.DataSources[name])
+						.Select(name => RepositoryMediator.GetDataSource(name))
+						.Where(dataSource => dataSource != null)
 						.ToList();
 			}
 		}
@@ -266,7 +266,6 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// update
-			tracker?.Invoke($"Update settings of repository [{type.GetTypeName()}]", null);
 			var data = settings["primaryDataSource"] != null
 				? (settings["primaryDataSource"] as JValue).Value as string
 				: null;
@@ -283,21 +282,9 @@ namespace net.vieapps.Components.Repository
 				? data
 				: null;
 
-			data = settings["syncDataSources"] != null
+			RepositoryMediator.RepositoryDefinitions[type].SyncDataSourceNames = settings["syncDataSources"] != null
 				? (settings["syncDataSources"] as JValue).Value as string
 				: null;
-			if (!string.IsNullOrEmpty(data))
-			{
-				if (data.Equals(","))
-					data = null;
-				else
-				{
-					var names = data.ToArray(',', true, true);
-					data = "";
-					names.ForEach(name => data += RepositoryMediator.DataSources.ContainsKey(name) ? (!data.Equals("") ? "," : "") + name : "");
-				}
-			}
-			RepositoryMediator.RepositoryDefinitions[type].SyncDataSourceNames = data;
 
 			data = settings["versionDataSource"] != null
 				? (settings["versionDataSource"] as JValue).Value as string
@@ -314,6 +301,16 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			RepositoryMediator.RepositoryDefinitions[type].AutoSync = "true".IsEquals(settings["autoSync"] != null ? (settings["autoSync"] as JValue).Value as string : "false");
+
+			tracker?.Invoke(
+				$"Update settings of repository [{type.GetTypeName()}]:" + "\r\n" +
+				$"- Primary data source: {(RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Mode})"  : "None")}" + "\r\n" +
+				$"- Secondary data source: {(RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
+				$"- Sync data sources: {(RepositoryMediator.RepositoryDefinitions[type].SyncDataSources.Count > 0 ? RepositoryMediator.RepositoryDefinitions[type].SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
+				$"- Version data source: {RepositoryMediator.RepositoryDefinitions[type].VersionDataSource?.Name ?? "None"}" + "\r\n" +
+				$"- Trash data source: {RepositoryMediator.RepositoryDefinitions[type].TrashDataSource?.Name ?? "None"}" + "\r\n" +
+				$"- Auto sync: {RepositoryMediator.RepositoryDefinitions[type].AutoSync}"
+				, null);
 		}
 		#endregion
 
@@ -426,13 +423,13 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
-					? new List<DataSource>()
-					: this.SyncDataSourceNames.ToList()
+				return !string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
+					? this.SyncDataSourceNames.ToList()
 						.Distinct(StringComparer.OrdinalIgnoreCase)
-						.Where(name => RepositoryMediator.DataSources.ContainsKey(name))
-						.Select(name => RepositoryMediator.DataSources[name])
-						.ToList();
+						.Select(name => RepositoryMediator.GetDataSource(name))
+						.Where(dataSource => dataSource != null)
+						.ToList()
+					: null;
 			}
 		}
 
@@ -771,7 +768,6 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// update
-			tracker?.Invoke($"Update settings of entity [{type.GetTypeName()}]", null);
 			var data = settings["primaryDataSource"] != null
 				? (settings["primaryDataSource"] as JValue).Value as string
 				: null;
@@ -786,21 +782,9 @@ namespace net.vieapps.Components.Repository
 				? data
 				: null;
 
-			data = settings["syncDataSources"] != null
+			RepositoryMediator.EntityDefinitions[type].SyncDataSourceNames = settings["syncDataSources"] != null
 				? (settings["syncDataSources"] as JValue).Value as string
 				: null;
-			if (!string.IsNullOrEmpty(data))
-			{
-				if (data.Equals(","))
-					data = null;
-				else
-				{
-					var names = data.ToArray(',', true);
-					data = "";
-					names.ForEach(name => data += RepositoryMediator.DataSources.ContainsKey(name) ? (!data.Equals("") ? "," : "") + name : "");
-				}
-			}
-			RepositoryMediator.EntityDefinitions[type].SyncDataSourceNames = data;
 
 			data = settings["versionDataSource"] != null
 				? (settings["versionDataSource"] as JValue).Value as string
@@ -841,6 +825,16 @@ namespace net.vieapps.Components.Repository
 			RepositoryMediator.EntityDefinitions[type].AutoSync = settings["autoSync"] != null
 				? "true".IsEquals((settings["autoSync"] as JValue).Value as string)
 				: RepositoryMediator.EntityDefinitions[type].RepositoryDefinition.AutoSync;
+
+			tracker?.Invoke(
+				$"Update settings of repository entity [{type.GetTypeName()}]:" + "\r\n" +
+				$"- Primary data source: {(RepositoryMediator.EntityDefinitions[type].PrimaryDataSource != null ? $"{RepositoryMediator.EntityDefinitions[type].PrimaryDataSource.Name} ({RepositoryMediator.EntityDefinitions[type].PrimaryDataSource.Mode})" : "None")}" + "\r\n" +
+				$"- Secondary data source: {(RepositoryMediator.EntityDefinitions[type].SecondaryDataSource != null ? $"{RepositoryMediator.EntityDefinitions[type].SecondaryDataSource.Name} ({RepositoryMediator.EntityDefinitions[type].SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
+				$"- Sync data sources: {(RepositoryMediator.EntityDefinitions[type].SyncDataSources != null && RepositoryMediator.EntityDefinitions[type].SyncDataSources.Count > 0 ? RepositoryMediator.EntityDefinitions[type].SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
+				$"- Version data source: {RepositoryMediator.EntityDefinitions[type].VersionDataSource?.Name ?? "None"}" + "\r\n" +
+				$"- Trash data source: {RepositoryMediator.EntityDefinitions[type].TrashDataSource?.Name ?? "None"}" + "\r\n" +
+				$"- Auto sync: {RepositoryMediator.EntityDefinitions[type].AutoSync}"
+				, null);
 		}
 
 		/// <summary>

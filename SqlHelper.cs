@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Configuration;
 using System.Reflection;
+using System.Diagnostics;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -153,23 +154,31 @@ namespace net.vieapps.Components.Repository
 			return connection.CreateCommand(info.Item1, info.Item2);
 		}
 
-		internal static string ToSQL(this DbCommand command)
+		internal static string GetInfo(this DbCommand command, bool addInfo = true)
 		{
-			var sql = command.CommandText ?? "";
-			if (!string.IsNullOrWhiteSpace(sql) && command.Parameters != null)
+			var parameters = new List<DbParameter>();
+			if (command.Parameters != null)
 				foreach (DbParameter parameter in command.Parameters)
+					parameters.Add(parameter);
+
+			var sql = command.CommandText ?? "";
+			parameters.ForEach(parameter =>
+			{
+				var pattern = "{0}";
+				var value = parameter.Value?.ToString() ?? "null";
+				if (parameter.DbType.Equals(DbType.String) || parameter.DbType.Equals(DbType.StringFixedLength)
+				|| parameter.DbType.Equals(DbType.AnsiString) || parameter.DbType.Equals(DbType.AnsiStringFixedLength) || parameter.DbType.Equals(DbType.DateTime))
 				{
-					var pattern = "{0}";
-					var value = parameter.Value.ToString();
-					if (parameter.DbType.Equals(DbType.String) || parameter.DbType.Equals(DbType.StringFixedLength)
-					|| parameter.DbType.Equals(DbType.AnsiString) || parameter.DbType.Equals(DbType.AnsiStringFixedLength) || parameter.DbType.Equals(DbType.DateTime))
-					{
-						pattern = "'{0}'";
-						value = value.Replace(StringComparison.OrdinalIgnoreCase, "'", "''");
-					}
-					sql = sql.Replace(StringComparison.OrdinalIgnoreCase, parameter.ParameterName, string.Format(pattern, value));
+					pattern = "'{0}'";
+					value = value.Replace(StringComparison.OrdinalIgnoreCase, "'", "''");
 				}
-			return sql;
+				sql = sql.Replace(StringComparison.OrdinalIgnoreCase, parameter.ParameterName, string.Format(pattern, value));
+			});
+
+			return (addInfo ? $"{command.Connection.Database} [{command.Connection.GetType()}]" + "\r\n" : "")
+				+ "SQL: " + (command.CommandText ?? "") + "\r\n"
+				+ "Parameters: \r\n\t+ " + parameters.Select(parameter => $"{parameter.ParameterName} ({parameter.DbType}) => [{parameter.Value}]").ToString("\r\n\t+ ") + "\r\n"
+				+ "Command: " + sql;
 		}
 		#endregion
 
@@ -410,7 +419,7 @@ namespace net.vieapps.Components.Repository
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = (!name.IsStartsWith("@") ? "@" : "") + name;
 			parameter.DbType = dbType;
-			parameter.Value = value;
+			parameter.Value = value ?? DBNull.Value;
 			return parameter;
 		}
 
@@ -614,6 +623,11 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -621,15 +635,34 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
 						command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+						info += "\r\n" + command.GetInfo();
+#endif
 					}
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform INSERT command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform CREATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -664,6 +697,11 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -671,15 +709,34 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+						info += "\r\n" + command.GetInfo();
+#endif
 					}
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					}).ConfigureAwait(false);
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform INSERT command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform CREATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -746,6 +803,11 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrEmpty(id))
 				return default(T);
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -760,6 +822,10 @@ namespace net.vieapps.Components.Repository
 							: null;
 					}
 
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object != null && @object.IsGotExtendedProperties())
 					{
 						var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
@@ -769,13 +835,27 @@ namespace net.vieapps.Components.Repository
 							if (dataReader.Read())
 								@object = @object.Copy<T>(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
 						}
+
+#if DEBUG || PROCESSLOGS
+						info += "\r\n" + command.GetInfo();
+#endif
 					}
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
+#endif
 
 					return @object;
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform SELECT command [{typeof(T)}#{id}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -794,6 +874,11 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrEmpty(id))
 				return default(T);
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -808,6 +893,10 @@ namespace net.vieapps.Components.Repository
 							: null;
 					}
 
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object != null && @object.IsGotExtendedProperties())
 					{
 						var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
@@ -817,13 +906,27 @@ namespace net.vieapps.Components.Repository
 							if (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 								@object = @object.Copy<T>(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
 						}
+
+#if DEBUG || PROCESSLOGS
+						info += "\r\n" + command.GetInfo();
+#endif
 					}
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					}).ConfigureAwait(false);
+#endif
 
 					return @object;
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform SELECT command [{typeof(T)}#{id}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -878,6 +981,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static object Get(DataSource dataSource, EntityDefinition definition, string id)
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var @object = definition.Type.CreateInstance();
 
 			dataSource = dataSource ?? definition.GetPrimaryDataSource();
@@ -888,9 +997,8 @@ namespace net.vieapps.Components.Repository
 					.Where(attribute => !attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null)
 					.ToDictionary(attribute => attribute.Name);
 
-				var fields = standardProperties.Select(info => "Origin." + (string.IsNullOrEmpty(info.Value.Column) ? info.Value.Name : info.Value.Column + " AS " + info.Value.Name));
+				var fields = standardProperties.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Value.Column) ? attribute.Value.Name : attribute.Value.Column + " AS " + attribute.Value.Name));
 				var command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
-
 				using (var dataReader = command.ExecuteReader())
 				{
 					@object = dataReader.Read()
@@ -898,18 +1006,36 @@ namespace net.vieapps.Components.Repository
 						: null;
 				}
 
+#if DEBUG || PROCESSLOGS
+				info = command.GetInfo();
+#endif
+
 				if (@object != null && @object.IsGotExtendedProperties())
 				{
 					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
-					fields = extendedProperties.Select(info => $"Origin.{info.Value.Column} AS {info.Value.Name}");
+					fields = extendedProperties.Select(attribute => $"Origin.{attribute.Value.Column} AS {attribute.Value.Name}");
 					command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 					using (var dataReader = command.ExecuteReader())
 					{
 						if (dataReader.Read())
 							@object.Copy(dataReader, null, extendedProperties);
 					}
+
+#if DEBUG || PROCESSLOGS
+					info += "\r\n" + command.GetInfo();
+#endif
 				}
 			}
+
+#if DEBUG || PROCESSLOGS
+			stopwatch.Stop();
+			RepositoryMediator.WriteLogs(new List<string>()
+			{
+				$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name} ({dataSource.Mode})",
+				$"Execution times: {stopwatch.GetElapsedTimes()}",
+				info
+			});
+#endif
 
 			return @object;
 		}
@@ -935,6 +1061,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<object> GetAsync(DataSource dataSource, EntityDefinition definition, string id, CancellationToken cancellationToken = default(CancellationToken))
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var @object = definition.Type.CreateInstance();
 
 			dataSource = dataSource ?? definition.GetPrimaryDataSource();
@@ -945,9 +1077,8 @@ namespace net.vieapps.Components.Repository
 					.Where(attribute => !attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null)
 					.ToDictionary(attribute => attribute.Name);
 
-				var fields = standardProperties.Select(info => "Origin." + (string.IsNullOrEmpty(info.Value.Column) ? info.Value.Name : info.Value.Column + " AS " + info.Value.Name));
+				var fields = standardProperties.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Value.Column) ? attribute.Value.Name : attribute.Value.Column + " AS " + attribute.Value.Name));
 				var command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
-
 				using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 				{
 					@object = await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)
@@ -955,19 +1086,36 @@ namespace net.vieapps.Components.Repository
 						: null;
 				}
 
+#if DEBUG || PROCESSLOGS
+				info = command.GetInfo();
+#endif
+
 				if (@object != null && @object.IsGotExtendedProperties())
 				{
 					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
-					fields = extendedProperties.Select(info => $"Origin.{info.Value.Column} AS {info.Value.Name}");
+					fields = extendedProperties.Select(attribute => $"Origin.{attribute.Value.Column} AS {attribute.Value.Name}");
 					command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
-
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 					{
 						if (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 							@object.Copy(dataReader, null, extendedProperties);
 					}
+
+#if DEBUG || PROCESSLOGS
+					info += "\r\n" + command.GetInfo();
+#endif
 				}
 			}
+
+#if DEBUG || PROCESSLOGS
+			stopwatch.Stop();
+			await RepositoryMediator.WriteLogsAsync(new List<string>()
+			{
+				$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name} ({dataSource.Mode})",
+				$"Execution times: {stopwatch.GetElapsedTimes()}",
+				info
+			}).ConfigureAwait(false);
+#endif
 
 			return @object;
 		}
@@ -1042,6 +1190,11 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1049,15 +1202,31 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareReplaceExtent(dbProviderFactory));
 						command.ExecuteNonQuery();
 					}
+
+#if DEBUG || PROCESSLOGS
+					info += "\r\n" + command.GetInfo();
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform UPDATE command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform REPLACE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1076,6 +1245,11 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1083,15 +1257,31 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareReplaceExtent(dbProviderFactory));
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 					}
+
+#if DEBUG || PROCESSLOGS
+					info += "\r\n" + command.GetInfo();
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					}).ConfigureAwait(false);
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform UPDATE command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform REPLACE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1162,6 +1352,11 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1169,15 +1364,31 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareUpdateExtent(attributes, dbProviderFactory));
 						command.ExecuteNonQuery();
 					}
+
+#if DEBUG || PROCESSLOGS
+					info += "\r\n" + command.GetInfo();
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform UPDATE command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform UPDATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1197,6 +1408,11 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1204,15 +1420,31 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareUpdateExtent(attributes, dbProviderFactory));
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 					}
+
+#if DEBUG || PROCESSLOGS
+					info += "\r\n" + command.GetInfo();
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					}).ConfigureAwait(false);
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform UPDATE command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform UPDATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1228,36 +1460,58 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to delete</param>
 		public static void Delete<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
-			var dbProviderFactory = dataSource.GetProviderFactory();
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
 
+			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var command = connection.CreateCommand(
-					$"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}",
+					$"DELETE FROM {context.EntityDefinition.TableName} WHERE {context.EntityDefinition.PrimaryKey}=@{context.EntityDefinition.PrimaryKey}",
 					new List<DbParameter>()
 					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey)))
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(context.EntityDefinition.PrimaryKey, @object.GetEntityID(context.EntityDefinition.PrimaryKey)))
 					}
 				);
 				try
 				{
 					command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(
-							$"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
+							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
 							new List<DbParameter>()
 							{
 								dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", (@object as IBusinessEntity).ID))
 							}
 						);
 						command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+						info += "\r\n" + command.GetInfo();
+#endif
 					}
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform DELETE command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform DELETE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1273,36 +1527,58 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var dbProviderFactory = dataSource.GetProviderFactory();
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
 
+			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var command = connection.CreateCommand(
-					$"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}",
+					$"DELETE FROM {context.EntityDefinition.TableName} WHERE {context.EntityDefinition.PrimaryKey}=@{context.EntityDefinition.PrimaryKey}",
 					new List<DbParameter>()
 					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey)))
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(context.EntityDefinition.PrimaryKey, @object.GetEntityID(context.EntityDefinition.PrimaryKey)))
 					}
 				);
 				try
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(
-							$"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
+							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
 							new List<DbParameter>()
 							{
 								dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", (@object as IBusinessEntity).ID))
 							}
 						);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+						info += "\r\n" + command.GetInfo();
+#endif
 					}
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					}).ConfigureAwait(false);
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform DELETE command [{typeof(T)}#{@object.GetEntityID()}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform DELETE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1319,36 +1595,58 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(id))
 				return;
 
-			var dbProviderFactory = dataSource.GetProviderFactory();
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
 
+			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var command = connection.CreateCommand(
-					$"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}",
+					$"DELETE FROM {context.EntityDefinition.TableName} WHERE {context.EntityDefinition.PrimaryKey}=@{context.EntityDefinition.PrimaryKey}",
 					new List<DbParameter>()
 					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(definition.PrimaryKey, id))
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(context.EntityDefinition.PrimaryKey, id))
 					}
 				);
 				try
 				{
 					command.ExecuteNonQuery();
-					if (definition.Extendable && definition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(definition.RepositoryDefinition.ExtendedPropertiesTableName))
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
+					if (context.EntityDefinition.Extendable && context.EntityDefinition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName))
 					{
 						command = connection.CreateCommand(
-							$"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
+							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
 							new List<DbParameter>()
 							{
 								dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", id))
 							}
 						);
 						command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+						info += "\r\n" + command.GetInfo();
+#endif
 					}
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform DELETE command [{typeof(T)}#{id}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform DELETE command [{typeof(T)}#{id}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1367,36 +1665,58 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(id))
 				return;
 
-			var dbProviderFactory = dataSource.GetProviderFactory();
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
 
+			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var command = connection.CreateCommand(
-					$"DELETE FROM {definition.TableName} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}",
+					$"DELETE FROM {context.EntityDefinition.TableName} WHERE {context.EntityDefinition.PrimaryKey}=@{context.EntityDefinition.PrimaryKey}",
 					new List<DbParameter>()
 					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(definition.PrimaryKey, id))
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(context.EntityDefinition.PrimaryKey, id))
 					}
 				);
 				try
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-					if (definition.Extendable && definition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(definition.RepositoryDefinition.ExtendedPropertiesTableName))
+
+#if DEBUG || PROCESSLOGS
+					var info = command.GetInfo();
+#endif
+
+					if (context.EntityDefinition.Extendable && context.EntityDefinition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName))
 					{
 						command = connection.CreateCommand(
-							$"DELETE FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
+							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
 							new List<DbParameter>()
 							{
 								dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", id))
 							}
 						);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+						info += "\r\n" + command.GetInfo();
+#endif
 					}
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					}).ConfigureAwait(false);
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform DELETE command [{typeof(T)}#{id}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform DELETE command [{typeof(T)}#{id}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1416,33 +1736,54 @@ namespace net.vieapps.Components.Repository
 			if (filter == null)
 				return;
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var command = connection.CreateCommand();
 				try
 				{
-					var info = filter.GetSqlStatement();
+					var statement = filter.GetSqlStatement();
 
 					if (context.EntityDefinition.Extendable && context.EntityDefinition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName))
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID IN "
-							+ $"(SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {info.Item1.Replace("Origin.", "")})",
-							info.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+							+ $"(SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")})",
+							statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 						);
 						command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+						info = command.GetInfo();
+#endif
 					}
 
 					command = connection.CreateCommand(
-						$"DELETE FROM {context.EntityDefinition.TableName} WHERE {info.Item1.Replace("Origin.", "")}",
-						info.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+						$"DELETE FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")}",
+						statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					command.ExecuteNonQuery();
+
+#if DEBUG || PROCESSLOGS
+					info += "\r\n" + command.GetInfo();
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform DELETE command [{typeof(T)}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform DELETE command [{typeof(T)}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1462,33 +1803,54 @@ namespace net.vieapps.Components.Repository
 			if (filter == null)
 				return;
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var command = connection.CreateCommand();
 				try
 				{
-					var info = filter.GetSqlStatement();
+					var statement = filter.GetSqlStatement();
 
 					if (context.EntityDefinition.Extendable && context.EntityDefinition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName))
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID IN "
-							+ $"SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {info.Item1.Replace("Origin.", "")}",
-							info.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+							+ $"SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")}",
+							statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 						);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+						info = command.GetInfo();
+#endif
 					}
 
 					command = connection.CreateCommand(
-						$"DELETE FROM {context.EntityDefinition.TableName} WHERE {info.Item1.Replace("Origin.", "")}",
-						info.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+						$"DELETE FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")}",
+						statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+					info += "\r\n" + command.GetInfo();
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					}).ConfigureAwait(false);
+#endif
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform DELETE command [{typeof(T)}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform DELETE command [{typeof(T)}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1662,44 +2024,68 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<DataRow> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				DataTable dataTable = null;
-				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
+				var statement = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
-					var command = connection.CreateCommand(info);
+					var command = connection.CreateCommand(statement);
 					try
 					{
 						using (var dataReader = command.ExecuteReader())
 						{
 							dataTable = dataReader.ToDataTable<T>();
 						}
+
+#if DEBUG || PROCESSLOGS
+						info = command.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SELECT command [{typeof(T)}]", command.GetInfo(), ex);
 					}
 				}
 
 				// generic SQL
 				else
 				{
-					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(info));
+					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(statement));
 					try
 					{
 						var dataSet = new DataSet();
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
+
+#if DEBUG || PROCESSLOGS
+						info = dataAdapter.SelectCommand.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", dataAdapter.SelectCommand.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SELECT command [{typeof(T)}]", dataAdapter.SelectCommand.GetInfo(), ex);
 					}
 				}
+
+#if DEBUG || PROCESSLOGS
+				stopwatch.Stop();
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+					info
+				});
+#endif
 
 				return dataTable.Rows.ToList();
 			}
@@ -1722,44 +2108,68 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				DataTable dataTable = null;
-				var info = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
+				var statement = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
-					var command = connection.CreateCommand(info);
+					var command = connection.CreateCommand(statement);
 					try
 					{
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 						{
 							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
 						}
+
+#if DEBUG || PROCESSLOGS
+						info = command.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SELECT command [{typeof(T)}]", command.GetInfo(), ex);
 					}
 				}
 
 				// generic SQL
 				else
 				{
-					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(info));
+					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(statement));
 					try
 					{
 						var dataSet = new DataSet();
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
+
+#if DEBUG || PROCESSLOGS
+						info = dataAdapter.SelectCommand.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", dataAdapter.SelectCommand.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SELECT command [{typeof(T)}]", dataAdapter.SelectCommand.GetInfo(), ex);
 					}
 				}
+
+#if DEBUG || PROCESSLOGS
+				stopwatch.Stop();
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
+				{
+					$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+					info
+				}).ConfigureAwait(false);
+#endif
 
 				return dataTable.Rows.ToList();
 			}
@@ -2006,17 +2416,34 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents));
 				try
 				{
-					return command.ExecuteScalar().CastAs<long>();
+					var total = command.ExecuteScalar().CastAs<long>();
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
+						command.GetInfo()
+					});
+#endif
+
+					return total;
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform COUNT command [{typeof(T)}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -2034,17 +2461,34 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents));
 				try
 				{
-					return (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
+					var total = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
+						command.GetInfo()
+					}).ConfigureAwait(false);
+#endif
+
+					return total;
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform COUNT command [{typeof(T)}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -2272,6 +2716,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -2279,41 +2729,60 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var info = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
 				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
-					var command = connection.CreateCommand(info);
+					var command = connection.CreateCommand(statement);
 					try
 					{
 						using (var dataReader = command.ExecuteReader())
 						{
 							dataTable = dataReader.ToDataTable<T>();
 						}
+
+#if DEBUG || PROCESSLOGS
+						info = command.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SEARCH command [{typeof(T)}]", command.GetInfo(), ex);
 					}
 				}
 
 				// generic SQL
 				else
 				{
-					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(info));
+					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(statement));
 					try
 					{
 						var dataSet = new DataSet();
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
+
+#if DEBUG || PROCESSLOGS
+						info = dataAdapter.SelectCommand.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", dataAdapter.SelectCommand.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SEARCH command [{typeof(T)}]", dataAdapter.SelectCommand.GetInfo(), ex);
 					}
 				}
+
+#if DEBUG || PROCESSLOGS
+				stopwatch.Stop();
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"Query: {query}",
+					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+					info
+				});
+#endif
 
 				return dataTable.Rows
 					.ToList()
@@ -2337,6 +2806,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -2344,41 +2819,60 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var info = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
 				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
-					var command = connection.CreateCommand(info);
+					var command = connection.CreateCommand(statement);
 					try
 					{
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 						{
 							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
 						}
+
+#if DEBUG || PROCESSLOGS
+						info = command.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SEARCH command [{typeof(T)}]", command.GetInfo(), ex);
 					}
 				}
 
 				// generic SQL
 				else
 				{
-					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(info));
+					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(statement));
 					try
 					{
 						var dataSet = new DataSet();
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
+
+#if DEBUG || PROCESSLOGS
+						info = dataAdapter.SelectCommand.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", dataAdapter.SelectCommand.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SEARCH command [{typeof(T)}]", dataAdapter.SelectCommand.GetInfo(), ex);
 					}
 				}
+
+#if DEBUG || PROCESSLOGS
+				stopwatch.Stop();
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
+				{
+					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"Query: {query}",
+					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+					info
+				}).ConfigureAwait(false);
+#endif
 
 				return dataTable.Rows
 					.ToList()
@@ -2403,6 +2897,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -2411,12 +2911,12 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var identities = new List<string>();
-				var info = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
-					var command = connection.CreateCommand(info);
+					var command = connection.CreateCommand(statement);
 					try
 					{
 						using (var dataReader = command.ExecuteReader())
@@ -2424,17 +2924,21 @@ namespace net.vieapps.Components.Repository
 							while (dataReader.Read())
 								identities.Add(dataReader[context.EntityDefinition.PrimaryKey].CastAs<string>());
 						}
+
+#if DEBUG || PROCESSLOGS
+						info = command.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SEARCH command [{typeof(T)}]", command.GetInfo(), ex);
 					}
 				}
 
 				// generic SQL
 				else
 				{
-					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(info));
+					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(statement));
 					try
 					{
 						var dataSet = new DataSet();
@@ -2442,12 +2946,27 @@ namespace net.vieapps.Components.Repository
 						identities = dataSet.Tables[0].Rows.ToList()
 							.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 							.ToList();
+
+#if DEBUG || PROCESSLOGS
+						info = dataAdapter.SelectCommand.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", dataAdapter.SelectCommand.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SEARCH command [{typeof(T)}]", dataAdapter.SelectCommand.GetInfo(), ex);
 					}
 				}
+
+#if DEBUG || PROCESSLOGS
+				stopwatch.Stop();
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"Query: {query}",
+					$"Total of results: {identities.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+					info
+				});
+#endif
 
 				return identities;
 			}
@@ -2468,6 +2987,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+			var info = "";
+#endif
+
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -2476,12 +3001,12 @@ namespace net.vieapps.Components.Repository
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var identities = new List<string>();
-				var info = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
 				{
-					var command = connection.CreateCommand(info);
+					var command = connection.CreateCommand(statement);
 					try
 					{
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
@@ -2489,17 +3014,21 @@ namespace net.vieapps.Components.Repository
 							while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 								identities.Add(dataReader[context.EntityDefinition.PrimaryKey].CastAs<string>());
 						}
+
+#if DEBUG || PROCESSLOGS
+						info = command.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SEARCH command [{typeof(T)}]", command.GetInfo(), ex);
 					}
 				}
 
 				// generic SQL
 				else
 				{
-					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(info));
+					var dataAdapter = dbProviderFactory.CreateDataAdapter(connection.CreateCommand(statement));
 					try
 					{
 						var dataSet = new DataSet();
@@ -2507,12 +3036,27 @@ namespace net.vieapps.Components.Repository
 						identities = dataSet.Tables[0].Rows.ToList()
 							.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 							.ToList();
+
+#if DEBUG || PROCESSLOGS
+						info = dataAdapter.SelectCommand.GetInfo();
+#endif
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", dataAdapter.SelectCommand.ToSQL(), ex);
+						throw new RepositoryOperationException($"Could not perform SEARCH command [{typeof(T)}]", dataAdapter.SelectCommand.GetInfo(), ex);
 					}
 				}
+
+#if DEBUG || PROCESSLOGS
+				stopwatch.Stop();
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
+				{
+					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"Query: {query}",
+					$"Total of results: {identities.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+					info
+				}).ConfigureAwait(false);
+#endif
 
 				return identities;
 			}
@@ -2585,17 +3129,34 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
 				try
 				{
-					return command.ExecuteScalar().CastAs<long>();
+					var total = command.ExecuteScalar().CastAs<long>();
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
+						command.GetInfo()
+					});
+#endif
+
+					return total;
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform COUNT command [{typeof(T)}]", command.GetInfo(), ex);
 				}
 			}
 		}
@@ -2613,17 +3174,34 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
 				try
 				{
-					return (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
+					var total = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
+
+#if DEBUG || PROCESSLOGS
+					stopwatch.Stop();
+					await RepositoryMediator.WriteLogsAsync(new List<string>()
+					{
+						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
+						command.GetInfo()
+					}).ConfigureAwait(false);
+#endif
+
+					return total;
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Cannot perform SELECT command [{typeof(T)}]", command.ToSQL(), ex);
+					throw new RepositoryOperationException($"Could not perform COUNT command [{typeof(T)}]", command.GetInfo(), ex);
 				}
 			}
 		}

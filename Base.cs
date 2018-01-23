@@ -3246,6 +3246,102 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region [Static] Sync to other data sources
+		/// <summary>
+		/// Syncs the original object (usually from primary data source) to other data sources (including secondary data source and sync data sources)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The context</param>
+		/// <param name="object">The object</param>
+		public static void Sync<TEntity>(RepositoryContext context, TEntity @object) where TEntity : class
+		{
+			RepositoryMediator.Sync(context, @object);
+		}
+
+		/// <summary>
+		/// Syncs the original object (usually from primary data source) to other data sources (including secondary data source and sync data sources)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The alias type name</param>
+		/// <param name="object">The object</param>
+		public static void Sync<TEntity>(string aliasTypeName, TEntity @object) where TEntity : class
+		{
+			RepositoryMediator.Sync(aliasTypeName, @object);
+		}
+
+		/// <summary>
+		/// Syncs the original object (usually from primary data source) to other data sources (including secondary data source and sync data sources)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The context</param>
+		/// <param name="object">The object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task SyncAsync<TEntity>(RepositoryContext context, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.SyncAsync(context, @object, cancellationToken);
+		}
+
+		/// <summary>
+		/// Syncs the original object (usually from primary data source) to other data sources (including secondary data source and sync data sources)
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The alias type name</param>
+		/// <param name="object">The object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task SyncAsync<TEntity>(string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		{
+			return RepositoryMediator.SyncAsync(aliasTypeName, @object, cancellationToken);
+		}
+		#endregion
+
+		#region [Protected] Sync to other data sources
+		/// <summary>
+		/// Syncs the original object (usually from primary data source) to other data sources (including secondary data source and sync data sources)
+		/// </summary>
+		/// <param name="context">The context</param>
+		/// <param name="object">The object</param>
+		protected void Sync(RepositoryContext context, T @object)
+		{
+			RepositoryMediator.Sync(context, @object);
+		}
+
+		/// <summary>
+		/// Syncs the original object (usually from primary data source) to other data sources (including secondary data source and sync data sources)
+		/// </summary>
+		/// <param name="aliasTypeName">The alias type name</param>
+		/// <param name="object">The object</param>
+		protected void Sync(string aliasTypeName, T @object)
+		{
+			RepositoryMediator.Sync(aliasTypeName, @object);
+		}
+
+		/// <summary>
+		/// Syncs the original object (usually from primary data source) to other data sources (including secondary data source and sync data sources)
+		/// </summary>
+		/// <param name="context">The context</param>
+		/// <param name="object">The object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected Task SyncAsync(RepositoryContext context, T @object, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryMediator.SyncAsync(context, @object, cancellationToken);
+		}
+
+		/// <summary>
+		/// Syncs the original object (usually from primary data source) to other data sources (including secondary data source and sync data sources)
+		/// </summary>
+		/// <param name="aliasTypeName">The alias type name</param>
+		/// <param name="object">The object</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		protected Task SyncAsync(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken))
+		{
+			return RepositoryMediator.SyncAsync(aliasTypeName, @object, cancellationToken);
+		}
+		#endregion
+
 		#region [Public] Get/Set properties
 		/// <summary>
 		/// Gets the value of a specified property
