@@ -297,7 +297,7 @@ namespace net.vieapps.Components.Repository
 		public DbConnection GetSqlConnection(DataSource dataSource)
 		{
 			return dataSource != null
-				? dataSource.GetProviderFactory().CreateConnection(dataSource)
+				? dataSource.GetProviderFactory().CreateConnection(dataSource, false)
 				: null;
 		}
 

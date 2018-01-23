@@ -26,12 +26,7 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
 	public class RepositoryDefinition
 	{
-		public RepositoryDefinition()
-		{
-			this.IsAlias = false;
-			this.ExtraSettings = new Dictionary<string, object>();
-			this.RuntimeRepositories = new Dictionary<string, IRepository>();
-		}
+		public RepositoryDefinition() { }
 
 		#region Properties
 		/// <summary>
@@ -67,12 +62,17 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets that state that specified this repository is an alias of other repository
 		/// </summary>
-		public bool IsAlias { get; internal set; }
+		public bool IsAlias { get; internal set; } = false;
+
+		/// <summary>
+		/// Gets that state that specified data of this repository is sync automatically between data sources
+		/// </summary>
+		public bool AutoSync { get; internal set; } = false;
 
 		/// <summary>
 		/// Gets the extra-settings of the repository
 		/// </summary>
-		public Dictionary<string, object> ExtraSettings { get; internal set; }
+		public Dictionary<string, object> ExtraSettings { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Properties [Helpers]
@@ -181,7 +181,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of business repositories at run-time (means business modules at run-time)
 		/// </summary>
-		public Dictionary<string, IRepository> RuntimeRepositories { get; internal set; }
+		public Dictionary<string, IRepository> RuntimeRepositories { get; internal set; } = new Dictionary<string, IRepository>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register
@@ -312,6 +312,8 @@ namespace net.vieapps.Components.Repository
 			RepositoryMediator.RepositoryDefinitions[type].TrashDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
 				? data
 				: null;
+
+			RepositoryMediator.RepositoryDefinitions[type].AutoSync = "true".IsEquals(settings["autoSync"] != null ? (settings["autoSync"] as JValue).Value as string : "false");
 		}
 		#endregion
 
@@ -325,18 +327,7 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
 	public class EntityDefinition
 	{
-		public EntityDefinition()
-		{
-			this.Attributes = new List<AttributeInfo>();
-			this.SortableAttributes = new List<string>() { "ID" };
-			this.Searchable = true;
-			this.ExtraSettings = new Dictionary<string, object>();
-			this.Indexable = true;
-			this.MultipleIntances = false;
-			this.Extendable = false;
-			this.MultipleParentAssociates = false;
-			this.RuntimeEntities = new Dictionary<string, IRepositoryEntity>();
-		}
+		public EntityDefinition() { }
 
 		#region Properties
 		/// <summary>
@@ -382,17 +373,22 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the state that specifies this entity is able to search using full-text method
 		/// </summary>
-		public bool Searchable { get; internal set; }
+		public bool Searchable { get; internal set; } = true;
 
 		/// <summary>
 		/// Gets the state to create new version when an entity object is updated
 		/// </summary>
-		public bool CreateNewVersionWhenUpdated { get; internal set; }
+		public bool CreateNewVersionWhenUpdated { get; internal set; } = true;
+
+		/// <summary>
+		/// Gets that state that specified data of this repository entity is sync automatically between data sources
+		/// </summary>
+		public bool AutoSync { get; internal set; } = false;
 
 		/// <summary>
 		/// Gets extra settings of of the entity definition
 		/// </summary>
-		public Dictionary<string, object> ExtraSettings { get; internal set; }
+		public Dictionary<string, object> ExtraSettings { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Properties [Helpers]
@@ -465,7 +461,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of all attributes (properties and fields)
 		/// </summary>
-		public List<AttributeInfo> Attributes { get; internal set; }
+		public List<AttributeInfo> Attributes { get; internal set; } = new List<AttributeInfo>();
 
 		internal string PrimaryKey { get; set; }
 
@@ -483,7 +479,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of sortable properties
 		/// </summary>
-		public List<string> SortableAttributes { get; internal set; }
+		public List<string> SortableAttributes { get; internal set; } = new List<string>() { "ID" };
 
 		/// <summary>
 		/// Gets the type of the class that presents the repository of this repository entity
@@ -521,17 +517,17 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the state that allow to use multiple instances, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool MultipleIntances { get; internal set; }
+		public bool MultipleIntances { get; internal set; } = false;
 
 		/// <summary>
 		/// Gets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Extendable { get; internal set; }
+		public bool Extendable { get; internal set; } = false;
 
 		/// <summary>
 		/// Gets or sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Indexable { get; internal set; }
+		public bool Indexable { get; internal set; } = true;
 
 		/// <summary>
 		/// Gets the type of parent entity definition (when this object is defined as a content-type definition)
@@ -546,7 +542,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the state that specifies this entity had multiple associates with parent object, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool MultipleParentAssociates { get; internal set; }
+		public bool MultipleParentAssociates { get; internal set; } = false;
 
 		/// <summary>
 		/// Gets the name of the property that use to store the information of multiple associates with parent, mus be List or HashSet (when this object is defined as a content-type definition)
@@ -581,7 +577,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of business entities at run-time (means business conten-types at run-time)
 		/// </summary>
-		public Dictionary<string, IRepositoryEntity> RuntimeEntities { get; internal set; }
+		public Dictionary<string, IRepositoryEntity> RuntimeEntities { get; internal set; } = new Dictionary<string, IRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register
@@ -841,6 +837,10 @@ namespace net.vieapps.Components.Repository
 					: null;
 				RepositoryMediator.EntityDefinitions[type].Cache = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
 			}
+
+			RepositoryMediator.EntityDefinitions[type].AutoSync = settings["autoSync"] != null
+				? "true".IsEquals((settings["autoSync"] as JValue).Value as string)
+				: RepositoryMediator.EntityDefinitions[type].RepositoryDefinition.AutoSync;
 		}
 
 		/// <summary>
@@ -867,25 +867,18 @@ namespace net.vieapps.Components.Repository
 	{
 		public AttributeInfo() : this(null) { }
 
-		public AttributeInfo(ObjectService.AttributeInfo derived) : base(derived?.Name, derived?.Info)
-		{
-			this.NotNull = false;
-			this.NotEmpty = false;
-			this.Column = null;
-			this.MaxLength = 0;
-			this.IsCLOB = false;
-		}
+		public AttributeInfo(ObjectService.AttributeInfo derived) : base(derived?.Name, derived?.Info) { }
 
 		#region Properties
-		public bool NotNull { get; internal set; }
+		public bool NotNull { get; internal set; } = false;
 
-		public bool NotEmpty { get; internal set; }
+		public bool NotEmpty { get; internal set; } = false;
 
 		public string Column { get; internal set; }
 
-		public int MaxLength { get; internal set; }
+		public int MaxLength { get; internal set; } = 0;
 
-		public bool IsCLOB { get; internal set; }
+		public bool IsCLOB { get; internal set; } = false;
 		#endregion
 
 	}

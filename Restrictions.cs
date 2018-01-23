@@ -37,7 +37,7 @@ namespace net.vieapps.Components.Repository
 		public FilterBy(string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null) : this(null, attribute, @operator, value) { }
 
 		/// <summary>
-		/// Initializes a new filtering expression
+		/// Initializes a filtering expression
 		/// </summary>
 		/// <param name="json"></param>
 		/// <param name="operator"></param>

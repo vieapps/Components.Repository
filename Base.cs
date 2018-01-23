@@ -320,11 +320,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(RepositoryContext context, DataSource dataSource, string id) where TEntity : class
+		public static TEntity Get<TEntity>(RepositoryContext context, DataSource dataSource, string id, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.Get<TEntity>(context, dataSource, id)
+				? RepositoryMediator.Get<TEntity>(context, dataSource, id, true, true, processSecondaryWhenNotFound)
 				: null;
 		}
 
@@ -334,12 +335,13 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(DataSource dataSource, string id) where TEntity : class
+		public static TEntity Get<TEntity>(DataSource dataSource, string id, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return RepositoryBase<T>.Get<TEntity>(context, dataSource, id);
+				return RepositoryBase<T>.Get<TEntity>(context, dataSource, id, processSecondaryWhenNotFound);
 			}
 		}
 
@@ -350,11 +352,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(RepositoryContext context, string aliasTypeName, string id) where TEntity : class
+		public static TEntity Get<TEntity>(RepositoryContext context, string aliasTypeName, string id, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.Get<TEntity>(context, aliasTypeName, id)
+				? RepositoryMediator.Get<TEntity>(context, aliasTypeName, id, true, true, processSecondaryWhenNotFound)
 				: null;
 		}
 
@@ -364,11 +367,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(string aliasTypeName, string id) where TEntity : class
+		public static TEntity Get<TEntity>(string aliasTypeName, string id, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.Get<TEntity>(aliasTypeName, id)
+				? RepositoryMediator.Get<TEntity>(aliasTypeName, id, processSecondaryWhenNotFound)
 				: null;
 		}
 
@@ -377,10 +381,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(string id) where TEntity : class
+		public static TEntity Get<TEntity>(string id, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
-			return RepositoryBase<T>.Get<TEntity>("", id);
+			return RepositoryBase<T>.Get<TEntity>("", id, processSecondaryWhenNotFound);
 		}
 
 		/// <summary>
@@ -391,11 +396,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.GetAsync<TEntity>(context, dataSource, id, true, cancellationToken)
+				? RepositoryMediator.GetAsync<TEntity>(context, dataSource, id, true, cancellationToken, true, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
 		}
 
@@ -406,12 +412,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return await RepositoryBase<T>.GetAsync<TEntity>(context, dataSource, id, cancellationToken).ConfigureAwait(false);
+				return await RepositoryBase<T>.GetAsync<TEntity>(context, dataSource, id, cancellationToken, processSecondaryWhenNotFound).ConfigureAwait(false);
 			}
 		}
 
@@ -423,11 +430,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id, true, cancellationToken)
+				? RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id, true, cancellationToken, true, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
 		}
 
@@ -438,11 +446,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			return !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.GetAsync<TEntity>(aliasTypeName, id, cancellationToken)
+				? RepositoryMediator.GetAsync<TEntity>(aliasTypeName, id, cancellationToken, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
 		}
 
@@ -452,10 +461,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(string id, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
-			return RepositoryBase<T>.GetAsync<TEntity>("", id, cancellationToken);
+			return RepositoryBase<T>.GetAsync<TEntity>("", id, cancellationToken, processSecondaryWhenNotFound);
 		}
 		#endregion
 
@@ -3620,9 +3630,8 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the raw data of object (compressed bytes in Base64 string)
 		/// </summary>
-		public string ObjectData { get; internal set; }
+		public string Data { get; internal set; }
 
-		[NonSerialized]
 		object _Object = null;
 
 		/// <summary>
@@ -3633,15 +3642,13 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				return this._Object ?? (this._Object = !string.IsNullOrWhiteSpace(this.ObjectData)
-					? Caching.Helper.Deserialize(Convert.FromBase64String(this.ObjectData).Decompress())
-					: null);
+				return this._Object ?? (this._Object = !string.IsNullOrWhiteSpace(this.Data) ? Caching.Helper.Deserialize(Convert.FromBase64String(this.Data).Decompress()) : null);
 			}
 			internal set
 			{
 				this._Object = value;
-				this.ObjectData = value != null
-					? Caching.Helper.Serialize(value).Compress().ToBase64()
+				this.Data = this._Object != null
+					? Caching.Helper.Serialize(this._Object).Compress().ToBase64()
 					: null;
 			}
 		}
@@ -3656,7 +3663,7 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
 					var info = filter?.GetSqlStatement();
 					var command = connection.CreateCommand($"COUNT (ID) AS Total FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""), info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
@@ -3677,7 +3684,7 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
 					var info = filter?.GetSqlStatement();
 					var command = connection.CreateCommand($"COUNT (ID) AS Total FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""), info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
@@ -3698,7 +3705,7 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
 					var info = filter?.GetSqlStatement();
 					var statement = $"SELECT * FROM T_Data_{name}"
@@ -3753,7 +3760,7 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
 					var info = filter?.GetSqlStatement();
 					var statement = $"SELECT * FROM T_Data_{name}"
@@ -3809,7 +3816,7 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
 					var attributes = ObjectService.GetProperties(typeof(T))
 						.Where(attribute => attribute.Info.GetCustomAttributes(typeof(JsonIgnoreAttribute), true).Length < 0)
@@ -3836,7 +3843,7 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
 					var attributes = ObjectService.GetProperties(typeof(T))
 						.Where(attribute => attribute.Info.GetCustomAttributes(typeof(JsonIgnoreAttribute), true).Length < 0)
@@ -3865,7 +3872,7 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = dbProviderFactory.CreateConnection(dataSource, true))
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
 					var info = filter?.GetSqlStatement();
 					var command = connection.CreateCommand(
@@ -3890,7 +3897,7 @@ namespace net.vieapps.Components.Repository
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
-				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, true, cancellationToken).ConfigureAwait(false))
+				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
 					var info = filter?.GetSqlStatement();
 					var command = connection.CreateCommand(
