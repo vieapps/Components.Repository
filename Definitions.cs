@@ -307,8 +307,8 @@ namespace net.vieapps.Components.Repository
 				$"- Primary data source: {(RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Mode})"  : "None")}" + "\r\n" +
 				$"- Secondary data source: {(RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
 				$"- Sync data sources: {(RepositoryMediator.RepositoryDefinitions[type].SyncDataSources.Count > 0 ? RepositoryMediator.RepositoryDefinitions[type].SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
-				$"- Version data source: {RepositoryMediator.RepositoryDefinitions[type].VersionDataSource?.Name ?? "None"}" + "\r\n" +
-				$"- Trash data source: {RepositoryMediator.RepositoryDefinitions[type].TrashDataSource?.Name ?? "None"}" + "\r\n" +
+				$"- Version data source: {RepositoryMediator.RepositoryDefinitions[type].VersionDataSource?.Name ?? "(None)"}" + "\r\n" +
+				$"- Trash data source: {RepositoryMediator.RepositoryDefinitions[type].TrashDataSource?.Name ?? "(None)"}" + "\r\n" +
 				$"- Auto sync: {RepositoryMediator.RepositoryDefinitions[type].AutoSync}"
 				, null);
 		}
@@ -630,7 +630,7 @@ namespace net.vieapps.Components.Repository
 			// public properties
 			var numberOfKeys = 0;
 			var properties = ObjectService.GetProperties(type);
-			properties.Where(attr => !attr.IsIgnored()).ForEach(attr =>
+			properties.Where(attr => attr.IsIgnored() == false).ForEach(attr =>
 			{
 				// create
 				var attribute = new AttributeInfo(attr);
@@ -831,8 +831,8 @@ namespace net.vieapps.Components.Repository
 				$"- Primary data source: {(RepositoryMediator.EntityDefinitions[type].PrimaryDataSource != null ? $"{RepositoryMediator.EntityDefinitions[type].PrimaryDataSource.Name} ({RepositoryMediator.EntityDefinitions[type].PrimaryDataSource.Mode})" : "None")}" + "\r\n" +
 				$"- Secondary data source: {(RepositoryMediator.EntityDefinitions[type].SecondaryDataSource != null ? $"{RepositoryMediator.EntityDefinitions[type].SecondaryDataSource.Name} ({RepositoryMediator.EntityDefinitions[type].SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
 				$"- Sync data sources: {(RepositoryMediator.EntityDefinitions[type].SyncDataSources != null && RepositoryMediator.EntityDefinitions[type].SyncDataSources.Count > 0 ? RepositoryMediator.EntityDefinitions[type].SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
-				$"- Version data source: {RepositoryMediator.EntityDefinitions[type].VersionDataSource?.Name ?? "None"}" + "\r\n" +
-				$"- Trash data source: {RepositoryMediator.EntityDefinitions[type].TrashDataSource?.Name ?? "None"}" + "\r\n" +
+				$"- Version data source: {RepositoryMediator.EntityDefinitions[type].VersionDataSource?.Name ?? "(None)"}" + "\r\n" +
+				$"- Trash data source: {RepositoryMediator.EntityDefinitions[type].TrashDataSource?.Name ?? "(None)"}" + "\r\n" +
 				$"- Auto sync: {RepositoryMediator.EntityDefinitions[type].AutoSync}"
 				, null);
 		}
@@ -887,11 +887,6 @@ namespace net.vieapps.Components.Repository
 	{
 		public ExtendedPropertyDefinition(JObject json = null)
 		{
-			this.Name = "";
-			this.Mode = ExtendedPropertyMode.SmallText;
-			this.Column = "";
-			this.DefaultValue = "";
-			this.DefaultValueFormula = "";
 			if (json != null)
 				this.CopyFrom(json);
 		}
@@ -900,27 +895,27 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the name
 		/// </summary>
-		public string Name { get; set; }
+		public string Name { get; set; } = "";
 
 		/// <summary>
 		/// Gets or sets the mode
 		/// </summary>
-		public ExtendedPropertyMode Mode { get; set; }
+		public ExtendedPropertyMode Mode { get; set; } = ExtendedPropertyMode.SmallText;
 
 		/// <summary>
 		/// Gets or sets the name of column for storing data (when repository mode is SQL)
 		/// </summary>
-		public string Column { get; set; }
+		public string Column { get; set; } = "";
 
 		/// <summary>
 		/// Gets or sets the default value
 		/// </summary>
-		public string DefaultValue { get; set; }
+		public string DefaultValue { get; set; } = "";
 
 		/// <summary>
 		/// Gets or sets the formula for computing default value
 		/// </summary>
-		public string DefaultValueFormula { get; set; }
+		public string DefaultValueFormula { get; set; } = "";
 		#endregion
 
 		#region Properties [Helper]
@@ -1170,22 +1165,18 @@ namespace net.vieapps.Components.Repository
 	{
 		public ExtendedUIDefinition(JObject json = null)
 		{
-			this.Controls = new List<ExtendedUIControlDefinition>();
-			this.EditXslt = "";
-			this.ListXslt = "";
-			this.ViewXslt = "";
 			if (json != null)
 				this.CopyFrom(json);
 		}
 
 		#region Properties
-		public List<ExtendedUIControlDefinition> Controls { get; set; }
+		public List<ExtendedUIControlDefinition> Controls { get; set; } = new List<ExtendedUIControlDefinition>();
 
-		public string EditXslt { get; set; }
+		public string EditXslt { get; set; } = "";
 
-		public string ListXslt { get; set; }
+		public string ListXslt { get; set; } = "";
 
-		public string ViewXslt { get; set; }
+		public string ViewXslt { get; set; } = "";
 		#endregion
 
 		public override string ToString()

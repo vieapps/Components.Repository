@@ -163,42 +163,39 @@ namespace net.vieapps.Components.Repository
 		#region State data
 		internal Dictionary<string, object> GetStateData(object @object)
 		{
-			// prepare
-			if (@object == null)
-				return new Dictionary<string, object>();
-
+			// initialize
 			var stateData = new Dictionary<string, object>();
 
 			// standard properties
-			@object.GetProperties()
+			@object?.GetProperties()
 				.Where(attribute => !attribute.IsIgnored())
 				.ForEach(attribute =>
 				{
 					try
 					{
-						stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
+						stateData[attribute.Name] = @object.GetAttributeValue(attribute.Name);
 					}
 					catch { }
 				});
 
 			// standard fields
-			@object.GetFields()
+			@object?.GetFields()
 				.Where(attribute => !attribute.IsIgnored())
 				.ForEach(attribute =>
 				{
 					try
 					{
-						stateData.Add(attribute.Name, @object.GetAttributeValue(attribute.Name));
+						stateData[attribute.Name] = @object.GetAttributeValue(attribute.Name);
 					}
 					catch { }
 				});
 
 			// extended properties
-			(@object as IBusinessEntity)?.ExtendedProperties?.ForEach(info =>
+			(@object as IBusinessEntity)?.ExtendedProperties?.ForEach(kvp =>
 			{
 				try
 				{
-					stateData.Add($"ExtendedProperties.{info.Key}", info.Value);
+					stateData[$"ExtendedProperties.{kvp.Key}"] = kvp.Value;
 				}
 				catch { }
 			});
@@ -220,12 +217,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public Dictionary<string, object> GetPreviousState(object @object)
 		{
-			if (@object == null)
-				return null;
-
-			var key = @object.GetCacheKey(true);
-			return this.PreviousStateData.ContainsKey(key)
-				? this.PreviousStateData[key]
+			return @object != null
+				? this.PreviousStateData.TryGetValue(@object.GetCacheKey(true), out Dictionary<string, object> stateData)
+					? stateData
+					: null
 				: null;
 		}
 
@@ -243,13 +238,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public Dictionary<string, object> GetCurrentState(object @object)
 		{
-			if (@object == null)
-				return null;
-
-			var key = @object.GetCacheKey(true);
-			return this.CurrentStateData.ContainsKey(key)
-				? this.CurrentStateData[key]
-				: this.SetCurrentState(@object);
+			var key = @object?.GetCacheKey(true);
+			return @object != null
+				? this.CurrentStateData.ContainsKey(key)
+					? this.CurrentStateData[key]
+					: this.SetCurrentState(@object)
+				: null;
 		}
 
 		/// <summary>

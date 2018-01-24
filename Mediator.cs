@@ -59,8 +59,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static RepositoryDefinition GetRepositoryDefinition(Type type)
 		{
-			return type != null
-				? RepositoryMediator.RepositoryDefinitions[type]
+			return RepositoryMediator.RepositoryDefinitions.TryGetValue(type, out RepositoryDefinition definition)
+				?definition
 				: null;
 		}
 
@@ -71,7 +71,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static RepositoryDefinition GetRepositoryDefinition<T>() where T : class
 		{
-			return RepositoryMediator.GetRepositoryDefinition(typeof(T));
+			return RepositoryMediator.GetRepositoryDefinition(typeof(T)) ?? throw new InformationNotFoundException($"The repository definition [{typeof(T).GetTypeName()}] is not found");
 		}
 
 		/// <summary>
@@ -81,8 +81,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static EntityDefinition GetEntityDefinition(Type type)
 		{
-			return type != null
-				? RepositoryMediator.EntityDefinitions[type]
+			return RepositoryMediator.EntityDefinitions.TryGetValue(type, out EntityDefinition definition)
+				? definition
 				: null;
 		}
 
@@ -93,7 +93,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static EntityDefinition GetEntityDefinition<T>() where T : class
 		{
-			return RepositoryMediator.GetEntityDefinition(typeof(T)) ?? throw new InformationNotFoundException($"The entity definition [{typeof(T).GetTypeName()}] is not found");
+			return RepositoryMediator.GetEntityDefinition(typeof(T)) ?? throw new InformationNotFoundException($"The repository entity definition [{typeof(T).GetTypeName()}] is not found");
 		}
 		#endregion
 
@@ -110,8 +110,8 @@ namespace net.vieapps.Components.Repository
 
 			var repositories = new List<IRepository>();
 			RepositoryMediator.RepositoryDefinitions
-				.Where(info => info.Value.RuntimeRepositories != null && info.Value.RuntimeRepositories.Count > 0)
-				.ForEach(info => repositories = repositories.Concat(info.Value.RuntimeRepositories.Where(data => data.Value.SystemID.IsEquals(systemID)).Select(data => data.Value)).ToList());
+				.Where(kvp => kvp.Value.RuntimeRepositories != null && kvp.Value.RuntimeRepositories.Count > 0)
+				.ForEach(kvp => repositories = repositories.Concat(kvp.Value.RuntimeRepositories.Where(data => data.Value.SystemID.IsEquals(systemID)).Select(data => data.Value)).ToList());
 
 			return repositories;
 		}
@@ -127,11 +127,13 @@ namespace net.vieapps.Components.Repository
 				return null;
 
 			var repositories = RepositoryMediator.RepositoryDefinitions
-				.Where(info => info.Value.RuntimeRepositories.ContainsKey(repositoryID))
-				.Select(info => info.Value.RuntimeRepositories)
+				.Where(kvp => kvp.Value.RuntimeRepositories.ContainsKey(repositoryID))
+				.Select(kvp => kvp.Value.RuntimeRepositories)
 				.FirstOrDefault();
 
-			return repositories?[repositoryID];
+			return repositories != null && repositories.TryGetValue(repositoryID, out IRepository repository)
+				? repository
+				: null;
 		}
 
 		/// <summary>
@@ -149,7 +151,9 @@ namespace net.vieapps.Components.Repository
 				.Select(info => info.Value.RuntimeEntities)
 				.FirstOrDefault();
 
-			return entities?[entityID];
+			return entities != null && entities.TryGetValue(entityID, out IRepositoryEntity entity)
+				? entity
+				: null;
 		}
 		#endregion
 
@@ -172,8 +176,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DataSource GetDataSource(string name)
 		{
-			return !string.IsNullOrWhiteSpace(name) && RepositoryMediator.DataSources.ContainsKey(name)
-				? RepositoryMediator.DataSources[name]
+			return !string.IsNullOrWhiteSpace(name) && RepositoryMediator.DataSources.TryGetValue(name, out DataSource dataSource)
+				? dataSource
 				: null;
 		}
 
@@ -185,22 +189,15 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DataSource GetPrimaryDataSource(string aliasTypeName, EntityDefinition definition)
 		{
-			if (definition == null)
-				return null;
-
-			var dataSource = definition.PrimaryDataSource;
-			if (dataSource == null)
+			var dataSource = definition?.PrimaryDataSource;
+			if (dataSource == null && definition != null)
 			{
 				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
 					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
 					: definition.RepositoryDefinition;
-
 				if (parent != null)
 					dataSource = parent.PrimaryDataSource;
 			}
-
-			if (dataSource == null)
-				throw new RepositoryOperationException($"The primary data-source named '{definition.PrimaryDataSourceName}' (of '{definition.Type.GetTypeName()}') is not found");
 			return dataSource;
 		}
 
@@ -243,16 +240,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DataSource GetSecondaryDataSource(string aliasTypeName, EntityDefinition definition)
 		{
-			if (definition == null)
-				return null;
-
-			var dataSource = definition.SecondaryDataSource;
-			if (dataSource == null)
+			var dataSource = definition?.SecondaryDataSource;
+			if (dataSource == null && definition != null)
 			{
 				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
 					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
 					: definition.RepositoryDefinition;
-
 				if (parent != null)
 					dataSource = parent.SecondaryDataSource;
 			}
@@ -298,12 +291,11 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<DataSource> GetSyncDataSources(string aliasTypeName, EntityDefinition definition)
 		{
-			var dataSources = definition?.SyncDataSources;
-			if (dataSources == null)
-				dataSources = (!string.IsNullOrWhiteSpace(aliasTypeName)
+			return definition?.SyncDataSources
+				?? ((!string.IsNullOrWhiteSpace(aliasTypeName)
 					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
-					: definition.RepositoryDefinition)?.SyncDataSources;
-			return dataSources ?? new List<DataSource>();
+					: definition?.RepositoryDefinition)
+						?.SyncDataSources ?? new List<DataSource>());
 		}
 
 		/// <summary>
@@ -351,11 +343,9 @@ namespace net.vieapps.Components.Repository
 				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
 					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
 					: definition.RepositoryDefinition;
-
 				if (parent != null)
 					dataSource = parent.VersionDataSource;
 			}
-
 			return dataSource ?? RepositoryMediator.GetDataSource(RepositoryMediator.DefaultVersionDataSourceName);
 		}
 
@@ -404,11 +394,9 @@ namespace net.vieapps.Components.Repository
 				var parent = !string.IsNullOrWhiteSpace(aliasTypeName)
 					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
 					: definition.RepositoryDefinition;
-
 				if (parent != null)
 					dataSource = parent.TrashDataSource;
 			}
-
 			return dataSource ?? RepositoryMediator.GetDataSource(RepositoryMediator.DefaultTrashDataSourceName);
 		}
 
@@ -489,7 +477,7 @@ namespace net.vieapps.Components.Repository
 				if (attribute.IsIgnored() || !attribute.CanRead || !attribute.CanWrite)
 					continue;
 
-				object value = stateData[attribute.Name];
+				stateData.TryGetValue(attribute.Name, out object value);
 
 				if (value == null)
 				{
@@ -504,7 +492,11 @@ namespace net.vieapps.Components.Repository
 					if (attribute.NotEmpty && string.IsNullOrWhiteSpace(value as string))
 						throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow empty or null)");
 
-					var maxLength = attribute.MaxLength > 0 ? attribute.MaxLength : 4000;
+					var maxLength = attribute.MaxLength.Equals(0) && attribute.Name.EndsWith("ID")
+							? 32
+							: attribute.MaxLength < 4000
+								? attribute.MaxLength
+								: 4000;
 					if ((value as string).Length > maxLength)
 					{
 						changed = true;
@@ -514,7 +506,33 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// extended properties
-			// .....
+			stateData.TryGetValue("EntityID", out object entityID);
+			if (entityID != null && entityID is string && !string.IsNullOrWhiteSpace(entityID as string))
+				if (definition.RuntimeEntities.TryGetValue(entityID as string, out IRepositoryEntity repositoryEntity))
+					foreach (var attribute in (repositoryEntity?.ExtendedPropertyDefinitions ?? new List<ExtendedPropertyDefinition>()))
+					{
+						if (attribute.Mode.Equals(ExtendedPropertyMode.YesNo) || attribute.Mode.Equals(ExtendedPropertyMode.Number)
+						|| attribute.Mode.Equals(ExtendedPropertyMode.Decimal) || attribute.Mode.Equals(ExtendedPropertyMode.DateTime)
+						|| attribute.Mode.Equals(ExtendedPropertyMode.LargeText))
+							continue;
+
+						if (!stateData.TryGetValue($"ExtendedProperties.{attribute.Name}", out object value))
+							continue;
+
+						if (value == null || string.IsNullOrWhiteSpace(value as string))
+							continue;
+
+						var maxLength = attribute.Mode.Equals(ExtendedPropertyMode.SmallText) || attribute.Mode.Equals(ExtendedPropertyMode.Choice)
+						|| attribute.Mode.Equals(ExtendedPropertyMode.Lookup) || attribute.Mode.Equals(ExtendedPropertyMode.User)
+							? 250
+							: 4000;
+
+						if ((value as string).Length > maxLength)
+						{
+							changed = true;
+							stateData[$"ExtendedProperties.{attribute.Name}"] = (value as string).Left(maxLength);
+						}
+					}
 
 			return changed;
 		}
@@ -541,12 +559,12 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
 					// re-update object
-					currentState.ForEach(data =>
+					currentState.ForEach(kvp =>
 					{
-						if (data.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						if (kvp.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
 						else
-							@object.SetAttributeValue(data.Key, data.Value);
+							@object.SetAttributeValue(kvp.Key, kvp.Value);
 					});
 
 					// update state
@@ -643,12 +661,12 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
 					// re-update object
-					currentState.ForEach(data =>
+					currentState.ForEach(kvp =>
 					{
-						if (data.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						if (kvp.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
 						else
-							@object.SetAttributeValue(data.Key, data.Value);
+							@object.SetAttributeValue(kvp.Key, kvp.Value);
 					});
 
 					// update state
@@ -1509,12 +1527,12 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
 					// re-update object
-					currentState.ForEach(data =>
+					currentState.ForEach(kvp =>
 					{
-						if (data.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						if (kvp.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
 						else
-							@object.SetAttributeValue(data.Key, data.Value);
+							@object.SetAttributeValue(kvp.Key, kvp.Value);
 					});
 
 					// update state
@@ -1649,12 +1667,12 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
 					// re-update object
-					currentState.ForEach(data =>
+					currentState.ForEach(kvp =>
 					{
-						if (data.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						if (kvp.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
 						else
-							@object.SetAttributeValue(data.Key, data.Value);
+							@object.SetAttributeValue(kvp.Key, kvp.Value);
 					});
 
 					// update state
@@ -1794,12 +1812,12 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
 					// re-update object
-					currentState.ForEach(data =>
+					currentState.ForEach(kvp =>
 					{
-						if (data.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						if (kvp.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
 						else
-							@object.SetAttributeValue(data.Key, data.Value);
+							@object.SetAttributeValue(kvp.Key, kvp.Value);
 					});
 
 					// update state
@@ -1932,12 +1950,12 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
 					// re-update object
-					currentState.ForEach(data =>
+					currentState.ForEach(kvp =>
 					{
-						if (data.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[data.Key.Replace("ExtendedProperties.", "")] = data.Value;
+						if (kvp.Key.StartsWith("ExtendedProperties."))
+							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
 						else
-							@object.SetAttributeValue(data.Key, data.Value);
+							@object.SetAttributeValue(kvp.Key, kvp.Value);
 					});
 
 					// update state
@@ -5739,9 +5757,9 @@ namespace net.vieapps.Components.Repository
 
 					var primaryDataSource = context.GetPrimaryDataSource();
 					if (primaryDataSource.Mode.Equals(RepositoryMode.NoSQL))
-						await NoSqlHelper.CreateAsync(primaryDataSource, @object, null, cancellationToken);
+						await context.CreateAsync(primaryDataSource, @object, null, cancellationToken);
 					else if (primaryDataSource.Mode.Equals(RepositoryMode.SQL))
-						await SqlHelper.CreateAsync(primaryDataSource, @object, cancellationToken);
+						await context.CreateAsync(primaryDataSource, @object, cancellationToken);
 
 #if DEBUG || PROCESSLOGS
 					stopwatch.Stop();

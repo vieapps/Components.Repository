@@ -38,7 +38,7 @@ namespace net.vieapps.Components.Repository
 				? RepositoryMediator.GetConnectionStringSettings(dataSource)
 				: null;
 
-			return connectionStringSettings != null && !string.IsNullOrEmpty(connectionStringSettings.ProviderName)
+			return connectionStringSettings != null && !string.IsNullOrWhiteSpace(connectionStringSettings.ProviderName)
 				? DbProviderFactories.GetFactory(connectionStringSettings.ProviderName)
 				: DbProviderFactories.GetFactory("System.Data.SqlClient");
 		}
@@ -119,7 +119,11 @@ namespace net.vieapps.Components.Repository
 				? dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString.Replace(StringComparison.OrdinalIgnoreCase, "{database}", dataSource.DatabaseName).Replace(StringComparison.OrdinalIgnoreCase, "{DatabaseName}", dataSource.DatabaseName)
 				: null;
 			if (openWhenCreated)
+			{
+				if (string.IsNullOrWhiteSpace(connection.ConnectionString))
+					throw new ArgumentException("The connection string is invalid");
 				connection.Open();
+			}
 			return connection;
 		}
 
@@ -135,7 +139,11 @@ namespace net.vieapps.Components.Repository
 		{
 			var connection = dbProviderFactory.CreateConnection(dataSource, false);
 			if (openWhenCreated)
+			{
+				if (string.IsNullOrWhiteSpace(connection.ConnectionString))
+					throw new ArgumentException("The connection string is invalid");
 				await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+			}
 			return connection;
 		}
 		#endregion
@@ -230,60 +238,6 @@ namespace net.vieapps.Components.Repository
 				: attribute.Type.GetDbType();
 		}
 
-		internal static string GetDbTypeString(this AttributeInfo attribute, DbProviderFactory dbProviderFactory)
-		{
-			return attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") && (attribute.MaxLength.Equals(0) || attribute.MaxLength.Equals(32)))
-				? typeof(String).GetDbTypeString(dbProviderFactory, 32, true, false)
-				: attribute.IsStoredAsString()
-					? typeof(String).GetDbTypeString(dbProviderFactory, 19, true, false)
-					: attribute.IsCLOB || attribute.IsStoredAsJson()
-						? typeof(String).GetDbTypeString(dbProviderFactory, 0, false, true)
-						: attribute.Type.IsEnum
-							? attribute.IsEnumString()
-								? typeof(String).GetDbTypeString(dbProviderFactory, 50, false, false)
-								: typeof(Int32).GetDbTypeString(dbProviderFactory, 0, false, false)
-							: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength);
-		}
-
-		internal static string GetDbTypeString(this Type type, DbProviderFactory dbProviderFactory, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
-		{
-			return type == null || dbProviderFactory == null
-				? ""
-				: type.GetDbTypeString(dbProviderFactory.GetName(), precision, asFixedLength, asCLOB);
-		}
-
-		internal static string GetDbTypeString(this Type type, string dbProviderFactoryName, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
-		{
-			type = !type.Equals(typeof(String))
-				? type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>))
-					? Nullable.GetUnderlyingType(type)
-					: type
-				: asFixedLength
-					? typeof(Char)
-					: asCLOB
-						? typeof(Char?)
-						: type;
-
-			precision = precision < 1 && type.Equals(typeof(String))
-				? 4000
-				: precision;
-
-			var dbTypeString = "";
-			var dbTypeStrings = !string.IsNullOrWhiteSpace(dbProviderFactoryName) && SqlHelper.DbTypeStrings.ContainsKey(type)
-				? SqlHelper.DbTypeStrings[type]
-				: null;
-			if (dbTypeStrings != null)
-			{
-				if (!dbTypeStrings.TryGetValue(dbProviderFactoryName, out dbTypeString))
-					if (!dbTypeStrings.TryGetValue("Default", out dbTypeString))
-						dbTypeString = "";
-			}
-
-			return dbTypeString.IndexOf("{0}") > 0 && precision > 0
-				? string.Format(dbTypeString, "(" + precision.ToString() + ")")
-				: dbTypeString;
-		}
-
 		internal static Dictionary<Type, Dictionary<string, string>> DbTypeStrings = new Dictionary<Type, Dictionary<string, string>>()
 		{
 			{
@@ -313,6 +267,7 @@ namespace net.vieapps.Components.Repository
 				typeof(Byte),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
+					{ "PostgreSQL", "SMALLINT" },
 					{ "Default", "TINYINT" },
 				}
 			},
@@ -320,7 +275,7 @@ namespace net.vieapps.Components.Repository
 				typeof(SByte),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "TINYINT" },
+					{ "PostgreSQL", "SMALLINT" },
 					{ "MySQL", "TINYINT UNSIGNED" },
 					{ "Default", "TINYINT" },
 				}
@@ -372,7 +327,7 @@ namespace net.vieapps.Components.Repository
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "FLOAT(24)" },
-					{ "MySQL", "FLOAT" },
+					{ "PostgreSQL", "REAL" },
 					{ "Default", "FLOAT" },
 				}
 			},
@@ -381,7 +336,7 @@ namespace net.vieapps.Components.Repository
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "FLOAT(53)" },
-					{ "MySQL", "DOUBLE" },
+					{ "PostgreSQL", "DOUBLE PRECISION" },
 					{ "Default", "DOUBLE" },
 				}
 			},
@@ -390,7 +345,6 @@ namespace net.vieapps.Components.Repository
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "MicrosoftSQL", "DECIMAL(19,5)" },
-					{ "MySQL", "NUMERIC(19,5)" },
 					{ "Default", "NUMERIC(19,5)" },
 				}
 			},
@@ -400,17 +354,72 @@ namespace net.vieapps.Components.Repository
 				{
 					{ "MicrosoftSQL", "BIT" },
 					{ "MySQL", "TINYINT(1)" },
-					{ "Default", "TINYINT(1)" },
+					{ "Default", "BOOLEAN" },
 				}
 			},
 			{
 				typeof(DateTime),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
+					{ "PostgreSQL", "TIMESTAMP" },
 					{ "Default", "DATETIME" },
 				}
 			}
 		};
+
+		internal static string GetDbTypeString(this AttributeInfo attribute, DbProviderFactory dbProviderFactory)
+		{
+			return attribute.Type.IsStringType() && attribute.Name.EndsWith("ID") && (attribute.MaxLength.Equals(0) || attribute.MaxLength.Equals(32))
+				? typeof(String).GetDbTypeString(dbProviderFactory, 32, true, false)
+				: attribute.IsStoredAsString()
+					? typeof(String).GetDbTypeString(dbProviderFactory, 19, true, false)
+					: attribute.IsCLOB || attribute.IsStoredAsJson()
+						? typeof(String).GetDbTypeString(dbProviderFactory, 0, false, true)
+						: attribute.Type.IsEnum
+							? attribute.IsEnumString()
+								? typeof(String).GetDbTypeString(dbProviderFactory, 50, false, false)
+								: typeof(Int32).GetDbTypeString(dbProviderFactory, 0, false, false)
+							: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength);
+		}
+
+		internal static string GetDbTypeString(this Type type, DbProviderFactory dbProviderFactory, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
+		{
+			return type == null || dbProviderFactory == null
+				? ""
+				: type.GetDbTypeString(dbProviderFactory.GetName(), precision, asFixedLength, asCLOB);
+		}
+
+		internal static string GetDbTypeString(this Type type, string dbProviderFactoryName, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
+		{
+			type = !type.Equals(typeof(String))
+				? type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>))
+					? Nullable.GetUnderlyingType(type)
+					: type
+				: asFixedLength
+					? typeof(Char)
+					: asCLOB
+						? typeof(Char?)
+						: type;
+
+			precision = precision < 1 && type.Equals(typeof(String))
+				? 4000
+				: precision;
+
+			var dbTypeString = "";
+			var dbTypeStrings = !string.IsNullOrWhiteSpace(dbProviderFactoryName) && SqlHelper.DbTypeStrings.ContainsKey(type)
+				? SqlHelper.DbTypeStrings[type]
+				: null;
+			if (dbTypeStrings != null)
+			{
+				if (!dbTypeStrings.TryGetValue(dbProviderFactoryName, out dbTypeString))
+					if (!dbTypeStrings.TryGetValue("Default", out dbTypeString))
+						dbTypeString = "";
+			}
+
+			return dbTypeString.IndexOf("{0}") > 0 && precision > 0
+				? string.Format(dbTypeString, "(" + precision.ToString() + ")")
+				: dbTypeString;
+		}
 		#endregion
 
 		#region Parameter
@@ -3238,7 +3247,15 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table successul [{context.EntityDefinition.TableName}]", null);
+						tracker?.Invoke($"Create SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
+
+#if DEBUG || PROCESSLOGS
+						await RepositoryMediator.WriteLogsAsync(new List<string>()
+						{
+							$"STARTER: Create SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+							$"SQL Command: {sql}"
+						}).ConfigureAwait(false);
+#endif
 					}
 					catch (Exception ex)
 					{
@@ -3336,7 +3353,15 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create indexes of SQL table successul [{context.EntityDefinition.TableName}]", null);
+						tracker?.Invoke($"Create indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
+
+#if DEBUG || PROCESSLOGS
+						await RepositoryMediator.WriteLogsAsync(new List<string>()
+						{
+							$"STARTER: Create indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+							$"SQL Command: {sql}"
+						}).ConfigureAwait(false);
+#endif
 					}
 					catch (Exception ex)
 					{
@@ -3386,8 +3411,11 @@ namespace net.vieapps.Components.Repository
 						break;
 
 					case "MySQL":
-					case "PostgreSQL":
 						sql = $"CREATE FULLTEXT INDEX FT_{context.EntityDefinition.TableName} ON {context.EntityDefinition.TableName} ({string.Join(", ", columns)})";
+						break;
+
+					case "PostgreSQL":
+						sql = $"CREATE INDEX FT_{context.EntityDefinition.TableName} ON {context.EntityDefinition.TableName} USING GIN (to_tsvector('english', {string.Join(" || ' ' || ", columns)}))";
 						break;
 				}
 
@@ -3399,7 +3427,15 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create full-text indexes of SQL table successul [{context.EntityDefinition.TableName}]", null);
+						tracker?.Invoke($"Create full-text indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
+
+#if DEBUG || PROCESSLOGS
+						await RepositoryMediator.WriteLogsAsync(new List<string>()
+						{
+							$"STARTER: Create full-text indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+							$"SQL Command: {sql}"
+						}).ConfigureAwait(false);
+#endif
 					}
 					catch (Exception ex)
 					{
@@ -3442,7 +3478,15 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table of parent associated mapping successul [{context.EntityDefinition.MultipleParentAssociatesTable}]", null);
+						tracker?.Invoke($"Create SQL table of parent associated mapping successul [{context.EntityDefinition.MultipleParentAssociatesTable}] @ {dataSource.Name}", null);
+
+#if DEBUG || PROCESSLOGS
+						await RepositoryMediator.WriteLogsAsync(new List<string>()
+						{
+							$"STARTER: Create SQL table of parent associated mapping successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+							$"SQL Command: {sql}"
+						}).ConfigureAwait(false);
+#endif
 					}
 					catch (Exception ex)
 					{
@@ -3553,7 +3597,15 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table of extended properties successul [{tableName}]", null);
+						tracker?.Invoke($"Create SQL table of extended properties successul [{tableName}] @ {dataSource.Name}", null);
+
+#if DEBUG || PROCESSLOGS
+						await RepositoryMediator.WriteLogsAsync(new List<string>()
+						{
+							$"STARTER: Create SQL table of extended properties successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+							$"SQL Command: {sql}"
+						}).ConfigureAwait(false);
+#endif
 					}
 					catch (Exception ex)
 					{
@@ -3567,29 +3619,22 @@ namespace net.vieapps.Components.Repository
 			// check existed
 			var isExisted = true;
 			var dbProviderFactory = dataSource.GetProviderFactory();
-			var sql = "";
-			switch (dbProviderFactory.GetName())
-			{
-				case "MicrosoftSQL":
-				case "MySQL":
-				case "PostgreSQL":
-					sql = $"SELECT COUNT(table_name) FROM information_schema.tables WHERE table_name='{definition.TableName.Replace("'", "''")}'";
-					break;
-			}
 
-			if (!sql.Equals(""))
-				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
+			{
+				var sql = dbProviderFactory.IsPostgreSQL()
+					? $"SELECT COUNT(tablename) FROM pg_tables WHERE schemaname='public' AND tablename='{definition.TableName.Replace("'", "''").ToLower()}'"
+					: $"SELECT COUNT(table_name) FROM information_schema.tables WHERE table_name='{definition.TableName.Replace("'", "''")}'";
+				try
 				{
-					try
-					{
-						var command = connection.CreateCommand(sql);
-						isExisted = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<int>() > 0;
-					}
-					catch (Exception ex)
-					{
-						throw new RepositoryOperationException("Error occurred while checking existed of SQL table ", sql, ex);
-					}
+					var command = connection.CreateCommand(sql);
+					isExisted = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<int>() > 0;
 				}
+				catch (Exception ex)
+				{
+					throw new RepositoryOperationException("Error occurred while checking existed of SQL table ", sql, ex);
+				}
+			}
 
 			if (!isExisted)
 				using (var context = new RepositoryContext(false))

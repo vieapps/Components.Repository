@@ -97,20 +97,22 @@ namespace net.vieapps.Components.Repository
 				{
 					// update settings of data sources
 					if (config.Section.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
-						RepositoryMediator.ConstructDataSources(dataSourceNodes, tracker);
+						if (dataSourceNodes != null)
+							RepositoryMediator.ConstructDataSources(dataSourceNodes, tracker);
 
 					// update settings of repositories
 					if (config.Section.SelectNodes("repository") is XmlNodeList repositoryNodes)
-						foreach (XmlNode repositoryNode in repositoryNodes)
-						{
-							// update repository
-							RepositoryDefinition.Update(repositoryNode.ToJson(), tracker);
+						if (repositoryNodes != null)
+							foreach (XmlNode repositoryNode in repositoryNodes)
+							{
+								// update repository
+								RepositoryDefinition.Update(repositoryNode.ToJson(), tracker);
 
-							// update repository entities
-							if (repositoryNode.SelectNodes("entity") is XmlNodeList entityNodes)
-								foreach (XmlNode repositoryEntityNode in entityNodes)
-									EntityDefinition.Update(repositoryEntityNode.ToJson(), tracker);
-						}
+								// update repository entities
+								if (repositoryNode.SelectNodes("entity") is XmlNodeList entityNodes)
+									foreach (XmlNode repositoryEntityNode in entityNodes)
+										EntityDefinition.Update(repositoryEntityNode.ToJson(), tracker);
+							}
 
 					// default data sources
 					RepositoryMediator.DefaultVersionDataSourceName = config.Section.Attributes["versionDataSource"]?.Value;
@@ -132,6 +134,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
+					RepositoryMediator.WriteLogs("Error occurred while updating the repository", ex);
 					tracker?.Invoke($"Error occurred while updating the repository: {ex.Message}", ex);
 					throw ex;
 				}
@@ -143,8 +146,8 @@ namespace net.vieapps.Components.Repository
 			tracker?.Invoke($"Total of registered repository entities: {RepositoryMediator.EntityDefinitions.Count}", null);
 			tracker?.Invoke($"Total of registered data-sources: {RepositoryMediator.DataSources.Count}", null);
 			tracker?.Invoke($"Total of registered event-handlers: {RepositoryMediator.EventHandlers.Count}", null);
-			tracker?.Invoke($"Name of default data-source for storing version contents: {RepositoryMediator.DefaultVersionDataSourceName ?? "(NULL)"}", null);
-			tracker?.Invoke($"Name of default data-source for storing trash contents: {RepositoryMediator.DefaultTrashDataSourceName ?? "(NULL)"}", null);
+			tracker?.Invoke($"Default data-source for storing version contents: {RepositoryMediator.DefaultVersionDataSourceName ?? "(None)"}", null);
+			tracker?.Invoke($"Default data-source for storing trash contents: {RepositoryMediator.DefaultTrashDataSourceName ?? "(None)"}", null);
 		}
 
 		/// <summary>
@@ -163,7 +166,7 @@ namespace net.vieapps.Components.Repository
 						&& !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("MySql") && !n.Name.IsStartsWith("Oracle") && !n.Name.IsStartsWith("Npgsql")
 					)
 					.Select(n => Assembly.Load(n))
-				), 
+				),
 				tracker
 			);
 		}
@@ -200,7 +203,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						tracker?.Invoke($"Ensure schemas: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.TableName}]", null);
-						await definition.EnsureSchemasAsync(primaryDataSource).ConfigureAwait(false);
+						await definition.EnsureSchemasAsync(primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -216,7 +219,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						tracker?.Invoke($"Ensure schemas: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.TableName}]", null);
-						await definition.EnsureSchemasAsync(secondaryDataSource).ConfigureAwait(false);
+						await definition.EnsureSchemasAsync(secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -226,19 +229,19 @@ namespace net.vieapps.Components.Repository
 
 				await RepositoryMediator.GetSyncDataSources(null, definition)
 					.Where(dataSource => dataSource.Mode.Equals(RepositoryMode.SQL) && !dataSource.Name.IsEquals(primaryDataSource?.Name) && !dataSource.Name.IsEquals(secondaryDataSource?.Name))
-					.ForEachAsync(async (dataSource, token) =>
+					.ForEachAsync(async (dataSource, canceltoken) =>
 					{
 						try
 						{
 							tracker?.Invoke($"Ensure schemas: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
-							await definition.EnsureSchemasAsync(dataSource).ConfigureAwait(false);
+							await definition.EnsureSchemasAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 						}
 						catch (Exception ex)
 						{
 							tracker?.Invoke($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
 							RepositoryMediator.WriteLogs($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
 						}
-					}, CancellationToken.None, true, false).ConfigureAwait(false);
+					}, cancellationToken, true, false).ConfigureAwait(false);
 			}, CancellationToken.None, true, false).ConfigureAwait(false);
 		}
 
@@ -254,7 +257,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						tracker?.Invoke($"Ensure indexes: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.CollectionName}]", null);
-						await definition.EnsureIndexesAsync(primaryDataSource, tracker).ConfigureAwait(false);
+						await definition.EnsureIndexesAsync(primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -270,7 +273,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						tracker?.Invoke($"Ensure indexes: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.CollectionName}]", null);
-						await definition.EnsureIndexesAsync(secondaryDataSource, tracker).ConfigureAwait(false);
+						await definition.EnsureIndexesAsync(secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -285,14 +288,14 @@ namespace net.vieapps.Components.Repository
 						try
 						{
 							tracker?.Invoke($"Ensure indexes: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
-							await definition.EnsureIndexesAsync(dataSource, tracker).ConfigureAwait(false);
+							await definition.EnsureIndexesAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 						}
 						catch (Exception ex)
 						{
 							tracker?.Invoke($"Error occurred while ensuring indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
 							RepositoryMediator.WriteLogs($"Cannot ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
 						}
-					}, CancellationToken.None, true, false).ConfigureAwait(false);
+					}, cancellationToken, true, false).ConfigureAwait(false);
 			}, CancellationToken.None, true, false).ConfigureAwait(false);
 		}
 	}
