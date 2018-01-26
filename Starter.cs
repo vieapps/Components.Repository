@@ -144,8 +144,8 @@ namespace net.vieapps.Components.Repository
 
 			tracker?.Invoke($"Total of registered repositories: {RepositoryMediator.RepositoryDefinitions.Count}", null);
 			tracker?.Invoke($"Total of registered repository entities: {RepositoryMediator.EntityDefinitions.Count}", null);
-			tracker?.Invoke($"Total of registered data-sources: {RepositoryMediator.DataSources.Count}", null);
 			tracker?.Invoke($"Total of registered event-handlers: {RepositoryMediator.EventHandlers.Count}", null);
+			tracker?.Invoke($"Total of registered data-sources: {RepositoryMediator.DataSources.Count}", null);
 			tracker?.Invoke($"Default data-source for storing version contents: {RepositoryMediator.DefaultVersionDataSourceName ?? "(None)"}", null);
 			tracker?.Invoke($"Default data-source for storing trash contents: {RepositoryMediator.DefaultTrashDataSourceName ?? "(None)"}", null);
 		}
@@ -202,7 +202,7 @@ namespace net.vieapps.Components.Repository
 				if (primaryDataSource != null)
 					try
 					{
-						tracker?.Invoke($"Ensure schemas: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.TableName}]", null);
+						tracker?.Invoke($"Ensure schemas of SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.TableName}]", null);
 						await definition.EnsureSchemasAsync(primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception ex)
@@ -218,7 +218,7 @@ namespace net.vieapps.Components.Repository
 				if (secondaryDataSource != null)
 					try
 					{
-						tracker?.Invoke($"Ensure schemas: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.TableName}]", null);
+						tracker?.Invoke($"Ensure schemas of SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.TableName}]", null);
 						await definition.EnsureSchemasAsync(secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception ex)
@@ -233,7 +233,7 @@ namespace net.vieapps.Components.Repository
 					{
 						try
 						{
-							tracker?.Invoke($"Ensure schemas: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
+							tracker?.Invoke($"Ensure schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
 							await definition.EnsureSchemasAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 						}
 						catch (Exception ex)
@@ -256,7 +256,7 @@ namespace net.vieapps.Components.Repository
 				if (primaryDataSource != null)
 					try
 					{
-						tracker?.Invoke($"Ensure indexes: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.CollectionName}]", null);
+						tracker?.Invoke($"Ensure indexes of No SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.CollectionName}]", null);
 						await definition.EnsureIndexesAsync(primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception ex)
@@ -272,7 +272,7 @@ namespace net.vieapps.Components.Repository
 				if (secondaryDataSource != null)
 					try
 					{
-						tracker?.Invoke($"Ensure indexes: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.CollectionName}]", null);
+						tracker?.Invoke($"Ensure indexes of No SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.CollectionName}]", null);
 						await definition.EnsureIndexesAsync(secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception ex)
@@ -287,7 +287,7 @@ namespace net.vieapps.Components.Repository
 					{
 						try
 						{
-							tracker?.Invoke($"Ensure indexes: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
+							tracker?.Invoke($"Ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
 							await definition.EnsureIndexesAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 						}
 						catch (Exception ex)

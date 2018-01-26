@@ -224,5 +224,4 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		User
 	}
-
 }

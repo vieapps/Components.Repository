@@ -1183,7 +1183,6 @@ namespace net.vieapps.Components.Repository
 		{
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 		}
-
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -1409,5 +1408,4 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 	}
-
 }

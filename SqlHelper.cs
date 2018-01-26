@@ -173,7 +173,7 @@ namespace net.vieapps.Components.Repository
 			parameters.ForEach(parameter =>
 			{
 				var pattern = "{0}";
-				var value = parameter.Value?.ToString() ?? "null";
+				var value = parameter.Value?.ToString() ?? "NULL";
 				if (parameter.DbType.Equals(DbType.String) || parameter.DbType.Equals(DbType.StringFixedLength)
 				|| parameter.DbType.Equals(DbType.AnsiString) || parameter.DbType.Equals(DbType.AnsiStringFixedLength) || parameter.DbType.Equals(DbType.DateTime))
 				{
@@ -3699,7 +3699,7 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-			return dbProviderFactory ?? throw new NotImplementedException($"Provider ({invariant}) is not installed");
+			return dbProviderFactory ?? throw new NotImplementedException($"The provider ({invariant}) is not installed");
 		}
 
 		internal static Dictionary<string, Provider> _Providers = null;
