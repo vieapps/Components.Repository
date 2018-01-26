@@ -185,7 +185,7 @@ namespace net.vieapps.Components.Repository
 
 			return (addInfo ? $"{command.Connection.Database} [{command.Connection.GetType()}]" + "\r\n" : "")
 				+ "SQL: " + (command.CommandText ?? "") + "\r\n"
-				+ "Parameters: \r\n\t+ " + parameters.Select(parameter => $"{parameter.ParameterName} ({parameter.DbType}) => [{parameter.Value}]").ToString("\r\n\t+ ") + "\r\n"
+				+ "Parameters: \r\n\t+ " + parameters.Select(parameter => $"{parameter.ParameterName} ({parameter.DbType}) => [{parameter.Value ?? "(null)"}]").ToString("\r\n\t+ ") + "\r\n"
 				+ "Command: " + sql;
 		}
 		#endregion
@@ -663,7 +663,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					});
@@ -737,7 +737,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					}).ConfigureAwait(false);
@@ -854,7 +854,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					});
@@ -925,7 +925,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					}).ConfigureAwait(false);
@@ -1040,7 +1040,7 @@ namespace net.vieapps.Components.Repository
 			stopwatch.Stop();
 			RepositoryMediator.WriteLogs(new List<string>()
 			{
-				$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name} ({dataSource.Mode})",
+				$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name}",
 				$"Execution times: {stopwatch.GetElapsedTimes()}",
 				info
 			});
@@ -1120,7 +1120,7 @@ namespace net.vieapps.Components.Repository
 			stopwatch.Stop();
 			await RepositoryMediator.WriteLogsAsync(new List<string>()
 			{
-				$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name} ({dataSource.Mode})",
+				$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name}",
 				$"Execution times: {stopwatch.GetElapsedTimes()}",
 				info
 			}).ConfigureAwait(false);
@@ -1227,7 +1227,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					});
@@ -1282,7 +1282,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					}).ConfigureAwait(false);
@@ -1389,7 +1389,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					});
@@ -1445,7 +1445,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					}).ConfigureAwait(false);
@@ -1512,7 +1512,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					});
@@ -1579,7 +1579,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					}).ConfigureAwait(false);
@@ -1647,7 +1647,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					});
@@ -1717,7 +1717,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					}).ConfigureAwait(false);
@@ -1784,7 +1784,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					});
@@ -1851,7 +1851,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Execution times: {stopwatch.GetElapsedTimes()}",
 						info
 					}).ConfigureAwait(false);
@@ -2090,7 +2090,7 @@ namespace net.vieapps.Components.Repository
 				stopwatch.Stop();
 				RepositoryMediator.WriteLogs(new List<string>()
 				{
-					$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name}",
 					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
 					info
 				});
@@ -2174,7 +2174,7 @@ namespace net.vieapps.Components.Repository
 				stopwatch.Stop();
 				await RepositoryMediator.WriteLogsAsync(new List<string>()
 				{
-					$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name}",
 					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
 					info
 				}).ConfigureAwait(false);
@@ -2442,7 +2442,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
 						command.GetInfo()
 					});
@@ -2487,7 +2487,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
 						command.GetInfo()
 					}).ConfigureAwait(false);
@@ -2786,7 +2786,7 @@ namespace net.vieapps.Components.Repository
 				stopwatch.Stop();
 				RepositoryMediator.WriteLogs(new List<string>()
 				{
-					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
 					$"Query: {query}",
 					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
 					info
@@ -2876,7 +2876,7 @@ namespace net.vieapps.Components.Repository
 				stopwatch.Stop();
 				await RepositoryMediator.WriteLogsAsync(new List<string>()
 				{
-					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
 					$"Query: {query}",
 					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
 					info
@@ -2970,7 +2970,7 @@ namespace net.vieapps.Components.Repository
 				stopwatch.Stop();
 				RepositoryMediator.WriteLogs(new List<string>()
 				{
-					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
 					$"Query: {query}",
 					$"Total of results: {identities.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
 					info
@@ -3060,7 +3060,7 @@ namespace net.vieapps.Components.Repository
 				stopwatch.Stop();
 				await RepositoryMediator.WriteLogsAsync(new List<string>()
 				{
-					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
 					$"Query: {query}",
 					$"Total of results: {identities.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
 					info
@@ -3155,7 +3155,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
-						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
 						command.GetInfo()
 					});
@@ -3200,7 +3200,7 @@ namespace net.vieapps.Components.Repository
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
-						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name} ({dataSource.Mode})",
+						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
 						command.GetInfo()
 					}).ConfigureAwait(false);

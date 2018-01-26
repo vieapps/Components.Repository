@@ -60,7 +60,7 @@ namespace net.vieapps.Components.Repository
 		public static RepositoryDefinition GetRepositoryDefinition(Type type)
 		{
 			return RepositoryMediator.RepositoryDefinitions.TryGetValue(type, out RepositoryDefinition definition)
-				?definition
+				? definition
 				: null;
 		}
 
@@ -936,9 +936,9 @@ namespace net.vieapps.Components.Repository
 					: null;
 
 				// auto sync
-#if DEBUG || PROCESSLOGS
 				if (@object != null)
 				{
+#if DEBUG || PROCESSLOGS
 					await RepositoryMediator.WriteLogsAsync($"GET: The cached object is found [{@object.GetCacheKey()}]").ConfigureAwait(false);
 #endif
 					if (context.EntityDefinition.AutoSync)
@@ -6562,7 +6562,7 @@ namespace net.vieapps.Components.Repository
 		{
 			definition = definition != null
 				? definition
-				: RepositoryMediator.GetEntityDefinition<T>();
+				: RepositoryMediator.GetEntityDefinition(typeof(T));
 
 			var standardProperties = definition != null
 				? definition.Attributes.ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
@@ -6625,7 +6625,7 @@ namespace net.vieapps.Components.Repository
 
 			definition = definition != null
 				? definition
-				: RepositoryMediator.GetEntityDefinition<T>();
+				: RepositoryMediator.GetEntityDefinition(typeof(T));
 
 			if (definition == null || definition.RuntimeEntities == null)
 				return false;
@@ -6633,6 +6633,7 @@ namespace net.vieapps.Components.Repository
 			var attributes = definition.RuntimeEntities.ContainsKey(businessEntityID)
 				? definition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions
 				: null;
+
 			return attributes != null && attributes.Count > 0;
 		}
 

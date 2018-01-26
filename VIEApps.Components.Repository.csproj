@@ -8,7 +8,7 @@
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
 		<AssemblyVersion>10.1.7.1802</AssemblyVersion>
 		<FileVersion>10.1.7.1802</FileVersion>
-		<InformationalVersion>v10.1.netstandard-2+rev:2018.01.24-ext-sync</InformationalVersion>
+		<InformationalVersion>v10.1.netstandard-2+rev:2018.01.26-U.R.Sync</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
@@ -34,7 +34,6 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<WarningLevel>3</WarningLevel>
 		<DocumentationFile>bin\Release\netstandard2.0\VIEApps.Components.Repository.xml</DocumentationFile>
-		<DefineConstants>TRACE;RELEASE;NETSTANDARD2_0;PROCESSLOGS</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -47,9 +46,9 @@
 
 	<ItemGroup>
 		<PackageReference Include="MongoDB.Driver" Version="2.5.0" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.7.1802-beta" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.1.7.1802-beta" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.7.1802-beta" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.7.1802-rc" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.1.7.1802-rc" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.7.1802-rc" />
 	</ItemGroup>
 
 </Project>

@@ -630,7 +630,7 @@ namespace net.vieapps.Components.Repository
 			// public properties
 			var numberOfKeys = 0;
 			var properties = ObjectService.GetProperties(type);
-			properties.Where(attr => attr.IsIgnored() == false).ForEach(attr =>
+			properties.Where(attr => !attr.IsIgnored()).ForEach(attr =>
 			{
 				// create
 				var attribute = new AttributeInfo(attr);

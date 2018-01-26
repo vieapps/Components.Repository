@@ -1,11 +1,12 @@
 ﻿#region Related components
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
+using System.Diagnostics;
 
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -179,7 +180,22 @@ namespace net.vieapps.Components.Repository
 		{
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "The object is null");
+
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			collection.InsertOne(@object, options);
+
+#if DEBUG || PROCESSLOGS
+			stopwatch.Stop();
+			RepositoryMediator.WriteLogs(new List<string>()
+			{
+				$"NoSQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+				$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+			});
+#endif
 		}
 
 		/// <summary>
@@ -227,11 +243,26 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task CreateAsync<T>(this IMongoCollection<T> collection, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task CreateAsync<T>(this IMongoCollection<T> collection, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return @object != null
-				? collection.InsertOneAsync(@object, options, cancellationToken)
-				: Task.FromException(new ArgumentNullException(nameof(@object), "The object is null"));
+			if (@object == null)
+				throw new ArgumentNullException(nameof(@object), "The object is null");
+
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
+			await collection.InsertOneAsync(@object, options, cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+			stopwatch.Stop();
+			await RepositoryMediator.WriteLogsAsync(new List<string>()
+			{
+				$"NoSQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+				$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+			}).ConfigureAwait(false);
+#endif
 		}
 
 		/// <summary>
@@ -515,9 +546,31 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static ReplaceOneResult Replace<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null) where T : class
 		{
-			return @object != null
-				? collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true })
-				: throw new ArgumentNullException(nameof(@object), "The object is null");
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+			try
+			{
+				return @object != null
+					? collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true })
+					: throw new ArgumentNullException(nameof(@object), "The object is null");
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+#if DEBUG || PROCESSLOGS
+			finally
+			{
+				stopwatch.Stop();
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"NoSQL: {(@object != null ? "Perform REPLACE command successful" : "No valid object to perform replace")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+					$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+				});
+			}
+#endif
 		}
 
 		/// <summary>
@@ -543,11 +596,33 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return @object != null
-				? collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken)
-				: Task.FromException<ReplaceOneResult>(new ArgumentNullException(nameof(@object), "The object is null"));
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+			try
+			{
+				return @object != null
+					? await collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken).ConfigureAwait(false)
+					: throw new ArgumentNullException(nameof(@object), "The object is null");
+			}
+			catch (Exception)
+			{
+				throw;
+			}
+#if DEBUG || PROCESSLOGS
+			finally
+			{
+				stopwatch.Stop();
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
+				{
+					$"NoSQL: {(@object != null ? "Perform REPLACE command successful" : "No valid object to perform replace")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+					$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+				}).ConfigureAwait(false);
+			}
+#endif
 		}
 
 		/// <summary>
@@ -603,6 +678,11 @@ namespace net.vieapps.Components.Repository
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update");
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			// get collection of all attributes
 			var objAttributes = @object.GetAttributes();
 
@@ -626,11 +706,28 @@ namespace net.vieapps.Components.Repository
 			if (gotGenericPrimitives)
 			{
 				collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true });
+
+#if DEBUG || PROCESSLOGS
+				stopwatch.Stop();
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"NoSQL: updated attributes got a generic primitive, then switch to use Replace instead of Update",
+					$"- Execution times: {stopwatch.GetElapsedTimes()}",
+					$"- Updated attributes: [{attributes.ToString(", ")}]",
+					$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
+				});
+#endif
+
 				return;
 			}
 
 			// update individually
 			UpdateDefinition<T> updater = null;
+
+#if DEBUG || PROCESSLOGS
+			var updated = "";
+#endif
+
 			attributes.ForEach(name =>
 			{
 				var attribute = !string.IsNullOrWhiteSpace(name)
@@ -650,9 +747,24 @@ namespace net.vieapps.Components.Repository
 					updater = updater == null
 						? Builders<T>.Update.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value))
 						: updater.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value));
+
+#if DEBUG || PROCESSLOGS
+					updated += $"\r\n\t+ @{attribute.Name} ({attribute.Type}) ==> [{value ?? "(null)"}]";
+#endif
 				}
 			});
-			collection.UpdateOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options);
+
+			if (updater != null)
+				collection.UpdateOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options);
+
+#if DEBUG || PROCESSLOGS
+			stopwatch.Stop();
+			RepositoryMediator.WriteLogs(new List<string>()
+			{
+				$"NoSQL: {(updater != null ? "Perform UPDATE command successful" : "No valid update to perform")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+				$"{(updater != null ? $"Updated attributes:{updated}\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+			});
+#endif
 		}
 
 		/// <summary>
@@ -719,6 +831,11 @@ namespace net.vieapps.Components.Repository
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update");
 
+#if DEBUG || PROCESSLOGS
+			var stopwatch = new Stopwatch();
+			stopwatch.Start();
+#endif
+
 			// get collection of all attributes
 			var objAttributes = @object.GetAttributes();
 
@@ -742,11 +859,28 @@ namespace net.vieapps.Components.Repository
 			if (gotGenericPrimitives)
 			{
 				await collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+				stopwatch.Stop();
+				await RepositoryMediator.WriteLogsAsync(new List<string>()
+				{
+					$"NoSQL: updated attributes got a generic primitive, then switch to use Replace instead of Update",
+					$"- Execution times: {stopwatch.GetElapsedTimes()}",
+					$"- Updated attributes: [{attributes.ToString(", ")}]",
+					$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
+				}).ConfigureAwait(false);
+#endif
+
 				return;
 			}
 
 			// update individually
 			UpdateDefinition<T> updater = null;
+
+#if DEBUG || PROCESSLOGS
+			var updated = "";
+#endif
+
 			attributes.ForEach(name =>
 			{
 				var attribute = !string.IsNullOrWhiteSpace(name)
@@ -766,11 +900,24 @@ namespace net.vieapps.Components.Repository
 					updater = updater == null
 						? Builders<T>.Update.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value))
 						: updater.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value));
+
+#if DEBUG || PROCESSLOGS
+					updated += $"\r\n\t+ @{attribute.Name} ({attribute.Type}) ==> [{value ?? "(null)"}]";
+#endif
 				}
 			});
 
 			if (updater != null)
 				await collection.UpdateOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options, cancellationToken).ConfigureAwait(false);
+
+#if DEBUG || PROCESSLOGS
+			stopwatch.Stop();
+			await RepositoryMediator.WriteLogsAsync(new List<string>()
+			{
+				$"NoSQL: {(updater != null ? "Perform UPDATE command successful" : "No valid update to perform")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+				$"{(updater != null ? $"Updated attributes:{updated}\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+			}).ConfigureAwait(false);
+#endif
 		}
 
 		/// <summary>
