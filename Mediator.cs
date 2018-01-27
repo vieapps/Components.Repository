@@ -575,12 +575,11 @@ namespace net.vieapps.Components.Repository
 				if (context.CallPreCreateHandlers(@object, false))
 					return false;
 
-				// prepare data source
+				// create
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 
-				// create
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					context.Create<T>(dataSource, @object);
+					context.Create<T>(dataSource, @object, null);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 					context.Create<T>(dataSource, @object);
 
@@ -677,10 +676,9 @@ namespace net.vieapps.Components.Repository
 				if (await context.CallPreCreateHandlersAsync(@object, false, cancellationToken).ConfigureAwait(false))
 					return false;
 
-				// prepare data source
+				// create
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 
-				// create
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					await context.CreateAsync<T>(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
@@ -763,16 +761,15 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
+				// pre-process
 				if (callHandlers)
 				{
 					context.Operation = RepositoryOperation.Get;
 					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-				}
 
-				// call pre-handlers
-				if (callHandlers && context.CallPreGetHandlers<T>(id))
-					return null;
+					if (context.CallPreGetHandlers<T>(id))
+						return null;
+				}
 
 				// get cached object
 				var @object = processCache && context.EntityDefinition.Cache != null
@@ -919,16 +916,15 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
+				// pre-process
 				if (callHandlers)
 				{
 					context.Operation = RepositoryOperation.Get;
 					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-				}
 
-				// call pre-handlers
-				if (callHandlers && await context.CallPreGetHandlersAsync<T>(id, cancellationToken).ConfigureAwait(false))
-					return null;
+					if (await context.CallPreGetHandlersAsync<T>(id, cancellationToken).ConfigureAwait(false))
+						return null;
+				}
 
 				// get cached object
 				var @object = processCache && context.EntityDefinition.Cache != null
@@ -2506,7 +2502,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the intance of objects from repository
+		/// Finds document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2633,7 +2629,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the intance of objects from repository
+		/// Finds document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2785,7 +2781,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the intance of objects from repository
+		/// Finds document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2914,7 +2910,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the intance of objects from repository
+		/// Finds document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2961,7 +2957,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Count
 		/// <summary>
-		/// Counts the number of intances of objects
+		/// Counts document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3023,7 +3019,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects
+		/// Counts document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3041,7 +3037,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects
+		/// Counts document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3060,7 +3056,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects
+		/// Counts document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3123,7 +3119,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects
+		/// Counts document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3142,7 +3138,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects
+		/// Counts document of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3495,7 +3491,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Count (by query)
 		/// <summary>
-		/// Counts the number of intances of objects (using full-text search)
+		/// Counts document of objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3544,7 +3540,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects (using full-text search)
+		/// Counts document of objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3560,7 +3556,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects (using full-text search)
+		/// Counts document of objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3577,7 +3573,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects (using full-text search)
+		/// Counts document of objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3627,7 +3623,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects (using full-text search)
+		/// Counts document of objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3644,7 +3640,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts the number of intances of objects (using full-text search)
+		/// Counts document of objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>

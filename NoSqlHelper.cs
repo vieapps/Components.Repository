@@ -170,7 +170,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Create
 		/// <summary>
-		/// Creates new a document of an object
+		/// Creates new document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -199,7 +199,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new a document of an object
+		/// Creates new document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dataSource">The data source</param>
@@ -211,18 +211,18 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new a document of an object
+		/// Creates new document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		public static void Create<T>(T @object, InsertOneOptions options = null) where T : class
 		{
-			NoSqlHelper.Create<T>(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options);
+			NoSqlHelper.Create(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options);
 		}
 
 		/// <summary>
-		/// Creates new a document of an object
+		/// Creates new document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -235,7 +235,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new a document of an object
+		/// Creates new document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -266,7 +266,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new a document of an object
+		/// Creates new document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="dataSource">The data source</param>
@@ -278,18 +278,18 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new a document of an object
+		/// Creates new document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		public static Task CreateAsync<T>(T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			return NoSqlHelper.CreateAsync<T>(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options, cancellationToken);
+			return NoSqlHelper.CreateAsync(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options, cancellationToken);
 		}
 
 		/// <summary>
-		/// Creates new a document of an object
+		/// Creates new document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -305,7 +305,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Get
 		/// <summary>
-		/// Gets a document and construct an object
+		/// Gets document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -320,7 +320,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets a document and construct an object
+		/// Gets document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -336,7 +336,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets a document and construct an object
+		/// Gets document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -352,7 +352,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets a document and construct an object
+		/// Gets document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -369,7 +369,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Get (first match)
 		/// <summary>
-		/// Gets a document (the first matched) and construct an object
+		/// Gets document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -386,7 +386,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets a document (the first matched) and construct an object
+		/// Gets document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -419,7 +419,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets a document (the first matched) and construct an object
+		/// Gets document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -437,7 +437,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets a document (the first matched) and construct an object
+		/// Gets document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -473,7 +473,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Get (by definition and identity)
 		/// <summary>
-		/// Gets an object by definition and identity
+		/// Gets document of an object
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="definition">The definition</param>
@@ -491,7 +491,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets an object by definition and identity
+		/// Gets document of an object
 		/// </summary>
 		/// <param name="definition">The definition</param>
 		/// <param name="id">The identity</param>
@@ -503,7 +503,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets an object by definition and identity
+		/// Gets document of an object
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="definition">The definition</param>
@@ -522,7 +522,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets an object by definition and identity
+		/// Gets document of an object
 		/// </summary>
 		/// <param name="definition">The definition</param>
 		/// <param name="id">The identity</param>
@@ -537,7 +537,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Replace
 		/// <summary>
-		/// Updates the document of an object (using replace method)
+		/// Replaces document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -574,7 +574,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (using replace method)
+		/// Replaces document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -588,7 +588,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (using replace method)
+		/// Replaces document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -626,7 +626,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (using replace method)
+		/// Replaces document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -662,7 +662,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (update individual attributes instead of replace document)
+		/// Updates document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -768,7 +768,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (update individual attributes instead of replace document)
+		/// Updates document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -783,7 +783,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (update individual attributes instead of replace document)
+		/// Updates document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -800,7 +800,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (update individual attributes instead of replace document)
+		/// Updates document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -815,7 +815,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (update individual attributes instead of replace document)
+		/// Updates document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -921,7 +921,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (update individual attributes instead of replace document)
+		/// Updates document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -937,7 +937,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (update individual attributes instead of replace document)
+		/// Updates document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -956,7 +956,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates the document of an object (update individual attributes instead of replace document)
+		/// Updates document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -974,7 +974,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Delete
 		/// <summary>
-		/// Delets the document of an object
+		/// Deletes the document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -989,7 +989,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Delets the document of an object
+		/// Deletes the document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -1002,7 +1002,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Delets the document of an object
+		/// Deletes the document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -1017,7 +1017,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Delets the document of an object
+		/// Deletes the document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -1030,7 +1030,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Delets the document of an object
+		/// Deletes the document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -1046,7 +1046,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Delets the document of an object
+		/// Deletes the document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -1059,7 +1059,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Delets the document of an object
+		/// Deletes the document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
@@ -1075,7 +1075,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Delets the document of an object
+		/// Deletes the document of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -1090,7 +1090,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Delete (many)
 		/// <summary>
-		/// Deletes the documents
+		/// Deletes document of multiple objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>
@@ -1118,7 +1118,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes the documents
+		/// Deletes document of multiple objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The working context</param>

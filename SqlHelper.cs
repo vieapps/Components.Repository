@@ -630,7 +630,7 @@ namespace net.vieapps.Components.Repository
 		public static void Create<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
 			if (@object == null)
-				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
+				throw new ArgumentNullException(nameof(@object), "The object is null");
 
 #if DEBUG || PROCESSLOGS
 			var stopwatch = new Stopwatch();
@@ -704,7 +704,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task CreateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			if (@object == null)
-				throw new ArgumentNullException(nameof(@object), "Cannot create new because the object is null");
+				throw new ArgumentNullException(nameof(@object), "The object is null");
 
 #if DEBUG || PROCESSLOGS
 			var stopwatch = new Stopwatch();
@@ -2402,7 +2402,7 @@ namespace net.vieapps.Components.Repository
 				: "";
 
 			// statement
-			var statement = $"SELECT COUNT({(gotAssociateWithMultipleParents ? "DISTINCT " : "")}{definition.PrimaryKey}) AS TotalRecords" + tables + where;
+			var statement = $"SELECT COUNT({(gotAssociateWithMultipleParents ? "DISTINCT " : "")}{definition.PrimaryKey}) AS TotalRecords{tables}{where}";
 
 			// parameters
 			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
