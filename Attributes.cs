@@ -42,14 +42,7 @@ namespace net.vieapps.Components.Repository
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 	public class EntityAttribute : Attribute
 	{
-		public EntityAttribute()
-		{
-			this.MultipleIntances = false;
-			this.Extendable = false;
-			this.Searchable = true;
-			this.MultipleParentAssociates = false;
-			this.CreateNewVersionWhenUpdated = true;
-		}
+		public EntityAttribute() { }
 
 		/// <summary>
 		/// Gets or sets the name of the SQL table 
@@ -74,7 +67,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the state that specifies this entity is able to search using full-text method
 		/// </summary>
-		public bool Searchable { get; set; }
+		public bool Searchable { get; set; } = true;
 
 		/// <summary>
 		/// Gets or sets the identity (when this object is defined as a content-type definition)
@@ -94,17 +87,17 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the state that allow to use multiple instances, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool MultipleIntances { get; set; }
+		public bool MultipleIntances { get; set; } = false;
 
 		/// <summary>
 		/// Gets or sets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Extendable { get; set; }
+		public bool Extendable { get; set; } = false;
 
 		/// <summary>
 		/// Gets or sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Indexable { get; set; }
+		public bool Indexable { get; set; } = true;
 
 		/// <summary>
 		/// Gets or sets the type of parent entity definition (when this object is defined as a content-type definition)
@@ -119,7 +112,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the state that specifies this entity had multiple associates with parent object, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool MultipleParentAssociates { get; set; }
+		public bool MultipleParentAssociates { get; set; } = false;
 
 		/// <summary>
 		/// Gets or sets the name of the property that use to store the information of multiple associates with parent, mus be List or HashSet (when this object is defined as a content-type definition)
@@ -144,7 +137,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the state to create new version when an entity object is updated
 		/// </summary>
-		public bool CreateNewVersionWhenUpdated { get; set; }
+		public bool CreateNewVersionWhenUpdated { get; set; } = true;
 
 		/// <summary>
 		/// Gets or sets the name of the property to use as short-name (when this object is defined as a content-type definition)
@@ -163,10 +156,7 @@ namespace net.vieapps.Components.Repository
 	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 	public class PrimaryKeyAttribute : Attribute
 	{
-		public PrimaryKeyAttribute()
-		{
-			this.MaxLength = 0;
-		}
+		public PrimaryKeyAttribute() { }
 
 		/// <summary>
 		/// Gets or sets the name of the column in SQL table 
@@ -176,7 +166,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets max-length (of the string property)
 		/// </summary>
-		public int MaxLength { get; set; }
+		public int MaxLength { get; set; } = 32;
 	}
 
 	/// <summary>
@@ -185,13 +175,7 @@ namespace net.vieapps.Components.Repository
 	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 	public class PropertyAttribute : Attribute
 	{
-		public PropertyAttribute()
-		{
-			this.NotNull = false;
-			this.NotEmpty = false;
-			this.MaxLength = 0;
-			this.IsCLOB = false;
-		}
+		public PropertyAttribute() { }
 
 		/// <summary>
 		/// Gets or sets the name of the column in SQL table
@@ -201,22 +185,22 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets state that specified this property is required (not allow nullable value - default is false)
 		/// </summary>
-		public bool NotNull { get; set; }
+		public bool NotNull { get; set; } = false;
 
 		/// <summary>
 		/// Gets or sets state that specified this string property is required (not allow empty value - default is false)
 		/// </summary>
-		public bool NotEmpty { get; set; }
+		public bool NotEmpty { get; set; } = false;
 
 		/// <summary>
 		/// Gets or sets max-length (of the string property)
 		/// </summary>
-		public int MaxLength { get; set; }
+		public int MaxLength { get; set; } = 0;
 
 		/// <summary>
 		/// Gets or sets state that specified this string property is use CLOB (character of large object) - default is false
 		/// </summary>
-		public bool IsCLOB { get; set; }
+		public bool IsCLOB { get; set; } = false;
 	}
 
 	/// <summary>
@@ -225,13 +209,7 @@ namespace net.vieapps.Components.Repository
 	[AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
 	public class FieldAttribute : Attribute
 	{
-		public FieldAttribute()
-		{
-			this.NotNull = false;
-			this.NotEmpty = false;
-			this.MaxLength = 0;
-			this.IsCLOB = false;
-		}
+		public FieldAttribute() { }
 
 		/// <summary>
 		/// Gets or sets the name of the column in SQL table
@@ -241,22 +219,22 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets state that specified this field is required (not allow nullable value - default is false)
 		/// </summary>
-		public bool NotNull { get; set; }
+		public bool NotNull { get; set; } = false;
 
 		/// <summary>
 		/// Gets or sets state that specified this string field is required (not allow empty value - default is false)
 		/// </summary>
-		public bool NotEmpty { get; set; }
+		public bool NotEmpty { get; set; } = false;
 
 		/// <summary>
 		/// Gets or sets max-length (of the string field)
 		/// </summary>
-		public int MaxLength { get; set; }
+		public int MaxLength { get; set; } = 0;
 
 		/// <summary>
 		/// Gets or sets state that specified this string field is use CLOB (character of large object) - default is false
 		/// </summary>
-		public bool IsCLOB { get; set; }
+		public bool IsCLOB { get; set; } = false;
 	}
 
 	/// <summary>
@@ -306,7 +284,7 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
-	/// Specifies this date-time property will be stored in SQL as a string with format 'yyyy/MM/dd HH:mm:ss'
+	/// Specifies this date-time property will be stored as a string with format 'yyyy/MM/dd HH:mm:ss' in SQL table
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]
 	public class AsStringAttribute : Attribute
@@ -315,7 +293,7 @@ namespace net.vieapps.Components.Repository
 	}
 
 	/// <summary>
-	/// Specifies this property will be stored in SQL as a CLOB string with JSON format
+	/// Specifies this property will be stored as a CLOB string with JSON format in SQL table
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]
 	public class AsJsonAttribute : Attribute

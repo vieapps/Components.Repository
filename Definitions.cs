@@ -887,8 +887,7 @@ namespace net.vieapps.Components.Repository
 	{
 		public ExtendedPropertyDefinition(JObject json = null)
 		{
-			if (json != null)
-				this.CopyFrom(json);
+			this.CopyFrom(json ?? new JObject());
 		}
 
 		#region Properties
@@ -1165,8 +1164,7 @@ namespace net.vieapps.Components.Repository
 	{
 		public ExtendedUIDefinition(JObject json = null)
 		{
-			if (json != null)
-				this.CopyFrom(json);
+			this.CopyFrom(json ?? new JObject());
 		}
 
 		#region Properties

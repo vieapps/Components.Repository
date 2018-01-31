@@ -491,12 +491,17 @@ namespace net.vieapps.Components.Repository
 						if (attribute.Type.IsDateTimeType() && attribute.IsStoredAsString())
 							value = DateTime.Parse(value as string);
 						else if (attribute.IsStoredAsJson())
-						{
-							var json = (value as string).StartsWith("[")
-								? JArray.Parse(value as string) as JToken
-								: JObject.Parse(value as string) as JToken;
-							value = new JsonSerializer().Deserialize(new JTokenReader(json), attribute.Type);
-						}
+							try
+							{
+								var json = (value as string).StartsWith("[")
+									? JArray.Parse(value as string) as JToken
+									: JObject.Parse(value as string) as JToken;
+								value = new JsonSerializer().Deserialize(new JTokenReader(json), attribute.Type);
+							}
+							catch
+							{
+								value = null;
+							}
 						else if (attribute.Type.IsEnum)
 							value = attribute.IsEnumString()
 								? value.ToString().ToEnum(attribute.Type)
@@ -539,12 +544,17 @@ namespace net.vieapps.Components.Repository
 						if (attribute.Type.IsDateTimeType() && attribute.IsStoredAsString())
 							value = DateTime.Parse(value as string);
 						else if (attribute.IsStoredAsJson())
-						{
-							var json = (value as string).StartsWith("[")
-								? JArray.Parse(value as string) as JToken
-								: JObject.Parse(value as string) as JToken;
-							value = new JsonSerializer().Deserialize(new JTokenReader(json), attribute.Type);
-						}
+							try
+							{
+								var json = (value as string).StartsWith("[")
+									? JArray.Parse(value as string) as JToken
+									: JObject.Parse(value as string) as JToken;
+								value = new JsonSerializer().Deserialize(new JTokenReader(json), attribute.Type);
+							}
+							catch
+							{
+								value = null;
+							}
 						else if (attribute.Type.IsEnum)
 							value = attribute.IsEnumString()
 								? value.ToString().ToEnum(attribute.Type)
