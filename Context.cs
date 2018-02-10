@@ -153,7 +153,15 @@ namespace net.vieapps.Components.Repository
 			if (this.Transaction != null)
 			{
 				if (this.Exception == null)
-					this.Transaction.Complete();
+					try
+					{
+						this.Transaction.Complete();
+					}
+					catch (ObjectDisposedException) { }
+					catch (Exception)
+					{
+						throw;
+					}
 				this.Transaction.Dispose();
 				this.Transaction = null;
 			}
