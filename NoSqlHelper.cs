@@ -2045,11 +2045,11 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						var @object = definition.Type.CreateInstance() as RepositoryBase;
-						@object.ID = UtilityService.BlankUID;
+						@object.ID = UtilityService.BlankUUID;
 						await collection.InsertOneAsync(@object.ToBsonDocument(), null, cancellationToken).ContinueWith(async (t) =>
 						{
 							await Task.Delay(456, cancellationToken).ConfigureAwait(false);
-							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUID), null, cancellationToken).ConfigureAwait(false);
+							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUUID), null, cancellationToken).ConfigureAwait(false);
 						}, cancellationToken, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Current).ConfigureAwait(false);
 					}
 					catch { }

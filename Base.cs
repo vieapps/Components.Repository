@@ -4082,7 +4082,7 @@ namespace net.vieapps.Components.Repository
 		{
 			var content = ObjectService.CreateInstance<VersionContent>();
 			content.CopyFrom(TrashContent.Prepare(@object));
-			content.ID = UtilityService.NewUID;
+			content.ID = UtilityService.NewUUID;
 			content.ObjectID = @object.GetEntityID();
 			onPreCompleted?.Invoke(content);
 			return content;
