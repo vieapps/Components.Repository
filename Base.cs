@@ -28,6 +28,10 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public abstract class RepositoryBase
 	{
+		/// <summary>
+		/// Initialize a new instance
+		/// </summary>
+		public RepositoryBase() { }
 
 		#region Properties
 		/// <summary>
@@ -128,11 +132,10 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("ID = {ID}, Type = {typeof(T).FullName}")]
 	public abstract class RepositoryBase<T> : RepositoryBase where T : class
 	{
-
 		/// <summary>
 		/// Initialize a new instance
 		/// </summary>
-		public RepositoryBase() { }
+		public RepositoryBase() : base() { }
 
 		#region [Static] Create
 		/// <summary>
@@ -3476,19 +3479,17 @@ namespace net.vieapps.Components.Repository
 			{
 				// working privileges
 				if (json["Privileges"] == null && (this as IBusinessEntity).WorkingPrivileges != null)
-					json.Add(new JProperty("Privileges", JObject.FromObject(this.OriginalPrivileges)));
+					json.Add("Privileges", JObject.FromObject(this.OriginalPrivileges));
 
 				// extended properties
 				if ((this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
 					(this as IBusinessEntity).ExtendedProperties
 						.ForEach(property =>
 						{
-							var type = property.Value != null
-								? property.Value.GetType()
-								: null;
+							var type = property.Value?.GetType();
 
 							if (addTypeOfExtendedProperties && type != null)
-								json.Add(new JProperty(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
+								json.Add(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName());
 
 							var value = type == null || type.IsPrimitiveType()
 								? property.Value
@@ -3544,9 +3545,7 @@ namespace net.vieapps.Components.Repository
 					(this as IBusinessEntity).ExtendedProperties
 						.ForEach(property =>
 						{
-							var type = property.Value != null
-								? property.Value.GetType()
-								: null;
+							var type = property.Value?.GetType();
 
 							var value = type == null || type.IsPrimitiveType()
 								? property.Value
@@ -4092,11 +4091,11 @@ namespace net.vieapps.Components.Repository
 
 	//  --------------------------------------------------------------------------------------------
 
-	#region Repository object comparer
+	#region Comparer of repository objects
 	/// <summary>
-	/// Presents the comparer for all repository objects
+	/// Presents the comparer to help repository objects work with LINQ
 	/// </summary>
-	public class RepositoryBaseComparer : IEqualityComparer<RepositoryBase>
+	public class RepositoryComparer<T> : IEqualityComparer<T> where T : class
 	{
 		/// <summary>
 		/// Objects are equal if their identities are equal
@@ -4104,13 +4103,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="x"></param>
 		/// <param name="y"></param>
 		/// <returns></returns>
-		public bool Equals(RepositoryBase x, RepositoryBase y)
+		public virtual bool Equals(T x, T y)
 		{
-			return object.ReferenceEquals(x, y)
-				? true
-				: object.ReferenceEquals(x, null) || Object.ReferenceEquals(y, null)
-					? false
-					: x.ID.IsEquals(y.ID);
+			return x == null || y == null
+				? false
+				: object.ReferenceEquals(x, y)
+					? true
+					: (x.GetEntityID() ?? "").IsEquals(y.GetEntityID());
 		}
 
 		/// <summary>
@@ -4118,11 +4117,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="object"></param>
 		/// <returns></returns>
-		public int GetHashCode(RepositoryBase @object)
+		public virtual int GetHashCode(T @object)
 		{
-			return @object == null || string.IsNullOrWhiteSpace(@object.ID)
-				? 0
-				: @object.ID.GetHashCode();
+			return @object == null
+				? -1
+				: (@object.GetEntityID() ?? "").GetHashCode();
 		}
 	}
 	#endregion

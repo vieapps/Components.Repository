@@ -159,7 +159,9 @@ namespace net.vieapps.Components.Repository
 
 		internal static DbCommand CreateCommand(this DbConnection connection, Tuple<string, List<DbParameter>> info)
 		{
-			return connection.CreateCommand(info.Item1, info.Item2);
+			return info != null && !string.IsNullOrWhiteSpace(info.Item1)
+				? connection.CreateCommand(info.Item1, info.Item2)
+				: null;
 		}
 
 		internal static string GetInfo(this DbCommand command, bool addInfo = true)
@@ -169,7 +171,7 @@ namespace net.vieapps.Components.Repository
 				foreach (DbParameter parameter in command.Parameters)
 					parameters.Add(parameter);
 
-			var sql = command.CommandText ?? "";
+			var statement = command.CommandText ?? "";
 			parameters.ForEach(parameter =>
 			{
 				var pattern = "{0}";
@@ -180,13 +182,13 @@ namespace net.vieapps.Components.Repository
 					pattern = "'{0}'";
 					value = value.Replace(StringComparison.OrdinalIgnoreCase, "'", "''");
 				}
-				sql = sql.Replace(StringComparison.OrdinalIgnoreCase, parameter.ParameterName, string.Format(pattern, value));
+				statement = statement.Replace(StringComparison.OrdinalIgnoreCase, parameter.ParameterName, string.Format(pattern, value));
 			});
 
-			return (addInfo ? $"{command.Connection.Database} [{command.Connection.GetType()}]" + "\r\n" : "")
-				+ "SQL: " + (command.CommandText ?? "") + "\r\n"
-				+ "Parameters: \r\n\t+ " + parameters.Select(parameter => $"{parameter.ParameterName} ({parameter.DbType}) => [{parameter.Value ?? "(null)"}]").ToString("\r\n\t+ ") + "\r\n"
-				+ "Command: " + sql;
+			return (addInfo ? $"SQL Info: {command.Connection.Database} [{command.Connection.GetType()}]" + "\r\n" : "")
+				+ "- Command Text: " + (command.CommandText ?? "") + "\r\n"
+				+ (parameters.Count < 1 ? "" : "- Command Parameters: \r\n\t+ " + parameters.Select(parameter => $"{parameter.ParameterName} ({parameter.DbType}) => [{parameter.Value ?? "(null)"}]").ToString("\r\n\t+ ") + "\r\n")
+				+ "- Command Statement: " + statement;
 		}
 		#endregion
 
@@ -1327,7 +1329,9 @@ namespace net.vieapps.Components.Repository
 				parameters.Add(dbProviderFactory.CreateParameter(standardProperties[attribute.ToLower()], value));
 			}
 
-			var statement = $"UPDATE {definition.TableName} SET {string.Join(", ", columns)} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}";
+			var statement = columns.Count > 0
+				? $"UPDATE {definition.TableName} SET {string.Join(", ", columns)} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}"
+				: null;
 			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey))));
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -1335,7 +1339,7 @@ namespace net.vieapps.Components.Repository
 
 		static Tuple<string, List<DbParameter>> PrepareUpdateExtent<T>(this T @object, List<string> attributes, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var colums = new List<string>();
+			var columns = new List<string>();
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
@@ -1345,14 +1349,16 @@ namespace net.vieapps.Components.Repository
 				if (!extendedProperties.ContainsKey(attribute.ToLower()))
 					continue;
 
-				colums.Add(extendedProperties[attribute.ToLower()].Column + "=@" + extendedProperties[attribute.ToLower()].Name);
+				columns.Add(extendedProperties[attribute.ToLower()].Column + "=@" + extendedProperties[attribute.ToLower()].Name);
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(extendedProperties[attribute.ToLower()].Name)
 					? (@object as IBusinessEntity).ExtendedProperties[extendedProperties[attribute.ToLower()].Name]
 					: extendedProperties[attribute.ToLower()].GetDefaultValue();
 				parameters.Add(dbProviderFactory.CreateParameter(extendedProperties[attribute.ToLower()], value));
 			}
 
-			var statement = $"UPDATE {definition.RepositoryDefinition.ExtendedPropertiesTableName} SET {string.Join(", ", colums)} WHERE ID=@ID";
+			var statement = columns.Count > 0
+				? $"UPDATE {definition.RepositoryDefinition.ExtendedPropertiesTableName} SET {string.Join(", ", columns)} WHERE ID=@ID"
+				: null;
 			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)));
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -1370,6 +1376,8 @@ namespace net.vieapps.Components.Repository
 		{
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
+			else if (attributes == null || attributes.Count < 1)
+				throw new ArgumentException("No attribute to update", nameof(attributes));
 
 #if DEBUG || PROCESSLOGS
 			var stopwatch = new Stopwatch();
@@ -1382,20 +1390,22 @@ namespace net.vieapps.Components.Repository
 				var command = connection.CreateCommand(@object.PrepareUpdateOrigin(attributes, dbProviderFactory));
 				try
 				{
-					command.ExecuteNonQuery();
+					if (command != null)
+						command.ExecuteNonQuery();
 
 #if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
+					var info = command == null ? "" : command.GetInfo();
 #endif
 
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareUpdateExtent(attributes, dbProviderFactory));
-						command.ExecuteNonQuery();
+						if (command != null)
+							command.ExecuteNonQuery();
 					}
 
 #if DEBUG || PROCESSLOGS
-					info += "\r\n" + command.GetInfo();
+					info += command == null ? "" : "\r\n" + command.GetInfo();
 					stopwatch.Stop();
 					RepositoryMediator.WriteLogs(new List<string>()
 					{
@@ -1407,7 +1417,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Could not perform UPDATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
+					throw new RepositoryOperationException($"Could not perform UPDATE command [{typeof(T)}#{@object?.GetEntityID()}]", command == null ? "" : command.GetInfo(), ex);
 				}
 			}
 		}
@@ -1426,6 +1436,8 @@ namespace net.vieapps.Components.Repository
 		{
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
+			else if (attributes == null || attributes.Count < 1)
+				throw new ArgumentException("No attribute to update", nameof(attributes));
 
 #if DEBUG || PROCESSLOGS
 			var stopwatch = new Stopwatch();
@@ -1438,20 +1450,22 @@ namespace net.vieapps.Components.Repository
 				var command = connection.CreateCommand(@object.PrepareUpdateOrigin(attributes, dbProviderFactory));
 				try
 				{
-					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+					if (command != null)
+						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
 #if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
+					var info = command == null ? "" : command.GetInfo();
 #endif
 
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareUpdateExtent(attributes, dbProviderFactory));
-						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+						if (command != null)
+							await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 					}
 
 #if DEBUG || PROCESSLOGS
-					info += "\r\n" + command.GetInfo();
+					info += command == null ? "" : "\r\n" + command.GetInfo();
 					stopwatch.Stop();
 					await RepositoryMediator.WriteLogsAsync(new List<string>()
 					{
@@ -1463,7 +1477,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					throw new RepositoryOperationException($"Could not perform UPDATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
+					throw new RepositoryOperationException($"Could not perform UPDATE command [{typeof(T)}#{@object?.GetEntityID()}]", command == null ? "" : command.GetInfo(), ex);
 				}
 			}
 		}
