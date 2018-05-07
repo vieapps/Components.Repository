@@ -2,27 +2,26 @@
 
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
 		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
-		<AssemblyVersion>10.1.14.1804</AssemblyVersion>
-		<FileVersion>10.1.14.1804</FileVersion>
-		<InformationalVersion>v10.1.netstandard-2+rev:2018.04.01</InformationalVersion>
+		<AssemblyVersion>10.2.1.1805</AssemblyVersion>
+		<FileVersion>10.2.1.1805</FileVersion>
+		<InformationalVersion>v10.2.netstandard-2+rev:2018.05.07</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.1.14.1804</Version>
+		<Version>10.2.1.1805</Version>
 		<SignAssembly>false</SignAssembly>
 		<DelaySign>false</DelaySign>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
 		<Title>VIEApps NGX Repository</Title>
-		<Description>The tiny polyglot library to help .NET Standard 2.0 POCO objects work with both NoSQL and SQL databases in the same time</Description>
+		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases in the same time on  .NET Standard 2.0</Description>
 		<Authors>VIEApps.net</Authors>
 		<Copyright>© 2018 VIEApps.net</Copyright>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Fix bugs of SQL when update objects</PackageReleaseNotes>
+		<PackageReleaseNotes>Changes: add support of cancellation token for all async operations</PackageReleaseNotes>
 		<PackageProjectUrl>https://github.com/vieapps/Components.Repository</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 	</PropertyGroup>
@@ -41,15 +40,15 @@
 		<None Remove=".DS_Store" />
 		<None Remove=".gitattributes" />
 		<None Remove=".gitignore" />
-		<None Remove="LICENSE" />
+		<None Remove="LICENSE.md" />
 		<None Remove="README.md" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.5.0" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.1.14.1804" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.1.14.1804" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.1.14.1804" />
+		<PackageReference Include="MongoDB.Driver" Version="2.6.0" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1.1805" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1.1805" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.2.1.1805" />
 	</ItemGroup>
 
 </Project>

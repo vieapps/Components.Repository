@@ -16,6 +16,8 @@ using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+using Microsoft.Extensions.Logging;
+
 using net.vieapps.Components.Caching;
 using net.vieapps.Components.Utility;
 using net.vieapps.Components.Security;
@@ -577,6 +579,8 @@ namespace net.vieapps.Components.Repository
 
 				// create
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					context.Create(dataSource, @object, null);
@@ -619,10 +623,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (RepositoryMediator.Create<T>(context, context.GetPrimaryDataSource(), @object))
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false)).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -678,6 +679,8 @@ namespace net.vieapps.Components.Repository
 
 				// create
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					await context.CreateAsync(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
@@ -687,15 +690,20 @@ namespace net.vieapps.Components.Repository
 				// update in cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false))
+					if (await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false))
 						await RepositoryMediator.WriteLogsAsync($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
-					await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false);
+					await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false);
 #endif
 
 				// call post-handlers
 				await context.CallPostCreateHandlersAsync(@object, false, cancellationToken).ConfigureAwait(false);
 				return true;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -723,10 +731,7 @@ namespace net.vieapps.Components.Repository
 			context.AliasTypeName = aliasTypeName;
 			if (await RepositoryMediator.CreateAsync<T>(context, context.GetPrimaryDataSource(), @object, cancellationToken).ConfigureAwait(false))
 			{
-				var sync = Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, false, cancellationToken)).ConfigureAwait(false);
 			}
 		}
 
@@ -783,16 +788,16 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs($"GET: The cached object is found [{@object.GetCacheKey(false)}]");
 #endif
 					if (context.EntityDefinition.AutoSync)
-						Task.Run(async () =>
-						{
-							await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-						}).ConfigureAwait(false);
+						Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName)).ConfigureAwait(false);
 				}
 
 				// load from data store if got no cached
 				else
 				{
 					dataSource = dataSource ?? context.GetPrimaryDataSource();
+					if (dataSource == null)
+						throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 					@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? context.Get<T>(dataSource, id, null)
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
@@ -803,10 +808,7 @@ namespace net.vieapps.Components.Repository
 					if (@object != null)
 					{
 						if (context.EntityDefinition.AutoSync)
-							Task.Run(async () =>
-							{
-								await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-							}).ConfigureAwait(false);
+							Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName)).ConfigureAwait(false);
 					}
 
 					// when not found in primary, then get instance from secondary source
@@ -824,10 +826,7 @@ namespace net.vieapps.Components.Repository
 
 								// re-create object at primary data source
 								if (@object != null)
-									Task.Run(async () =>
-									{
-										await RepositoryMediator.SyncAsync(@object, context.AliasTypeName, context.EntityDefinition).ConfigureAwait(false);
-									}).ConfigureAwait(false);
+									Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, context.EntityDefinition)).ConfigureAwait(false);
 							}
 						}
 						catch (Exception ex)
@@ -928,7 +927,7 @@ namespace net.vieapps.Components.Repository
 
 				// get cached object
 				var @object = processCache && context.EntityDefinition.Cache != null
-					? await context.EntityDefinition.Cache.FetchAsync<T>(id).ConfigureAwait(false)
+					? await context.EntityDefinition.Cache.FetchAsync<T>(id, cancellationToken).ConfigureAwait(false)
 					: null;
 
 				// auto sync
@@ -939,10 +938,7 @@ namespace net.vieapps.Components.Repository
 #endif
 					if (context.EntityDefinition.AutoSync)
 					{
-						var sync = Task.Run(async () =>
-						{
-							await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-						}).ConfigureAwait(false);
+						var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, true, false, cancellationToken)).ConfigureAwait(false);
 					}
 				}
 
@@ -951,6 +947,9 @@ namespace net.vieapps.Components.Repository
 				{
 					// load from primary data source
 					dataSource = dataSource ?? context.GetPrimaryDataSource();
+					if (dataSource == null)
+						throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 					@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? await context.GetAsync<T>(dataSource, id, null, cancellationToken).ConfigureAwait(false)
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
@@ -962,10 +961,7 @@ namespace net.vieapps.Components.Repository
 					{
 						if (context.EntityDefinition.AutoSync)
 						{
-							var sync = Task.Run(async () =>
-							{
-								await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-							}).ConfigureAwait(false);
+							var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, true, false, cancellationToken)).ConfigureAwait(false);
 						}
 					}
 
@@ -985,10 +981,7 @@ namespace net.vieapps.Components.Repository
 								// re-create object at primary data source
 								if (@object != null)
 								{
-									var sync = Task.Run(async () =>
-									{
-										await RepositoryMediator.SyncAsync(@object, context.AliasTypeName, context.EntityDefinition, cancellationToken).ConfigureAwait(false);
-									}).ConfigureAwait(false);
+									var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, context.EntityDefinition, cancellationToken)).ConfigureAwait(false);
 								}
 							}
 						}
@@ -1000,10 +993,10 @@ namespace net.vieapps.Components.Repository
 					// update into cache storage
 					if (@object != null && processCache && context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-						if (await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false))
+						if (await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false))
 							await RepositoryMediator.WriteLogsAsync($"GET: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
-						await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false);
+						await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false);
 #endif
 				}
 
@@ -1016,6 +1009,11 @@ namespace net.vieapps.Components.Repository
 
 				// return
 				return @object;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -1084,6 +1082,8 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Get;
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find
 				var @object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
@@ -1094,10 +1094,7 @@ namespace net.vieapps.Components.Repository
 
 				// auto sync
 				if (@object != null && context.EntityDefinition.AutoSync)
-					Task.Run(async () =>
-					{
-						await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-					}).ConfigureAwait(false);
+					Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName)).ConfigureAwait(false);
 
 				// return
 				return @object;
@@ -1166,6 +1163,8 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Get;
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find
 				var @object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
@@ -1177,14 +1176,16 @@ namespace net.vieapps.Components.Repository
 				// auto sync
 				if (@object != null && context.EntityDefinition.AutoSync)
 				{
-					var sync = Task.Run(async () =>
-					{
-						await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-					}).ConfigureAwait(false);
+					var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, true, false, cancellationToken)).ConfigureAwait(false);
 				}
 
 				// return
 				return @object;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -1259,16 +1260,16 @@ namespace net.vieapps.Components.Repository
 				RepositoryMediator.WriteLogs($"GET (by definition): The cached object is found [{@object.GetCacheKey(false)}]");
 #endif
 				if (definition.AutoSync)
-					Task.Run(async () =>
-					{
-						await RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).ConfigureAwait(false);
-					}).ConfigureAwait(false);
+					Task.Run(() => RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null)).ConfigureAwait(false);
 			}
 
 			// load from data store if got no cached
 			else
 			{
 				dataSource = dataSource ?? definition.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? NoSqlHelper.Get(dataSource, definition, id)
 					: dataSource.Mode.Equals(RepositoryMode.SQL)
@@ -1279,10 +1280,7 @@ namespace net.vieapps.Components.Repository
 				if (@object != null)
 				{
 					if (definition.AutoSync)
-						Task.Run(async () =>
-						{
-							await RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).ConfigureAwait(false);
-						}).ConfigureAwait(false);
+						Task.Run(() => RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null)).ConfigureAwait(false);
 				}
 
 				// when not found in primary, then get instance from secondary source
@@ -1300,10 +1298,7 @@ namespace net.vieapps.Components.Repository
 
 							// re-create object at primary data source
 							if (@object != null)
-								Task.Run(async () =>
-								{
-									await RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, definition).ConfigureAwait(false);
-								}).ConfigureAwait(false);
+								Task.Run(() => RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, definition)).ConfigureAwait(false);
 						}
 					}
 					catch (Exception ex)
@@ -1371,7 +1366,7 @@ namespace net.vieapps.Components.Repository
 
 			// get cached object
 			var @object = definition.Cache != null
-				? await definition.Cache.GetAsync(definition.Type.GetTypeName(true) + "#" + id.Trim().ToLower()).ConfigureAwait(false)
+				? await definition.Cache.GetAsync(definition.Type.GetTypeName(true) + "#" + id.Trim().ToLower(), cancellationToken).ConfigureAwait(false)
 				: null;
 
 			// auto sync
@@ -1382,10 +1377,7 @@ namespace net.vieapps.Components.Repository
 #endif
 				if (definition.AutoSync)
 				{
-					var sync = Task.Run(async () =>
-					{
-						await RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).ConfigureAwait(false);
-					}).ConfigureAwait(false);
+					var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, true, false, cancellationToken)).ConfigureAwait(false);
 				}
 			}
 
@@ -1393,6 +1385,9 @@ namespace net.vieapps.Components.Repository
 			else
 			{
 				dataSource = dataSource ?? definition.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				@object = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? await NoSqlHelper.GetAsync(definition, id, null, cancellationToken).ConfigureAwait(false)
 					: dataSource.Mode.Equals(RepositoryMode.SQL)
@@ -1404,10 +1399,7 @@ namespace net.vieapps.Components.Repository
 				{
 					if (definition.AutoSync)
 					{
-						var sync = Task.Run(async () =>
-						{
-							await RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).ConfigureAwait(false);
-						}).ConfigureAwait(false);
+						var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, true, false, cancellationToken)).ConfigureAwait(false);
 					}
 				}
 
@@ -1427,12 +1419,13 @@ namespace net.vieapps.Components.Repository
 							// re-create object at primary data source
 							if (@object != null)
 							{
-								var sync = Task.Run(async () =>
-								{
-									await RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, definition, cancellationToken).ConfigureAwait(false);
-								}).ConfigureAwait(false);
+								var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, definition, cancellationToken)).ConfigureAwait(false);
 							}
 						}
+					}
+					catch (OperationCanceledException ex)
+					{
+						throw ex;
 					}
 					catch (Exception ex)
 					{
@@ -1442,10 +1435,10 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (@object != null && definition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await definition.Cache.SetAsync(@object).ConfigureAwait(false))
+					if (await definition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false))
 						await RepositoryMediator.WriteLogsAsync($"GET (by definition): Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
-					await definition.Cache.SetAsync(@object).ConfigureAwait(false);
+					await definition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false);
 #endif
 			}
 
@@ -1560,6 +1553,9 @@ namespace net.vieapps.Components.Repository
 
 				// update
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					context.Replace(dataSource, @object, null);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
@@ -1603,10 +1599,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (RepositoryMediator.Replace<T>(context, context.GetPrimaryDataSource(), @object, dontCreateNewVersion, userID))
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName)).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -1700,6 +1693,9 @@ namespace net.vieapps.Components.Repository
 
 				// update
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					await context.ReplaceAsync(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
@@ -1708,15 +1704,20 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false))
+					if (await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false))
 						await RepositoryMediator.WriteLogsAsync($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
-					await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false);
+					await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false);
 #endif
 
 				// call post-handlers
 				await context.CallPostUpdateHandlersAsync(@object, dirtyAttributes, false, cancellationToken).ConfigureAwait(false);
 				return true;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -1745,10 +1746,7 @@ namespace net.vieapps.Components.Repository
 			context.AliasTypeName = aliasTypeName;
 			if (await RepositoryMediator.ReplaceAsync<T>(context, context.GetPrimaryDataSource(), @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false))
 			{
-				var sync = Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, true, false, cancellationToken)).ConfigureAwait(false);
 			}
 		}
 
@@ -1842,6 +1840,8 @@ namespace net.vieapps.Components.Repository
 				// update
 				var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					context.Update(dataSource, @object, updatedAttributes, null);
@@ -1886,10 +1886,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (RepositoryMediator.Update<T>(context, context.GetPrimaryDataSource(), @object, dontCreateNewVersion, userID))
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName)).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -1928,7 +1925,7 @@ namespace net.vieapps.Components.Repository
 
 				// check state
 				var previousInstance = @object != null
-					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false).ConfigureAwait(false)
+					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
 					: null;
 
 				var previousState = previousInstance != null
@@ -1980,6 +1977,8 @@ namespace net.vieapps.Components.Repository
 				// update
 				var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					await context.UpdateAsync(dataSource, @object, updatedAttributes, null, cancellationToken).ConfigureAwait(false);
@@ -1989,15 +1988,20 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false))
+					if (await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false))
 						await RepositoryMediator.WriteLogsAsync($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
-					await context.EntityDefinition.Cache.SetAsync(@object).ConfigureAwait(false);
+					await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false);
 #endif
 
 				// call post-handlers
 				await context.CallPostUpdateHandlersAsync(@object, dirtyAttributes, false, cancellationToken).ConfigureAwait(false);
 				return true;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2026,10 +2030,7 @@ namespace net.vieapps.Components.Repository
 			context.AliasTypeName = aliasTypeName;
 			if (await RepositoryMediator.UpdateAsync<T>(context, context.GetPrimaryDataSource(), @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false))
 			{
-				var sync = Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, true, false, cancellationToken)).ConfigureAwait(false);
 			}
 		}
 
@@ -2083,6 +2084,9 @@ namespace net.vieapps.Components.Repository
 
 				// delete
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					context.Delete(dataSource, @object, null);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
@@ -2126,10 +2130,7 @@ namespace net.vieapps.Components.Repository
 			context.AliasTypeName = aliasTypeName;
 			var @object = RepositoryMediator.Delete<T>(context, context.GetPrimaryDataSource(), id, userID);
 			if (@object != null)
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, true).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, true)).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -2179,6 +2180,9 @@ namespace net.vieapps.Components.Repository
 
 				// delete
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					await context.DeleteAsync(dataSource, @object, null, cancellationToken).ConfigureAwait(false);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
@@ -2187,15 +2191,20 @@ namespace net.vieapps.Components.Repository
 				// remove from cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.Cache.RemoveAsync(@object).ConfigureAwait(false))
+					if (await context.EntityDefinition.Cache.RemoveAsync(@object, cancellationToken).ConfigureAwait(false))
 						await RepositoryMediator.WriteLogsAsync($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey(false)}]").ConfigureAwait(false);
 #else
-					await context.EntityDefinition.Cache.RemoveAsync(@object).ConfigureAwait(false);
+					await context.EntityDefinition.Cache.RemoveAsync(@object, cancellationToken).ConfigureAwait(false);
 #endif
 
 				// call post-handlers
 				await context.CallPostDeleteHandlersAsync(@object, cancellationToken).ConfigureAwait(false);
 				return @object;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2224,10 +2233,7 @@ namespace net.vieapps.Components.Repository
 			var @object = await RepositoryMediator.DeleteAsync<T>(context, context.GetPrimaryDataSource(), id, userID, cancellationToken).ConfigureAwait(false);
 			if (@object != null)
 			{
-				var sync = Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, true).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				var sync = Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, true, cancellationToken)).ConfigureAwait(false);
 			}
 		}
 
@@ -2265,6 +2271,8 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Delete;
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// delete
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
@@ -2273,10 +2281,7 @@ namespace net.vieapps.Components.Repository
 					context.DeleteMany(dataSource, filter, businessEntityID);
 
 				// delete other data sources
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(filter, context.AliasTypeName, businessEntityID, CancellationToken.None).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(filter, context.AliasTypeName, businessEntityID)).ConfigureAwait(false);
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2336,6 +2341,8 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Delete;
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// delete
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
@@ -2344,10 +2351,12 @@ namespace net.vieapps.Components.Repository
 					await context.DeleteManyAsync(dataSource, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 
 				// delete other data sources
-				var sync = Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(filter, context.AliasTypeName, businessEntityID, cancellationToken).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				var sync = Task.Run(() => RepositoryMediator.SyncAsync(filter, context.AliasTypeName, businessEntityID, cancellationToken)).ConfigureAwait(false);
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2416,6 +2425,8 @@ namespace net.vieapps.Components.Repository
 				// prepare
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find identities
 				return context.EntityDefinition.Cache != null && !string.IsNullOrWhiteSpace(cacheKey)
@@ -2521,6 +2532,9 @@ namespace net.vieapps.Components.Repository
 				// prepare
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				List<T> objects = null;
 
 				// find identities
@@ -2695,6 +2709,8 @@ namespace net.vieapps.Components.Repository
 				// prepare
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find identities
 				return context.EntityDefinition.Cache != null && !string.IsNullOrWhiteSpace(cacheKey)
@@ -2704,6 +2720,11 @@ namespace net.vieapps.Components.Repository
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
 							: new List<string>();
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2804,6 +2825,9 @@ namespace net.vieapps.Components.Repository
 				// prepare
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				List<T> objects = null;
 
 				// find identities
@@ -2831,7 +2855,7 @@ namespace net.vieapps.Components.Repository
 					await RepositoryMediator.WriteLogsAsync($"FIND: Total {identities.Count} identities are fetched [{identities.ToString(" - ")}]").ConfigureAwait(false);
 #endif
 					// get cached objects
-					var cached = await context.EntityDefinition.Cache.GetAsync<T>(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
+					var cached = await context.EntityDefinition.Cache.GetAsync<T>(identities.Select(id => id.GetCacheKey<T>()), cancellationToken).ConfigureAwait(false);
 					if (cached != null)
 					{
 #if DEBUG || PROCESSLOGS
@@ -2864,7 +2888,7 @@ namespace net.vieapps.Components.Repository
 
 							// update results & cache
 							missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-							await context.EntityDefinition.Cache.SetAsync(missing).ConfigureAwait(false);
+							await context.EntityDefinition.Cache.SetAsync(missing, cancellationToken).ConfigureAwait(false);
 
 #if DEBUG || PROCESSLOGS
 							await RepositoryMediator.WriteLogsAsync($"FIND: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]").ConfigureAwait(false);
@@ -2890,8 +2914,8 @@ namespace net.vieapps.Components.Repository
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
 					{
 						if (!string.IsNullOrWhiteSpace(cacheKey))
-							await context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
-						await context.EntityDefinition.Cache.SetAsync(objects).ConfigureAwait(false);
+							await context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(o => o.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime, cancellationToken).ConfigureAwait(false);
+						await context.EntityDefinition.Cache.SetAsync(objects, cancellationToken).ConfigureAwait(false);
 
 #if DEBUG || PROCESSLOGS
 						await RepositoryMediator.WriteLogsAsync($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]").ConfigureAwait(false);
@@ -2900,6 +2924,11 @@ namespace net.vieapps.Components.Repository
 				}
 
 				return objects;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2988,6 +3017,9 @@ namespace net.vieapps.Components.Repository
 
 				// count
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? context.Count(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null)
 					: dataSource.Mode.Equals(RepositoryMode.SQL)
@@ -3081,13 +3113,16 @@ namespace net.vieapps.Components.Repository
 
 				// check cache
 				var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.ExistsAsync(cacheKey).ConfigureAwait(false)
-					? await context.EntityDefinition.Cache.GetAsync<long>(cacheKey).ConfigureAwait(false)
+					? await context.EntityDefinition.Cache.GetAsync<long>(cacheKey, cancellationToken).ConfigureAwait(false)
 					: -1;
 				if (total > -1)
 					return total;
 
 				// count
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 					? await context.CountAsync(dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
 					: dataSource.Mode.Equals(RepositoryMode.SQL)
@@ -3106,9 +3141,14 @@ namespace net.vieapps.Components.Repository
 
 				// update cache and return
 				if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
-					await context.EntityDefinition.Cache.SetAsync(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).ConfigureAwait(false);
+					await context.EntityDefinition.Cache.SetAsync(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime, cancellationToken).ConfigureAwait(false);
 
 				return total;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -3182,6 +3222,9 @@ namespace net.vieapps.Components.Repository
 				// prepare
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				List<T> objects = null;
 
 				// search identities
@@ -3349,6 +3392,9 @@ namespace net.vieapps.Components.Repository
 				// prepare
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
 				List<T> objects = null;
 
 				// search identities
@@ -3380,7 +3426,7 @@ namespace net.vieapps.Components.Repository
 					await RepositoryMediator.WriteLogsAsync($"SEARCH: Total {identities.Count} identities are searched [{identities.ToString(" - ")}]").ConfigureAwait(false);
 #endif
 					// get cached objects
-					var cached = await context.EntityDefinition.Cache.GetAsync(identities.Select(id => id.GetCacheKey<T>())).ConfigureAwait(false);
+					var cached = await context.EntityDefinition.Cache.GetAsync(identities.Select(id => id.GetCacheKey<T>()), cancellationToken).ConfigureAwait(false);
 					if (cached != null)
 					{
 #if DEBUG || PROCESSLOGS
@@ -3413,7 +3459,7 @@ namespace net.vieapps.Components.Repository
 
 							// update results & cache
 							missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-							await context.EntityDefinition.Cache.SetAsync(missing).ConfigureAwait(false);
+							await context.EntityDefinition.Cache.SetAsync(missing, cancellationToken).ConfigureAwait(false);
 #if DEBUG || PROCESSLOGS
 							await RepositoryMediator.WriteLogsAsync($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]").ConfigureAwait(false);
 #endif
@@ -3437,7 +3483,7 @@ namespace net.vieapps.Components.Repository
 
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
 					{
-						await context.EntityDefinition.Cache.SetAsync(objects).ConfigureAwait(false);
+						await context.EntityDefinition.Cache.SetAsync(objects, cancellationToken).ConfigureAwait(false);
 
 #if DEBUG || PROCESSLOGS
 						await RepositoryMediator.WriteLogsAsync($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]").ConfigureAwait(false);
@@ -3446,6 +3492,11 @@ namespace net.vieapps.Components.Repository
 				}
 
 				return objects;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -3517,6 +3568,8 @@ namespace net.vieapps.Components.Repository
 				// prepare
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// count
 				var total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
@@ -3600,6 +3653,8 @@ namespace net.vieapps.Components.Repository
 				// prepare
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// count
 				var total = dataSource.Mode.Equals(RepositoryMode.NoSQL)
@@ -3619,6 +3674,11 @@ namespace net.vieapps.Components.Repository
 				}).ConfigureAwait(false);
 #endif
 				return total;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -3784,6 +3844,11 @@ namespace net.vieapps.Components.Repository
 				// create new
 				return await VersionContent.CreateAsync(dataSource, "Versions", version, cancellationToken).ConfigureAwait(false);
 			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
@@ -3864,9 +3929,9 @@ namespace net.vieapps.Components.Repository
 
 				// rollback (update) with original object
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					context.Replace<T>(dataSource, version.Object as T, null);
+					context.Replace(dataSource, version.Object as T, null);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-					context.Replace<T>(dataSource, version.Object as T);
+					context.Replace(dataSource, version.Object as T);
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
@@ -3881,10 +3946,7 @@ namespace net.vieapps.Components.Repository
 				context.CallPostUpdateHandlers(version.Object as T, changed, true);
 
 				// update other data sources
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(version.Object as T, context.AliasTypeName).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(version.Object as T, context.AliasTypeName)).ConfigureAwait(false);
 
 				// return the original object
 				return version.Object as T;
@@ -3996,30 +4058,32 @@ namespace net.vieapps.Components.Repository
 
 				// rollback (update) with original object
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					await context.ReplaceAsync<T>(dataSource, version.Object as T, null, cancellationToken).ConfigureAwait(false);
+					await context.ReplaceAsync(dataSource, version.Object as T, null, cancellationToken).ConfigureAwait(false);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-					await context.ReplaceAsync<T>(dataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
+					await context.ReplaceAsync(dataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.Cache.SetAsync(version.Object as T))
+					if (await context.EntityDefinition.Cache.SetAsync(version.Object as T, 0, cancellationToken).ConfigureAwait(false))
 						await RepositoryMediator.WriteLogsAsync($"ROLLBACK: Add the object into the cache storage successful [{(version.Object as T).GetCacheKey(false)}]").ConfigureAwait(true);
 #else
-					await context.EntityDefinition.Cache.SetAsync(version.Object as T);
+					await context.EntityDefinition.Cache.SetAsync(version.Object as T, 0, cancellationToken).ConfigureAwait(false);
 #endif
 
 				// call post-handlers
 				await context.CallPostUpdateHandlersAsync(version.Object as T, changed, true, cancellationToken).ConfigureAwait(false);
 
 				// update other data sources
-				var sync = Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(version.Object as T, context.AliasTypeName).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				var sync = Task.Run(() => RepositoryMediator.SyncAsync(version.Object as T, context.AliasTypeName, true, false, cancellationToken)).ConfigureAwait(false);
 
 				// return the original object
 				return version.Object as T;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -4229,6 +4293,11 @@ namespace net.vieapps.Components.Repository
 				// count
 				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
 				return await VersionContent.CountAsync<VersionContent>(dataSource, "Versions", filter, cancellationToken).ConfigureAwait(false);
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -4490,6 +4559,11 @@ namespace net.vieapps.Components.Repository
 				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
 				return await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
 			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
@@ -4651,6 +4725,11 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Delete;
 				await VersionContent.DeleteAsync(dataSource ?? context.GetVersionDataSource(), "Versions", Filters<VersionContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))), cancellationToken).ConfigureAwait(false);
 			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
@@ -4799,6 +4878,11 @@ namespace net.vieapps.Components.Repository
 				}
 				return trash;
 			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
@@ -4874,9 +4958,9 @@ namespace net.vieapps.Components.Repository
 
 				// restore (create) with original object
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					context.Create<T>(dataSource, trashContent.Object as T, null);
+					context.Create(dataSource, trashContent.Object as T, null);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-					context.Create<T>(dataSource, trashContent.Object as T);
+					context.Create(dataSource, trashContent.Object as T);
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
@@ -4894,10 +4978,7 @@ namespace net.vieapps.Components.Repository
 				TrashContent.Delete(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID));
 
 				// update other data sources
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(trashContent.Object as T, context.AliasTypeName, false).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(trashContent.Object as T, context.AliasTypeName, false)).ConfigureAwait(false);
 
 				// return the original object
 				return trashContent.Object as T;
@@ -5004,17 +5085,17 @@ namespace net.vieapps.Components.Repository
 
 				// restore (create) with original object
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					await context.CreateAsync<T>(dataSource, trashContent.Object as T, null, cancellationToken).ConfigureAwait(false);
+					await context.CreateAsync(dataSource, trashContent.Object as T, null, cancellationToken).ConfigureAwait(false);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-					await context.CreateAsync<T>(dataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
+					await context.CreateAsync(dataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 #if DEBUG || PROCESSLOGS
-					if (await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T).ConfigureAwait(false))
+					if (await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T, 0, cancellationToken).ConfigureAwait(false))
 						await RepositoryMediator.WriteLogsAsync($"RESTORE: Add the object into the cache storage successful [{(trashContent.Object as T).GetCacheKey(false)}]").ConfigureAwait(false);
 #else
-					await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T).ConfigureAwait(false);
+					await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T, 0, cancellationToken).ConfigureAwait(false);
 #endif
 
 				// call post-handlers
@@ -5024,13 +5105,15 @@ namespace net.vieapps.Components.Repository
 				await TrashContent.DeleteAsync(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID), cancellationToken).ConfigureAwait(false);
 
 				// update other data sources
-				var sync = Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(trashContent.Object as T, context.AliasTypeName, false).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				var sync = Task.Run(() => RepositoryMediator.SyncAsync(trashContent.Object as T, context.AliasTypeName, false, false, cancellationToken)).ConfigureAwait(false);
 
 				// return the original object
 				return trashContent.Object as T;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -5231,6 +5314,11 @@ namespace net.vieapps.Components.Repository
 				// count
 				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
 				return await TrashContent.CountAsync<TrashContent>(dataSource, "Trashs", filter, cancellationToken).ConfigureAwait(false);
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -5498,6 +5586,11 @@ namespace net.vieapps.Components.Repository
 				var sort = Sorts<TrashContent>.Descending("Created");
 				return await TrashContent.FindAsync<TrashContent>(dataSource, "Trashs", filter, sort, pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
 			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
@@ -5660,6 +5753,11 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Delete;
 				await TrashContent.DeleteAsync(dataSource ?? context.GetTrashDataSource(), "Trashs", Filters<TrashContent>.LessThanOrEquals("Created", DateTime.Now.AddDays(0 - (days > 0 ? days : 30))), cancellationToken).ConfigureAwait(false);
 			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw ex;
+			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
@@ -5720,9 +5818,9 @@ namespace net.vieapps.Components.Repository
 					var tasks = dataSources.Select(dataSource =>
 					{
 						return dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? context.DeleteManyAsync<T>(dataSource, filter, businessEntityID, null, cancellationToken)
+							? context.DeleteManyAsync(dataSource, filter, businessEntityID, null, cancellationToken)
 							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? context.DeleteManyAsync<T>(dataSource, filter, businessEntityID, cancellationToken)
+								? context.DeleteManyAsync(dataSource, filter, businessEntityID, cancellationToken)
 								: null;
 					}).Where(task => task != null).ToList();
 
@@ -5738,6 +5836,10 @@ namespace net.vieapps.Components.Repository
 						$"- Execution times: {stopwatch.GetElapsedTimes()}",
 					}).ConfigureAwait(false);
 #endif
+				}
+				catch (OperationCanceledException)
+				{
+					await RepositoryMediator.WriteLogsAsync($"SYNC: Operation canceled while deleting multiple objects [{typeof(T)}]").ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
@@ -5772,6 +5874,10 @@ namespace net.vieapps.Components.Repository
 					await RepositoryMediator.WriteLogsAsync($"SYNC: Sync the object to primary data source successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {primaryDataSource.Name} - Execution times: {stopwatch.GetElapsedTimes()}").ConfigureAwait(false);
 #endif
 				}
+				catch (OperationCanceledException)
+				{
+					await RepositoryMediator.WriteLogsAsync($"SYNC: Operation canceled while syncing the object to primary data source [{@object?.GetType()}#{@object?.GetEntityID()}]").ConfigureAwait(false);
+				}
 				catch (Exception ex)
 				{
 					await RepositoryMediator.WriteLogsAsync($"SYNC: Error occurred while syncing the object to primary data source [{@object?.GetType()}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
@@ -5805,9 +5911,9 @@ namespace net.vieapps.Components.Repository
 						tasks = dataSources.Select(dataSource =>
 						{
 							return dataSource.Mode.Equals(RepositoryMode.NoSQL)
-								? context.DeleteAsync<T>(dataSource, @object, null, cancellationToken)
+								? context.DeleteAsync(dataSource, @object, null, cancellationToken)
 								: dataSource.Mode.Equals(RepositoryMode.SQL)
-									? context.DeleteAsync<T>(dataSource, @object, cancellationToken)
+									? context.DeleteAsync(dataSource, @object, cancellationToken)
 									: null;
 						}).Where(task => task != null).ToList();
 
@@ -5856,6 +5962,10 @@ namespace net.vieapps.Components.Repository
 					}).ConfigureAwait(false);
 #endif
 				}
+				catch (OperationCanceledException)
+				{
+					await RepositoryMediator.WriteLogsAsync($"SYNC: Operation canceled while {(isDelete ? "deleting" : "syncing")} the object [{typeof(T)}#{@object?.GetEntityID()}]").ConfigureAwait(false);
+				}
 				catch (Exception ex)
 				{
 					if (isDelete)
@@ -5874,10 +5984,7 @@ namespace net.vieapps.Components.Repository
 		public static void Sync<T>(this RepositoryContext context, T @object) where T : class
 		{
 			if (@object != null)
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, context.AliasTypeName).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName)).ConfigureAwait(false);
 			else
 				throw new ArgumentNullException(nameof(@object), "The syncing object is null");
 		}
@@ -5891,10 +5998,7 @@ namespace net.vieapps.Components.Repository
 		public static void Sync<T>(string aliasTypeName, T @object) where T : class
 		{
 			if (@object != null)
-				Task.Run(async () =>
-				{
-					await RepositoryMediator.SyncAsync(@object, aliasTypeName).ConfigureAwait(false);
-				}).ConfigureAwait(false);
+				Task.Run(() => RepositoryMediator.SyncAsync(@object, aliasTypeName)).ConfigureAwait(false);
 			else
 				throw new ArgumentNullException(nameof(@object), "The syncing object is null");
 		}
@@ -5965,6 +6069,10 @@ namespace net.vieapps.Components.Repository
 					if (await handler.OnPreCreateAsync(context, @object, isRestore, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
+				catch (OperationCanceledException)
+				{
+					await RepositoryMediator.WriteLogsAsync($"Operation canceled while running the pre-create handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]").ConfigureAwait(false);
+				}
 				catch (Exception ex)
 				{
 					await RepositoryMediator.WriteLogsAsync($"Error occurred while running the pre-create handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
@@ -5999,6 +6107,10 @@ namespace net.vieapps.Components.Repository
 					{
 						var handler = ObjectService.CreateInstance(type) as IPostCreateHandler;
 						await handler.OnPostCreateAsync(context, @object, isRestore, token).ConfigureAwait(false);
+					}
+					catch (OperationCanceledException)
+					{
+						await RepositoryMediator.WriteLogsAsync($"Operation canceled while running the post-create handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]").ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -6036,6 +6148,10 @@ namespace net.vieapps.Components.Repository
 					if (await handler.OnPreGetAsync<T>(context, id, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
+				catch (OperationCanceledException)
+				{
+					await RepositoryMediator.WriteLogsAsync($"Operation canceled while running the pre-get handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]").ConfigureAwait(false);
+				}
 				catch (Exception ex)
 				{
 					await RepositoryMediator.WriteLogsAsync($"Error occurred while running the pre-get handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]", ex).ConfigureAwait(false);
@@ -6070,6 +6186,10 @@ namespace net.vieapps.Components.Repository
 					{
 						var handler = ObjectService.CreateInstance(type) as IPostGetHandler;
 						await handler.OnPostGetAsync(context, @object, token).ConfigureAwait(false);
+					}
+					catch (OperationCanceledException)
+					{
+						await RepositoryMediator.WriteLogsAsync($"Operation canceled while running the post-get handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]").ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -6107,6 +6227,10 @@ namespace net.vieapps.Components.Repository
 					if (await handler.OnPreUpdateAsync(context, @object, changed, isRestore, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
+				catch (OperationCanceledException)
+				{
+					await RepositoryMediator.WriteLogsAsync($"Operation canceled while running the pre-update handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]").ConfigureAwait(false);
+				}
 				catch (Exception ex)
 				{
 					await RepositoryMediator.WriteLogsAsync($"Error occurred while running the pre-update handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
@@ -6141,6 +6265,10 @@ namespace net.vieapps.Components.Repository
 					{
 						var handler = ObjectService.CreateInstance(type) as IPostUpdateHandler;
 						await handler.OnPostUpdateAsync(context, @object, changed, isRestore, token).ConfigureAwait(false);
+					}
+					catch (OperationCanceledException)
+					{
+						await RepositoryMediator.WriteLogsAsync($"Operation canceled while running the post-update handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]").ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -6178,6 +6306,10 @@ namespace net.vieapps.Components.Repository
 					if (await handler.OnPreDeleteAsync(context, @object, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
+				catch (OperationCanceledException)
+				{
+					await RepositoryMediator.WriteLogsAsync($"Operation canceled while running the pre-delete handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]").ConfigureAwait(false);
+				}
 				catch (Exception ex)
 				{
 					await RepositoryMediator.WriteLogsAsync($"Error occurred while running the pre-delete handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex).ConfigureAwait(false);
@@ -6212,6 +6344,10 @@ namespace net.vieapps.Components.Repository
 					{
 						var handler = ObjectService.CreateInstance(type) as IPostDeleteHandler;
 						await handler.OnPostDeleteAsync(context, @object, token).ConfigureAwait(false);
+					}
+					catch (OperationCanceledException)
+					{
+						await RepositoryMediator.WriteLogsAsync($"Operation canceled while running the post-delete handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]").ConfigureAwait(false);
 					}
 					catch (Exception ex)
 					{
@@ -6344,10 +6480,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static Task<bool> SetAsync<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
+		public static Task<bool> SetAsync<T>(this Cache cache, T @object, int expirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return @object != null
-				? cache.SetAsync(@object.GetCacheKey(), @object, expirationTime)
+				? cache.SetAsync(@object.GetCacheKey(), @object, expirationTime, cancellationToken)
 				: Task.FromResult(false);
 		}
 
@@ -6372,10 +6508,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static Task<bool> AddAsync<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
+		public static Task<bool> AddAsync<T>(this Cache cache, T @object, int expirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return @object != null
-				? cache.AddAsync(@object.GetCacheKey(), @object, expirationTime)
+				? cache.AddAsync(@object.GetCacheKey(), @object, expirationTime, cancellationToken)
 				: Task.FromResult(false);
 		}
 
@@ -6400,10 +6536,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static Task<bool> ReplaceAsync<T>(this Cache cache, T @object, int expirationTime = 0) where T : class
+		public static Task<bool> ReplaceAsync<T>(this Cache cache, T @object, int expirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return @object != null
-				? cache.ReplaceAsync(@object.GetCacheKey(), @object, expirationTime)
+				? cache.ReplaceAsync(@object.GetCacheKey(), @object, expirationTime, cancellationToken)
 				: Task.FromResult(false);
 		}
 
@@ -6425,10 +6561,10 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="objects">The collection of objects</param>
-		public static Task SetAsync<T>(this Cache cache, List<T> objects) where T : class
+		public static Task SetAsync<T>(this Cache cache, List<T> objects, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return objects != null
-				? cache.SetAsync(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()))
+				? cache.SetAsync(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()), null, 0, cancellationToken)
 				: Task.CompletedTask;
 		}
 
@@ -6452,10 +6588,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="objects">The collection of objects</param>
 		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static Task SetAsync<T>(this Cache cache, IEnumerable<T> objects, int expirationTime = 0) where T : class
+		public static Task SetAsync<T>(this Cache cache, IEnumerable<T> objects, int expirationTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return objects != null
-				? cache.SetAsync(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()), null, expirationTime)
+				? cache.SetAsync(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()), null, expirationTime, cancellationToken)
 				: Task.CompletedTask;
 		}
 
@@ -6480,10 +6616,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object need to get</param>
 		/// <returns></returns>
-		public static Task<T> FetchAsync<T>(this Cache cache, string identity) where T : class
+		public static Task<T> FetchAsync<T>(this Cache cache, string identity, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
-				? cache.GetAsync<T>(identity.GetCacheKey<T>())
+				? cache.GetAsync<T>(identity.GetCacheKey<T>(), cancellationToken)
 				: Task.FromResult<T>(null);
 		}
 
@@ -6519,10 +6655,10 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object need to delete from cache storage</param>
-		public static Task<bool> RemoveAsync<T>(this Cache cache, T @object) where T : class
+		public static Task<bool> RemoveAsync<T>(this Cache cache, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return @object != null
-				? cache.RemoveAsync(@object.GetCacheKey())
+				? cache.RemoveAsync(@object.GetCacheKey(), cancellationToken)
 				: Task.FromResult(false);
 		}
 
@@ -6532,10 +6668,10 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object need to delete</param>
-		public static Task<bool> RemoveAsync<T>(this Cache cache, string identity) where T : class
+		public static Task<bool> RemoveAsync<T>(this Cache cache, string identity, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
-				? cache.RemoveAsync(identity.GetCacheKey<T>())
+				? cache.RemoveAsync(identity.GetCacheKey<T>(), cancellationToken)
 				: Task.FromResult(false);
 		}
 
@@ -6558,10 +6694,10 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="identity">The string that presents identity of object</param>
-		public static Task<bool> ExistsAsync<T>(this Cache cache, string identity) where T : class
+		public static Task<bool> ExistsAsync<T>(this Cache cache, string identity, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			return !string.IsNullOrWhiteSpace(identity)
-				? cache.ExistsAsync(identity.GetCacheKey<T>())
+				? cache.ExistsAsync(identity.GetCacheKey<T>(), cancellationToken)
 				: Task.FromResult(false);
 		}
 		#endregion
@@ -6688,74 +6824,21 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region [Logs]
-		static string LogsPath = null;
-
-		internal static void PrepareLogsPath()
-		{
-			// prepare path of all log files
-			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
-				try
-				{
-					RepositoryMediator.LogsPath = UtilityService.GetAppSetting("Path:Logs");
-					if (!RepositoryMediator.LogsPath.EndsWith(Path.DirectorySeparatorChar.ToString()))
-						RepositoryMediator.LogsPath += Path.DirectorySeparatorChar.ToString();
-				}
-				catch { }
-
-			if (string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
-				try
-				{
-					RepositoryMediator.LogsPath = Path.Combine(Directory.GetCurrentDirectory(), "Logs") + Path.DirectorySeparatorChar.ToString();
-				}
-				catch { }
-		}
-
-		internal static async Task WriteLogsAsync(string filePath, List<string> logs, Exception ex = null)
-		{
-			// prepare
-			var info = $"{DateTime.Now.ToString("HH:mm:ss.fff")}\t[{Process.GetCurrentProcess().Id}:{AppDomain.CurrentDomain.Id}:{Thread.CurrentThread.ManagedThreadId}]\t";
-			var content = "";
-			logs?.ForEach(log => content += !string.IsNullOrWhiteSpace(log) ? info + log + "\r\n" : "");
-
-			if (ex != null)
-			{
-				content += info + "[" + ex.GetType().ToString() + "]: " + (ex.Message ?? "No error message");
-				if (ex is RepositoryOperationException && !string.IsNullOrWhiteSpace((ex as RepositoryOperationException).Info))
-					content += "\r\n" + info + "- Operation Info: " + (ex as RepositoryOperationException).Info;
-				content += "\r\n" + info + "- Stack: " + (ex.StackTrace ?? "No stack") + "\r\n";
-
-				var inner = ex.InnerException;
-				var counter = 1;
-				while (inner != null)
-				{
-					content += info + $"- Inner ({counter}): ----------------------------------" + "\r\n"
-						+ info + "[" + inner.GetType().ToString() + "]: " + (inner.Message ?? "No error message") + "\r\n"
-						+ info + "- Stack: " + (inner.StackTrace ?? "No stack") + "\r\n";
-					counter++;
-					inner = inner.InnerException;
-				}
-			}
-
-			// write logs into file
-			try
-			{
-				await UtilityService.WriteTextFileAsync(filePath, content, true).ConfigureAwait(false);
-			}
-			catch { }
-		}
+		internal static ILogger Logger = Utility.Logger.CreateLogger<RepositoryBase>();
 
 		internal static void WriteLogs(List<string> logs, Exception ex = null)
 		{
-			RepositoryMediator.PrepareLogsPath();
-			if (!string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
-				Task.Run(async () =>
-				{
-					try
-					{
-						await RepositoryMediator.WriteLogsAsync(RepositoryMediator.LogsPath + DateTime.Now.ToString("yyyy-MM-dd_HH") + ".repository.txt", logs, ex).ConfigureAwait(false);
-					}
-					catch { }
-				}).ConfigureAwait(false);
+			if (ex != null)
+			{
+				foreach (var log in logs)
+					RepositoryMediator.Logger.LogDebug($"{log}");
+				RepositoryMediator.Logger.LogError(ex, ex.Message);
+			}
+			else if (RepositoryMediator.Logger.IsEnabled(LogLevel.Debug))
+			{
+				foreach (var log in logs)
+					RepositoryMediator.Logger.LogInformation(ex, $"{log}");
+			}
 		}
 
 		internal static void WriteLogs(string log, Exception ex = null)
@@ -6763,20 +6846,9 @@ namespace net.vieapps.Components.Repository
 			RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex);
 		}
 
-		internal static async Task WriteLogsAsync(List<string> logs, Exception ex = null)
-		{
-			RepositoryMediator.PrepareLogsPath();
-			if (!string.IsNullOrWhiteSpace(RepositoryMediator.LogsPath))
-				try
-				{
-					await RepositoryMediator.WriteLogsAsync(RepositoryMediator.LogsPath + DateTime.Now.ToString("yyyy-MM-dd_HH") + ".repository.txt", logs, ex).ConfigureAwait(false);
-				}
-				catch { }
-		}
-
 		internal static Task WriteLogsAsync(string log, Exception ex = null)
 		{
-			return RepositoryMediator.WriteLogsAsync(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex);
+			return UtilityService.ExecuteTask(() => RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex));
 		}
 		#endregion
 
