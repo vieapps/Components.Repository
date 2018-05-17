@@ -1,18 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
-		<AssemblyVersion>10.2.1.1805</AssemblyVersion>
-		<FileVersion>10.2.1.1805</FileVersion>
-		<InformationalVersion>v10.2.netstandard-2+rev:2018.05.07</InformationalVersion>
+		<AssemblyVersion>10.2.2.1806</AssemblyVersion>
+		<FileVersion>10.2.2.1806</FileVersion>
+		<InformationalVersion>v10.2.netstandard-2+rev:2018.05.17</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.2.1.1805</Version>
+		<Version>10.2.2.1806</Version>
 		<SignAssembly>false</SignAssembly>
 		<DelaySign>false</DelaySign>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
@@ -21,7 +21,7 @@
 		<Authors>VIEApps.net</Authors>
 		<Copyright>© 2018 VIEApps.net</Copyright>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Changes: add support of cancellation token for all async operations</PackageReleaseNotes>
+		<PackageReleaseNotes>Upgrade to latest components to avoid potential bugs</PackageReleaseNotes>
 		<PackageProjectUrl>https://github.com/vieapps/Components.Repository</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 	</PropertyGroup>
@@ -45,10 +45,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.6.0" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1.1805" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1.1805" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.2.1.1805" />
+		<PackageReference Include="MongoDB.Driver" Version="2.6.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.2.1806" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.2.2.1806" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.2.2.1806" />
 	</ItemGroup>
 
 </Project>
