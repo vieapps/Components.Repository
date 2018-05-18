@@ -3746,13 +3746,13 @@ namespace net.vieapps.Components.Repository
 		{
 			if (ConfigurationManager.GetSection("dbProviderFactories") is AppConfigurationSectionHandler config)
 				if (config.Section.SelectNodes("./add") is XmlNodeList nodes)
-					DbProviderFactories.ConstructDbProviderFactories(nodes);
+					DbProviderFactories.ConstructDbProviderFactories(nodes.ToList());
 		}
 
-		internal static void ConstructDbProviderFactories(XmlNodeList nodes, Action<string, Exception> tracker = null)
+		internal static void ConstructDbProviderFactories(List<XmlNode> nodes, Action<string, Exception> tracker = null)
 		{
 			DbProviderFactories._Providers = DbProviderFactories._Providers ?? new Dictionary<string, Provider>();
-			foreach (XmlNode node in nodes)
+			nodes.ForEach(node =>
 			{
 				var invariant = node.Attributes["invariant"]?.Value;
 				var name = node.Attributes["name"]?.Value;
@@ -3763,7 +3763,7 @@ namespace net.vieapps.Components.Repository
 
 				if (!string.IsNullOrWhiteSpace(invariant) && type != null)
 				{
-					DbProviderFactories._Providers[invariant] = new Provider()
+					DbProviderFactories._Providers[invariant] = new Provider
 					{
 						Invariant = invariant,
 						Type = type,
@@ -3772,7 +3772,7 @@ namespace net.vieapps.Components.Repository
 					};
 					tracker?.Invoke($"Construct SQL Provider Factory [{invariant} - {name}]", null);
 				}
-			}
+			});
 		}
 
 		public class Provider

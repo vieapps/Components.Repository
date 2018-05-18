@@ -160,14 +160,14 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Data Source
-		internal static void ConstructDataSources(XmlNodeList nodes, Action<string, Exception> tracker = null)
+		internal static void ConstructDataSources(List<XmlNode> nodes, Action<string, Exception> tracker = null)
 		{
-			foreach (XmlNode node in nodes)
+			nodes.ForEach(node =>
 			{
 				var dataSource = DataSource.FromJson(node.ToJson());
 				if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
 					RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
-			}
+			});
 			tracker?.Invoke($"Construct {RepositoryMediator.DataSources.Count} data sources [{RepositoryMediator.DataSources.Select(kvp => kvp.Key).ToString(", ")}]", null);
 		}
 
@@ -177,11 +177,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="name">The string that presents name of a data source</param>
 		/// <returns></returns>
 		public static DataSource GetDataSource(string name)
-		{
-			return !string.IsNullOrWhiteSpace(name) && RepositoryMediator.DataSources.TryGetValue(name, out DataSource dataSource)
+			=> !string.IsNullOrWhiteSpace(name) && RepositoryMediator.DataSources.TryGetValue(name, out DataSource dataSource)
 				? dataSource
 				: null;
-		}
 
 		/// <summary>
 		/// Gets the primary data source
@@ -208,20 +206,14 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetPrimaryDataSource(this RepositoryContext context)
-		{
-			return RepositoryMediator.GetPrimaryDataSource(context.AliasTypeName, context.EntityDefinition);
-		}
+		public static DataSource GetPrimaryDataSource(this RepositoryContext context) => RepositoryMediator.GetPrimaryDataSource(context.AliasTypeName, context.EntityDefinition);
 
 		/// <summary>
 		/// Gets the primary data source
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetPrimaryDataSource(this EntityDefinition definition)
-		{
-			return RepositoryMediator.GetPrimaryDataSource(null, definition);
-		}
+		public static DataSource GetPrimaryDataSource(this EntityDefinition definition) => RepositoryMediator.GetPrimaryDataSource(null, definition);
 
 		/// <summary>
 		/// Gets the primary data source
@@ -229,10 +221,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <returns></returns>
-		public static DataSource GetPrimaryDataSource<T>(string aliasTypeName = null)
-		{
-			return RepositoryMediator.GetPrimaryDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
-		}
+		public static DataSource GetPrimaryDataSource<T>(string aliasTypeName = null) => RepositoryMediator.GetPrimaryDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 
 		/// <summary>
 		/// Gets the secondary data source
@@ -259,20 +248,14 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetSecondaryDataSource(this RepositoryContext context)
-		{
-			return RepositoryMediator.GetSecondaryDataSource(context.AliasTypeName, context.EntityDefinition);
-		}
+		public static DataSource GetSecondaryDataSource(this RepositoryContext context) => RepositoryMediator.GetSecondaryDataSource(context.AliasTypeName, context.EntityDefinition);
 
 		/// <summary>
 		/// Gets the secondary data source
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetSecondaryDataSource(this EntityDefinition definition)
-		{
-			return RepositoryMediator.GetSecondaryDataSource(null, definition);
-		}
+		public static DataSource GetSecondaryDataSource(this EntityDefinition definition) => RepositoryMediator.GetSecondaryDataSource(null, definition);
 
 		/// <summary>
 		/// Gets the secondary data source
@@ -280,10 +263,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <returns></returns>
-		public static DataSource GetSecondaryDataSource<T>(string aliasTypeName = null)
-		{
-			return RepositoryMediator.GetSecondaryDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
-		}
+		public static DataSource GetSecondaryDataSource<T>(string aliasTypeName = null) => RepositoryMediator.GetSecondaryDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 
 		/// <summary>
 		/// Gets the sync data sources
@@ -305,20 +285,14 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static List<DataSource> GetSyncDataSources(this RepositoryContext context)
-		{
-			return RepositoryMediator.GetSyncDataSources(context.AliasTypeName, context.EntityDefinition);
-		}
+		public static List<DataSource> GetSyncDataSources(this RepositoryContext context) => RepositoryMediator.GetSyncDataSources(context.AliasTypeName, context.EntityDefinition);
 
 		/// <summary>
 		/// Gets the sync data sources
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static List<DataSource> GetSyncDataSources(this EntityDefinition definition)
-		{
-			return RepositoryMediator.GetSyncDataSources(null, definition);
-		}
+		public static List<DataSource> GetSyncDataSources(this EntityDefinition definition) => RepositoryMediator.GetSyncDataSources(null, definition);
 
 		/// <summary>
 		/// Gets the sync data sources
@@ -326,10 +300,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <returns></returns>
-		public static List<DataSource> GetSyncDataSources<T>(string aliasTypeName = null)
-		{
-			return RepositoryMediator.GetSyncDataSources(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
-		}
+		public static List<DataSource> GetSyncDataSources<T>(string aliasTypeName = null) => RepositoryMediator.GetSyncDataSources(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 
 		/// <summary>
 		/// Gets the data source that use to store versioning contents
@@ -356,20 +327,14 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetVersionDataSource(this RepositoryContext context)
-		{
-			return RepositoryMediator.GetVersionDataSource(context.AliasTypeName, context.EntityDefinition);
-		}
+		public static DataSource GetVersionDataSource(this RepositoryContext context) => RepositoryMediator.GetVersionDataSource(context.AliasTypeName, context.EntityDefinition);
 
 		/// <summary>
 		/// Gets the data source that use to store versioning contents
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetVersionDataSource(this EntityDefinition definition)
-		{
-			return RepositoryMediator.GetVersionDataSource(null, definition);
-		}
+		public static DataSource GetVersionDataSource(this EntityDefinition definition) => RepositoryMediator.GetVersionDataSource(null, definition);
 
 		/// <summary>
 		/// Gets the data source that use to store versioning contents
@@ -377,10 +342,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <returns></returns>
-		public static DataSource GetVersionDataSource<T>(string aliasTypeName = null)
-		{
-			return RepositoryMediator.GetVersionDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
-		}
+		public static DataSource GetVersionDataSource<T>(string aliasTypeName = null) => RepositoryMediator.GetVersionDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 
 		/// <summary>
 		/// Gets the data source that use to store trash contents
@@ -407,20 +369,14 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="context">The working context of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetTrashDataSource(this RepositoryContext context)
-		{
-			return RepositoryMediator.GetTrashDataSource(context.AliasTypeName, context.EntityDefinition);
-		}
+		public static DataSource GetTrashDataSource(this RepositoryContext context) => RepositoryMediator.GetTrashDataSource(context.AliasTypeName, context.EntityDefinition);
 
 		/// <summary>
 		/// Gets the data source that use to store trash contents
 		/// </summary>
 		/// <param name="definition">The definition of a repository entity</param>
 		/// <returns></returns>
-		public static DataSource GetTrashDataSource(this EntityDefinition definition)
-		{
-			return RepositoryMediator.GetTrashDataSource(null, definition);
-		}
+		public static DataSource GetTrashDataSource(this EntityDefinition definition) => RepositoryMediator.GetTrashDataSource(null, definition);
 
 		/// <summary>
 		/// Gets the data source that use to store trash contents
@@ -428,10 +384,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents alias of a type name</param>
 		/// <returns></returns>
-		public static DataSource GetTrashDataSource<T>(string aliasTypeName = null)
-		{
-			return RepositoryMediator.GetTrashDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
-		}
+		public static DataSource GetTrashDataSource<T>(string aliasTypeName = null) => RepositoryMediator.GetTrashDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 		#endregion
 
 		#region Connection String
@@ -441,31 +394,23 @@ namespace net.vieapps.Components.Repository
 		/// <param name="name">The string that presents name of a connection string</param>
 		/// <returns></returns>
 		public static ConnectionStringSettings GetConnectionStringSettings(string name)
-		{
-			return !string.IsNullOrWhiteSpace(name)
+			=> !string.IsNullOrWhiteSpace(name)
 				? ConfigurationManager.ConnectionStrings[name]
 				: null;
-		}
 
 		/// <summary>
 		/// Gets the settings of the connection string of the data source (for working with SQL/NoSQL database)
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static ConnectionStringSettings GetConnectionStringSettings(this DataSource dataSource)
-		{
-			return RepositoryMediator.GetConnectionStringSettings(dataSource?.ConnectionStringName);
-		}
+		public static ConnectionStringSettings GetConnectionStringSettings(this DataSource dataSource) => RepositoryMediator.GetConnectionStringSettings(dataSource?.ConnectionStringName);
 
 		/// <summary>
 		/// Gets the connection string of the data source (for working with SQL/NoSQL database)
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static string GetConnectionString(this DataSource dataSource)
-		{
-			return dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString;
-		}
+		public static string GetConnectionString(this DataSource dataSource) => dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString;
 		#endregion
 
 		#region Validate

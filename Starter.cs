@@ -98,7 +98,7 @@ namespace net.vieapps.Components.Repository
 					// update settings of data sources
 					if (config.Section.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
 						if (dataSourceNodes != null)
-							RepositoryMediator.ConstructDataSources(dataSourceNodes, tracker);
+							RepositoryMediator.ConstructDataSources(dataSourceNodes.ToList(), tracker);
 
 					// update settings of repositories
 					if (config.Section.SelectNodes("repository") is XmlNodeList repositoryNodes)
@@ -156,8 +156,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="selector">The function to select assemblies to initialize</param>
 		/// <param name="tracker">The tracker for tracking logs</param>
 		public static void Initialize(Func<IEnumerable<Assembly>> selector = null, Action<string, Exception> tracker = null)
-		{
-			RepositoryStarter.Initialize(selector != null
+			=> RepositoryStarter.Initialize(selector != null
 				? selector()
 				: new List<Assembly>() { Assembly.GetCallingAssembly() }.Concat(Assembly.GetCallingAssembly()
 					.GetReferencedAssemblies()
@@ -170,27 +169,34 @@ namespace net.vieapps.Components.Repository
 				),
 				tracker
 			);
-		}
 
 		/// <summary>
 		/// Constructs data-sources
 		/// </summary>
 		/// <param name="datasourceNodes"></param>
 		/// <param name="tracker"></param>
-		public static void ConstructDataSources(XmlNodeList datasourceNodes, Action<string, Exception> tracker = null)
-		{
-			RepositoryMediator.ConstructDataSources(datasourceNodes, tracker);
-		}
+		public static void ConstructDataSources(List<XmlNode> datasourceNodes, Action<string, Exception> tracker = null) => RepositoryMediator.ConstructDataSources(datasourceNodes, tracker);
+
+		/// <summary>
+		/// Constructs data-sources
+		/// </summary>
+		/// <param name="datasourceNodes"></param>
+		/// <param name="tracker"></param>
+		public static void ConstructDataSources(XmlNodeList datasourceNodes, Action<string, Exception> tracker = null) => RepositoryStarter.ConstructDataSources(datasourceNodes.ToList(), tracker);
 
 		/// <summary>
 		/// Constructs SQL database factory providers
 		/// </summary>
 		/// <param name="dbProviderFactoryNodes"></param>
 		/// <param name="tracker"></param>
-		public static void ConstructDbProviderFactories(XmlNodeList dbProviderFactoryNodes, Action<string, Exception> tracker = null)
-		{
-			DbProviderFactories.ConstructDbProviderFactories(dbProviderFactoryNodes, tracker);
-		}
+		public static void ConstructDbProviderFactories(List<XmlNode> dbProviderFactoryNodes, Action<string, Exception> tracker = null) => DbProviderFactories.ConstructDbProviderFactories(dbProviderFactoryNodes, tracker);
+
+		/// <summary>
+		/// Constructs SQL database factory providers
+		/// </summary>
+		/// <param name="dbProviderFactoryNodes"></param>
+		/// <param name="tracker"></param>
+		public static void ConstructDbProviderFactories(XmlNodeList dbProviderFactoryNodes, Action<string, Exception> tracker = null) => RepositoryStarter.ConstructDbProviderFactories(dbProviderFactoryNodes.ToList(), tracker);
 
 		static async Task EnsureSqlSchemasAsync(Action<string, Exception> tracker = null)
 		{
