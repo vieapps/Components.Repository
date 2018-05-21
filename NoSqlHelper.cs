@@ -24,7 +24,7 @@ namespace net.vieapps.Components.Repository
 	{
 
 		#region Client
-		internal static ConcurrentDictionary<string, IMongoClient> Clients = new ConcurrentDictionary<string, IMongoClient>();
+		internal static ConcurrentDictionary<string, IMongoClient> Clients { get; } = new ConcurrentDictionary<string, IMongoClient>();
 
 		/// <summary>
 		/// Gets a client for working with MongoDB
@@ -59,13 +59,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="databaseSettings"></param>
 		/// <returns></returns>
 		public static IMongoDatabase GetDatabase(IMongoClient mongoClient, string databaseName, MongoDatabaseSettings databaseSettings = null)
-		{
-			return !string.IsNullOrWhiteSpace(databaseName) && mongoClient != null
+			=> !string.IsNullOrWhiteSpace(databaseName) && mongoClient != null
 				? mongoClient.GetDatabase(databaseName, databaseSettings)
 				: null;
-		}
 
-		internal static ConcurrentDictionary<string, IMongoDatabase> Databases = new ConcurrentDictionary<string, IMongoDatabase>();
+		internal static ConcurrentDictionary<string, IMongoDatabase> Databases { get; } = new ConcurrentDictionary<string, IMongoDatabase>();
 
 		/// <summary>
 		/// Gets a database of MongoDB
@@ -94,7 +92,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Collection
-		internal static ConcurrentDictionary<string, object> Collections = new ConcurrentDictionary<string, object>();
+		internal static ConcurrentDictionary<string, object> Collections { get; } = new ConcurrentDictionary<string, object>();
 
 		/// <summary>
 		/// Gets a collection of MongoDB
@@ -105,11 +103,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="collectionSettings"></param>
 		/// <returns></returns>
 		public static IMongoCollection<T> GetCollection<T>(IMongoDatabase mongoDatabase, string collectionName, MongoCollectionSettings collectionSettings = null) where T : class
-		{
-			return mongoDatabase != null && !string.IsNullOrWhiteSpace(collectionName)
+			=> mongoDatabase != null && !string.IsNullOrWhiteSpace(collectionName)
 				? mongoDatabase.GetCollection<T>(collectionName, collectionSettings)
 				: null;
-		}
 
 		/// <summary>
 		/// Gets a collection of MongoDB
@@ -151,9 +147,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="entityDefinition">The entity definition</param>
 		/// <returns></returns>
 		public static IMongoCollection<T> GetCollection<T>(DataSource dataSource, EntityDefinition entityDefinition) where T : class
-		{
-			return NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, entityDefinition.CollectionName);
-		}
+			=> NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, entityDefinition.CollectionName);
 
 		/// <summary>
 		/// Gets a collection in NoSQL database (MongoDB collection)
@@ -163,9 +157,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
 		public static IMongoCollection<T> GetCollection<T>(this RepositoryContext context, DataSource dataSource) where T : class
-		{
-			return NoSqlHelper.GetCollection<T>(dataSource, context.EntityDefinition);
-		}
+			=> NoSqlHelper.GetCollection<T>(dataSource, context.EntityDefinition);
 		#endregion
 
 		#region Create
@@ -273,9 +265,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		public static Task CreateAsync<T>(DataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).CreateAsync(@object, options, cancellationToken);
-		}
+			=> NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).CreateAsync(@object, options, cancellationToken);
 
 		/// <summary>
 		/// Creates new document of an object
@@ -284,9 +274,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		public static Task CreateAsync<T>(T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return NoSqlHelper.CreateAsync(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options, cancellationToken);
-		}
+			=> NoSqlHelper.CreateAsync(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options, cancellationToken);
 
 		/// <summary>
 		/// Creates new document of an object
@@ -2004,7 +1992,7 @@ namespace net.vieapps.Components.Repository
 							: index.Ascending(attribute.Name);
 					});
 					tracker?.Invoke($"Create index of No SQL: {info.Key}", null);
-					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true }, token).ConfigureAwait(false);
+					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions { Name = info.Key, Background = true }, token).ConfigureAwait(false);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -2020,7 +2008,7 @@ namespace net.vieapps.Components.Repository
 							: index.Ascending(attribute.Name);
 					});
 					tracker?.Invoke($"Create unique index of No SQL: {info.Key}", null);
-					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = info.Key, Background = true, Unique = true }, token).ConfigureAwait(false);
+					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions { Name = info.Key, Background = true, Unique = true }, token).ConfigureAwait(false);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -2039,22 +2027,19 @@ namespace net.vieapps.Components.Repository
 
 			// create the blank document for ensuring the collection is created
 			if (await collection.CountAsync(Builders<BsonDocument>.Filter.Empty).ConfigureAwait(false) < 1)
-			{
-				var task = Task.Run(async () =>
+				try
 				{
-					try
-					{
-						var @object = definition.Type.CreateInstance() as RepositoryBase;
-						@object.ID = UtilityService.BlankUUID;
-						await collection.InsertOneAsync(@object.ToBsonDocument(), null, cancellationToken).ContinueWith(async (t) =>
+					var @object = definition.Type.CreateInstance() as RepositoryBase;
+					@object.ID = UtilityService.BlankUUID;
+					await collection.InsertOneAsync(@object.ToBsonDocument(), null, cancellationToken)
+						.ContinueWith(async (t) =>
 						{
 							await Task.Delay(456, cancellationToken).ConfigureAwait(false);
 							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUUID), null, cancellationToken).ConfigureAwait(false);
-						}, cancellationToken, TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Current).ConfigureAwait(false);
-					}
-					catch { }
-				}).ConfigureAwait(false);
-			}
+						}, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current)
+						.ConfigureAwait(false);
+				}
+				catch { }
 		}
 		#endregion
 

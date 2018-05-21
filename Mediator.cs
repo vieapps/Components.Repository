@@ -6769,32 +6769,20 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region [Logs]
-		internal static ILogger Logger = Utility.Logger.CreateLogger<RepositoryBase>();
+		internal static ILogger Logger { get; } = Utility.Logger.CreateLogger<RepositoryBase>();
+
+		internal static bool IsDebugLogEnabled => RepositoryMediator.Logger != null && RepositoryMediator.Logger.IsEnabled(LogLevel.Debug);
 
 		internal static void WriteLogs(List<string> logs, Exception ex = null)
 		{
+			logs?.Where(log => !string.IsNullOrWhiteSpace(log)).ForEach(log => RepositoryMediator.Logger?.LogDebug(log));
 			if (ex != null)
-			{
-				foreach (var log in logs)
-					RepositoryMediator.Logger.LogDebug($"{log}");
-				RepositoryMediator.Logger.LogError(ex, ex.Message);
-			}
-			else if (RepositoryMediator.Logger.IsEnabled(LogLevel.Debug))
-			{
-				foreach (var log in logs)
-					RepositoryMediator.Logger.LogInformation(ex, $"{log}");
-			}
+				RepositoryMediator.Logger?.LogError(ex.Message, ex);
 		}
 
-		internal static void WriteLogs(string log, Exception ex = null)
-		{
-			RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex);
-		}
+		internal static void WriteLogs(string log, Exception ex = null) => RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string> { log }, ex);
 
-		internal static Task WriteLogsAsync(string log, Exception ex = null)
-		{
-			return UtilityService.ExecuteTask(() => RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string>() { log }, ex));
-		}
+		internal static Task WriteLogsAsync(string log, Exception ex = null) => UtilityService.ExecuteTask(() => RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string> { log }, ex));
 		#endregion
 
 	}

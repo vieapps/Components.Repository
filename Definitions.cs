@@ -79,77 +79,43 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the primary data-source
 		/// </summary>
-		public DataSource PrimaryDataSource
-		{
-			get
-			{
-				return RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
-			}
-		}
+		public DataSource PrimaryDataSource => RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
 
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
-		public DataSource SecondaryDataSource
-		{
-			get
-			{
-				return RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
-			}
-		}
+		public DataSource SecondaryDataSource => RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
 
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
 		public List<DataSource> SyncDataSources
-		{
-			get
-			{
-				return string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
-					? new List<DataSource>()
-					: this.SyncDataSourceNames.ToList()
-						.Distinct(StringComparer.OrdinalIgnoreCase)
-						.Select(name => RepositoryMediator.GetDataSource(name))
-						.Where(dataSource => dataSource != null)
-						.ToList();
-			}
-		}
+			=> string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
+				? new List<DataSource>()
+				: this.SyncDataSourceNames.ToList()
+					.Distinct(StringComparer.OrdinalIgnoreCase)
+					.Select(name => RepositoryMediator.GetDataSource(name))
+					.Where(dataSource => dataSource != null)
+					.ToList();
 
 		/// <summary>
 		/// Gets the data-source that use to store versioning contents
 		/// </summary>
-		public DataSource VersionDataSource
-		{
-			get
-			{
-				return RepositoryMediator.GetDataSource(this.VersionDataSourceName);
-			}
-		}
+		public DataSource VersionDataSource => RepositoryMediator.GetDataSource(this.VersionDataSourceName);
 
 		/// <summary>
 		/// Gets the data-source that use to store trash contents
 		/// </summary>
-		public DataSource TrashDataSource
-		{
-			get
-			{
-				return RepositoryMediator.GetDataSource(this.TrashDataSourceName);
-			}
-		}
+		public DataSource TrashDataSource => RepositoryMediator.GetDataSource(this.TrashDataSourceName);
 
 		/// <summary>
 		/// Gets the definitions of all entities
 		/// </summary>
 		public List<EntityDefinition> EntityDefinitions
-		{
-			get
-			{
-				return RepositoryMediator.EntityDefinitions
-					.Where(item => item.Value.RepositoryType.Equals(this.Type))
-					.Select(item => item.Value)
-					.ToList();
-			}
-		}
+			=> RepositoryMediator.EntityDefinitions
+				.Where(item => item.Value.RepositoryType.Equals(this.Type))
+				.Select(item => item.Value)
+				.ToList();
 		#endregion
 
 		#region Properties [Module Definition]
@@ -397,63 +363,34 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the primary data-source
 		/// </summary>
-		public DataSource PrimaryDataSource
-		{
-			get
-			{
-				return RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
-			}
-		}
+		public DataSource PrimaryDataSource => RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
 
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
-		public DataSource SecondaryDataSource
-		{
-			get
-			{
-				return RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
-			}
-		}
+		public DataSource SecondaryDataSource => RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
 
 		/// <summary>
 		/// Gets the other data sources that are available for synchronizing
 		/// </summary>
 		public List<DataSource> SyncDataSources
-		{
-			get
-			{
-				return !string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
-					? this.SyncDataSourceNames.ToList()
-						.Distinct(StringComparer.OrdinalIgnoreCase)
-						.Select(name => RepositoryMediator.GetDataSource(name))
-						.Where(dataSource => dataSource != null)
-						.ToList()
-					: null;
-			}
-		}
+			=> !string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
+				? this.SyncDataSourceNames.ToList()
+					.Distinct(StringComparer.OrdinalIgnoreCase)
+					.Select(name => RepositoryMediator.GetDataSource(name))
+					.Where(dataSource => dataSource != null)
+					.ToList()
+				: null;
 
 		/// <summary>
 		/// Gets the data-source that use to store versioning contents
 		/// </summary>
-		public DataSource VersionDataSource
-		{
-			get
-			{
-				return RepositoryMediator.GetDataSource(this.VersionDataSourceName);
-			}
-		}
+		public DataSource VersionDataSource => RepositoryMediator.GetDataSource(this.VersionDataSourceName);
 
 		/// <summary>
 		/// Gets the data-source that use to store trash contents
 		/// </summary>
-		public DataSource TrashDataSource
-		{
-			get
-			{
-				return RepositoryMediator.GetDataSource(this.TrashDataSourceName);
-			}
-		}
+		public DataSource TrashDataSource => RepositoryMediator.GetDataSource(this.TrashDataSourceName);
 
 		/// <summary>
 		/// Gets the collection of all attributes (properties and fields)
@@ -465,13 +402,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the information of the primary key
 		/// </summary>
-		public AttributeInfo PrimaryKeyInfo
-		{
-			get
-			{
-				return this.Attributes.FirstOrDefault(attribute => attribute.Name.Equals(this.PrimaryKey));
-			}
-		}
+		public AttributeInfo PrimaryKeyInfo => this.Attributes.FirstOrDefault(attribute => attribute.Name.Equals(this.PrimaryKey));
 
 		/// <summary>
 		/// Gets the collection of sortable properties
@@ -486,13 +417,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the repository definition of this defintion
 		/// </summary>
-		public RepositoryDefinition RepositoryDefinition
-		{
-			get
-			{
-				return RepositoryMediator.GetRepositoryDefinition(this.RepositoryType);
-			}
-		}
+		public RepositoryDefinition RepositoryDefinition => RepositoryMediator.GetRepositoryDefinition(this.RepositoryType);
 		#endregion
 
 		#region Properties [Content-Type Definition]
@@ -590,7 +515,7 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentException("The type [" + type.ToString() + "] must have name of SQL table or NoSQL collection");
 
 			// initialize
-			var definition = new EntityDefinition()
+			var definition = new EntityDefinition
 			{
 				Type = type,
 				TableName = info.TableName,
@@ -695,10 +620,7 @@ namespace net.vieapps.Components.Repository
 				});
 
 			// parent (entity)
-			var parentEntity = definition.ParentType != null
-				? definition.ParentType.CreateInstance()
-				: null;
-
+			var parentEntity = definition.ParentType?.CreateInstance();
 			if (parentEntity != null)
 			{
 				var property = string.IsNullOrWhiteSpace(info.ParentAssociatedProperty)
@@ -885,10 +807,7 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
 	public sealed class ExtendedPropertyDefinition
 	{
-		public ExtendedPropertyDefinition(JObject json = null)
-		{
-			this.CopyFrom(json ?? new JObject());
-		}
+		public ExtendedPropertyDefinition(JObject json = null) => this.CopyFrom(json ?? new JObject());
 
 		#region Properties
 		/// <summary>
@@ -1102,7 +1021,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Name validation
-		static HashSet<string> ReservedWords = "ExtendedProperties,Add,External,Procedure,All,Fetch,Public,Alter,File,RaisError,And,FillFactor,Read,Any,For,ReadText,As,Foreign,ReConfigure,Asc,FreeText,References,Authorization,FreeTextTable,Replication,Backup,From,Restore,Begin,Full,Restrict,Between,Function,Return,Break,Goto,Revert,Browse,Grant,Revoke,Bulk,Group,Right,By,Having,Rollback,Cascade,Holdlock,Rowcount,Case,RowGuidCol,Check,Identity,Insert,Rule,Checkpoint,Identitycol,Save,Close,If,Schema,Clustered,In,SecurityAudit,Coalesce,Index,Select,Collate,Inner,SemanticKeyPhraseTable,Column,SemanticSimilarityDetailsTable,Commit,Intersect,SemanticSimilarityTable,Compute,Into,Session,User,Constraint,Is,Set,Contains,Join,Setuser,ContainsTable,Key,Shutdown,Continue,Kill,Some,Convert,Left,Statistics,Create,Like,System,Cross,Lineno,Table,Current,Load,TableSample,Current_Date,Current_Time,Current_Timestamp,Merge,TextSize,National,Then,NoCheck,To,Current_User,NonClustered,Top,Cursor,Not,Tran,Database,Null,Transaction,Dbcc,NullIf,Trigger,Deallocate,Of,Truncate,Declare,Off,Try_Convert,Default,Offsets,Tsequal,Delete,On,Union,Deny,Open,Unique,Desc,OpenDataSource,Unpivot,Disk,Openquery,Update,Distinct,OpenRowset,UpdateText,Distributed,OpenXml,Use,Double,Option,User,Drop,Or,Values,Dump,Order,Varying,Else,Outer,View,End,Over,Waitfor,Errlvl,Percent,When,Escape,Pivot,Where,Except,Plan,While,Exec,Precision,With,Execute,Primary,Exists,Print,WriteText,Exit,Proc".ToLower().ToHashSet();
+		internal static HashSet<string> ReservedWords { get; } = "ExtendedProperties,Add,External,Procedure,All,Fetch,Public,Alter,File,RaisError,And,FillFactor,Read,Any,For,ReadText,As,Foreign,ReConfigure,Asc,FreeText,References,Authorization,FreeTextTable,Replication,Backup,From,Restore,Begin,Full,Restrict,Between,Function,Return,Break,Goto,Revert,Browse,Grant,Revoke,Bulk,Group,Right,By,Having,Rollback,Cascade,Holdlock,Rowcount,Case,RowGuidCol,Check,Identity,Insert,Rule,Checkpoint,Identitycol,Save,Close,If,Schema,Clustered,In,SecurityAudit,Coalesce,Index,Select,Collate,Inner,SemanticKeyPhraseTable,Column,SemanticSimilarityDetailsTable,Commit,Intersect,SemanticSimilarityTable,Compute,Into,Session,User,Constraint,Is,Set,Contains,Join,Setuser,ContainsTable,Key,Shutdown,Continue,Kill,Some,Convert,Left,Statistics,Create,Like,System,Cross,Lineno,Table,Current,Load,TableSample,Current_Date,Current_Time,Current_Timestamp,Merge,TextSize,National,Then,NoCheck,To,Current_User,NonClustered,Top,Cursor,Not,Tran,Database,Null,Transaction,Dbcc,NullIf,Trigger,Deallocate,Of,Truncate,Declare,Off,Try_Convert,Default,Offsets,Tsequal,Delete,On,Union,Deny,Open,Unique,Desc,OpenDataSource,Unpivot,Disk,Openquery,Update,Distinct,OpenRowset,UpdateText,Distributed,OpenXml,Use,Double,Option,User,Drop,Or,Values,Dump,Order,Varying,Else,Outer,View,End,Over,Waitfor,Errlvl,Percent,When,Escape,Pivot,Where,Except,Plan,While,Exec,Precision,With,Execute,Primary,Exists,Print,WriteText,Exit,Proc".ToLower().ToHashSet();
 
 		/// <summary>
 		/// Validates the name of a custom property definition
@@ -1141,15 +1060,9 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Helper methods
-		public object GetDefaultValue()
-		{
-			return null;
-		}
+		public object GetDefaultValue() => null;
 
-		public override string ToString()
-		{
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-		}
+		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 		#endregion
 
 	}
@@ -1162,10 +1075,7 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public sealed class ExtendedUIDefinition
 	{
-		public ExtendedUIDefinition(JObject json = null)
-		{
-			this.CopyFrom(json ?? new JObject());
-		}
+		public ExtendedUIDefinition(JObject json = null) => this.CopyFrom(json ?? new JObject());
 
 		#region Properties
 		public List<ExtendedUIControlDefinition> Controls { get; set; } = new List<ExtendedUIControlDefinition>();
@@ -1177,10 +1087,7 @@ namespace net.vieapps.Components.Repository
 		public string ViewXslt { get; set; } = "";
 		#endregion
 
-		public override string ToString()
-		{
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-		}
+		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -1325,10 +1232,7 @@ namespace net.vieapps.Components.Repository
 		public bool AllowMultiple { get; set; }
 		#endregion
 
-		public override string ToString()
-		{
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-		}
+		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -1350,7 +1254,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the working mode
 		/// </summary>
-		public Repository.RepositoryMode Mode { get; internal set; }
+		public RepositoryMode Mode { get; internal set; }
 
 		/// <summary>
 		/// Gets the name of the connection string (for working with database server)

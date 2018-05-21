@@ -224,13 +224,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that need to get previous state</param>
 		/// <returns></returns>
 		public Dictionary<string, object> GetPreviousState(object @object)
-		{
-			return @object != null
+			=> @object != null
 				? this.PreviousStateData.TryGetValue(@object.GetCacheKey(true), out Dictionary<string, object> stateData)
 					? stateData
 					: null
 				: null;
-		}
 
 		internal Dictionary<string, object> SetCurrentState(object @object, Dictionary<string, object> stateData = null)
 		{
@@ -297,11 +295,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The object that presents related information of a data source of SQL database</param>
 		/// <returns></returns>
 		public DbConnection GetSqlConnection(DataSource dataSource)
-		{
-			return dataSource != null
-				? dataSource.GetProviderFactory().CreateConnection(dataSource, false)
-				: null;
-		}
+			=> dataSource?.GetProviderFactory().CreateConnection(dataSource, false);
 
 		/// <summary>
 		/// Gets the No SQL collection of a specified data-source
@@ -310,11 +304,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The object that presents related information of a data source of No SQL database</param>
 		/// <returns></returns>
 		public IMongoCollection<T> GetNoSqlCollection<T>(DataSource dataSource) where T : class
-		{
-			return dataSource != null && dataSource.Mode.Equals(RepositoryMode.NoSQL)
+			=> dataSource != null && dataSource.Mode.Equals(RepositoryMode.NoSQL)
 				? this.GetCollection<T>(dataSource)
 				: null;
-		}
 
 		/// <summary>
 		/// Gets the No SQL collection of the primary data-source
@@ -322,9 +314,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <returns></returns>
 		public IMongoCollection<T> GetNoSqlCollection<T>() where T : class
-		{
-			return this.GetNoSqlCollection<T>(RepositoryMediator.GetPrimaryDataSource(RepositoryMediator.GetEntityDefinition<T>()));
-		}
+			=> this.GetNoSqlCollection<T>(RepositoryMediator.GetPrimaryDataSource(RepositoryMediator.GetEntityDefinition<T>()));
 		#endregion
 
 		#region Disposal
