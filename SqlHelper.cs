@@ -193,7 +193,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region DbTypes
-		internal static Dictionary<Type, DbType> DbTypes = new Dictionary<Type, DbType>()
+		internal static Dictionary<Type, DbType> DbTypes { get; } = new Dictionary<Type, DbType>()
 		{
 			{ typeof(String), DbType.String },
 			{ typeof(Char), DbType.StringFixedLength },
@@ -215,14 +215,10 @@ namespace net.vieapps.Components.Repository
 			{ typeof(DateTimeOffset), DbType.DateTimeOffset }
 		};
 
-		internal static DbType GetDbType(this Type type)
-		{
-			return SqlHelper.DbTypes[type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)) ? Nullable.GetUnderlyingType(type) : type];
-		}
+		internal static DbType GetDbType(this Type type) => SqlHelper.DbTypes[type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)) ? Nullable.GetUnderlyingType(type) : type];
 
 		internal static DbType GetDbType(this AttributeInfo attribute)
-		{
-			return (attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))) || attribute.IsStoredAsString()
+			=> (attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))) || attribute.IsStoredAsString()
 				? DbType.AnsiStringFixedLength
 				: attribute.IsStoredAsJson()
 					? DbType.String
@@ -231,16 +227,10 @@ namespace net.vieapps.Components.Repository
 							? DbType.String
 							: DbType.Int32
 					: attribute.Type.GetDbType();
-		}
 
-		internal static DbType GetDbType(this ExtendedPropertyDefinition attribute)
-		{
-			return attribute.Type.Equals(typeof(DateTime))
-				? DbType.AnsiString
-				: attribute.Type.GetDbType();
-		}
+		internal static DbType GetDbType(this ExtendedPropertyDefinition attribute) => attribute.Type.Equals(typeof(DateTime)) ? DbType.AnsiString : attribute.Type.GetDbType();
 
-		internal static Dictionary<Type, Dictionary<string, string>> DbTypeStrings = new Dictionary<Type, Dictionary<string, string>>()
+		internal static Dictionary<Type, Dictionary<string, string>> DbTypeStrings { get; } = new Dictionary<Type, Dictionary<string, string>>()
 		{
 			{
 				typeof(String),
@@ -370,8 +360,7 @@ namespace net.vieapps.Components.Repository
 		};
 
 		internal static string GetDbTypeString(this AttributeInfo attribute, DbProviderFactory dbProviderFactory)
-		{
-			return attribute.Type.IsStringType() && attribute.Name.EndsWith("ID") && (attribute.MaxLength.Equals(0) || attribute.MaxLength.Equals(32))
+			=> attribute.Type.IsStringType() && attribute.Name.EndsWith("ID") && (attribute.MaxLength.Equals(0) || attribute.MaxLength.Equals(32))
 				? typeof(String).GetDbTypeString(dbProviderFactory, 32, true, false)
 				: attribute.IsStoredAsString()
 					? typeof(String).GetDbTypeString(dbProviderFactory, 19, true, false)
@@ -382,14 +371,11 @@ namespace net.vieapps.Components.Repository
 								? typeof(String).GetDbTypeString(dbProviderFactory, 50, false, false)
 								: typeof(Int32).GetDbTypeString(dbProviderFactory, 0, false, false)
 							: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength);
-		}
 
 		internal static string GetDbTypeString(this Type type, DbProviderFactory dbProviderFactory, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
-		{
-			return type == null || dbProviderFactory == null
+			=> type == null || dbProviderFactory == null
 				? ""
 				: type.GetDbTypeString(dbProviderFactory.GetName(), precision, asFixedLength, asCLOB);
-		}
 
 		internal static string GetDbTypeString(this Type type, string dbProviderFactoryName, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
 		{
@@ -644,11 +630,7 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "The object is null");
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -657,29 +639,25 @@ namespace net.vieapps.Components.Repository
 				{
 					command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
 
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
 						command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-						info += "\r\n" + command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info += "\r\n" + command.GetInfo();
 					}
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -718,11 +696,7 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "The object is null");
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -731,29 +705,25 @@ namespace net.vieapps.Components.Repository
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
 
 					if (@object.IsGotExtendedProperties())
 					{
 						command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-						info += "\r\n" + command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info += "\r\n" + command.GetInfo();
 					}
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -824,11 +794,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrEmpty(id))
 				return default(T);
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -843,9 +809,7 @@ namespace net.vieapps.Components.Repository
 							: null;
 					}
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
 
 					if (@object != null && @object.IsGotExtendedProperties())
 					{
@@ -857,20 +821,18 @@ namespace net.vieapps.Components.Repository
 								@object = @object.Copy<T>(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
 						}
 
-#if DEBUG || PROCESSLOGS
-						info += "\r\n" + command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info += "\r\n" + command.GetInfo();
 					}
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 
 					return @object;
 				}
@@ -895,11 +857,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrEmpty(id))
 				return default(T);
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -914,9 +872,7 @@ namespace net.vieapps.Components.Repository
 							: null;
 					}
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
 
 					if (@object != null && @object.IsGotExtendedProperties())
 					{
@@ -928,20 +884,18 @@ namespace net.vieapps.Components.Repository
 								@object = @object.Copy<T>(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
 						}
 
-#if DEBUG || PROCESSLOGS
-						info += "\r\n" + command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info += "\r\n" + command.GetInfo();
 					}
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 
 					return @object;
 				}
@@ -1002,11 +956,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static object Get(DataSource dataSource, EntityDefinition definition, string id)
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
 
 			var @object = definition.Type.CreateInstance();
 
@@ -1027,9 +978,8 @@ namespace net.vieapps.Components.Repository
 						: null;
 				}
 
-#if DEBUG || PROCESSLOGS
-				info = command.GetInfo();
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					info = command.GetInfo();
 
 				if (@object != null && @object.IsGotExtendedProperties())
 				{
@@ -1042,21 +992,19 @@ namespace net.vieapps.Components.Repository
 							@object.Copy(dataReader, null, extendedProperties);
 					}
 
-#if DEBUG || PROCESSLOGS
-					info += "\r\n" + command.GetInfo();
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						info += "\r\n" + command.GetInfo();
 				}
 			}
 
-#if DEBUG || PROCESSLOGS
 			stopwatch.Stop();
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name}",
-				$"Execution times: {stopwatch.GetElapsedTimes()}",
-				info
-			});
-#endif
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name}",
+					$"Execution times: {stopwatch.GetElapsedTimes()}",
+					info
+				});
 
 			return @object;
 		}
@@ -1068,9 +1016,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity</param>
 		/// <returns></returns>
 		public static object Get(EntityDefinition definition, string id)
-		{
-			return SqlHelper.Get(definition?.GetPrimaryDataSource(), definition, id);
-		}
+			=> SqlHelper.Get(definition?.GetPrimaryDataSource(), definition, id);
 
 		/// <summary>
 		/// Gets an object by definition and identity
@@ -1082,11 +1028,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<object> GetAsync(DataSource dataSource, EntityDefinition definition, string id, CancellationToken cancellationToken = default(CancellationToken))
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
 
 			var @object = definition.Type.CreateInstance();
 
@@ -1107,9 +1050,8 @@ namespace net.vieapps.Components.Repository
 						: null;
 				}
 
-#if DEBUG || PROCESSLOGS
-				info = command.GetInfo();
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					info = command.GetInfo();
 
 				if (@object != null && @object.IsGotExtendedProperties())
 				{
@@ -1122,21 +1064,19 @@ namespace net.vieapps.Components.Repository
 							@object.Copy(dataReader, null, extendedProperties);
 					}
 
-#if DEBUG || PROCESSLOGS
-					info += "\r\n" + command.GetInfo();
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						info += "\r\n" + command.GetInfo();
 				}
 			}
 
-#if DEBUG || PROCESSLOGS
 			stopwatch.Stop();
-			await RepositoryMediator.WriteLogsAsync(new List<string>()
-			{
-				$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name}",
-				$"Execution times: {stopwatch.GetElapsedTimes()}",
-				info
-			}).ConfigureAwait(false);
-#endif
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name}",
+					$"Execution times: {stopwatch.GetElapsedTimes()}",
+					info
+				});
 
 			return @object;
 		}
@@ -1149,9 +1089,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static Task<object> GetAsync(EntityDefinition definition, string id, CancellationToken cancellationToken = default(CancellationToken))
-		{
-			return SqlHelper.GetAsync(definition?.GetPrimaryDataSource(), definition, id, cancellationToken);
-		}
+			=> SqlHelper.GetAsync(definition?.GetPrimaryDataSource(), definition, id, cancellationToken);
 		#endregion
 
 		#region Replace
@@ -1211,11 +1149,7 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1224,9 +1158,7 @@ namespace net.vieapps.Components.Repository
 				{
 					command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 
 					if (@object.IsGotExtendedProperties())
 					{
@@ -1234,16 +1166,16 @@ namespace net.vieapps.Components.Repository
 						command.ExecuteNonQuery();
 					}
 
-#if DEBUG || PROCESSLOGS
-					info += "\r\n" + command.GetInfo();
+					if (RepositoryMediator.IsDebugEnabled)
+						info += "\r\n" + command.GetInfo();
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1266,11 +1198,7 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1279,9 +1207,7 @@ namespace net.vieapps.Components.Repository
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 
 					if (@object.IsGotExtendedProperties())
 					{
@@ -1289,16 +1215,16 @@ namespace net.vieapps.Components.Repository
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 					}
 
-#if DEBUG || PROCESSLOGS
-					info += "\r\n" + command.GetInfo();
+					if (RepositoryMediator.IsDebugEnabled)
+						info += "\r\n" + command.GetInfo();
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1379,11 +1305,7 @@ namespace net.vieapps.Components.Repository
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update", nameof(attributes));
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1393,9 +1315,7 @@ namespace net.vieapps.Components.Repository
 					if (command != null)
 						command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-					var info = command == null ? "" : command.GetInfo();
-#endif
+					var info = command == null || !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
 
 					if (@object.IsGotExtendedProperties())
 					{
@@ -1404,16 +1324,15 @@ namespace net.vieapps.Components.Repository
 							command.ExecuteNonQuery();
 					}
 
-#if DEBUG || PROCESSLOGS
-					info += command == null ? "" : "\r\n" + command.GetInfo();
+					info += command == null || !RepositoryMediator.IsDebugEnabled ? "" : "\r\n" + command.GetInfo();
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1439,11 +1358,7 @@ namespace net.vieapps.Components.Repository
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update", nameof(attributes));
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1453,9 +1368,7 @@ namespace net.vieapps.Components.Repository
 					if (command != null)
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-					var info = command == null ? "" : command.GetInfo();
-#endif
+					var info = command == null || !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
 
 					if (@object.IsGotExtendedProperties())
 					{
@@ -1464,16 +1377,15 @@ namespace net.vieapps.Components.Repository
 							await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 					}
 
-#if DEBUG || PROCESSLOGS
-					info += command == null ? "" : "\r\n" + command.GetInfo();
+					info += command == null || !RepositoryMediator.IsDebugEnabled ? "" : "\r\n" + command.GetInfo();
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1493,11 +1405,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to delete</param>
 		public static void Delete<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1512,9 +1420,7 @@ namespace net.vieapps.Components.Repository
 				{
 					command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 
 					if (@object.IsGotExtendedProperties())
 					{
@@ -1527,20 +1433,18 @@ namespace net.vieapps.Components.Repository
 						);
 						command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-						info += "\r\n" + command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info += "\r\n" + command.GetInfo();
 					}
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1560,11 +1464,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1579,9 +1479,7 @@ namespace net.vieapps.Components.Repository
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 
 					if (@object.IsGotExtendedProperties())
 					{
@@ -1594,20 +1492,18 @@ namespace net.vieapps.Components.Repository
 						);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-						info += "\r\n" + command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info += "\r\n" + command.GetInfo();
 					}
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1628,11 +1524,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(id))
 				return;
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1647,9 +1539,7 @@ namespace net.vieapps.Components.Repository
 				{
 					command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 
 					if (context.EntityDefinition.Extendable && context.EntityDefinition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName))
 					{
@@ -1662,20 +1552,18 @@ namespace net.vieapps.Components.Repository
 						);
 						command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-						info += "\r\n" + command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info += "\r\n" + command.GetInfo();
 					}
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1698,11 +1586,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(id))
 				return;
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1717,9 +1601,7 @@ namespace net.vieapps.Components.Repository
 				{
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-					var info = command.GetInfo();
-#endif
+					var info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 
 					if (context.EntityDefinition.Extendable && context.EntityDefinition.RepositoryDefinition != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName))
 					{
@@ -1732,20 +1614,18 @@ namespace net.vieapps.Components.Repository
 						);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-						info += "\r\n" + command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info += "\r\n" + command.GetInfo();
 					}
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1769,12 +1649,8 @@ namespace net.vieapps.Components.Repository
 			if (filter == null)
 				return;
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
-
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1792,9 +1668,7 @@ namespace net.vieapps.Components.Repository
 						);
 						command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-						info = command.GetInfo();
-#endif
+						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 
 					command = connection.CreateCommand(
@@ -1803,16 +1677,16 @@ namespace net.vieapps.Components.Repository
 					);
 					command.ExecuteNonQuery();
 
-#if DEBUG || PROCESSLOGS
-					info += "\r\n" + command.GetInfo();
+					if (RepositoryMediator.IsDebugEnabled)
+						info += "\r\n" + command.GetInfo();
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -1836,12 +1710,8 @@ namespace net.vieapps.Components.Repository
 			if (filter == null)
 				return;
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
-
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1859,9 +1729,7 @@ namespace net.vieapps.Components.Repository
 						);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-						info = command.GetInfo();
-#endif
+						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 
 					command = connection.CreateCommand(
@@ -1870,16 +1738,16 @@ namespace net.vieapps.Components.Repository
 					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
-					info += "\r\n" + command.GetInfo();
+					if (RepositoryMediator.IsDebugEnabled)
+						info += "\r\n" + command.GetInfo();
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
-						$"Execution times: {stopwatch.GetElapsedTimes()}",
-						info
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
+							$"Execution times: {stopwatch.GetElapsedTimes()}",
+							info
+						});
 				}
 				catch (Exception ex)
 				{
@@ -2057,12 +1925,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<DataRow> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
-
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -2079,10 +1943,7 @@ namespace net.vieapps.Components.Repository
 						{
 							dataTable = dataReader.ToDataTable<T>();
 						}
-
-#if DEBUG || PROCESSLOGS
-						info = command.GetInfo();
-#endif
+						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 					catch (Exception ex)
 					{
@@ -2099,10 +1960,8 @@ namespace net.vieapps.Components.Repository
 						var dataSet = new DataSet();
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
-
-#if DEBUG || PROCESSLOGS
-						info = dataAdapter.SelectCommand.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info = dataAdapter.SelectCommand.GetInfo();
 					}
 					catch (Exception ex)
 					{
@@ -2110,15 +1969,14 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-#if DEBUG || PROCESSLOGS
 				stopwatch.Stop();
-				RepositoryMediator.WriteLogs(new List<string>()
-				{
-					$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name}",
-					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
-					info
-				});
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name}",
+						$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 
 				return dataTable.Rows.ToList();
 			}
@@ -2141,12 +1999,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
-
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -2163,10 +2017,7 @@ namespace net.vieapps.Components.Repository
 						{
 							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
 						}
-
-#if DEBUG || PROCESSLOGS
-						info = command.GetInfo();
-#endif
+						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 					catch (Exception ex)
 					{
@@ -2183,10 +2034,8 @@ namespace net.vieapps.Components.Repository
 						var dataSet = new DataSet();
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
-
-#if DEBUG || PROCESSLOGS
-						info = dataAdapter.SelectCommand.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info = dataAdapter.SelectCommand.GetInfo();
 					}
 					catch (Exception ex)
 					{
@@ -2194,15 +2043,14 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-#if DEBUG || PROCESSLOGS
 				stopwatch.Stop();
-				await RepositoryMediator.WriteLogsAsync(new List<string>()
-				{
-					$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name}",
-					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
-					info
-				}).ConfigureAwait(false);
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name}",
+						$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 
 				return dataTable.Rows.ToList();
 			}
@@ -2224,11 +2072,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns></returns>
 		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
-		{
-			return SqlHelper.Select(context, dataSource, new List<string>() { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+			=> SqlHelper.Select(context, dataSource, new List<string>() { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
-		}
 
 		/// <summary>
 		/// Finds all the matched records and return the collection of identity attributes
@@ -2245,11 +2091,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static async Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return (await SqlHelper.SelectAsync(context, dataSource, new List<string>() { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
+			=> (await SqlHelper.SelectAsync(context, dataSource, new List<string>() { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
-		}
 		#endregion
 
 		#region Find
@@ -2375,11 +2219,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
 		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null) where T : class
-		{
-			return identities == null || identities.Count < 1
+			=> identities == null || identities.Count < 1
 				? new List<T>()
 				: context.Find(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessEntityID, false);
-		}
 
 		/// <summary>
 		/// Finds the records and construct the collection of objects that specified by identity
@@ -2393,11 +2235,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return identities == null || identities.Count < 1
+			=> identities == null || identities.Count < 1
 				? Task.FromResult(new List<T>())
 				: context.FindAsync(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessEntityID, false, cancellationToken);
-		}
 		#endregion
 
 		#region Count
@@ -2449,11 +2289,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -2462,15 +2298,14 @@ namespace net.vieapps.Components.Repository
 				{
 					var total = command.ExecuteScalar().CastAs<long>();
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
-						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
-						command.GetInfo()
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
+							$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
+							command.GetInfo()
+						});
 
 					return total;
 				}
@@ -2494,11 +2329,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -2507,15 +2338,14 @@ namespace net.vieapps.Components.Repository
 				{
 					var total = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
-						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
-						command.GetInfo()
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
+							$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
+							command.GetInfo()
+						});
 
 					return total;
 				}
@@ -2749,12 +2579,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
-
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -2775,10 +2601,7 @@ namespace net.vieapps.Components.Repository
 						{
 							dataTable = dataReader.ToDataTable<T>();
 						}
-
-#if DEBUG || PROCESSLOGS
-						info = command.GetInfo();
-#endif
+						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 					catch (Exception ex)
 					{
@@ -2795,10 +2618,8 @@ namespace net.vieapps.Components.Repository
 						var dataSet = new DataSet();
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
-
-#if DEBUG || PROCESSLOGS
-						info = dataAdapter.SelectCommand.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info = dataAdapter.SelectCommand.GetInfo();
 					}
 					catch (Exception ex)
 					{
@@ -2806,16 +2627,15 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-#if DEBUG || PROCESSLOGS
 				stopwatch.Stop();
-				RepositoryMediator.WriteLogs(new List<string>()
-				{
-					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
-					$"Query: {query}",
-					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
-					info
-				});
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
+						$"Query: {query}",
+						$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 
 				return dataTable.Rows
 					.ToList()
@@ -2839,12 +2659,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
-
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -2865,10 +2681,7 @@ namespace net.vieapps.Components.Repository
 						{
 							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
 						}
-
-#if DEBUG || PROCESSLOGS
-						info = command.GetInfo();
-#endif
+						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 					catch (Exception ex)
 					{
@@ -2885,10 +2698,8 @@ namespace net.vieapps.Components.Repository
 						var dataSet = new DataSet();
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
 						dataTable = dataSet.Tables[0];
-
-#if DEBUG || PROCESSLOGS
-						info = dataAdapter.SelectCommand.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info = dataAdapter.SelectCommand.GetInfo();
 					}
 					catch (Exception ex)
 					{
@@ -2896,16 +2707,15 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-#if DEBUG || PROCESSLOGS
 				stopwatch.Stop();
-				await RepositoryMediator.WriteLogsAsync(new List<string>()
-				{
-					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
-					$"Query: {query}",
-					$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
-					info
-				}).ConfigureAwait(false);
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
+						$"Query: {query}",
+						$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 
 				return dataTable.Rows
 					.ToList()
@@ -2930,12 +2740,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
-
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -2957,10 +2763,8 @@ namespace net.vieapps.Components.Repository
 							while (dataReader.Read())
 								identities.Add(dataReader[context.EntityDefinition.PrimaryKey].CastAs<string>());
 						}
-
-#if DEBUG || PROCESSLOGS
-						info = command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info = command.GetInfo();
 					}
 					catch (Exception ex)
 					{
@@ -2979,10 +2783,8 @@ namespace net.vieapps.Components.Repository
 						identities = dataSet.Tables[0].Rows.ToList()
 							.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 							.ToList();
-
-#if DEBUG || PROCESSLOGS
-						info = dataAdapter.SelectCommand.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info = dataAdapter.SelectCommand.GetInfo();
 					}
 					catch (Exception ex)
 					{
@@ -2990,16 +2792,15 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-#if DEBUG || PROCESSLOGS
 				stopwatch.Stop();
-				RepositoryMediator.WriteLogs(new List<string>()
-				{
-					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
-					$"Query: {query}",
-					$"Total of results: {identities.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
-					info
-				});
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
+						$"Query: {query}",
+						$"Total of results: {identities.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 
 				return identities;
 			}
@@ -3020,12 +2821,8 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
+			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-#endif
-
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
@@ -3047,10 +2844,8 @@ namespace net.vieapps.Components.Repository
 							while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 								identities.Add(dataReader[context.EntityDefinition.PrimaryKey].CastAs<string>());
 						}
-
-#if DEBUG || PROCESSLOGS
-						info = command.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info = command.GetInfo();
 					}
 					catch (Exception ex)
 					{
@@ -3070,9 +2865,8 @@ namespace net.vieapps.Components.Repository
 							.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 							.ToList();
 
-#if DEBUG || PROCESSLOGS
-						info = dataAdapter.SelectCommand.GetInfo();
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							info = dataAdapter.SelectCommand.GetInfo();
 					}
 					catch (Exception ex)
 					{
@@ -3080,16 +2874,15 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-#if DEBUG || PROCESSLOGS
 				stopwatch.Stop();
-				await RepositoryMediator.WriteLogsAsync(new List<string>()
-				{
-					$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
-					$"Query: {query}",
-					$"Total of results: {identities.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
-					info
-				}).ConfigureAwait(false);
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>
+					{
+						$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
+						$"Query: {query}",
+						$"Total of results: {identities.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 
 				return identities;
 			}
@@ -3162,11 +2955,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -3175,15 +2964,14 @@ namespace net.vieapps.Components.Repository
 				{
 					var total = command.ExecuteScalar().CastAs<long>();
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					RepositoryMediator.WriteLogs(new List<string>()
-					{
-						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
-						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
-						command.GetInfo()
-					});
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
+							$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
+							command.GetInfo()
+						});
 
 					return total;
 				}
@@ -3207,11 +2995,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -3220,15 +3004,14 @@ namespace net.vieapps.Components.Repository
 				{
 					var total = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
 
-#if DEBUG || PROCESSLOGS
 					stopwatch.Stop();
-					await RepositoryMediator.WriteLogsAsync(new List<string>()
-					{
-						$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
-						$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
-						command.GetInfo()
-					}).ConfigureAwait(false);
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs(new List<string>()
+						{
+							$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
+							$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
+							command.GetInfo()
+						});
 
 					return total;
 				}
@@ -3273,13 +3056,12 @@ namespace net.vieapps.Components.Repository
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 						tracker?.Invoke($"Create SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
 
-#if DEBUG || PROCESSLOGS
-						await RepositoryMediator.WriteLogsAsync(new List<string>()
-						{
-							$"STARTER: Create SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
-							$"SQL Command: {sql}"
-						}).ConfigureAwait(false);
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs(new List<string>()
+							{
+								$"STARTER: Create SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"SQL Command: {sql}"
+							});
 					}
 					catch (Exception ex)
 					{
@@ -3379,13 +3161,12 @@ namespace net.vieapps.Components.Repository
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 						tracker?.Invoke($"Create indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
 
-#if DEBUG || PROCESSLOGS
-						await RepositoryMediator.WriteLogsAsync(new List<string>()
-						{
-							$"STARTER: Create indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
-							$"SQL Command: {sql}"
-						}).ConfigureAwait(false);
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs(new List<string>()
+							{
+								$"STARTER: Create indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"SQL Command: {sql}"
+							});
 					}
 					catch (Exception ex)
 					{
@@ -3453,13 +3234,12 @@ namespace net.vieapps.Components.Repository
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 						tracker?.Invoke($"Create full-text indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
 
-#if DEBUG || PROCESSLOGS
-						await RepositoryMediator.WriteLogsAsync(new List<string>()
-						{
-							$"STARTER: Create full-text indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
-							$"SQL Command: {sql}"
-						}).ConfigureAwait(false);
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs(new List<string>()
+							{
+								$"STARTER: Create full-text indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"SQL Command: {sql}"
+							});
 					}
 					catch (Exception ex)
 					{
@@ -3504,13 +3284,12 @@ namespace net.vieapps.Components.Repository
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 						tracker?.Invoke($"Create SQL table of parent associated mapping successul [{context.EntityDefinition.MultipleParentAssociatesTable}] @ {dataSource.Name}", null);
 
-#if DEBUG || PROCESSLOGS
-						await RepositoryMediator.WriteLogsAsync(new List<string>()
-						{
-							$"STARTER: Create SQL table of parent associated mapping successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
-							$"SQL Command: {sql}"
-						}).ConfigureAwait(false);
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs(new List<string>()
+							{
+								$"STARTER: Create SQL table of parent associated mapping successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"SQL Command: {sql}"
+							});
 					}
 					catch (Exception ex)
 					{
@@ -3623,13 +3402,12 @@ namespace net.vieapps.Components.Repository
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 						tracker?.Invoke($"Create SQL table of extended properties successul [{tableName}] @ {dataSource.Name}", null);
 
-#if DEBUG || PROCESSLOGS
-						await RepositoryMediator.WriteLogsAsync(new List<string>()
-						{
-							$"STARTER: Create SQL table of extended properties successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
-							$"SQL Command: {sql}"
-						}).ConfigureAwait(false);
-#endif
+						if (RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs(new List<string>()
+							{
+								$"STARTER: Create SQL table of extended properties successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"SQL Command: {sql}"
+							});
 					}
 					catch (Exception ex)
 					{
@@ -3702,10 +3480,10 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(invariant))
 				throw new ArgumentException("The invariant name is invalid", nameof(invariant));
 
-			if (!DbProviderFactories._ProviderFactories.TryGetValue(invariant, out DbProviderFactory dbProviderFactory))
-				lock (DbProviderFactories._ProviderFactories)
+			if (!DbProviderFactories.ProviderFactories.TryGetValue(invariant, out DbProviderFactory dbProviderFactory))
+				lock (DbProviderFactories.ProviderFactories)
 				{
-					if (!DbProviderFactories._ProviderFactories.TryGetValue(invariant, out dbProviderFactory))
+					if (!DbProviderFactories.ProviderFactories.TryGetValue(invariant, out dbProviderFactory))
 					{
 						DbProviderFactories.Providers.TryGetValue(invariant, out Provider provider);
 						if (provider == null)
@@ -3718,7 +3496,7 @@ namespace net.vieapps.Components.Repository
 						{
 							var value = field.GetValue(null);
 							if (value != null)
-								DbProviderFactories._ProviderFactories[invariant] = dbProviderFactory = (DbProviderFactory)value;
+								DbProviderFactories.ProviderFactories[invariant] = dbProviderFactory = (DbProviderFactory)value;
 						}
 					}
 				}
@@ -3726,8 +3504,9 @@ namespace net.vieapps.Components.Repository
 			return dbProviderFactory ?? throw new NotImplementedException($"The provider ({invariant}) is not installed");
 		}
 
-		internal static Dictionary<string, Provider> _Providers = null;
-		internal static Dictionary<string, DbProviderFactory> _ProviderFactories = new Dictionary<string, DbProviderFactory>();
+		internal static Dictionary<string, Provider> DbProviders { get; private set; } = null;
+
+		internal static Dictionary<string, DbProviderFactory> ProviderFactories { get; } = new Dictionary<string, DbProviderFactory>();
 
 		/// <summary>
 		/// Gest the current installed of provider factories
@@ -3736,9 +3515,9 @@ namespace net.vieapps.Components.Repository
 		{
 			get
 			{
-				if (DbProviderFactories._Providers == null)
+				if (DbProviderFactories.DbProviders == null)
 					DbProviderFactories.ConstructProviders();
-				return DbProviderFactories._Providers;
+				return DbProviderFactories.DbProviders;
 			}
 		}
 
@@ -3751,19 +3530,19 @@ namespace net.vieapps.Components.Repository
 
 		internal static void ConstructDbProviderFactories(List<XmlNode> nodes, Action<string, Exception> tracker = null)
 		{
-			DbProviderFactories._Providers = DbProviderFactories._Providers ?? new Dictionary<string, Provider>();
+			DbProviderFactories.DbProviders = DbProviderFactories.DbProviders ?? new Dictionary<string, Provider>();
 			nodes.ForEach(node =>
 			{
 				var invariant = node.Attributes["invariant"]?.Value;
 				var name = node.Attributes["name"]?.Value;
 				var description = node.Attributes["description"]?.Value;
-				var type = !string.IsNullOrWhiteSpace(invariant) && !DbProviderFactories._Providers.ContainsKey(invariant)
+				var type = !string.IsNullOrWhiteSpace(invariant) && !DbProviderFactories.DbProviders.ContainsKey(invariant)
 					? Type.GetType(node.Attributes["type"]?.Value)
 					: null;
 
 				if (!string.IsNullOrWhiteSpace(invariant) && type != null)
 				{
-					DbProviderFactories._Providers[invariant] = new Provider
+					DbProviderFactories.DbProviders[invariant] = new Provider
 					{
 						Invariant = invariant,
 						Type = type,
@@ -3771,6 +3550,8 @@ namespace net.vieapps.Components.Repository
 						Description = description
 					};
 					tracker?.Invoke($"Construct SQL Provider Factory [{invariant} - {name}]", null);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Construct SQL Provider Factory [{invariant} - {name}]", null);
 				}
 			});
 		}

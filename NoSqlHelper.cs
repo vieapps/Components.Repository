@@ -173,21 +173,15 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "The object is null");
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			collection.InsertOne(@object, options);
-
-#if DEBUG || PROCESSLOGS
 			stopwatch.Stop();
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				$"NoSQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
-				$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
-			});
-#endif
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(new List<string>
+				{
+					$"NoSQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+					$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+				});
 		}
 
 		/// <summary>
@@ -198,9 +192,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		public static void Create<T>(DataSource dataSource, T @object, InsertOneOptions options = null) where T : class
-		{
-			NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).Create(@object, options);
-		}
+			=> NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).Create(@object, options);
 
 		/// <summary>
 		/// Creates new document of an object
@@ -209,9 +201,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		public static void Create<T>(T @object, InsertOneOptions options = null) where T : class
-		{
-			NoSqlHelper.Create(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options);
-		}
+			=> NoSqlHelper.Create(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options);
 
 		/// <summary>
 		/// Creates new document of an object
@@ -222,9 +212,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		public static void Create<T>(this RepositoryContext context, DataSource dataSource, T @object, InsertOneOptions options = null) where T : class
-		{
-			context.GetCollection<T>(dataSource).Create(@object, options);
-		}
+			=> context.GetCollection<T>(dataSource).Create(@object, options);
 
 		/// <summary>
 		/// Creates new document of an object
@@ -240,21 +228,15 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "The object is null");
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
-
+			var stopwatch = Stopwatch.StartNew();
 			await collection.InsertOneAsync(@object, options, cancellationToken).ConfigureAwait(false);
-
-#if DEBUG || PROCESSLOGS
 			stopwatch.Stop();
-			await RepositoryMediator.WriteLogsAsync(new List<string>()
-			{
-				$"NoSQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
-				$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
-			}).ConfigureAwait(false);
-#endif
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(new List<string>
+				{
+					$"NoSQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+					$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+				});
 		}
 
 		/// <summary>
@@ -286,9 +268,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		public static Task CreateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return context.GetCollection<T>(dataSource).CreateAsync(@object, options, cancellationToken);
-		}
+			=> context.GetCollection<T>(dataSource).CreateAsync(@object, options, cancellationToken);
 		#endregion
 
 		#region Get
@@ -486,9 +466,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static object Get(EntityDefinition definition, string id, FindOptions options = null)
-		{
-			return NoSqlHelper.Get(definition?.GetPrimaryDataSource(), definition, id);
-		}
+			=> NoSqlHelper.Get(definition?.GetPrimaryDataSource(), definition, id);
 
 		/// <summary>
 		/// Gets document of an object
@@ -518,9 +496,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static Task<object> GetAsync(EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken))
-		{
-			return NoSqlHelper.GetAsync(definition?.GetPrimaryDataSource(), definition, id, options, cancellationToken);
-		}
+			=> NoSqlHelper.GetAsync(definition?.GetPrimaryDataSource(), definition, id, options, cancellationToken);
 		#endregion
 
 		#region Replace
@@ -534,10 +510,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static ReplaceOneResult Replace<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
+			var stopwatch = Stopwatch.StartNew();
 			try
 			{
 				return @object != null
@@ -548,17 +521,16 @@ namespace net.vieapps.Components.Repository
 			{
 				throw;
 			}
-#if DEBUG || PROCESSLOGS
 			finally
 			{
 				stopwatch.Stop();
-				RepositoryMediator.WriteLogs(new List<string>()
-				{
-					$"NoSQL: {(@object != null ? "Perform REPLACE command successful" : "No valid object to perform replace")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
-					$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
-				});
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"NoSQL: {(@object != null ? "Perform REPLACE command successful" : "No valid object to perform replace")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+						$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+					});
 			}
-#endif
 		}
 
 		/// <summary>
@@ -571,9 +543,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
 		public static ReplaceOneResult Replace<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateOptions options = null) where T : class
-		{
-			return context.GetCollection<T>(dataSource).Replace(@object, options);
-		}
+			=> context.GetCollection<T>(dataSource).Replace(@object, options);
 
 		/// <summary>
 		/// Replaces document of an object
@@ -586,10 +556,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
+			var stopwatch = Stopwatch.StartNew();
 			try
 			{
 				return @object != null
@@ -600,17 +567,16 @@ namespace net.vieapps.Components.Repository
 			{
 				throw;
 			}
-#if DEBUG || PROCESSLOGS
 			finally
 			{
 				stopwatch.Stop();
-				await RepositoryMediator.WriteLogsAsync(new List<string>()
-				{
-					$"NoSQL: {(@object != null ? "Perform REPLACE command successful" : "No valid object to perform replace")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
-					$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
-				}).ConfigureAwait(false);
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"NoSQL: {(@object != null ? "Perform REPLACE command successful" : "No valid object to perform replace")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+						$"{(@object != null ? "Objects' data:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+					});
 			}
-#endif
 		}
 
 		/// <summary>
@@ -624,9 +590,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static Task<ReplaceOneResult> ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return context.GetCollection<T>(dataSource).ReplaceAsync(@object, options, cancellationToken);
-		}
+			=> context.GetCollection<T>(dataSource).ReplaceAsync(@object, options, cancellationToken);
 		#endregion
 
 		#region Update
@@ -666,10 +630,7 @@ namespace net.vieapps.Components.Repository
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update");
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
+			var stopwatch = Stopwatch.StartNew();
 
 			// get collection of all attributes
 			var objAttributes = @object.GetAttributes();
@@ -695,26 +656,22 @@ namespace net.vieapps.Components.Repository
 			{
 				collection.ReplaceOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true });
 
-#if DEBUG || PROCESSLOGS
 				stopwatch.Stop();
-				RepositoryMediator.WriteLogs(new List<string>()
-				{
-					$"NoSQL: updated attributes got a generic primitive, then switch to use Replace instead of Update",
-					$"- Execution times: {stopwatch.GetElapsedTimes()}",
-					$"- Updated attributes: [{attributes.ToString(", ")}]",
-					$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
-				});
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"NoSQL: updated attributes got a generic primitive, then switch to use Replace instead of Update",
+						$"- Execution times: {stopwatch.GetElapsedTimes()}",
+						$"- Updated attributes: [{attributes.ToString(", ")}]",
+						$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
+					});
 
 				return;
 			}
 
 			// update individually
 			UpdateDefinition<T> updater = null;
-
-#if DEBUG || PROCESSLOGS
 			var updated = "";
-#endif
 
 			attributes.ForEach(name =>
 			{
@@ -736,23 +693,21 @@ namespace net.vieapps.Components.Repository
 						? Builders<T>.Update.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value))
 						: updater.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value));
 
-#if DEBUG || PROCESSLOGS
-					updated += $"\r\n\t+ @{attribute.Name} ({attribute.Type}) ==> [{value ?? "(null)"}]";
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						updated += $"\r\n\t+ @{attribute.Name} ({attribute.Type}) ==> [{value ?? "(null)"}]";
 				}
 			});
 
 			if (updater != null)
 				collection.UpdateOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options);
 
-#if DEBUG || PROCESSLOGS
 			stopwatch.Stop();
-			RepositoryMediator.WriteLogs(new List<string>()
-			{
-				$"NoSQL: {(updater != null ? "Perform UPDATE command successful" : "No valid update to perform")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
-				$"{(updater != null ? $"Updated attributes:{updated}\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
-			});
-#endif
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"NoSQL: {(updater != null ? "Perform UPDATE command successful" : "No valid update to perform")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+					$"{(updater != null ? $"Updated attributes:{updated}\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+				});
 		}
 
 		/// <summary>
@@ -766,9 +721,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
 		public static void Update<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, UpdateOptions options = null) where T : class
-		{
-			context.GetCollection<T>(dataSource).Update(@object, attributes, options);
-		}
+			=> context.GetCollection<T>(dataSource).Update(@object, attributes, options);
 
 		/// <summary>
 		/// Updates document of an object
@@ -779,13 +732,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="update">The definition for updating</param>
 		/// <param name="options">The options for updating</param>
 		public static UpdateResult Update<T>(this IMongoCollection<T> collection, T @object, UpdateDefinition<T> update, UpdateOptions options = null) where T : class
-		{
-			return @object != null
+			=> @object != null
 				? update != null
 					? collection.UpdateOne(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), update, options)
 					: throw new ArgumentNullException(nameof(update), "The update definition is null")
-				:  throw new ArgumentNullException(nameof(@object), "The object is null");
-		}
+				: throw new ArgumentNullException(nameof(@object), "The object is null");
 
 		/// <summary>
 		/// Updates document of an object
@@ -798,9 +749,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
 		public static UpdateResult Update<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateDefinition<T> update, UpdateOptions options = null) where T : class
-		{
-			return context.GetCollection<T>(dataSource).Update(@object, update, options);
-		}
+			=> context.GetCollection<T>(dataSource).Update(@object, update, options);
 
 		/// <summary>
 		/// Updates document of an object
@@ -819,10 +768,7 @@ namespace net.vieapps.Components.Repository
 			else if (attributes == null || attributes.Count < 1)
 				throw new ArgumentException("No attribute to update");
 
-#if DEBUG || PROCESSLOGS
-			var stopwatch = new Stopwatch();
-			stopwatch.Start();
-#endif
+			var stopwatch = Stopwatch.StartNew();
 
 			// get collection of all attributes
 			var objAttributes = @object.GetAttributes();
@@ -848,26 +794,22 @@ namespace net.vieapps.Components.Repository
 			{
 				await collection.ReplaceOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions() { IsUpsert = true }, cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
 				stopwatch.Stop();
-				await RepositoryMediator.WriteLogsAsync(new List<string>()
-				{
-					$"NoSQL: updated attributes got a generic primitive, then switch to use Replace instead of Update",
-					$"- Execution times: {stopwatch.GetElapsedTimes()}",
-					$"- Updated attributes: [{attributes.ToString(", ")}]",
-					$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
-				}).ConfigureAwait(false);
-#endif
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new List<string>()
+					{
+						$"NoSQL: updated attributes got a generic primitive, then switch to use Replace instead of Update",
+						$"- Execution times: {stopwatch.GetElapsedTimes()}",
+						$"- Updated attributes: [{attributes.ToString(", ")}]",
+						$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
+					});
 
 				return;
 			}
 
 			// update individually
 			UpdateDefinition<T> updater = null;
-
-#if DEBUG || PROCESSLOGS
 			var updated = "";
-#endif
 
 			attributes.ForEach(name =>
 			{
@@ -889,23 +831,21 @@ namespace net.vieapps.Components.Repository
 						? Builders<T>.Update.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value))
 						: updater.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value));
 
-#if DEBUG || PROCESSLOGS
-					updated += $"\r\n\t+ @{attribute.Name} ({attribute.Type}) ==> [{value ?? "(null)"}]";
-#endif
+					if (RepositoryMediator.IsDebugEnabled)
+						updated += $"\r\n\t+ @{attribute.Name} ({attribute.Type}) ==> [{value ?? "(null)"}]";
 				}
 			});
 
 			if (updater != null)
 				await collection.UpdateOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options, cancellationToken).ConfigureAwait(false);
 
-#if DEBUG || PROCESSLOGS
 			stopwatch.Stop();
-			await RepositoryMediator.WriteLogsAsync(new List<string>()
-			{
-				$"NoSQL: {(updater != null ? "Perform UPDATE command successful" : "No valid update to perform")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
-				$"{(updater != null ? $"Updated attributes:{updated}\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
-			}).ConfigureAwait(false);
-#endif
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(new List<string>()
+				{
+					$"NoSQL: {(updater != null ? "Perform UPDATE command successful" : "No valid update to perform")} [{typeof(T)}#{@object?.GetEntityID()}] @ {collection.CollectionNamespace.CollectionName}",
+					$"{(updater != null ? $"Updated attributes:{updated}\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+				});
 		}
 
 		/// <summary>
@@ -920,9 +860,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static Task UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return context.GetCollection<T>(dataSource).UpdateAsync(@object, attributes, options, cancellationToken);
-		}
+			=> context.GetCollection<T>(dataSource).UpdateAsync(@object, attributes, options, cancellationToken);
 
 		/// <summary>
 		/// Updates document of an object
@@ -935,13 +873,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static Task<UpdateResult> UpdateAsync<T>(this IMongoCollection<T> collection, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return @object != null
+			=> @object != null
 				? update != null
 					? collection.UpdateOneAsync(Builders<T>.Filter.Eq("_id", @object.GetEntityID()), update, options, cancellationToken)
 					: Task.FromException<UpdateResult>(new ArgumentNullException(nameof(update), "The update definition is null"))
 				: Task.FromException<UpdateResult>(new ArgumentNullException(nameof(@object), "The object is null"));
-		}
 
 		/// <summary>
 		/// Updates document of an object
@@ -955,9 +891,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static Task<UpdateResult> UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return context.GetCollection<T>(dataSource).UpdateAsync(@object, update, options, cancellationToken);
-		}
+			=> context.GetCollection<T>(dataSource).UpdateAsync(@object, update, options, cancellationToken);
 		#endregion
 
 		#region Delete
@@ -970,11 +904,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <returns></returns>
 		public static DeleteResult Delete<T>(this IMongoCollection<T> collection, string id, DeleteOptions options = null) where T : class
-		{
-			return !string.IsNullOrWhiteSpace(id)
+			=> !string.IsNullOrWhiteSpace(id)
 				? collection.DeleteOne(Builders<T>.Filter.Eq("_id", id), options)
 				: null;
-		}
 
 		/// <summary>
 		/// Deletes the document of an object
@@ -985,9 +917,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <returns></returns>
 		public static DeleteResult Delete<T>(this RepositoryContext context, DataSource dataSource, string id, DeleteOptions options = null) where T : class
-		{
-			return context.GetCollection<T>(dataSource).Delete(id, options);
-		}
+			=> context.GetCollection<T>(dataSource).Delete(id, options);
 
 		/// <summary>
 		/// Deletes the document of an object
@@ -998,11 +928,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <returns></returns>
 		public static DeleteResult Delete<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null) where T : class
-		{
-			return @object != null
+			=> @object != null
 				? collection.Delete(@object.GetEntityID(), options)
 				: throw new ArgumentNullException(nameof(@object), "The object is null");
-		}
 
 		/// <summary>
 		/// Deletes the document of an object
@@ -1013,9 +941,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object"></param>
 		/// <returns></returns>
 		public static DeleteResult Delete<T>(this RepositoryContext context, DataSource dataSource, T @object, DeleteOptions options = null) where T : class
-		{
-			return context.GetCollection<T>(dataSource).Delete(@object, options);
-		}
+			=> context.GetCollection<T>(dataSource).Delete(@object, options);
 
 		/// <summary>
 		/// Deletes the document of an object
@@ -1027,11 +953,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
 		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, string id, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return !string.IsNullOrWhiteSpace(id)
+			=> !string.IsNullOrWhiteSpace(id)
 				? collection.DeleteOneAsync(Builders<T>.Filter.Eq("_id", id), options, cancellationToken)
 				: Task.FromResult<DeleteResult>(null);
-		}
 
 		/// <summary>
 		/// Deletes the document of an object
@@ -1042,9 +966,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <returns></returns>
 		public static Task<DeleteResult> DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, string id, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return context.GetCollection<T>(dataSource).DeleteAsync(id, options, cancellationToken);
-		}
+			=> context.GetCollection<T>(dataSource).DeleteAsync(id, options, cancellationToken);
 
 		/// <summary>
 		/// Deletes the document of an object
@@ -1056,11 +978,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
 		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return @object != null
+			=> @object != null
 				? collection.DeleteAsync(@object.GetEntityID(), options, cancellationToken)
 				: Task.FromException<DeleteResult>(new ArgumentNullException(nameof(@object), "The object is null"));
-		}
 
 		/// <summary>
 		/// Deletes the document of an object
@@ -1071,9 +991,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object"></param>
 		/// <returns></returns>
 		public static Task<DeleteResult> DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return context.GetCollection<T>(dataSource).DeleteAsync(@object, options, cancellationToken);
-		}
+			=> context.GetCollection<T>(dataSource).DeleteAsync(@object, options, cancellationToken);
 		#endregion
 
 		#region Delete (many)
@@ -1262,11 +1180,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static List<string> SelectIdentities<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
-		{
-			return collection.Select(null, filter, sort, pageSize, pageNumber, options)
+			=> collection.Select(null, filter, sort, pageSize, pageNumber, options)
 				.Select(doc => doc["_id"].AsString)
 				.ToList();
-		}
 
 		/// <summary>
 		/// Finds all the matched documents and return the collection of identity attributes
@@ -1284,7 +1200,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = Extensions.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectIdentities(info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
@@ -1301,11 +1217,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static async Task<List<string>> SelectIdentitiesAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return (await collection.SelectAsync(null, filter, sort, pageSize, pageNumber, options, cancellationToken).ConfigureAwait(false))
+			=> (await collection.SelectAsync(null, filter, sort, pageSize, pageNumber, options, cancellationToken).ConfigureAwait(false))
 				.Select(doc => doc["_id"].AsString)
 				.ToList();
-		}
 
 		/// <summary>
 		/// Finds all the matched documents and return the collection of identity attributes
@@ -1324,7 +1238,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			var info = Extensions.PrepareNoSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = Extensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectIdentitiesAsync(info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
@@ -1569,9 +1483,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber"></param>
 		/// <returns></returns>
 		public static List<T> Search<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> otherFilters, int pageSize, int pageNumber) where T : class
-		{
-			return collection.Search(query, "SearchScore", otherFilters, pageSize, pageNumber);
-		}
+			=> collection.Search(query, "SearchScore", otherFilters, pageSize, pageNumber);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1649,9 +1561,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
 		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string query, string scoreProperty, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return collection.SearchAsync<T>(query, scoreProperty, null, pageSize, pageNumber, cancellationToken);
-		}
+			=> collection.SearchAsync(query, scoreProperty, null, pageSize, pageNumber, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1665,9 +1575,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
 		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> otherFilters, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-		{
-			return collection.SearchAsync(query, "SearchScore", otherFilters, pageSize, pageNumber, cancellationToken);
-		}
+			=> collection.SearchAsync(query, "SearchScore", otherFilters, pageSize, pageNumber, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1932,7 +1840,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare indexes
 			var prefix = "IDX_" + definition.CollectionName;
-			var indexes = new Dictionary<string, List<AttributeInfo>>()
+			var indexes = new Dictionary<string, List<AttributeInfo>>
 			{
 				{ prefix, new List<AttributeInfo>() }
 			};
@@ -1992,6 +1900,8 @@ namespace net.vieapps.Components.Repository
 							: index.Ascending(attribute.Name);
 					});
 					tracker?.Invoke($"Create index of No SQL: {info.Key}", null);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Create index of No SQL: {info.Key}", null);
 					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions { Name = info.Key, Background = true }, token).ConfigureAwait(false);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
@@ -2008,6 +1918,8 @@ namespace net.vieapps.Components.Repository
 							: index.Ascending(attribute.Name);
 					});
 					tracker?.Invoke($"Create unique index of No SQL: {info.Key}", null);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Create unique index of No SQL: {info.Key}", null);
 					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions { Name = info.Key, Background = true, Unique = true }, token).ConfigureAwait(false);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
@@ -2022,6 +1934,8 @@ namespace net.vieapps.Components.Repository
 						: index.Text(attribute);
 				});
 				tracker?.Invoke($"Create text index of No SQL: {prefix + "_Text_Search"}", null);
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"Create text index of No SQL: {prefix + "_Text_Search"}", null);
 				await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }, cancellationToken).ConfigureAwait(false);
 			}
 
