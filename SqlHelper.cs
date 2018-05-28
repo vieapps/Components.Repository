@@ -3540,7 +3540,7 @@ namespace net.vieapps.Components.Repository
 					? Type.GetType(node.Attributes["type"]?.Value)
 					: null;
 
-				if (!string.IsNullOrWhiteSpace(invariant) && type != null)
+				if (type != null)
 				{
 					DbProviderFactories.DbProviders[invariant] = new Provider
 					{
