@@ -23,6 +23,8 @@ using net.vieapps.Components.Utility;
 using net.vieapps.Components.Security;
 #endregion
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("VIEApps.Components.XUnitTests")]
+
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
