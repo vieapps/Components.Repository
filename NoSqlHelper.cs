@@ -1397,7 +1397,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
-			return context.GetCollection<T>(dataSource).Count(info.Item1 ?? Builders<T>.Filter.Empty, options);
+			return context.GetCollection<T>(dataSource).CountDocuments(info.Item1 ?? Builders<T>.Filter.Empty, options);
 		}
 
 		/// <summary>
@@ -1415,7 +1415,7 @@ namespace net.vieapps.Components.Repository
 		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents);
-			return context.GetCollection<T>(dataSource).CountAsync(info.Item1 ?? Builders<T>.Filter.Empty, options, cancellationToken);
+			return context.GetCollection<T>(dataSource).CountDocumentsAsync(info.Item1 ?? Builders<T>.Filter.Empty, options, cancellationToken);
 		}
 		#endregion
 
@@ -1755,7 +1755,7 @@ namespace net.vieapps.Components.Repository
 			var filterBy = query.CreateTextSearchFilter<T>();
 			if (filter != null && !filter.Equals(Builders<T>.Filter.Empty))
 				filterBy = filterBy & filter;
-			return collection.Count(filterBy);
+			return collection.CountDocuments(filterBy);
 		}
 
 		/// <summary>
@@ -1801,7 +1801,7 @@ namespace net.vieapps.Components.Repository
 			var filterBy = query.CreateTextSearchFilter<T>();
 			if (filter != null && !filter.Equals(Builders<T>.Filter.Empty))
 				filterBy = filterBy & filter;
-			return collection.CountAsync(filterBy, null, cancellationToken);
+			return collection.CountDocumentsAsync(filterBy, null, cancellationToken);
 		}
 
 		/// <summary>
@@ -1902,7 +1902,7 @@ namespace net.vieapps.Components.Repository
 					tracker?.Invoke($"Create index of No SQL: {info.Key}", null);
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create index of No SQL: {info.Key}", null);
-					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions { Name = info.Key, Background = true }, token).ConfigureAwait(false);
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = info.Key, Background = true }), null, token).ConfigureAwait(false);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -1920,7 +1920,7 @@ namespace net.vieapps.Components.Repository
 					tracker?.Invoke($"Create unique index of No SQL: {info.Key}", null);
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create unique index of No SQL: {info.Key}", null);
-					await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions { Name = info.Key, Background = true, Unique = true }, token).ConfigureAwait(false);
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = info.Key, Background = true, Unique = true }), null, token).ConfigureAwait(false);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -1936,11 +1936,11 @@ namespace net.vieapps.Components.Repository
 				tracker?.Invoke($"Create text index of No SQL: {prefix + "_Text_Search"}", null);
 				if (RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"Create text index of No SQL: {prefix + "_Text_Search"}", null);
-				await collection.Indexes.CreateOneAsync(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }, cancellationToken).ConfigureAwait(false);
+				await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions() { Name = prefix + "_Text_Search", Background = true }), null, cancellationToken).ConfigureAwait(false);
 			}
 
 			// create the blank document for ensuring the collection is created
-			if (await collection.CountAsync(Builders<BsonDocument>.Filter.Empty).ConfigureAwait(false) < 1)
+			if (await collection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty).ConfigureAwait(false) < 1)
 				try
 				{
 					var @object = definition.Type.CreateInstance() as RepositoryBase;

@@ -117,7 +117,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="scopeOption"></param>
 		/// <param name="transactionOptions"></param>
 		/// <param name="scopeAsyncFlowOption"></param>
-		public RepositoryContext(TransactionScopeOption scopeOption, TransactionOptions transactionOptions, TransactionScopeAsyncFlowOption scopeAsyncFlowOption)
+		public RepositoryContext(TransactionScopeOption scopeOption, System.Transactions.TransactionOptions transactionOptions, TransactionScopeAsyncFlowOption scopeAsyncFlowOption)
 		{
 			this.Initialize();
 			this.OpenTransaction(scopeOption, transactionOptions, scopeAsyncFlowOption);
@@ -125,7 +125,7 @@ namespace net.vieapps.Components.Repository
 
 		void Initialize()
 		{
-			this.ID = Utility.UtilityService.GetUUID();
+			this.ID = UtilityService.GetUUID();
 			this.Operation = RepositoryOperation.Query;
 			this.PreviousStateData = new Dictionary<string, Dictionary<string, object>>();
 			this.CurrentStateData = new Dictionary<string, Dictionary<string, object>>();
@@ -139,7 +139,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="scopeOption">Scope option</param>
 		/// <param name="transactionOptions">Transaction options</param>
 		/// <param name="scopeAsyncFlowOption">Async flow option</param>
-		public void OpenTransaction(TransactionScopeOption scopeOption, TransactionOptions transactionOptions, TransactionScopeAsyncFlowOption scopeAsyncFlowOption)
+		public void OpenTransaction(TransactionScopeOption scopeOption, System.Transactions.TransactionOptions transactionOptions, TransactionScopeAsyncFlowOption scopeAsyncFlowOption)
 		{
 			if (this.Transaction == null)
 				this.Transaction = new TransactionScope(scopeOption, transactionOptions, scopeAsyncFlowOption);

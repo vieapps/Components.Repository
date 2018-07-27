@@ -5,14 +5,14 @@
 		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
-		<AssemblyVersion>10.2.4.1806</AssemblyVersion>
-		<FileVersion>10.2.4.1806</FileVersion>
-		<InformationalVersion>v10.2.netstandard-2+rev:2018.06.01</InformationalVersion>
+		<AssemblyVersion>10.2.5.1808</AssemblyVersion>
+		<FileVersion>10.2.5.1808</FileVersion>
+		<InformationalVersion>v10.2.netstandard-2+rev:2018.08.01</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.2.4.1806</Version>
+		<Version>10.2.5.1808</Version>
 		<SignAssembly>false</SignAssembly>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
 		<Title>VIEApps NGX Repository</Title>
@@ -45,10 +45,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.6.1" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.4.1806" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.2.4.1806" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.2.4.1806" />
+		<PackageReference Include="MongoDB.Driver" Version="2.7.0" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.5.1808" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.2.5.1808" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.2.5.1808" />
 	</ItemGroup>
 
 </Project>
