@@ -190,9 +190,9 @@ namespace net.vieapps.Components.Repository
 		YesNo,
 
 		/// <summary>
-		/// Choice from the pre-defined values - stored as small-text, multiple values are separated by hashtag, at sign and comma (#@;)
+		/// Select one (or more as multiple) from the pre-defined values - stored as small-text, multiple values are separated by hashtag and comma (#;)
 		/// </summary>
-		Choice,
+		Select,
 
 		/// <summary>
 		/// Date Time - stored as string (max length = 19)
@@ -208,11 +208,6 @@ namespace net.vieapps.Components.Repository
 		/// Decimal number
 		/// </summary>
 		Decimal,
-
-		/// <summary>
-		/// Hyper-link (http:// or https://) - stored as medium text
-		/// </summary>
-		HyperLink,
 
 		/// <summary>
 		/// Lookup identities - stored as small-text, multiple values are separated comma (;)

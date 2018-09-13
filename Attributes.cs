@@ -1,4 +1,8 @@
-﻿using System;
+﻿#region Related components
+using System;
+using Newtonsoft.Json;
+using net.vieapps.Components.Utility;
+#endregion
 
 namespace net.vieapps.Components.Repository
 {
@@ -35,6 +39,8 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public string ExtendedPropertiesTableName { get; set; }
 	}
+
+	// ------------------------------------------
 
 	/// <summary>
 	/// Specifies this class is an entity of a repository
@@ -150,6 +156,8 @@ namespace net.vieapps.Components.Repository
 		public Type NavigatorType { get; set; }
 	}
 
+	// ------------------------------------------
+
 	/// <summary>
 	/// Specifies this property is primary-key
 	/// </summary>
@@ -168,6 +176,8 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public int MaxLength { get; set; } = 32;
 	}
+
+	// ------------------------------------------
 
 	/// <summary>
 	/// Specifies this property is map to a column in SQL table with special settings
@@ -193,15 +203,32 @@ namespace net.vieapps.Components.Repository
 		public bool NotEmpty { get; set; } = false;
 
 		/// <summary>
+		/// Gets or sets state that specified this string property is use CLOB (character of large object) - default is false
+		/// </summary>
+		public bool IsCLOB { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets min-length (of the string property)
+		/// </summary>
+		public int MinLength { get; set; } = 0;
+
+		/// <summary>
 		/// Gets or sets max-length (of the string property)
 		/// </summary>
 		public int MaxLength { get; set; } = 0;
 
 		/// <summary>
-		/// Gets or sets state that specified this string property is use CLOB (character of large object) - default is false
+		/// Gets or sets min-value
 		/// </summary>
-		public bool IsCLOB { get; set; } = false;
+		public string MinValue { get; set; }
+
+		/// <summary>
+		/// Gets or sets max-value
+		/// </summary>
+		public string MaxValue { get; set; }
 	}
+
+	// ------------------------------------------
 
 	/// <summary>
 	/// Specifies this field is map to a column in SQL table
@@ -227,15 +254,32 @@ namespace net.vieapps.Components.Repository
 		public bool NotEmpty { get; set; } = false;
 
 		/// <summary>
+		/// Gets or sets state that specified this string field is use CLOB (character of large object) - default is false
+		/// </summary>
+		public bool IsCLOB { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets min-length (of the string field)
+		/// </summary>
+		public int MinLength { get; set; } = 0;
+
+		/// <summary>
 		/// Gets or sets max-length (of the string field)
 		/// </summary>
 		public int MaxLength { get; set; } = 0;
 
 		/// <summary>
-		/// Gets or sets state that specified this string field is use CLOB (character of large object) - default is false
+		/// Gets or sets min-value
 		/// </summary>
-		public bool IsCLOB { get; set; } = false;
+		public string MinValue { get; set; }
+
+		/// <summary>
+		/// Gets or sets max-value
+		/// </summary>
+		public string MaxValue { get; set; }
 	}
+
+	// ------------------------------------------
 
 	/// <summary>
 	/// Specifies this property is ignore
@@ -246,6 +290,8 @@ namespace net.vieapps.Components.Repository
 		public IgnoreAttribute() { }
 	}
 
+	// ------------------------------------------
+
 	/// <summary>
 	/// Specifies this property is ignore if null
 	/// </summary>
@@ -254,6 +300,8 @@ namespace net.vieapps.Components.Repository
 	{
 		public IgnoreIfNullAttribute() { }
 	}
+
+	// ------------------------------------------
 
 	/// <summary>
 	/// Specifies this property is able for sorting (means got pre-defined index or able to create new index)
@@ -274,6 +322,8 @@ namespace net.vieapps.Components.Repository
 		public string UniqueIndexName { get; set; }
 	}
 
+	// ------------------------------------------
+
 	/// <summary>
 	/// Specifies this property is able for searching by full-text search (means got pre-defined full-text index)
 	/// </summary>
@@ -282,6 +332,8 @@ namespace net.vieapps.Components.Repository
 	{
 		public SearchableAttribute() { }
 	}
+
+	// ------------------------------------------
 
 	/// <summary>
 	/// Specifies this date-time property will be stored as a string with format 'yyyy/MM/dd HH:mm:ss' in SQL table
@@ -292,6 +344,8 @@ namespace net.vieapps.Components.Repository
 		public AsStringAttribute() { }
 	}
 
+	// ------------------------------------------
+
 	/// <summary>
 	/// Specifies this property will be stored as a CLOB string with JSON format in SQL table
 	/// </summary>
@@ -301,6 +355,8 @@ namespace net.vieapps.Components.Repository
 		public AsJsonAttribute() { }
 	}
 
+	// ------------------------------------------
+
 	/// <summary>
 	/// Specifies this class is handler of repository events
 	/// </summary>
@@ -308,6 +364,243 @@ namespace net.vieapps.Components.Repository
 	public class EventHandlersAttribute : Attribute
 	{
 		public EventHandlersAttribute() { }
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Presents a form control
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	public class FormControlAttribute : Attribute
+	{
+		public FormControlAttribute() { }
+
+		/// <summary>
+		/// Gets or sets the type of the control (TextBox, TextArea, Select, DatePicker, YesNo, Range, Completer)
+		/// </summary>
+		public string ControlType { get; set; }
+
+		/// <summary>
+		/// Gets or sets the data-type (text, date, number, tel, url, ... - follow the HTML5 input data-type)
+		/// </summary>
+		public string DataType { get; set; }
+
+		/// <summary>
+		/// Gets or sets the excluded state
+		/// </summary>
+		public bool Excluded { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the hidden state
+		/// </summary>
+		public bool Hidden { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the require state
+		/// </summary>
+		public bool Required { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the label - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
+		/// </summary>
+		public string Label { get; set; }
+
+		/// <summary>
+		/// Gets or sets the place-holder - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
+		/// </summary>
+		public string PlaceHolder { get; set; }
+
+		/// <summary>
+		/// Gets or sets the description - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
+		/// </summary>
+		public string Description { get; set; }
+
+		/// <summary>
+		/// Gets or sets the RegEx pattern for data validation
+		/// </summary>
+		public string ValidatePattern { get; set; }
+
+		/// <summary>
+		/// Gets or sets the order number
+		/// </summary>
+		public int Order { get; set; } = -1;
+
+		/// <summary>
+		/// Gets or sets the disable state
+		/// </summary>
+		public bool Disabled { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the read-only state
+		/// </summary>
+		public bool ReadOnly { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the auto-focus state
+		/// </summary>
+		public bool AutoFocus { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the min value
+		/// </summary>
+		public string MinValue { get; set; }
+
+		/// <summary>
+		/// Gets or sets the max value
+		/// </summary>
+		public string MaxValue { get; set; }
+
+		/// <summary>
+		/// Gets or sets the min-length
+		/// </summary>
+		public int MinLength { get; set; } = 0;
+
+		/// <summary>
+		/// Gets or sets the max-length
+		/// </summary>
+		public int MaxLength { get; set; } = 0;
+
+		/// <summary>
+		/// Gets or sets the width
+		/// </summary>
+		public string Width { get; set; }
+
+		/// <summary>
+		/// Gets or sets the height
+		/// </summary>
+		public string Height { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state to act as text/html editor
+		/// </summary>
+		public bool AsTextEditor { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the date-picker with times
+		/// </summary>
+		public bool DatePickerWithTimes { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the multiple of select/lookup control
+		/// </summary>
+		public bool Multiple { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the values of select control (JSON string)
+		/// </summary>
+		public string SelectValues { get; set; }
+
+		/// <summary>
+		/// Gets or sets the remote URI of the values of select control
+		/// </summary>
+		public string SelectValuesRemoteURI { get; set; }
+
+		/// <summary>
+		/// Gets or sets the 'as-boxes' of select control
+		/// </summary>
+		public bool SelectAsBoxes { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the interface mode of select control (alert, popover, actionsheet)
+		/// </summary>
+		public string SelectInterface { get; set; }
+
+		/// <summary>
+		/// Gets or sets the type for looking-up (Address, User or Business Object)
+		/// </summary>
+		public string LookupType { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business repository for looking-up
+		/// </summary>
+		public string LookupRepositoryID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business entity for looking-up
+		/// </summary>
+		public string LookupEntityID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of business entity's property for displaying while looking-up
+		/// </summary>
+		public string LookupProperty { get; set; }
+
+		/// <summary>
+		/// Gets or sets the state that determines the sub-controls as array of controls
+		/// </summary>
+		public bool AsArray { get; set; } = false;
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Extension methods for working with repository
+	/// </summary>
+	public static partial class Extensions
+	{
+		/// <summary>
+		/// Gets the state that determines this attribute is ignored or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsIgnored(this ObjectService.AttributeInfo attribute)
+			=> attribute.Info.GetCustomAttributes(typeof(IgnoreAttribute), true).Length > 0
+				? true
+				: attribute.Info.GetCustomAttributes(typeof(MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute), true).Length > 0;
+
+		/// <summary>
+		/// Gets the state that determines this attribute is ignored if null or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsIgnoredIfNull(this ObjectService.AttributeInfo attribute)
+			=> attribute.Info.GetCustomAttributes(typeof(IgnoreIfNullAttribute), true).Length > 0;
+
+		/// <summary>
+		/// Gets the state that determines this object attribute is store as JSON or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsStoredAsJson(this ObjectService.AttributeInfo attribute)
+			=> attribute.Type.IsClassType() && attribute.Info.GetCustomAttributes(typeof(AsJsonAttribute), true).Length > 0;
+
+		/// <summary>
+		/// Gets the state that determines this date-time attribute is store as string or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsStoredAsString(this ObjectService.AttributeInfo attribute)
+			=> attribute.Type.IsDateTimeType() && attribute.Info.GetCustomAttributes(typeof(AsStringAttribute), true).Length > 0;
+
+		/// <summary>
+		/// Gets the state that determines this attribute is enum-string or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsEnumString(this ObjectService.AttributeInfo attribute)
+		{
+			var attributes = attribute.Type.IsEnum
+				? attribute.Info.GetCustomAttributes(typeof(JsonConverterAttribute), true)
+				: new object[] { };
+			return attributes.Length > 0 && (attributes[0] as JsonConverterAttribute).ConverterType.Equals(typeof(Newtonsoft.Json.Converters.StringEnumConverter));
+		}
+
+		/// <summary>
+		/// Gets the state that determines this attribute is sortable or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsSortable(this ObjectService.AttributeInfo attribute)
+			=> attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true).Length > 0;
+
+		/// <summary>
+		/// Gets the state that determines this attribute is search or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsSearchable(this ObjectService.AttributeInfo attribute)
+			=> attribute.Type.IsStringType() && attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0;
 	}
 
 }

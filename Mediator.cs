@@ -34,9 +34,9 @@ namespace net.vieapps.Components.Repository
 	{
 
 #if DEBUG
-		public static Dictionary<string, RepositoryDefinition> RepositoryDefinitions { get; } = new Dictionary<string, RepositoryDefinition>();
-		public static Dictionary<string, EntityDefinition> EntityDefinitions { get; } = new Dictionary<string, EntityDefinition>();
-		public static Dictionary<string, DataSource> DataSources { get; } = new Dictionary<string, DataSource>();
+		public static Dictionary<Type, RepositoryDefinition> RepositoryDefinitions { get; } = new Dictionary<Type, RepositoryDefinition>();
+		public static Dictionary<Type, EntityDefinition> EntityDefinitions { get; } = new Dictionary<Type, EntityDefinition>();
+		public static Dictionary<string, DataSource> DataSources { get; } = new Dictionary<string, DataSource>(StringComparer.OrdinalIgnoreCase);
 		public static List<Type> EventHandlers { get; } = new List<Type>();
 #else
 		internal static Dictionary<Type, RepositoryDefinition> RepositoryDefinitions { get; } = new Dictionary<Type, RepositoryDefinition>();
@@ -430,20 +430,14 @@ namespace net.vieapps.Components.Repository
 						throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow null)");
 				}
 
-				else if (attribute.Type.IsStringType() && !attribute.IsCLOB)
+				else if (attribute.Type.IsStringType() && (attribute.IsCLOB == null || !attribute.IsCLOB.Value))
 				{
-					if (attribute.NotEmpty && string.IsNullOrWhiteSpace(value as string))
+					if (attribute.NotEmpty != null && attribute.NotEmpty.Value && string.IsNullOrWhiteSpace(value as string))
 						throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow empty or null)");
-
-					var maxLength = attribute.MaxLength.Equals(0) && attribute.Name.EndsWith("ID")
-							? 32
-							: attribute.MaxLength < 4000
-								? attribute.MaxLength
-								: 4000;
-					if ((value as string).Length > maxLength)
+					else if ((value as string).Length > attribute.MaxLength.Value)
 					{
 						changed = true;
-						stateData[attribute.Name] = (value as string).Left(maxLength);
+						stateData[attribute.Name] = (value as string).Left(attribute.MaxLength.Value);
 					}
 				}
 			}
@@ -465,7 +459,7 @@ namespace net.vieapps.Components.Repository
 						if (value == null || string.IsNullOrWhiteSpace(value as string))
 							continue;
 
-						var maxLength = attribute.Mode.Equals(ExtendedPropertyMode.SmallText) || attribute.Mode.Equals(ExtendedPropertyMode.Choice)
+						var maxLength = attribute.Mode.Equals(ExtendedPropertyMode.SmallText) || attribute.Mode.Equals(ExtendedPropertyMode.Select)
 						|| attribute.Mode.Equals(ExtendedPropertyMode.Lookup) || attribute.Mode.Equals(ExtendedPropertyMode.User)
 							? 250
 							: 4000;
@@ -6265,6 +6259,260 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Generate form controls
+		internal static Dictionary<Type, string> FormControlDataTypes { get; } = new Dictionary<Type, string>()
+		{
+			{ typeof(string), "text" },
+			{ typeof(char), "text" },
+			{ typeof(byte[]), "" },
+			{ typeof(byte), "number" },
+			{ typeof(sbyte), "number" },
+			{ typeof(short), "number" },
+			{ typeof(ushort), "number" },
+			{ typeof(int), "number" },
+			{ typeof(uint), "number" },
+			{ typeof(long), "number" },
+			{ typeof(ulong), "number" },
+			{ typeof(float), "number" },
+			{ typeof(double), "number" },
+			{ typeof(decimal), "number" },
+			{ typeof(bool), "" },
+			{ typeof(Guid), "" },
+			{ typeof(DateTime), "date" },
+			{ typeof(DateTimeOffset), "date" }
+		};
+
+		internal static List<AttributeInfo> GetFormAttributes(Type type)
+		{
+			try
+			{
+				return RepositoryMediator.GetEntityDefinition(type).Attributes;
+			}
+			catch 
+			{
+				return ObjectService.GetProperties(type).Select(attribute => new AttributeInfo(attribute)).ToList();
+			}
+		}
+
+		internal static JToken GenerateFormControl(this AttributeInfo attribute, int index = 0)
+		{
+			var formControlInfo = attribute.Info.GetCustomAttributes(typeof(FormControlAttribute), true).FirstOrDefault() as FormControlAttribute;
+			if (formControlInfo != null ? formControlInfo.Excluded : attribute.IsIgnored())
+				return null;
+
+			JObject control;
+			var hidden = formControlInfo != null
+				? formControlInfo.Hidden
+				: attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() != null;
+			var order = formControlInfo != null  && formControlInfo.Order > -1
+				? formControlInfo.Order
+				: index;
+			var label = (formControlInfo?.Label ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
+
+			if (attribute.Type.IsClassType())
+			{
+				var subControls = new JArray();
+				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subattribute, subindex) =>
+				{
+					var subControl = subattribute.GenerateFormControl(subindex);
+					if (subControl != null)
+						subControls.Add(subControl);
+				});
+
+				control = new JObject
+				{
+					{ "Name", attribute.Name },
+					{ "Order", order },
+					{ "Options", new JObject
+						{
+							{ "Label", label }
+						}
+					},
+					{ "SubControls", new JObject
+						{
+							{ "AsArray", formControlInfo != null ? formControlInfo.AsArray : false },
+							{ "Controls", subControls }
+						}
+					}
+				};
+				if (hidden)
+					control["Hidden"] = hidden;
+
+				return control;
+			}
+
+			var controlType = !string.IsNullOrWhiteSpace(formControlInfo?.ControlType)
+				? formControlInfo.ControlType
+				: attribute.IsCLOB != null && attribute.IsCLOB.Value
+					? "TextEditor"
+					: attribute.Type.IsPrimitiveType()
+						? attribute.Type == typeof(DateTime) || attribute.Type == typeof(DateTimeOffset)
+							? "DatePicker"
+							: attribute.Type == typeof(bool)
+								? "YesNo"
+								: "TextBox"
+						: "";
+
+			var options = new JObject
+			{
+				{ "Label", label }
+			};
+
+			var dataType = "Lookup".IsEquals(formControlInfo?.ControlType) && !string.IsNullOrWhiteSpace(formControlInfo?.LookupType)
+				? formControlInfo.LookupType
+				: !string.IsNullOrWhiteSpace(formControlInfo?.DataType)
+					? formControlInfo.DataType
+					: RepositoryMediator.FormControlDataTypes[attribute.Type];
+			if (!string.IsNullOrWhiteSpace(dataType))
+				options["Type"] = dataType;
+
+			if (formControlInfo?.PlaceHolder != null)
+				options["PlaceHolder"] = formControlInfo.PlaceHolder;
+			if (formControlInfo?.Description != null)
+				options["Description"] = formControlInfo.Description;
+			if (formControlInfo?.ValidatePattern != null)
+				options["ValidatePattern"] = formControlInfo.ValidatePattern;
+			if (formControlInfo != null && formControlInfo.Disabled)
+				options["Disabled"] = true;
+			if (formControlInfo != null && formControlInfo.ReadOnly)
+				options["ReadOnly"] = true;
+			if (formControlInfo != null && formControlInfo.AutoFocus)
+				options["AutoFocus"] = true;
+
+			var minValue = formControlInfo?.MinValue ?? attribute?.MinValue;
+			if (minValue != null)
+			{
+				if (attribute.Type.IsIntegralType())
+					options["MinValue"] = minValue.CastAs<int>();
+				else if (attribute.Type.IsFloatingPointType())
+					options["MinValue"] = minValue.CastAs<double>();
+				else
+					options["MinValue"] = minValue;
+			}
+
+			var maxValue = formControlInfo?.MaxValue ?? attribute?.MaxValue;
+			if (maxValue != null)
+			{
+				if (attribute.Type.IsIntegralType())
+					options["MaxValue"] = maxValue.CastAs<int>();
+				else if (attribute.Type.IsFloatingPointType())
+					options["MaxValue"] = maxValue.CastAs<double>();
+				else
+					options["MaxValue"] = maxValue;
+			}
+
+			var minLength = formControlInfo != null && formControlInfo.MinLength > 0
+				? formControlInfo.MinLength.ToString()
+				: attribute.MinLength?.ToString();
+			if (minLength != null)
+				options["MinLength"] = minLength.CastAs<int>();
+
+			var maxLength = formControlInfo != null && formControlInfo.MaxLength > 0
+				? formControlInfo.MaxLength.ToString()
+				: attribute.MaxLength.ToString();
+			if (maxLength != null)
+				options["MaxLength"] = maxLength.CastAs<int>();
+
+			var datepickerOptions = "DatePicker".IsEquals(controlType)  && formControlInfo != null && formControlInfo.DatePickerWithTimes
+				? new JObject
+				{
+					{ "AllowTimes", true }
+				}
+				: null;
+			if (datepickerOptions != null)
+				options["DatePickerOptions"] = datepickerOptions;
+
+			JObject selectOptions = null;
+			if ("Select".IsEquals(controlType) || attribute.IsEnumString())
+			{
+				selectOptions = new JObject
+				{
+					{ "SelectAsBoxes", formControlInfo != null && formControlInfo.SelectAsBoxes }
+				};
+				if (formControlInfo?.SelectValuesRemoteURI != null)
+					selectOptions["RemoteURI"] = formControlInfo?.SelectValuesRemoteURI;
+				if (formControlInfo?.SelectInterface != null)
+					selectOptions["Interface"] = formControlInfo?.SelectInterface;
+			}
+			if (selectOptions != null)
+				options["SelectOptions"] = selectOptions;
+
+			var required = attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() != null
+				? false
+				: attribute.NotNull || (attribute.NotEmpty != null && attribute.NotEmpty.Value) || (formControlInfo != null && formControlInfo.Required);
+
+			control = new JObject
+			{
+				{ "Name", attribute.Name },
+				{ "Order", order },
+				{ "Options", options }
+			};
+
+			if (!string.IsNullOrWhiteSpace(controlType))
+				control["Type"] = controlType;
+			if (required)
+				control["Required"] = required;
+			if (hidden)
+				control["Hidden"] = hidden;
+
+			if (formControlInfo != null && formControlInfo.AsArray)
+			{
+				control = new JObject
+				{
+					{ "Name", attribute.Name },
+					{ "Order", order },
+					{ "Options", new JObject
+						{
+							{ "Label", label }
+						}
+					},
+					{ "SubControls", new JObject
+						{
+							{ "AsArray", true },
+							{ "Controls", new JArray { control } }
+						}
+					}
+				};
+				if (hidden)
+					control["Hidden"] = hidden;
+			}
+
+			return control;
+		}
+
+		/// <summary>
+		/// Generates the form controls from this object attribute
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <param name="index"></param>
+		/// <returns></returns>
+		public static JToken GenerateFormControl(this ObjectService.AttributeInfo attribute, int index = 0) => new AttributeInfo(attribute).GenerateFormControl(index);
+
+		/// <summary>
+		/// Generates the form controls of this type
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		public static JToken GenerateFormControls<T>() where T : class
+		{
+			var controls = new JArray();
+			RepositoryMediator.GetFormAttributes(typeof(T)).ForEach((attribute, index) =>
+			{
+				try
+				{
+					var control = attribute.GenerateFormControl(index);
+					if (control != null)
+						controls.Add(control);
+				}
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs($"Error occurred while generating form control [{attribute.Name}]", ex);
+				}
+			});
+			return controls;
+		}
+		#endregion
+
 		#region Caching extension methods
 		/// <summary>
 		/// Gets the identity/primary-key of the entity object
@@ -6527,7 +6775,7 @@ namespace net.vieapps.Components.Repository
 				: Task.FromResult(false);
 		#endregion
 
-		#region Property/Attribute extension methods
+		#region Property extension methods
 		internal static Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessEntityID, EntityDefinition definition = null, bool lowerCaseKeys = false) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition(typeof(T));
@@ -6577,7 +6825,15 @@ namespace net.vieapps.Components.Repository
 				: null;
 		}
 
-		internal static bool IsGotExtendedProperties<T>(this T @object, string businessEntityID = null, EntityDefinition definition = null) where T : class
+		/// <summary>
+		/// Gets the state that determines this object is got extended properties or not
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object"></param>
+		/// <param name="businessEntityID"></param>
+		/// <param name="definition"></param>
+		/// <returns></returns>
+		public static bool IsGotExtendedProperties<T>(this T @object, string businessEntityID = null, EntityDefinition definition = null) where T : class
 		{
 			if (!(@object is IBusinessEntity))
 				return false;
@@ -6589,10 +6845,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(businessEntityID))
 				return false;
 
-			definition = definition != null
-				? definition
-				: RepositoryMediator.GetEntityDefinition(typeof(T));
-
+			definition = definition ?? RepositoryMediator.GetEntityDefinition(typeof(T));
 			if (definition == null || definition.RuntimeEntities == null)
 				return false;
 
@@ -6602,34 +6855,6 @@ namespace net.vieapps.Components.Repository
 
 			return attributes != null && attributes.Count > 0;
 		}
-
-		internal static bool IsIgnored(this ObjectService.AttributeInfo attribute)
-			=> attribute.Info.GetCustomAttributes(typeof(IgnoreAttribute), true).Length > 0
-				? true
-				: attribute.Info.GetCustomAttributes(typeof(MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute), true).Length > 0;
-
-		internal static bool IsIgnoredIfNull(this ObjectService.AttributeInfo attribute)
-			=> attribute.Info.GetCustomAttributes(typeof(IgnoreIfNullAttribute), true).Length > 0;
-
-		internal static bool IsStoredAsJson(this ObjectService.AttributeInfo attribute)
-			=> attribute.Type.IsClassType() && attribute.Info.GetCustomAttributes(typeof(AsJsonAttribute), true).Length > 0;
-
-		internal static bool IsStoredAsString(this ObjectService.AttributeInfo attribute)
-			=> attribute.Type.IsDateTimeType() && attribute.Info.GetCustomAttributes(typeof(AsStringAttribute), true).Length > 0;
-
-		internal static bool IsEnumString(this ObjectService.AttributeInfo attribute)
-		{
-			var attributes = attribute.Type.IsEnum
-				? attribute.Info.GetCustomAttributes(typeof(JsonConverterAttribute), true)
-				: new object[] { };
-			return attributes.Length > 0 && (attributes[0] as JsonConverterAttribute).ConverterType.Equals(typeof(Newtonsoft.Json.Converters.StringEnumConverter));
-		}
-
-		internal static bool IsSortable(this ObjectService.AttributeInfo attribute)
-			=> attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true).Length > 0;
-
-		internal static bool IsSearchable(this ObjectService.AttributeInfo attribute)
-			=> attribute.Type.IsStringType() && attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0;
 		#endregion
 
 		#region [Logs]

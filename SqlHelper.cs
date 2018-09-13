@@ -364,13 +364,13 @@ namespace net.vieapps.Components.Repository
 				? typeof(String).GetDbTypeString(dbProviderFactory, 32, true, false)
 				: attribute.IsStoredAsString()
 					? typeof(String).GetDbTypeString(dbProviderFactory, 19, true, false)
-					: attribute.IsCLOB || attribute.IsStoredAsJson()
+					: (attribute.IsCLOB != null && attribute.IsCLOB.Value) || attribute.IsStoredAsJson()
 						? typeof(String).GetDbTypeString(dbProviderFactory, 0, false, true)
 						: attribute.Type.IsEnum
 							? attribute.IsEnumString()
 								? typeof(String).GetDbTypeString(dbProviderFactory, 50, false, false)
 								: typeof(Int32).GetDbTypeString(dbProviderFactory, 0, false, false)
-							: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength);
+							: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength != null ? attribute.MaxLength.Value : 0);
 
 		internal static string GetDbTypeString(this Type type, DbProviderFactory dbProviderFactory, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
 			=> type == null || dbProviderFactory == null

@@ -2961,6 +2961,19 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.SyncAsync(aliasTypeName, @object, cancellationToken);
 		#endregion
 
+		#region [Public] Generate form controls
+		/// <summary>
+		/// Generates the form controls of this type
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		public static JToken GenerateFormControls<TEntity>() where TEntity : class => RepositoryMediator.GenerateFormControls<TEntity>();
+
+		/// <summary>
+		/// Generates the form controls of this type
+		/// </summary>
+		protected virtual JToken GenerateFormControls() => RepositoryMediator.GenerateFormControls<T>();
+		#endregion
+
 		#region [Public] Get/Set properties
 		/// <summary>
 		/// Gets the value of a specified property
@@ -3203,25 +3216,25 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of service that associates with this repository
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
+		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore, FormControl(Excluded = true)]
 		public virtual string ServiceName { get; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System")]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Excluded = true)]
 		public virtual string SystemID { get; set; } = null;
 
 		/// <summary>
 		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System")]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Excluded = true)]
 		public virtual string RepositoryID { get; set; } = null;
 
 		/// <summary>
 		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System")]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Excluded = true)]
 		public virtual string EntityID { get; set; } = null;
 
 		/// <summary>
@@ -3239,7 +3252,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the original privileges (means original working permissions)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, AsJson]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, AsJson, FormControl(Excluded = true)]
 		public virtual Privileges OriginalPrivileges { get; set; } = null;
 
 		/// <summary>
@@ -3270,7 +3283,7 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 		#endregion
-
+		
 	}
 
 	//  --------------------------------------------------------------------------------------------

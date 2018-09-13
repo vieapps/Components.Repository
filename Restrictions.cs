@@ -875,12 +875,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		internal List<string> GetAttributes()
-		{
-			return (new List<string>() { this.Attribute })
-				.Concat(this.ThenBy != null ? this.ThenBy.GetAttributes() : new List<string>())
-				.ToList();
-		}
+		internal List<string> GetAttributes() => new List<string> { this.Attribute }.Concat(this.ThenBy != null ? this.ThenBy.GetAttributes() : new List<string>()).ToList();
 	}
 
 	// ------------------------------------------
@@ -893,26 +888,20 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Creates an ascending sort
 		/// </summary>
-		public static SortBy<T> Ascending(string attribute)
-		{
-			return new SortBy<T>(attribute, SortMode.Ascending);
-		}
+		public static SortBy<T> Ascending(string attribute) => new SortBy<T>(attribute, SortMode.Ascending);
 
 		/// <summary>
 		/// Creates a descending sort
 		/// </summary>
-		public static SortBy<T> Descending(string attribute)
-		{
-			return new SortBy<T>(attribute, SortMode.Descending);
-		}
+		public static SortBy<T> Descending(string attribute) => new SortBy<T>(attribute, SortMode.Descending);
 	}
 
 	// ------------------------------------------
 
 	/// <summary>
-	/// Extension methods for working with repository restrictions
+	/// Extension methods for working with repository
 	/// </summary>
-	public static class Extensions
+	public static partial class Extensions
 	{
 
 		#region ThenBy

@@ -270,7 +270,7 @@ namespace net.vieapps.Components.Repository
 
 			tracker?.Invoke(
 				$"Update settings of repository [{type.GetTypeName()}]:" + "\r\n" +
-				$"- Primary data source: {(RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Mode})"  : "None")}" + "\r\n" +
+				$"- Primary data source: {(RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Mode})" : "None")}" + "\r\n" +
 				$"- Secondary data source: {(RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
 				$"- Sync data sources: {(RepositoryMediator.RepositoryDefinitions[type].SyncDataSources.Count > 0 ? RepositoryMediator.RepositoryDefinitions[type].SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
 				$"- Version data source: {RepositoryMediator.RepositoryDefinitions[type].VersionDataSource?.Name ?? "(None)"}" + "\r\n" +
@@ -510,32 +510,32 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// check table/collection name
-			var info = type.GetCustomAttributes(false).FirstOrDefault(attribute => attribute is EntityAttribute) as EntityAttribute;
-			if (string.IsNullOrWhiteSpace(info.TableName) && string.IsNullOrWhiteSpace(info.CollectionName))
+			var entityInfo = type.GetCustomAttributes(typeof(EntityAttribute), false).FirstOrDefault() as EntityAttribute;
+			if (string.IsNullOrWhiteSpace(entityInfo.TableName) && string.IsNullOrWhiteSpace(entityInfo.CollectionName))
 				throw new ArgumentException("The type [" + type.ToString() + "] must have name of SQL table or NoSQL collection");
 
 			// initialize
 			var definition = new EntityDefinition
 			{
 				Type = type,
-				TableName = info.TableName,
-				CollectionName = info.CollectionName,
-				Searchable = info.Searchable,
-				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
-				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
-				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
-				MultipleIntances = info.MultipleIntances,
-				Extendable = info.Extendable,
-				Indexable = info.Indexable,
-				ParentType = info.ParentType,
-				CreateNewVersionWhenUpdated = info.CreateNewVersionWhenUpdated,
-				NavigatorType = info.NavigatorType
+				TableName = entityInfo.TableName,
+				CollectionName = entityInfo.CollectionName,
+				Searchable = entityInfo.Searchable,
+				ID = !string.IsNullOrWhiteSpace(entityInfo.ID) ? entityInfo.ID : "",
+				Title = !string.IsNullOrWhiteSpace(entityInfo.Title) ? entityInfo.Title : "",
+				Description = !string.IsNullOrWhiteSpace(entityInfo.Description) ? entityInfo.Description : "",
+				MultipleIntances = entityInfo.MultipleIntances,
+				Extendable = entityInfo.Extendable,
+				Indexable = entityInfo.Indexable,
+				ParentType = entityInfo.ParentType,
+				CreateNewVersionWhenUpdated = entityInfo.CreateNewVersionWhenUpdated,
+				NavigatorType = entityInfo.NavigatorType
 			};
 
 			// cache
-			if (info.CacheClass != null && !string.IsNullOrWhiteSpace(info.CacheName))
+			if (entityInfo.CacheClass != null && !string.IsNullOrWhiteSpace(entityInfo.CacheName))
 			{
-				var cache = info.CacheClass.GetStaticObject(info.CacheName);
+				var cache = entityInfo.CacheClass.GetStaticObject(entityInfo.CacheName);
 				definition.Cache = cache != null && cache is Caching.Cache
 					? cache as Caching.Cache
 					: null;
@@ -561,27 +561,43 @@ namespace net.vieapps.Components.Repository
 				var attribute = new AttributeInfo(attr);
 
 				// primary key
-				var attributes = attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true);
-				if (attributes.Length > 0)
+				if (attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() is PrimaryKeyAttribute keyInfo)
 				{
-					attribute.Column = (attributes[0] as PrimaryKeyAttribute).Column;
-					attribute.NotNull = attribute.NotEmpty = true;
-					attribute.MaxLength = (attributes[0] as PrimaryKeyAttribute).MaxLength;
-					attribute.IsCLOB = false;
+					attribute.Column = keyInfo.Column;
+					attribute.NotNull = true;
+					attribute.NotEmpty = true;
+					if (keyInfo.MaxLength > 0)
+						attribute.MaxLength = keyInfo.MaxLength;
 
 					definition.PrimaryKey = attribute.Name;
-					numberOfKeys += attributes.Length;
+					numberOfKeys += attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).Length;
 				}
 
 				// property
-				attributes = attribute.Info.GetCustomAttributes(typeof(PropertyAttribute), true);
-				if (attributes.Length > 0)
+				if (attribute.Info.GetCustomAttributes(typeof(PropertyAttribute), true).FirstOrDefault() is PropertyAttribute propertyInfo)
 				{
-					attribute.Column = (attributes[0] as PropertyAttribute).Column;
-					attribute.NotNull = (attributes[0] as PropertyAttribute).NotNull;
-					attribute.NotEmpty = (attributes[0] as PropertyAttribute).NotEmpty;
-					attribute.MaxLength = (attributes[0] as PropertyAttribute).MaxLength;
-					attribute.IsCLOB = (attributes[0] as PropertyAttribute).IsCLOB;
+					attribute.Column = propertyInfo.Column;
+					attribute.NotNull = propertyInfo.NotNull;
+					if (attribute.Type.IsStringType())
+					{
+						if (propertyInfo.NotEmpty)
+							attribute.NotEmpty = true;
+						if (propertyInfo.IsCLOB)
+							attribute.IsCLOB = true;
+						if (propertyInfo.MinLength > 0)
+							attribute.MinLength = propertyInfo.MinLength;
+						if (!propertyInfo.IsCLOB)
+							attribute.MaxLength = propertyInfo.MaxLength > 0 && propertyInfo.MaxLength < 4000
+								? propertyInfo.MaxLength
+								: attribute.Name.EndsWith("ID") ? 32 : 4000;
+					}
+					else
+					{
+						if (!string.IsNullOrWhiteSpace(propertyInfo.MinValue))
+							attribute.MinValue = propertyInfo.MinValue;
+						if (!string.IsNullOrWhiteSpace(propertyInfo.MaxValue))
+							attribute.MaxValue = propertyInfo.MaxValue;
+					}
 				}
 
 				// sortable
@@ -599,60 +615,74 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentException("The type [" + type.ToString() + "] has multiple primary-keys");
 
 			// fields
-			ObjectService.GetFields(type)
-				.Where(attr => !attr.IsIgnored())
-				.ForEach(attr =>
-				{
-					// create
-					var attribute = new AttributeInfo(attr);
+			ObjectService.GetFields(type).Where(attr => !attr.IsIgnored()).ForEach(attr =>
+			{
+				// create
+				var attribute = new AttributeInfo(attr);
 
-					// update info
-					var attributes = attribute.Info.GetCustomAttributes(typeof(FieldAttribute), false);
-					if (attributes.Length > 0)
+				// update info
+				if (attribute.Info.GetCustomAttributes(typeof(FieldAttribute), true).FirstOrDefault() is FieldAttribute fieldInfo)
+				{
+					attribute.Column = fieldInfo.Column;
+					attribute.NotNull = fieldInfo.NotNull;
+					if (attribute.Type.IsStringType())
 					{
-						attribute.Column = (attributes[0] as FieldAttribute).Column;
-						attribute.NotNull = (attributes[0] as FieldAttribute).NotNull;
-						attribute.NotEmpty = (attributes[0] as FieldAttribute).NotEmpty;
-						attribute.MaxLength = (attributes[0] as FieldAttribute).MaxLength;
-						attribute.IsCLOB = (attributes[0] as FieldAttribute).IsCLOB;
-						definition.Attributes.Add(attribute);
+						if (fieldInfo.NotEmpty)
+							attribute.NotEmpty = true;
+						if (fieldInfo.IsCLOB)
+							attribute.IsCLOB = true;
+						if (fieldInfo.MinLength > 0)
+							attribute.MinLength = fieldInfo.MinLength;
+						if (!fieldInfo.IsCLOB)
+							attribute.MaxLength = fieldInfo.MaxLength > 0 && fieldInfo.MaxLength < 4000
+								? fieldInfo.MaxLength
+								: attribute.Name.EndsWith("ID") ? 32 : 4000;
 					}
-				});
+					else
+					{
+						if (!string.IsNullOrWhiteSpace(fieldInfo.MinValue))
+							attribute.MinValue = fieldInfo.MinValue;
+						if (!string.IsNullOrWhiteSpace(fieldInfo.MaxValue))
+							attribute.MaxValue = fieldInfo.MaxValue;
+					}
+					definition.Attributes.Add(attribute);
+				}
+			});
 
 			// parent (entity)
 			var parentEntity = definition.ParentType?.CreateInstance();
 			if (parentEntity != null)
 			{
-				var property = string.IsNullOrWhiteSpace(info.ParentAssociatedProperty)
+				var property = string.IsNullOrWhiteSpace(entityInfo.ParentAssociatedProperty)
 					? null
-					: properties.FirstOrDefault(p => p.Name.Equals(info.ParentAssociatedProperty));
+					: properties.FirstOrDefault(p => p.Name.Equals(entityInfo.ParentAssociatedProperty));
 				definition.ParentAssociatedProperty = property != null
-					? info.ParentAssociatedProperty
+					? entityInfo.ParentAssociatedProperty
 					: "";
 
 				if (!string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty))
 				{
-					definition.MultipleParentAssociates = info.MultipleParentAssociates;
+					definition.MultipleParentAssociates = entityInfo.MultipleParentAssociates;
 
-					property = string.IsNullOrWhiteSpace(info.MultipleParentAssociatesProperty)
+					property = string.IsNullOrWhiteSpace(entityInfo.MultipleParentAssociatesProperty)
 						? null
-						: properties.FirstOrDefault(p => p.Name.Equals(info.MultipleParentAssociatesProperty));
+						: properties.FirstOrDefault(p => p.Name.Equals(entityInfo.MultipleParentAssociatesProperty));
 					definition.MultipleParentAssociatesProperty = property != null && property.Type.IsGenericListOrHashSet()
-						? info.MultipleParentAssociatesProperty
+						? entityInfo.MultipleParentAssociatesProperty
 						: "";
 
-					definition.MultipleParentAssociatesTable = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesTable)
-						? info.MultipleParentAssociatesTable
+					definition.MultipleParentAssociatesTable = !string.IsNullOrWhiteSpace(entityInfo.MultipleParentAssociatesTable)
+						? entityInfo.MultipleParentAssociatesTable
 						: "";
 
 					if (!string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable))
 					{
-						definition.MultipleParentAssociatesMapColumn = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesMapColumn)
-							? info.MultipleParentAssociatesMapColumn
+						definition.MultipleParentAssociatesMapColumn = !string.IsNullOrWhiteSpace(entityInfo.MultipleParentAssociatesMapColumn)
+							? entityInfo.MultipleParentAssociatesMapColumn
 							: "";
 
-						definition.MultipleParentAssociatesLinkColumn = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesLinkColumn)
-							? info.MultipleParentAssociatesLinkColumn
+						definition.MultipleParentAssociatesLinkColumn = !string.IsNullOrWhiteSpace(entityInfo.MultipleParentAssociatesLinkColumn)
+							? entityInfo.MultipleParentAssociatesLinkColumn
 							: "";
 					}
 				}
@@ -661,8 +691,8 @@ namespace net.vieapps.Components.Repository
 				definition.ParentType = null;
 
 			// shortname
-			definition.ShortnameProperty = !string.IsNullOrWhiteSpace(info.ShortnameProperty) && properties.FirstOrDefault(p => p.Name.Equals(info.ShortnameProperty)) != null
-				? info.ShortnameProperty
+			definition.ShortnameProperty = !string.IsNullOrWhiteSpace(entityInfo.ShortnameProperty) && properties.FirstOrDefault(p => p.Name.Equals(entityInfo.ShortnameProperty)) != null
+				? entityInfo.ShortnameProperty
 				: "";
 
 			// navigator
@@ -785,18 +815,21 @@ namespace net.vieapps.Components.Repository
 
 		public AttributeInfo(ObjectService.AttributeInfo derived) : base(derived?.Name, derived?.Info) { }
 
-		#region Properties
-		public bool NotNull { get; internal set; } = false;
-
-		public bool NotEmpty { get; internal set; } = false;
-
 		public string Column { get; internal set; }
 
-		public int MaxLength { get; internal set; } = 0;
+		public bool NotNull { get; internal set; } = false;
 
-		public bool IsCLOB { get; internal set; } = false;
-		#endregion
+		public bool? NotEmpty { get; internal set; }
 
+		public bool? IsCLOB { get; internal set; }
+
+		public int? MinLength { get; internal set; }
+
+		public int? MaxLength { get; internal set; }
+
+		public string MinValue { get; internal set; }
+
+		public string MaxValue { get; internal set; }
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -1077,15 +1110,11 @@ namespace net.vieapps.Components.Repository
 	{
 		public ExtendedUIDefinition(JObject json = null) => this.CopyFrom(json ?? new JObject());
 
-		#region Properties
 		public List<ExtendedUIControlDefinition> Controls { get; set; } = new List<ExtendedUIControlDefinition>();
-
-		public string EditXslt { get; set; } = "";
 
 		public string ListXslt { get; set; } = "";
 
 		public string ViewXslt { get; set; } = "";
-		#endregion
 
 		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 	}
@@ -1100,139 +1129,159 @@ namespace net.vieapps.Components.Repository
 	{
 		public ExtendedUIControlDefinition(JObject json = null)
 		{
-			this.Name = "";
-			this.Label = "";
-			this.PlaceHolder = "";
-			this.Description = "";
-			this.CssClass = "";
-			this.CssMinWidth = "";
-			this.CssMinHeight = "";
-			this.MaxLength = 0;
-			this.MinValue = "";
-			this.MaxValue = "";
-			this.UseAsTextEditor = false;
-			this.TextEditorWidth = "";
-			this.TextEditorHeight = "";
-			this.Format = "";
-			this.PredefinedValues = "";
-			this.LookupRepositoryID = "";
-			this.LookupEntityID = "";
-			this.LookupProperty = "";
-			this.Shown = true;
-			this.Required = false;
-			this.AllowMultiple = false;
 			if (json != null)
 				this.CopyFrom(json);
 		}
+
+		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 
 		#region Properties
 		/// <summary>
 		/// Gets or sets the name
 		/// </summary>
-		public string Name { get; set; }
+		public string Name { get; set; } = "";
 
 		/// <summary>
-		/// Gets or sets the label
+		/// Gets or sets the excluded state
+		/// </summary>
+		public bool Excluded { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the hidden state
+		/// </summary>
+		public bool Hidden { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the state that mark this property is hidden in the view or not
+		/// </summary>
+		public bool? HiddenInView { get; set; }
+
+		/// <summary>
+		/// Gets or sets the require state
+		/// </summary>
+		public bool Required { get; set; } = false;
+
+		/// <summary>
+		/// Gets or sets the label - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
 		/// </summary>
 		public string Label { get; set; }
 
 		/// <summary>
-		/// Gets or sets the place-holder
+		/// Gets or sets the place-holder - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
 		/// </summary>
 		public string PlaceHolder { get; set; }
 
 		/// <summary>
-		/// Gets or sets the description
+		/// Gets or sets the description - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
 		/// </summary>
 		public string Description { get; set; }
 
 		/// <summary>
-		/// Gets or sets the CSS class name
+		/// Gets or sets the RegEx pattern for data validation
 		/// </summary>
-		public string CssClass { get; set; }
+		public bool ValidatePattern { get; set; }
 
 		/// <summary>
-		/// Gets or sets the CSS min-width
+		/// Gets or sets the order number
 		/// </summary>
-		public string CssMinWidth { get; set; }
+		public int? Order { get; set; }
 
 		/// <summary>
-		/// Gets or sets the CSS min-height
+		/// Gets or sets the disable state
 		/// </summary>
-		public string CssMinHeight { get; set; }
+		public bool? Disabled { get; set; }
 
 		/// <summary>
-		/// Gets or sets the max-length of input control or max-length of text (when the property is text)
+		/// Gets or sets the read-only state
 		/// </summary>
-		public int MaxLength { get; set; }
+		public bool? ReadOnly { get; set; }
 
 		/// <summary>
-		/// Gets or sets the state that mark this property is use text-editor (when the property is large text)
+		/// Gets or sets the auto-focus state
 		/// </summary>
-		public bool UseAsTextEditor { get; set; }
+		public bool? AutoFocus { get; set; }
 
 		/// <summary>
-		/// Gets or sets the width of text-editor (when the property is large text and marks to use text editor)
+		/// Gets or sets the min value
 		/// </summary>
-		public string TextEditorWidth { get; set; }
+		public double? MinValue { get; set; }
 
 		/// <summary>
-		/// Gets or sets the height of text-editor (when the property is large text and marks to use text editor)
+		/// Gets or sets the max value
 		/// </summary>
-		public string TextEditorHeight { get; set; }
+		public double? MaxValue { get; set; }
 
 		/// <summary>
-		/// Gets or sets the minimum value (when the property is number or date-time)
+		/// Gets or sets the min-length
 		/// </summary>
-		public string MinValue { get; set; }
+		public int? MinLength { get; set; }
 
 		/// <summary>
-		/// Gets or sets the maximum value (when the property is number or date-time)
+		/// Gets or sets the max-length
 		/// </summary>
-		public string MaxValue { get; set; }
+		public int? MaxLength { get; set; }
 
 		/// <summary>
-		/// Gets or sets the displaying format (when the property is number/date-time or choice)
+		/// Gets or sets the width
 		/// </summary>
-		public string Format { get; set; }
+		public string Width { get; set; }
 
 		/// <summary>
-		/// Gets or sets the pre-defined values (when the property is choice) - seperated by new line (LF)
+		/// Gets or sets the height
 		/// </summary>
-		public string PredefinedValues { get; set; }
+		public string Height { get; set; }
 
 		/// <summary>
-		/// Gets or sets the identity of the business repository (when the property is lookup)
+		/// Gets or sets the state to act as text/html editor
+		/// </summary>
+		public bool? AsTextEditor { get; set; }
+
+		/// <summary>
+		/// Gets or sets the date-picker with times
+		/// </summary>
+		public bool? DatePickerWithTimes { get; set; }
+
+		/// <summary>
+		/// Gets or sets the multiple of select/lookup control
+		/// </summary>
+		public bool? Multiple { get; set; }
+
+		/// <summary>
+		/// Gets or sets the values of select control (JSON string)
+		/// </summary>
+		public string SelectValues { get; set; }
+
+		/// <summary>
+		/// Gets or sets the 'as-boxes' of select control
+		/// </summary>
+		public bool? SelectAsBoxes { get; set; }
+
+		/// <summary>
+		/// Gets or sets the interface mode of select control (alert, popover, actionsheet)
+		/// </summary>
+		public string SelectInterface { get; set; }
+
+		/// <summary>
+		/// Gets or sets the mode for looking-up (Address, User or Business Object)
+		/// </summary>
+		public string LookupMode { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business repository for looking-up
 		/// </summary>
 		public string LookupRepositoryID { get; set; }
 
 		/// <summary>
-		/// Gets or sets the identity of the business entity (when the property is lookup)
+		/// Gets or sets the identity of the business entity for looking-up
 		/// </summary>
 		public string LookupEntityID { get; set; }
 
 		/// <summary>
-		/// Gets or sets the name of business entity's property for displaying (when the property is lookup)
+		/// Gets or sets the name of business entity's property for displaying while looking-up
 		/// </summary>
 		public string LookupProperty { get; set; }
-
-		/// <summary>
-		/// Gets or sets the state that mark this property is shown for inputing
-		/// </summary>
-		public bool Shown { get; set; }
-
-		/// <summary>
-		/// Gets or sets the state that mark this property is required
-		/// </summary>
-		public bool Required { get; set; }
-
-		/// <summary>
-		/// Gets or sets the state that allow multiple values (when the property is text, choice or lookup)
-		/// </summary>
-		public bool AllowMultiple { get; set; }
 		#endregion
 
-		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 	}
 
 	//  --------------------------------------------------------------------------------------------
