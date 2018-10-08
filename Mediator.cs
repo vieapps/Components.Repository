@@ -438,10 +438,12 @@ namespace net.vieapps.Components.Repository
 						var isNotEmpty = attribute.NotEmpty != null ? attribute.NotEmpty.Value : false;
 						if (isNotEmpty && string.IsNullOrWhiteSpace(value as string))
 							throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow empty or null)");
-						if ((value as string).Length > attribute.MaxLength.Value)
+
+						var maxLength = attribute.MaxLength != null ? attribute.MaxLength.Value : 4000;
+						if ((value as string).Length > maxLength)
 						{
 							changed = true;
-							stateData[attribute.Name] = (value as string).Left(attribute.MaxLength.Value);
+							stateData[attribute.Name] = (value as string).Left(maxLength);
 						}
 					}
 				}
