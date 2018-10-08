@@ -430,14 +430,19 @@ namespace net.vieapps.Components.Repository
 						throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow null)");
 				}
 
-				else if (attribute.Type.IsStringType() && (attribute.IsCLOB == null || !attribute.IsCLOB.Value))
+				else if (attribute.Type.IsStringType())
 				{
-					if (attribute.NotEmpty != null && attribute.NotEmpty.Value && string.IsNullOrWhiteSpace(value as string))
-						throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow empty or null)");
-					else if ((value as string).Length > attribute.MaxLength.Value)
+					var isCLOB = attribute.IsCLOB != null ? attribute.IsCLOB.Value : false;
+					if (!isCLOB)
 					{
-						changed = true;
-						stateData[attribute.Name] = (value as string).Left(attribute.MaxLength.Value);
+						var isNotEmpty = attribute.NotEmpty != null ? attribute.NotEmpty.Value : false;
+						if (isNotEmpty && string.IsNullOrWhiteSpace(value as string))
+							throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow empty or null)");
+						if ((value as string).Length > attribute.MaxLength.Value)
+						{
+							changed = true;
+							stateData[attribute.Name] = (value as string).Left(attribute.MaxLength.Value);
+						}
 					}
 				}
 			}
