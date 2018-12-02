@@ -177,7 +177,7 @@ namespace net.vieapps.Components.Repository
 		public static void Initialize(Func<IEnumerable<Assembly>> selector = null, Action<string, Exception> tracker = null)
 			=> RepositoryStarter.Initialize(selector != null
 				? selector()
-				: new List<Assembly> { Assembly.GetCallingAssembly() }.Concat(Assembly.GetCallingAssembly()
+				: new[] { Assembly.GetCallingAssembly() }.Concat(Assembly.GetCallingAssembly()
 					.GetReferencedAssemblies()
 					.Where(n => !n.Name.IsStartsWith("api-ms") && !n.Name.IsStartsWith("clr") && !n.Name.IsStartsWith("mscor") && !n.Name.IsStartsWith("sos") && !n.Name.IsStartsWith("lib")
 						&& !n.Name.IsStartsWith("System") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsStartsWith("Windows") && !n.Name.IsEquals("NETStandard")
@@ -185,6 +185,7 @@ namespace net.vieapps.Components.Repository
 						&& !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("MySql") && !n.Name.IsStartsWith("Oracle") && !n.Name.IsStartsWith("Npgsql")
 					)
 					.Select(n => Assembly.Load(n))
+					.ToList()
 				),
 				tracker
 			);

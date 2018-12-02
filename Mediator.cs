@@ -665,7 +665,6 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task CreateAsync<T>(RepositoryContext context, string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
-			// process
 			context.AliasTypeName = aliasTypeName;
 			if (await RepositoryMediator.CreateAsync<T>(context, context.GetPrimaryDataSource(), @object, cancellationToken).ConfigureAwait(false))
 			{

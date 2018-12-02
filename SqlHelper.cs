@@ -21,7 +21,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Collection of methods for working with SQL database (support Microsoft SQL Server, MySQL, PostgreSQL, Oracle RDBMS and ODBC)
+	/// Collection of methods for working with SQL database (support Microsoft SQL Server, MySQL, PostgreSQL, SQLite, Oracle RDBMS and ODBC)
 	/// </summary>
 	public static class SqlHelper
 	{
