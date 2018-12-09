@@ -383,6 +383,52 @@ namespace net.vieapps.Components.Repository
 		public static DataSource GetTrashDataSource<T>(string aliasTypeName = null) => RepositoryMediator.GetTrashDataSource(aliasTypeName, RepositoryMediator.GetEntityDefinition(typeof(T)));
 		#endregion
 
+		#region Data Source [NoSQL]
+		/// <summary>
+		/// Starts a client session that available for working with NoSQL database transaction of this data-source
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource"></param>
+		/// <param name="options"></param>
+		/// <returns></returns>
+		public static IClientSessionHandle StartSession<T>(this DataSource dataSource, ClientSessionOptions options = null) where T : class
+		{
+			if (dataSource == null || !dataSource.Mode.Equals(RepositoryMode.NoSQL))
+				return null;
+			var collection = dataSource.GetCollection<T>();
+			return collection == null || !collection.IsReplicaSet()
+				? null
+				: collection.StartSession(options);
+		}
+
+		/// <summary>
+		/// Starts a client session that available for working with NoSQL database transaction of this data-source
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource"></param>
+		/// <param name="options"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static async Task<IClientSessionHandle> StartSessionAsync<T>(this DataSource dataSource, ClientSessionOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		{
+			if (dataSource == null || !dataSource.Mode.Equals(RepositoryMode.NoSQL))
+				return null;
+			var collection = dataSource.GetCollection<T>();
+			return collection != null && await collection.IsReplicaSetAsync(cancellationToken).ConfigureAwait(false)
+				? await collection.StartSessionAsync(options, cancellationToken).ConfigureAwait(false)
+				: null;
+		}
+
+		/// <summary>
+		/// Starts a client session that available for working with NoSQL database transaction of this data-source
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static Task<IClientSessionHandle> StartSessionAsync<T>(this DataSource dataSource, CancellationToken cancellationToken) where T : class => dataSource.StartSessionAsync<T>(null, cancellationToken);
+		#endregion
+
 		#region Connection String
 		/// <summary>
 		/// Gets the settings of the connection string of the data source (for working with SQL/NoSQL database)
@@ -492,12 +538,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in repository</param>
 		public static bool Create<T>(RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Create, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// update context
-				context.Operation = RepositoryOperation.Create;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// validate & re-update object
 				var currentState = context.SetCurrentState(@object);
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
@@ -590,12 +633,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task<bool> CreateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Create, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// update context
-				context.Operation = RepositoryOperation.Create;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// validate & re-update object
 				var currentState = context.SetCurrentState(@object);
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
@@ -706,9 +746,7 @@ namespace net.vieapps.Components.Repository
 				// pre-process
 				if (callHandlers)
 				{
-					context.Operation = RepositoryOperation.Get;
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
+					context.Prepare<T>(RepositoryOperation.Get);
 					if (context.CallPreGetHandlers<T>(id))
 						return null;
 				}
@@ -852,9 +890,7 @@ namespace net.vieapps.Components.Repository
 				// pre-process
 				if (callHandlers)
 				{
-					context.Operation = RepositoryOperation.Get;
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
+					context.Prepare<T>(RepositoryOperation.Get);
 					if (await context.CallPreGetHandlersAsync<T>(id, cancellationToken).ConfigureAwait(false))
 						return null;
 				}
@@ -1007,11 +1043,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static T Get<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Get, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.Operation = RepositoryOperation.Get;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -1090,11 +1125,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<T> GetAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Get, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.Operation = RepositoryOperation.Get;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -1413,12 +1447,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static bool Replace<T>(RepositoryContext context, DataSource dataSource, T @object, bool dontCreateNewVersion = false, string userID = null) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Update, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// prepare
-				context.Operation = RepositoryOperation.Update;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// check state
 				var previousInstance = @object != null
 					? RepositoryMediator.Get<T>(context, dataSource, @object?.GetEntityID(), false)
@@ -1551,12 +1582,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task<bool> ReplaceAsync<T>(RepositoryContext context, DataSource dataSource, T @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Update, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// prepare
-				context.Operation = RepositoryOperation.Update;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// check state
 				var previousInstance = @object != null
 					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
@@ -1699,12 +1727,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		public static bool Update<T>(RepositoryContext context, DataSource dataSource, T @object, bool dontCreateNewVersion = false, string userID = null) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Update, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// prepare
-				context.Operation = RepositoryOperation.Update;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// check state
 				var previousInstance = @object != null
 					? RepositoryMediator.Get<T>(context, dataSource, @object?.GetEntityID(), false)
@@ -1834,12 +1859,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task<bool> UpdateAsync<T>(RepositoryContext context, DataSource dataSource, T @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Update, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// prepare
-				context.Operation = RepositoryOperation.Update;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// check state
 				var previousInstance = @object != null
 					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
@@ -1978,12 +2000,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		public static T Delete<T>(RepositoryContext context, DataSource dataSource, string id, string userID = null) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Delete, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// prepare
-				context.Operation = RepositoryOperation.Delete;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// check existing
 				var @object = RepositoryMediator.Get<T>(context, dataSource, id, false);
 				if (@object == null)
@@ -2072,12 +2091,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task<T> DeleteAsync<T>(RepositoryContext context, DataSource dataSource, string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Delete, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// prepare
-				context.Operation = RepositoryOperation.Delete;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// check existing
 				var @object = await RepositoryMediator.GetAsync<T>(context, dataSource, id, false, cancellationToken).ConfigureAwait(false);
 				if (@object == null)
@@ -2176,11 +2192,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		public static void DeleteMany<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Delete, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.Operation = RepositoryOperation.Delete;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -2248,11 +2263,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task DeleteManyAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Delete, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.Operation = RepositoryOperation.Delete;
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -2335,10 +2349,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<string> FindIdentities<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -2442,10 +2456,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Find<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -2618,10 +2632,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -2734,10 +2748,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> FindAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -2916,11 +2930,9 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
 		public static long Count<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// check cache
 				var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Exists(cacheKey)
 					? context.EntityDefinition.Cache.Get<long>(cacheKey)
@@ -3020,11 +3032,9 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with the filter expression</returns>
 		public static async Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
-				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
 				// check cache
 				var total = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.ExistsAsync(cacheKey).ConfigureAwait(false)
 					? await context.EntityDefinition.Cache.GetAsync<long>(cacheKey, cancellationToken).ConfigureAwait(false)
@@ -3132,10 +3142,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Search<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -3301,10 +3311,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> SearchAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -3476,10 +3486,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
 		public static long Count<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -3562,10 +3572,10 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
 		public static async Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
 				// prepare
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
@@ -3655,14 +3665,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who created this verion of the object</param>
 		public static VersionContent CreateVersion<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Create, (dataSource ?? context.GetVersionDataSource())?.StartSession<T>());
 			try
 			{
 				// check
 				if (@object == null)
 					throw new ArgumentNullException(nameof(@object), "The object is null");
-
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 				dataSource = dataSource ?? context.GetVersionDataSource();
 				if (dataSource == null)
@@ -3732,14 +3740,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task<VersionContent> CreateVersionAsync<T>(RepositoryContext context, DataSource dataSource, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
+			context.Prepare<T>(RepositoryOperation.Create, (dataSource ?? context.GetVersionDataSource())?.StartSession<T>());
 			try
 			{
 				// check
 				if (@object == null)
 					throw new ArgumentNullException(nameof(@object), "The object is null");
-
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 
 				dataSource = dataSource ?? context.GetVersionDataSource();
 				if (dataSource == null)
@@ -3824,12 +3830,10 @@ namespace net.vieapps.Components.Repository
 				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T)}]");
 
 			// process
+			context.Prepare<T>(RepositoryOperation.Update, context.GetPrimaryDataSource()?.StartSession<T>());
 			try
 			{
 				// get current object
-				context.Operation = RepositoryOperation.Update;
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				var dataSource = context.GetPrimaryDataSource();
 				var @object = RepositoryMediator.Get<T>(context, dataSource, version.ObjectID, false);
 
@@ -3951,12 +3955,10 @@ namespace net.vieapps.Components.Repository
 				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T)}]");
 
 			// process
+			context.Prepare<T>(RepositoryOperation.Update, context.GetPrimaryDataSource()?.StartSession<T>());
 			try
 			{
 				// get current object
-				context.Operation = RepositoryOperation.Update;
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				var dataSource = context.GetPrimaryDataSource();
 				var @object = await RepositoryMediator.GetAsync<T>(context, dataSource, version.ObjectID, false, cancellationToken).ConfigureAwait(false);
 
@@ -6294,7 +6296,7 @@ namespace net.vieapps.Components.Repository
 			{
 				return RepositoryMediator.GetEntityDefinition(type).Attributes;
 			}
-			catch 
+			catch
 			{
 				return ObjectService.GetProperties(type).Select(attribute => new AttributeInfo(attribute)).ToList();
 			}
@@ -6310,7 +6312,7 @@ namespace net.vieapps.Components.Repository
 			var hidden = formControlInfo != null
 				? formControlInfo.Hidden
 				: attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() != null;
-			var order = formControlInfo != null  && formControlInfo.Order > -1
+			var order = formControlInfo != null && formControlInfo.Order > -1
 				? formControlInfo.Order
 				: index;
 			var label = (formControlInfo?.Label ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
@@ -6419,7 +6421,7 @@ namespace net.vieapps.Components.Repository
 			if (maxLength != null)
 				options["MaxLength"] = maxLength.CastAs<int>();
 
-			var datepickerOptions = "DatePicker".IsEquals(controlType)  && formControlInfo != null && formControlInfo.DatePickerWithTimes
+			var datepickerOptions = "DatePicker".IsEquals(controlType) && formControlInfo != null && formControlInfo.DatePickerWithTimes
 				? new JObject
 				{
 					{ "AllowTimes", true }

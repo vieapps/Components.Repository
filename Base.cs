@@ -3744,7 +3744,7 @@ namespace net.vieapps.Components.Repository
 	/// </summary>
 	public class IdentityGenerator : MongoDB.Bson.Serialization.IIdGenerator
 	{
-		public object GenerateId(object container, object document) => Guid.NewGuid().ToString("N").ToLower();
+		public object GenerateId(object container, object document) => UtilityService.NewUUID;
 
 		public bool IsEmpty(object id) => id == null || id.Equals(string.Empty);
 	}

@@ -108,7 +108,7 @@ namespace net.vieapps.Components.Repository
 
 		public override string ToString()
 		{
-#if DEBUG || PROCESSLOGS
+#if DEBUG
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.Indented);
 #else
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
@@ -436,7 +436,7 @@ namespace net.vieapps.Components.Repository
 
 		public override string ToString()
 		{
-#if DEBUG || PROCESSLOGS
+#if DEBUG
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.Indented);
 #else
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
@@ -811,7 +811,7 @@ namespace net.vieapps.Components.Repository
 
 		public override string ToString()
 		{
-#if DEBUG || PROCESSLOGS
+#if DEBUG
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.Indented);
 #else
 			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);

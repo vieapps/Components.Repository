@@ -5,22 +5,22 @@
 		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
-		<AssemblyVersion>10.2.1812.1</AssemblyVersion>
-		<FileVersion>10.2.1812.1</FileVersion>
-		<InformationalVersion>v10.2.netstandard-2+rev:2018.12.03-lstcmp</InformationalVersion>
+		<SignAssembly>false</SignAssembly>
+		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
+		<AssemblyVersion>10.2.1812.3</AssemblyVersion>
+		<FileVersion>10.2.1812.3</FileVersion>
+		<InformationalVersion>v10.2.netstandard-2+rev:2018.12.09-transactions</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.2.1812.1</Version>
-		<SignAssembly>false</SignAssembly>
-		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
+		<Version>10.2.1812.3</Version>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time on .NET Standard 2.0</Description>
 		<Authors>VIEApps.net</Authors>
 		<Copyright>© 2018 VIEApps.net</Copyright>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Upgrade to latest components for better performance</PackageReleaseNotes>
+		<PackageReleaseNotes>Add support of transaction of MongoDB replica-set</PackageReleaseNotes>
 		<PackageIconUrl>https://github.com/vieapps/Components.Utility/raw/master/logo.png</PackageIconUrl>
 		<PackageProjectUrl>https://github.com/vieapps/Components.Repository</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
@@ -46,8 +46,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="MongoDB.Driver" Version="2.7.2" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1812.1" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1812.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1812.2" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1812.2" />
 	</ItemGroup>
 
 </Project>

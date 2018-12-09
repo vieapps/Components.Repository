@@ -4,6 +4,7 @@ using System.Linq;
 using System.Xml;
 using System.Data;
 using System.Data.Common;
+using System.Transactions;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -146,6 +147,20 @@ namespace net.vieapps.Components.Repository
 			}
 			return connection;
 		}
+
+		/// <summary>
+		/// Gets the connection of SQL database of a specified data-source
+		/// </summary>
+		/// <param name="dataSource">The object that presents related information of a data source of SQL database</param>
+		/// <returns></returns>
+		public static DbConnection GetConnection(this DataSource dataSource)
+			=> dataSource?.GetProviderFactory().CreateConnection(dataSource, false);
+
+		/// <summary>
+		/// Creates new transaction for working with SQL database
+		/// </summary>
+		/// <returns></returns>
+		public static TransactionScope CreateTransaction() => new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
 		#endregion
 
 		#region Command

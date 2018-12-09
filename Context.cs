@@ -1,15 +1,11 @@
 ﻿#region Related components
 using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
 using System.Linq;
-
 using System.Data;
 using System.Data.Common;
-using System.Transactions;
-
-using MongoDB.Driver;
+using System.Diagnostics;
+using System.Configuration;
+using System.Collections.Generic;
 
 using net.vieapps.Components.Utility;
 #endregion
@@ -32,7 +28,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the operation of the context
 		/// </summary>
-#if DEBUG || PROCESSLOGS
+#if DEBUG
 		public RepositoryOperation Operation { get; set; }
 #else
 		public RepositoryOperation Operation { get; internal set; }
@@ -41,7 +37,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the entity definition of the context
 		/// </summary>
-#if DEBUG || PROCESSLOGS
+#if DEBUG
 		public EntityDefinition EntityDefinition { get; set; }
 #else
 		public EntityDefinition EntityDefinition { get; internal set; }
@@ -50,120 +46,136 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the alias type name of the context (if got alias type name, means working with diffirent data source because the module is alias of other module)
 		/// </summary>
-#if DEBUG || PROCESSLOGS
+#if DEBUG
 		public string AliasTypeName { get; set; }
 #else
 		public string AliasTypeName { get; internal set; }
 #endif
 
 		/// <summary>
+		/// Gets the state that determines to use transaction or don't use
+		/// </summary>
+		public bool UseTransaction { get; internal set; } = false;
+
+		/// <summary>
 		/// Gets the exception that got while processing
 		/// </summary>
 		public Exception Exception { get; internal set; }
 
-		Dictionary<string, Dictionary<string, object>> PreviousStateData { get; set; }
+		internal Dictionary<string, Dictionary<string, object>> PreviousStateData { get; set; }
 
-		Dictionary<string, Dictionary<string, object>> CurrentStateData { get; set; }
+		internal Dictionary<string, Dictionary<string, object>> CurrentStateData { get; set; }
 
-		TransactionScope Transaction { get; set; }
+		internal System.Transactions.TransactionScope SqlTransaction { get; set; }
+
+		internal MongoDB.Driver.IClientSessionHandle NoSqlSession { get; set; }
 		#endregion
 
-		#region Constructors
+		#region Prepare
+		internal void Prepare(RepositoryOperation operation = RepositoryOperation.Query, EntityDefinition entityDefinition = null, string aliasTypeName = null, MongoDB.Driver.IClientSessionHandle nosqlSession = null)
+		{
+			this.ID = this.ID ?? UtilityService.GetUUID();
+			this.PreviousStateData = this.PreviousStateData ?? new Dictionary<string, Dictionary<string, object>>();
+			this.CurrentStateData = this.CurrentStateData ?? new Dictionary<string, Dictionary<string, object>>();
+			this.Operation = operation;
+
+			if (entityDefinition != null)
+				this.EntityDefinition = entityDefinition;
+
+			if (!string.IsNullOrWhiteSpace(aliasTypeName))
+				this.AliasTypeName = aliasTypeName;
+
+			if (this.UseTransaction)
+			{
+				this.NoSqlSession = this.NoSqlSession ?? nosqlSession;
+				this.StartTransaction();
+			}
+		}
+
+		internal void Prepare<T>(RepositoryOperation operation = RepositoryOperation.Query, MongoDB.Driver.IClientSessionHandle nosqlSession = null) where T : class
+			=> this.Prepare(operation, RepositoryMediator.GetEntityDefinition<T>(), null, nosqlSession);
+		#endregion
+
+		#region Constructors & Destructors
 		/// <summary>
 		/// Creates new context for working with repositories
 		/// </summary>
-		/// <param name="openTransaction">true to open transaction with default settings (async flow is enabled); false to not</param>
-		public RepositoryContext(bool openTransaction = true)
+		/// <param name="useTransaction">true to use transaction with default settings (async flow is enabled); false to not</param>
+		/// <param name="nosqlSession">The client session of NoSQL database</param>
+		public RepositoryContext(bool useTransaction = true, MongoDB.Driver.IClientSessionHandle nosqlSession = null)
 		{
-			this.Initialize();
-			if (openTransaction)
-				this.Transaction = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
+			this.UseTransaction = useTransaction;
+			this.NoSqlSession = nosqlSession;
+			this.Prepare();
 		}
 
-		/// <summary>
-		/// Creates new context for working with repositories (with transaction support)
-		/// </summary>
-		/// <param name="scopeOption"></param>
-		public RepositoryContext(TransactionScopeOption scopeOption)
+		public void Dispose()
 		{
-			this.Initialize();
-			this.Transaction = new TransactionScope(scopeOption);
+			this.EndTransaction();
+			GC.SuppressFinalize(this);
 		}
 
-		/// <summary>
-		/// Creates new working context for working with repositories (with transaction support)
-		/// </summary>
-		/// <param name="scopeAsyncFlowOption"></param>
-		public RepositoryContext(TransactionScopeAsyncFlowOption scopeAsyncFlowOption)
-		{
-			this.Initialize();
-			this.Transaction = new TransactionScope(scopeAsyncFlowOption);
-		}
-
-		/// <summary>
-		/// Creates new context for working with repositories (with transaction support)
-		/// </summary>
-		/// <param name="scopeOption"></param>
-		/// <param name="scopeAsyncFlowOption"></param>
-		public RepositoryContext(TransactionScopeOption scopeOption, TransactionScopeAsyncFlowOption scopeAsyncFlowOption)
-		{
-			this.Initialize();
-			this.Transaction = new TransactionScope(scopeOption, scopeAsyncFlowOption);
-		}
-
-		/// <summary>
-		/// Creates new context for working with repositories (with transaction support)
-		/// </summary>
-		/// <param name="scopeOption"></param>
-		/// <param name="transactionOptions"></param>
-		/// <param name="scopeAsyncFlowOption"></param>
-		public RepositoryContext(TransactionScopeOption scopeOption, System.Transactions.TransactionOptions transactionOptions, TransactionScopeAsyncFlowOption scopeAsyncFlowOption)
-		{
-			this.Initialize();
-			this.OpenTransaction(scopeOption, transactionOptions, scopeAsyncFlowOption);
-		}
-
-		void Initialize()
-		{
-			this.ID = UtilityService.GetUUID();
-			this.Operation = RepositoryOperation.Query;
-			this.PreviousStateData = new Dictionary<string, Dictionary<string, object>>();
-			this.CurrentStateData = new Dictionary<string, Dictionary<string, object>>();
-		}
+		~RepositoryContext() => this.Dispose();
 		#endregion
 
-		#region Open/Commit Transaction
+		#region Start/Commit/Abort Transaction
 		/// <summary>
-		/// Opens the transaction (only work if the context is constructed with no transaction)
+		/// Starts the transaction
 		/// </summary>
-		/// <param name="scopeOption">Scope option</param>
-		/// <param name="transactionOptions">Transaction options</param>
-		/// <param name="scopeAsyncFlowOption">Async flow option</param>
-		public void OpenTransaction(TransactionScopeOption scopeOption, System.Transactions.TransactionOptions transactionOptions, TransactionScopeAsyncFlowOption scopeAsyncFlowOption)
+		/// <param name="transactionOptions"></param>
+		public void StartTransaction(MongoDB.Driver.TransactionOptions transactionOptions = null)
 		{
-			if (this.Transaction == null)
-				this.Transaction = new TransactionScope(scopeOption, transactionOptions, scopeAsyncFlowOption);
+			if (this.UseTransaction)
+			{
+				this.SqlTransaction = this.SqlTransaction ?? SqlHelper.CreateTransaction();
+				this.NoSqlSession?.StartTransaction(transactionOptions);
+			}
 		}
 
 		/// <summary>
-		/// Commits the transaction and marks this context is completed
+		/// Commits the transaction (indicates that all operations within the context are completed successfully)
 		/// </summary>
 		public void CommitTransaction()
 		{
-			if (this.Transaction != null)
+			if (this.UseTransaction)
+			{
+				this.NoSqlSession?.CommitTransaction();
+				this.SqlTransaction?.Complete();
+			}
+		}
+
+		/// <summary>
+		/// Aborts the transaction
+		/// </summary>
+		public void AbortTransaction()
+		{
+			if (this.UseTransaction)
+				this.NoSqlSession?.AbortTransaction();
+		}
+
+		/// <summary>
+		/// Ends the transaction and marks this context is completed
+		/// </summary>
+		public void EndTransaction()
+		{
+			try
 			{
 				if (this.Exception == null)
-					try
-					{
-						this.Transaction.Complete();
-					}
-					catch (ObjectDisposedException) { }
-					catch (Exception)
-					{
-						throw;
-					}
-				this.Transaction.Dispose();
-				this.Transaction = null;
+					this.CommitTransaction();
+				else
+					this.AbortTransaction();
+			}
+			catch (ObjectDisposedException) { }
+			catch (Exception)
+			{
+				throw;
+			}
+			finally
+			{
+				this.SqlTransaction?.Dispose();
+				this.SqlTransaction = null;
+				this.NoSqlSession?.Dispose();
+				this.NoSqlSession = null;
 			}
 		}
 		#endregion
@@ -175,28 +187,24 @@ namespace net.vieapps.Components.Repository
 			var stateData = new Dictionary<string, object>();
 
 			// standard properties
-			@object?.GetProperties()
-				.Where(attribute => !attribute.IsIgnored())
-				.ForEach(attribute =>
+			@object?.GetProperties().Where(attribute => !attribute.IsIgnored()).ForEach(attribute =>
+			{
+				try
 				{
-					try
-					{
-						stateData[attribute.Name] = @object.GetAttributeValue(attribute.Name);
-					}
-					catch { }
-				});
+					stateData[attribute.Name] = @object.GetAttributeValue(attribute.Name);
+				}
+				catch { }
+			});
 
 			// standard fields
-			@object?.GetFields()
-				.Where(attribute => !attribute.IsIgnored())
-				.ForEach(attribute =>
+			@object?.GetFields().Where(attribute => !attribute.IsIgnored()).ForEach(attribute =>
+			{
+				try
 				{
-					try
-					{
-						stateData[attribute.Name] = @object.GetAttributeValue(attribute.Name);
-					}
-					catch { }
-				});
+					stateData[attribute.Name] = @object.GetAttributeValue(attribute.Name);
+				}
+				catch { }
+			});
 
 			// extended properties
 			(@object as IBusinessEntity)?.ExtendedProperties?.ForEach(kvp =>
@@ -264,69 +272,27 @@ namespace net.vieapps.Components.Repository
 				return new HashSet<string>();
 
 			else if (previousStateData == null || previousStateData.Count < 0)
-				return currentStateData.Select(item => item.Key).ToHashSet(false);
+				return currentStateData.Keys.ToHashSet(false);
 
 			var dirtyAttributes = new HashSet<string>();
-			foreach(var currentState in currentStateData)
+			currentStateData.ForEach(kvp =>
 			{
-				var previousState = previousStateData[currentState.Key];
-				if (currentState.Value == null)
+				var previousState = previousStateData[kvp.Key];
+				if (kvp.Value == null)
 				{
 					if (previousState != null)
-						dirtyAttributes.Add(currentState.Key);
+						dirtyAttributes.Add(kvp.Key);
 				}
 				else
 				{
 					if (previousState == null)
-						dirtyAttributes.Add(currentState.Key);
-					else if (!currentState.Value.Equals(previousState))
-						dirtyAttributes.Add(currentState.Key);
+						dirtyAttributes.Add(kvp.Key);
+					else if (!kvp.Value.Equals(previousState))
+						dirtyAttributes.Add(kvp.Key);
 				}
-			}
+			});
 
 			return dirtyAttributes;
-		}
-		#endregion
-
-		#region Helper for working with database
-		/// <summary>
-		/// Gets the connection of SQL database of a specified data-source
-		/// </summary>
-		/// <param name="dataSource">The object that presents related information of a data source of SQL database</param>
-		/// <returns></returns>
-		public DbConnection GetSqlConnection(DataSource dataSource)
-			=> dataSource?.GetProviderFactory().CreateConnection(dataSource, false);
-
-		/// <summary>
-		/// Gets the No SQL collection of a specified data-source
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="dataSource">The object that presents related information of a data source of No SQL database</param>
-		/// <returns></returns>
-		public IMongoCollection<T> GetNoSqlCollection<T>(DataSource dataSource) where T : class
-			=> dataSource != null && dataSource.Mode.Equals(RepositoryMode.NoSQL)
-				? this.GetCollection<T>(dataSource)
-				: null;
-
-		/// <summary>
-		/// Gets the No SQL collection of the primary data-source
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <returns></returns>
-		public IMongoCollection<T> GetNoSqlCollection<T>() where T : class
-			=> this.GetNoSqlCollection<T>(RepositoryMediator.GetPrimaryDataSource(RepositoryMediator.GetEntityDefinition<T>()));
-		#endregion
-
-		#region Disposal
-		public void Dispose()
-		{
-			this.CommitTransaction();
-			GC.SuppressFinalize(this);
-		}
-
-		~RepositoryContext()
-		{
-			this.Dispose();
 		}
 		#endregion
 

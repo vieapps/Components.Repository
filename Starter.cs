@@ -27,35 +27,31 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				tracker?.Invoke($"Initialize the assembly: {assembly.GetName().Name}", null);
+				var types = assembly.GetExportedTypes();
+				tracker?.Invoke($"Initialize the assembly: {assembly.GetName().Name} [{types.Length} type(s)]", null);
 				if (RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"Initialize the assembly: {assembly.GetName().Name}", null);
 
 				// repositories
-				assembly.GetTypes()
-					.Where(type => type.IsDefined(typeof(RepositoryAttribute), false))
-					.ForEach(type =>
-					{
-						tracker?.Invoke($"Register the repository: {type.GetTypeName()}", null);
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"Register the repository: {type.GetTypeName()}", null);
-						RepositoryDefinition.Register(type);
-					});
+				types.Where(type => type.IsDefined(typeof(RepositoryAttribute), false)).ForEach(type =>
+				{
+					tracker?.Invoke($"Register the repository: {type.GetTypeName()}", null);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Register the repository: {type.GetTypeName()}", null);
+					RepositoryDefinition.Register(type);
+				});
 
 				// entities
-				assembly.GetTypes()
-					.Where(type => type.IsDefined(typeof(EntityAttribute), false))
-					.ForEach(type =>
-					{
-						tracker?.Invoke($"Register the repository entity: {type.GetTypeName()}", null);
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"Register the repository entity: {type.GetTypeName()}", null);
-						EntityDefinition.Register(type);
-					});
+				types.Where(type => type.IsDefined(typeof(EntityAttribute), false)).ForEach(type =>
+				{
+					tracker?.Invoke($"Register the repository entity: {type.GetTypeName()}", null);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Register the repository entity: {type.GetTypeName()}", null);
+					EntityDefinition.Register(type);
+				});
 
 				// event handlers
-				assembly.GetTypes()
-					.Where(type => type.IsDefined(typeof(EventHandlersAttribute), false))
+				types.Where(type => type.IsDefined(typeof(EventHandlersAttribute), false))
 					.Where(type => typeof(IPreCreateHandler).IsAssignableFrom(type) || typeof(IPostCreateHandler).IsAssignableFrom(type)
 						|| typeof(IPreGetHandler).IsAssignableFrom(type) || typeof(IPostGetHandler).IsAssignableFrom(type)
 						|| typeof(IPreUpdateHandler).IsAssignableFrom(type) || typeof(IPostUpdateHandler).IsAssignableFrom(type)
@@ -106,22 +102,20 @@ namespace net.vieapps.Components.Repository
 				{
 					// update settings of data sources
 					if (config.Section.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
-						if (dataSourceNodes != null)
-							RepositoryMediator.ConstructDataSources(dataSourceNodes.ToList(), tracker);
+						RepositoryMediator.ConstructDataSources(dataSourceNodes.ToList(), tracker);
 
 					// update settings of repositories
 					if (config.Section.SelectNodes("repository") is XmlNodeList repositoryNodes)
-						if (repositoryNodes != null)
-							foreach (XmlNode repositoryNode in repositoryNodes)
-							{
-								// update repository
-								RepositoryDefinition.Update(repositoryNode.ToJson(), tracker);
+						foreach (XmlNode repositoryNode in repositoryNodes)
+						{
+							// update repository
+							RepositoryDefinition.Update(repositoryNode.ToJson(), tracker);
 
-								// update repository entities
-								if (repositoryNode.SelectNodes("entity") is XmlNodeList entityNodes)
-									foreach (XmlNode repositoryEntityNode in entityNodes)
-										EntityDefinition.Update(repositoryEntityNode.ToJson(), tracker);
-							}
+							// update repository entities
+							if (repositoryNode.SelectNodes("entity") is XmlNodeList entityNodes)
+								foreach (XmlNode repositoryEntityNode in entityNodes)
+									EntityDefinition.Update(repositoryEntityNode.ToJson(), tracker);
+						}
 
 					// default data sources
 					RepositoryMediator.DefaultVersionDataSourceName = config.Section.Attributes["versionDataSource"]?.Value;
@@ -129,17 +123,11 @@ namespace net.vieapps.Components.Repository
 
 					// schemas (SQL)
 					if ("true".IsEquals(config.Section.Attributes["ensureSchemas"]?.Value))
-						Task.Run(async () =>
-						{
-							await RepositoryStarter.EnsureSqlSchemasAsync(tracker).ConfigureAwait(false);
-						}).ConfigureAwait(false);
+						Task.Run(async () => await RepositoryStarter.EnsureSqlSchemasAsync(tracker).ConfigureAwait(false)).ConfigureAwait(false);
 
 					// indexes (NoSQL)
 					if ("true".IsEquals(config.Section.Attributes["ensureIndexes"]?.Value))
-						Task.Run(async () =>
-						{
-							await RepositoryStarter.EnsureNoSqlIndexesAsync(tracker).ConfigureAwait(false);
-						}).ConfigureAwait(false);
+						Task.Run(async () => await RepositoryStarter.EnsureNoSqlIndexesAsync(tracker).ConfigureAwait(false)).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
@@ -182,7 +170,7 @@ namespace net.vieapps.Components.Repository
 					.Where(n => !n.Name.IsStartsWith("api-ms") && !n.Name.IsStartsWith("clr") && !n.Name.IsStartsWith("mscor") && !n.Name.IsStartsWith("sos") && !n.Name.IsStartsWith("lib")
 						&& !n.Name.IsStartsWith("System") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsStartsWith("Windows") && !n.Name.IsEquals("NETStandard")
 						&& !n.Name.IsStartsWith("Newtonsoft") && !n.Name.IsStartsWith("WampSharp") && !n.Name.IsStartsWith("Castle.") && !n.Name.IsStartsWith("StackExchange.")
-						&& !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("MySql") && !n.Name.IsStartsWith("Oracle") && !n.Name.IsStartsWith("Npgsql")
+						&& !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("MySql") && !n.Name.IsStartsWith("Oracle") && !n.Name.IsStartsWith("Npgsql") && !n.Name.IsStartsWith("VIEApps.Components")
 					)
 					.Select(n => Assembly.Load(n))
 					.ToList()
