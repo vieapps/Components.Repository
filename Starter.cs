@@ -106,16 +106,15 @@ namespace net.vieapps.Components.Repository
 
 					// update settings of repositories
 					if (config.Section.SelectNodes("repository") is XmlNodeList repositoryNodes)
-						foreach (XmlNode repositoryNode in repositoryNodes)
+						repositoryNodes.ToList().ForEach(repositoryNode =>
 						{
 							// update repository
 							RepositoryDefinition.Update(repositoryNode.ToJson(), tracker);
 
 							// update repository entities
 							if (repositoryNode.SelectNodes("entity") is XmlNodeList entityNodes)
-								foreach (XmlNode repositoryEntityNode in entityNodes)
-									EntityDefinition.Update(repositoryEntityNode.ToJson(), tracker);
-						}
+								entityNodes.ToList().ForEach(repositoryEntityNode => EntityDefinition.Update(repositoryEntityNode.ToJson(), tracker));
+						});
 
 					// default data sources
 					RepositoryMediator.DefaultVersionDataSourceName = config.Section.Attributes["versionDataSource"]?.Value;

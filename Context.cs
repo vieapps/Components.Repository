@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Configuration;
 using System.Collections.Generic;
+using System.Transactions;
 
 using net.vieapps.Components.Utility;
 #endregion
@@ -66,7 +67,7 @@ namespace net.vieapps.Components.Repository
 
 		internal Dictionary<string, Dictionary<string, object>> CurrentStateData { get; set; }
 
-		internal System.Transactions.TransactionScope SqlTransaction { get; set; }
+		internal TransactionScope SqlTransaction { get; set; }
 
 		internal MongoDB.Driver.IClientSessionHandle NoSqlSession { get; set; }
 		#endregion
@@ -166,6 +167,11 @@ namespace net.vieapps.Components.Repository
 					this.AbortTransaction();
 			}
 			catch (ObjectDisposedException) { }
+			catch (TransactionAbortedException)
+			{
+				if (this.Exception == null)
+					throw;
+			}
 			catch (Exception)
 			{
 				throw;

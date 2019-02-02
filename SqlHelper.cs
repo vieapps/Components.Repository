@@ -14,6 +14,7 @@ using System.Diagnostics;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Logging;
 
 using net.vieapps.Components.Caching;
 using net.vieapps.Components.Utility;
@@ -22,7 +23,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Collection of methods for working with SQL database (support Microsoft SQL Server, MySQL, PostgreSQL, SQLite, Oracle RDBMS and ODBC)
+	/// Collection of methods for working with SQL database (support Microsoft SQL Server, MySQL, PostgreSQL, Oracle RDBMS and ODBC)
 	/// </summary>
 	public static class SqlHelper
 	{
@@ -160,7 +161,8 @@ namespace net.vieapps.Components.Repository
 		/// Creates new transaction for working with SQL database
 		/// </summary>
 		/// <returns></returns>
-		public static TransactionScope CreateTransaction() => new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
+		public static TransactionScope CreateTransaction()
+			=> new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
 		#endregion
 
 		#region Command
@@ -3551,9 +3553,20 @@ namespace net.vieapps.Components.Repository
 				var invariant = node.Attributes["invariant"]?.Value;
 				var name = node.Attributes["name"]?.Value;
 				var description = node.Attributes["description"]?.Value;
+
 				var type = !string.IsNullOrWhiteSpace(invariant) && !DbProviderFactories.DbProviders.ContainsKey(invariant)
 					? Type.GetType(node.Attributes["type"]?.Value)
 					: null;
+				if (type == null && !string.IsNullOrWhiteSpace(node.Attributes["type"]?.Value))
+					try
+					{
+						var typeInfo = node.Attributes["type"].Value.Split(',').Select(info => info.Trim()).ToList();
+						type = new Enyim.Caching.AssemblyLoader(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{typeInfo[1]}.dll")).Assembly.GetExportedTypes().FirstOrDefault(serviceType => typeInfo[0].Equals(serviceType.ToString()));
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"Error occurred while loading a database provider => {ex.Message}", ex);
+					}
 
 				if (type != null)
 				{

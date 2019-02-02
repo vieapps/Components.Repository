@@ -1568,7 +1568,8 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents);
-			return context.GetCollection<T>(dataSource).CountDocuments(context.NoSqlSession, info.Item1 ?? Builders<T>.Filter.Empty, options);
+			var collection = context.GetCollection<T>(dataSource);
+			return collection.CountDocuments(context.NoSqlSession ?? collection.StartSession(), info.Item1 ?? Builders<T>.Filter.Empty, options);
 		}
 
 		/// <summary>
@@ -1583,10 +1584,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents);
-			return context.GetCollection<T>(dataSource).CountDocumentsAsync(context.NoSqlSession, info.Item1 ?? Builders<T>.Filter.Empty, options, cancellationToken);
+			var collection = context.GetCollection<T>(dataSource);
+			return await collection.CountDocumentsAsync(context.NoSqlSession ?? await collection.StartSessionAsync(null, cancellationToken).ConfigureAwait(false), info.Item1 ?? Builders<T>.Filter.Empty, options, cancellationToken).ConfigureAwait(false);
 		}
 		#endregion
 
