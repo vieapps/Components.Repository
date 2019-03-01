@@ -3118,7 +3118,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Search (by query)
+		#region Search
 		/// <summary>
 		/// Searchs intances of objects from repository (using full-text search)
 		/// </summary>
@@ -3141,98 +3141,98 @@ namespace net.vieapps.Components.Repository
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
-				List<T> objects = null;
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(
+						$"SEARCH: Search objects [{context.EntityDefinition.Type.GetTypeName()}] - Caching storage: {context.EntityDefinition.Cache?.Name ?? "None"}" + "\r\n" +
+						$"- Mode: {dataSource.Mode}" + "\r\n" +
+						$"- Page Size: {pageSize}" + "\r\n" +
+						$"- Page Number: {pageNumber}" + "\r\n" +
+						$"- Query: {(!string.IsNullOrWhiteSpace(query) ? query : "None")}" + "\r\n" +
+						$"- Filter By (Additional): {filter.ToString() ?? "None"}"
+					);
+
+				// no caching storage => direct search
+				if (context.EntityDefinition.Cache == null)
+					return dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? context.Search(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? context.Search(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
+							: new List<T>();
 
 				// search identities
-				var identities = context.EntityDefinition.Cache == null
-					? null
-					: dataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? context.SearchIdentities(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
-						: dataSource.Mode.Equals(RepositoryMode.SQL)
-							? context.SearchIdentities(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
-							: new List<string>();
+				var identities = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? context.SearchIdentities(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? context.SearchIdentities(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
+						: new List<string>();
 
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new[]
-					{
-						"SEARCH: Search objects [" + context.EntityDefinition.Type.GetTypeName() + "]",
-						"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-						"- Mode: " + dataSource.Mode.ToString(),
-						"- Page Size: " + pageSize.ToString(),
-						"- Page Number: " + pageNumber.ToString(),
-						"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
-						"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-					});
+					RepositoryMediator.WriteLogs($"SEARCH: Total {identities.Count} identities are found [{identities.ToString(" - ")}]");
 
-				// process
-				if (identities != null && identities.Count > 0)
+				// no identity is found, then return empty collection
+				if (identities.Count < 1)
+					return new List<T>();
+
+				// get cached objects
+				var cached = context.EntityDefinition.Cache.Get(identities.Select(id => id.GetCacheKey<T>()));
+				if (cached != null && cached.Count > 0)
 				{
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"SEARCH: Total {identities.Count} identities are searched [{identities.ToString(" - ")}]");
+						RepositoryMediator.WriteLogs($"SEARCH: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
 
-					// get cached objects
-					var cached = context.EntityDefinition.Cache?.Get(identities.Select(id => id.GetCacheKey<T>()));
-					if (cached != null)
+					// prepare
+					var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T));
+
+					// add cached objects
+					var ids = new List<string>();
+					cached.Where(item => item.Value != null).ForEach(item =>
 					{
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"SEARCH: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
-
-						// prepare
-						var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T));
-
-						// add cached objects
-						var ids = new List<string>();
-						cached.ForEach(item =>
+						var id = item.Value.GetEntityID();
+						if (!string.IsNullOrWhiteSpace(id))
 						{
-							var id = item.Value.GetEntityID();
-							if (!string.IsNullOrWhiteSpace(id))
-							{
-								ids.Add(id);
-								results[id] = item.Value as T;
-							}
-						});
-
-						// find missing objects
-						identities = identities.Where(id => !string.IsNullOrWhiteSpace(id)).Except(ids, StringComparer.OrdinalIgnoreCase).ToList();
-						if (identities.Count > 0)
-						{
-							var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-								? context.Find<T>(dataSource, identities, null, businessEntityID, null)
-								: dataSource.Mode.Equals(RepositoryMode.SQL)
-									? context.Find<T>(dataSource, identities, null, businessEntityID)
-									: new List<T>();
-
-							// update results & cache
-							missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-							context.EntityDefinition.Cache?.Set(missing);
-
-							if (RepositoryMediator.IsDebugEnabled)
-								RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
+							ids.Add(id);
+							results[id] = item.Value as T;
 						}
+					});
 
-						// update the collection of objects
-						objects = results.Select(item => item.Value as T).ToList();
+					// find missing objects
+					identities = identities.Where(id => !string.IsNullOrWhiteSpace(id)).Except(ids, StringComparer.OrdinalIgnoreCase).ToList();
+					if (identities.Count > 0)
+					{
+						var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+							? context.Find<T>(dataSource, identities, null, businessEntityID, null)
+							: dataSource.Mode.Equals(RepositoryMode.SQL)
+								? context.Find<T>(dataSource, identities, null, businessEntityID)
+								: new List<T>();
+
+						// update results & cache
+						missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
+						context.EntityDefinition.Cache.Set(missing);
+						if (RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 					}
+
+					// return the collection of objects
+					return results.Where(kvp => kvp.Value != null).Select(kvp => kvp.Value as T).ToList();
 				}
+				else if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"SEARCH: No cached object is found => search raw objects");
 
 				// search raw objects if has no cache
-				if (objects == null)
-				{
-					objects = identities == null || identities.Count > 0
-						? dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? context.Search(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
-							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? context.Search(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
-								: new List<T>()
+				var objects = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? context.Search(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? context.Search(dataSource, query, filter, pageSize, pageNumber, businessEntityID)
 						: new List<T>();
 
-					if (context.EntityDefinition.Cache != null && objects.Count > 0)
-					{
-						context.EntityDefinition.Cache.Set(objects);
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
-					}
+				if (objects.Count > 0)
+				{
+					context.EntityDefinition.Cache.Set(objects);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 				}
+				else if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"SEARCH: No matched object is found");
 
 				return objects;
 			}
@@ -3310,102 +3310,98 @@ namespace net.vieapps.Components.Repository
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
-				List<T> objects = null;
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(
+						$"SEARCH: Search objects [{context.EntityDefinition.Type.GetTypeName()}] - Caching storage: {context.EntityDefinition.Cache?.Name ?? "None"}" + "\r\n" +
+						$"- Mode: {dataSource.Mode}" + "\r\n" +
+						$"- Page Size: {pageSize}" + "\r\n" +
+						$"- Page Number: {pageNumber}" + "\r\n" +
+						$"- Query: {(!string.IsNullOrWhiteSpace(query) ? query : "None")}" + "\r\n" +
+						$"- Filter By (Additional): {filter.ToString() ?? "None"}"
+					);
+
+				// no caching storage => direct search
+				if (context.EntityDefinition.Cache == null)
+					return dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? await context.SearchAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? await context.SearchAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
+							: new List<T>();
 
 				// search identities
-				var identities = context.EntityDefinition.Cache == null
-					? null
-					: dataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await context.SearchIdentitiesAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
-						: dataSource.Mode.Equals(RepositoryMode.SQL)
-							? await context.SearchIdentitiesAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
-							: new List<string>();
+				var identities = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? await context.SearchIdentitiesAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? await context.SearchIdentitiesAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
+						: new List<string>();
 
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new[]
-					{
-						"SEARCH: Search objects [" + context.EntityDefinition.Type.GetTypeName() + "]",
-						"- Total: " + (identities != null ? identities.Count.ToString() : "0"),
-						"- Mode: " + dataSource.Mode.ToString(),
-						"- Page Size: " + pageSize.ToString(),
-						"- Page Number: " + pageNumber.ToString(),
-						"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
-						"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-					});
+					RepositoryMediator.WriteLogs($"SEARCH: Total {identities.Count} identities are found [{identities.ToString(" - ")}]");
 
-				// process
-				if (identities != null && identities.Count > 0)
+				// no identity is found, then return empty collection
+				if (identities.Count < 1)
+					return new List<T>();
+
+				// get cached objects
+				var cached = await context.EntityDefinition.Cache.GetAsync(identities.Select(id => id.GetCacheKey<T>()), cancellationToken).ConfigureAwait(false);
+				if (cached != null && cached.Count > 0)
 				{
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"SEARCH: Total {identities.Count} identities are searched [{identities.ToString(" - ")}]");
+						RepositoryMediator.WriteLogs($"SEARCH: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
 
-					// get cached objects
-					var cached = context.EntityDefinition.Cache != null
-						? await context.EntityDefinition.Cache.GetAsync(identities.Select(id => id.GetCacheKey<T>()), cancellationToken).ConfigureAwait(false)
-						: null;
-					if (cached != null)
+					// prepare
+					var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T));
+
+					// add cached objects
+					var ids = new List<string>();
+					cached.Where(item => item.Value != null).ForEach(item =>
 					{
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"SEARCH: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
-
-						// prepare
-						var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T));
-
-						// add cached objects
-						var ids = new List<string>();
-						cached.ForEach(item =>
+						var id = item.Value.GetEntityID();
+						if (!string.IsNullOrWhiteSpace(id))
 						{
-							var id = item.Value.GetEntityID();
-							if (!string.IsNullOrWhiteSpace(id))
-							{
-								ids.Add(id);
-								results[id] = item.Value as T;
-							}
-						});
-
-						// find missing objects
-						identities = identities.Where(id => !string.IsNullOrWhiteSpace(id)).Except(ids, StringComparer.OrdinalIgnoreCase).ToList();
-						if (identities.Count > 0)
-						{
-							var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-								? await context.FindAsync<T>(dataSource, identities, null, businessEntityID, null, cancellationToken).ConfigureAwait(false)
-								: dataSource.Mode.Equals(RepositoryMode.SQL)
-									? await context.FindAsync<T>(dataSource, identities, null, businessEntityID, cancellationToken).ConfigureAwait(false)
-									: new List<T>();
-
-							// update results & cache
-							missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-							if (context.EntityDefinition.Cache != null)
-							{
-								await context.EntityDefinition.Cache.SetAsync(missing, cancellationToken).ConfigureAwait(false);
-								if (RepositoryMediator.IsDebugEnabled)
-									RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
-							}
+							ids.Add(id);
+							results[id] = item.Value as T;
 						}
+					});
 
-						// update the collection of objects
-						objects = results.Select(item => item.Value as T).ToList();
+					// find missing objects
+					identities = identities.Where(id => !string.IsNullOrWhiteSpace(id)).Except(ids, StringComparer.OrdinalIgnoreCase).ToList();
+					if (identities.Count > 0)
+					{
+						var missing = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+							? await context.FindAsync<T>(dataSource, identities, null, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+							: dataSource.Mode.Equals(RepositoryMode.SQL)
+								? await context.FindAsync<T>(dataSource, identities, null, businessEntityID, cancellationToken).ConfigureAwait(false)
+								: new List<T>();
+
+						// update results & cache
+						missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
+						await context.EntityDefinition.Cache.SetAsync(missing, cancellationToken).ConfigureAwait(false);
+						if (RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 					}
+
+					// return the collection of objects
+					return results.Where(kvp => kvp.Value != null).Select(kvp => kvp.Value as T).ToList();
 				}
+				else if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"SEARCH: No cached object is found => search raw objects");
 
 				// search raw objects if has no cache
-				if (objects == null)
-				{
-					objects = identities == null || identities.Count > 0
-						? dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? await context.SearchAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
-							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? await context.SearchAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
-								: new List<T>()
+				var objects = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					? await context.SearchAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, null, cancellationToken).ConfigureAwait(false)
+					: dataSource.Mode.Equals(RepositoryMode.SQL)
+						? await context.SearchAsync(dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken).ConfigureAwait(false)
 						: new List<T>();
 
-					if (context.EntityDefinition.Cache != null && objects.Count > 0)
-					{
-						await context.EntityDefinition.Cache.SetAsync(objects, cancellationToken).ConfigureAwait(false);
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
-					}
+				if (objects.Count > 0)
+				{
+					await context.EntityDefinition.Cache.SetAsync(objects, cancellationToken).ConfigureAwait(false);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 				}
+				else if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"SEARCH: No matched object is found");
 
 				return objects;
 			}
@@ -3468,7 +3464,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Count (by query)
+		#region Count (search by query)
 		/// <summary>
 		/// Counts document of objects (using full-text search)
 		/// </summary>
@@ -3496,14 +3492,13 @@ namespace net.vieapps.Components.Repository
 						? context.Count(dataSource, query, filter, businessEntityID)
 						: 0;
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new[]
-					{
-						"COUNT: Count objects [" + context.EntityDefinition.Type.GetTypeName() + "]",
-						"- Total: " + total.ToString(),
-						"- Mode: " + dataSource.Mode.ToString(),
-						"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
-						"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-					});
+					RepositoryMediator.WriteLogs(
+						$"COUNT: Count objects [{context.EntityDefinition.Type.GetTypeName()}]" + "\r\n" +
+						$"- Total: {total}" + "\r\n" +
+						$"- Mode: {dataSource.Mode}" + "\r\n" +
+						$"- Query: {(!string.IsNullOrWhiteSpace(query) ? query : "None")}" + "\r\n" +
+						$"- Filter By (Additional): {filter.ToString() ?? "None"}"
+					);
 
 				return total;
 			}
@@ -3583,14 +3578,13 @@ namespace net.vieapps.Components.Repository
 						: 0;
 
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new[]
-					{
-						"COUNT: Count objects [" + context.EntityDefinition.Type.GetTypeName() + "]",
-						"- Total: " + total.ToString(),
-						"- Mode: " + dataSource.Mode.ToString(),
-						"- Query: " + (!string.IsNullOrWhiteSpace(query) ? query : "None"),
-						"- Filter By (Additional): " + (filter != null ? "\r\n" + filter.ToString() : "None")
-					});
+					RepositoryMediator.WriteLogs(
+						$"COUNT: Count objects [{context.EntityDefinition.Type.GetTypeName()}]" + "\r\n" +
+						$"- Total: {total}" + "\r\n" +
+						$"- Mode: {dataSource.Mode}" + "\r\n" +
+						$"- Query: {(!string.IsNullOrWhiteSpace(query) ? query : "None")}" + "\r\n" +
+						$"- Filter By (Additional): {filter.ToString() ?? "None"}"
+					);
 
 				return total;
 			}
@@ -6867,7 +6861,7 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 
-		internal static void WriteLogs(string log, Exception ex = null, LogLevel logLevel = LogLevel.Debug) => RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new List<string> { log }, ex, logLevel);
+		internal static void WriteLogs(string log, Exception ex = null, LogLevel logLevel = LogLevel.Debug) => RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new[] { log }, ex, logLevel);
 
 		internal static void WriteLogs(Exception ex, LogLevel logLevel = LogLevel.Debug) => RepositoryMediator.WriteLogs(new List<string>(), ex, logLevel);
 		#endregion

@@ -9,14 +9,14 @@
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
 		<SignAssembly>false</SignAssembly>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
-		<AssemblyVersion>10.2.1902.1</AssemblyVersion>
-		<FileVersion>10.2.1902.1</FileVersion>
-		<InformationalVersion>v10.2.netstandard-2+rev:2019.01.31-latest.components</InformationalVersion>
+		<AssemblyVersion>10.2.1903.1</AssemblyVersion>
+		<FileVersion>10.2.1903.1</FileVersion>
+		<InformationalVersion>v10.2.netstandard-2+rev:2019.03.01-latest.components</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.2.1902.1</Version>
+		<Version>10.2.1903.1</Version>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time on .NET Standard 2.0</Description>
 		<Authors>VIEApps.net</Authors>
@@ -40,8 +40,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="MongoDB.Driver" Version="2.7.3" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1902.1" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1902.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1903.1" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1903.1" />
 	</ItemGroup>
 
 </Project>
