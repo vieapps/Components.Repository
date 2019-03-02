@@ -2375,13 +2375,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Search
-		/// <summary>
-		/// Gets the terms for searching in SQL database using full-text search
-		/// </summary>
-		/// <param name="dbProviderFactory"></param>
-		/// <param name="searchQuery"></param>
-		/// <returns></returns>
-		public static string GetSearchTerms(this DbProviderFactory dbProviderFactory, SearchQuery searchQuery)
+		static string GetSearchTerms(this DbProviderFactory dbProviderFactory, SearchQuery searchQuery)
 		{
 			var searchTerms = "";
 

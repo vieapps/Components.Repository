@@ -2713,7 +2713,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryBase<T>.SearchAsync("", query, filter, pageSize, pageNumber, null, cancellationToken);
 		#endregion
 
-		#region [Static] Count by search query
+		#region [Static] Count (searching)
 		/// <summary>
 		/// Counts the number of all matched objects
 		/// </summary>

@@ -32,18 +32,10 @@ namespace net.vieapps.Components.Repository
 	/// </summary>
 	public static class RepositoryMediator
 	{
-
-#if DEBUG
-		public static Dictionary<Type, RepositoryDefinition> RepositoryDefinitions { get; } = new Dictionary<Type, RepositoryDefinition>();
-		public static Dictionary<Type, EntityDefinition> EntityDefinitions { get; } = new Dictionary<Type, EntityDefinition>();
-		public static Dictionary<string, DataSource> DataSources { get; } = new Dictionary<string, DataSource>(StringComparer.OrdinalIgnoreCase);
-		public static List<Type> EventHandlers { get; } = new List<Type>();
-#else
 		internal static Dictionary<Type, RepositoryDefinition> RepositoryDefinitions { get; } = new Dictionary<Type, RepositoryDefinition>();
 		internal static Dictionary<Type, EntityDefinition> EntityDefinitions { get; } = new Dictionary<Type, EntityDefinition>();
 		internal static Dictionary<string, DataSource> DataSources { get; } = new Dictionary<string, DataSource>(StringComparer.OrdinalIgnoreCase);
 		internal static List<Type> EventHandlers { get; } = new List<Type>();
-#endif
 
 		/// <summary>
 		/// Gets the name of data-source that will be used as default storage of version contents
@@ -2003,7 +1995,7 @@ namespace net.vieapps.Components.Repository
 					return null;
 
 				// create trash content
-				RepositoryMediator.CreateTrashContent<T>(context, @object, userID);
+				RepositoryMediator.CreateTrashContent(context, @object, userID);
 
 				// delete
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
@@ -2093,7 +2085,7 @@ namespace net.vieapps.Components.Repository
 					return null;
 
 				// create trash content
-				await RepositoryMediator.CreateTrashContentAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
+				await RepositoryMediator.CreateTrashContentAsync(context, @object, userID, cancellationToken).ConfigureAwait(false);
 
 				// delete
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
@@ -3464,7 +3456,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Count (search by query)
+		#region Count (searching)
 		/// <summary>
 		/// Counts document of objects (using full-text search)
 		/// </summary>
@@ -4113,7 +4105,7 @@ namespace net.vieapps.Components.Repository
 
 				// count
 				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				return VersionContent.Count<VersionContent>(dataSource, "Versions", filter);
+				return VersionContent.Count(dataSource, "Versions", filter);
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -4195,7 +4187,7 @@ namespace net.vieapps.Components.Repository
 
 				// count
 				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				return await VersionContent.CountAsync<VersionContent>(dataSource, "Versions", filter, cancellationToken).ConfigureAwait(false);
+				return await VersionContent.CountAsync(dataSource, "Versions", filter, cancellationToken).ConfigureAwait(false);
 			}
 			catch (OperationCanceledException ex)
 			{
@@ -4326,7 +4318,7 @@ namespace net.vieapps.Components.Repository
 				// find
 				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
 				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
-				return VersionContent.Find<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber);
+				return VersionContent.Find(dataSource, "Versions", filter, sort, pageSize, pageNumber);
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -4682,7 +4674,7 @@ namespace net.vieapps.Components.Repository
 					return null;
 
 				// create new
-				var trash = TrashContent.Prepare(@object, (content) => content.CreatedID = userID ?? "");
+				var trash = TrashContent.Prepare(@object, content => content.CreatedID = userID ?? "");
 				try
 				{
 					TrashContent.Create(dataSource, "Trashs", trash);
@@ -4716,7 +4708,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in repository</param>
 		/// <param name="userID">The identity of user who created this trash content of the object (means who deletes the object)</param>
 		public static TrashContent CreateTrashContent<T>(RepositoryContext context, T @object, string userID = null) where T : class
-			=> RepositoryMediator.CreateTrashContent<T>(context, null, @object, userID);
+			=> RepositoryMediator.CreateTrashContent(context, null, @object, userID);
 
 		/// <summary>
 		/// Creates new trash content of object
@@ -4728,7 +4720,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext())
 			{
-				return RepositoryMediator.CreateTrashContent<T>(context, @object, userID);
+				return RepositoryMediator.CreateTrashContent(context, @object, userID);
 			}
 		}
 
@@ -4797,7 +4789,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who created this trash content of the object (means who deletes the object)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static Task<TrashContent> CreateTrashContentAsync<T>(RepositoryContext context, T @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> RepositoryMediator.CreateTrashContentAsync<T>(context, null, @object, userID, cancellationToken);
+			=> RepositoryMediator.CreateTrashContentAsync(context, null, @object, userID, cancellationToken);
 
 		/// <summary>
 		/// Creates new trash content of object
@@ -4810,7 +4802,7 @@ namespace net.vieapps.Components.Repository
 		{
 			using (var context = new RepositoryContext())
 			{
-				return await RepositoryMediator.CreateTrashContentAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
+				return await RepositoryMediator.CreateTrashContentAsync(context, @object, userID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		#endregion
