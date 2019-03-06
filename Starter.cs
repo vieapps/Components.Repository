@@ -169,7 +169,7 @@ namespace net.vieapps.Components.Repository
 					.Where(n => !n.Name.IsStartsWith("api-ms") && !n.Name.IsStartsWith("clr") && !n.Name.IsStartsWith("mscor") && !n.Name.IsStartsWith("sos") && !n.Name.IsStartsWith("lib")
 						&& !n.Name.IsStartsWith("System") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsStartsWith("Windows") && !n.Name.IsEquals("NETStandard")
 						&& !n.Name.IsStartsWith("Newtonsoft") && !n.Name.IsStartsWith("WampSharp") && !n.Name.IsStartsWith("Castle.") && !n.Name.IsStartsWith("StackExchange.")
-						&& !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("MySql") && !n.Name.IsStartsWith("Oracle") && !n.Name.IsStartsWith("Npgsql") && !n.Name.IsStartsWith("VIEApps.Components")
+						&& !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("MySql") && !n.Name.IsStartsWith("Npgsql") && !n.Name.IsStartsWith("VIEApps.Components")
 					)
 					.Select(n => Assembly.Load(n))
 					.ToList()
@@ -182,28 +182,32 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="datasourceNodes"></param>
 		/// <param name="tracker"></param>
-		public static void ConstructDataSources(List<XmlNode> datasourceNodes, Action<string, Exception> tracker = null) => RepositoryMediator.ConstructDataSources(datasourceNodes, tracker);
+		public static void ConstructDataSources(List<XmlNode> datasourceNodes, Action<string, Exception> tracker = null)
+			=> RepositoryMediator.ConstructDataSources(datasourceNodes, tracker);
 
 		/// <summary>
 		/// Constructs data-sources
 		/// </summary>
 		/// <param name="datasourceNodes"></param>
 		/// <param name="tracker"></param>
-		public static void ConstructDataSources(XmlNodeList datasourceNodes, Action<string, Exception> tracker = null) => RepositoryStarter.ConstructDataSources(datasourceNodes.ToList(), tracker);
+		public static void ConstructDataSources(XmlNodeList datasourceNodes, Action<string, Exception> tracker = null)
+			=> RepositoryStarter.ConstructDataSources(datasourceNodes.ToList(), tracker);
 
 		/// <summary>
 		/// Constructs SQL database factory providers
 		/// </summary>
 		/// <param name="dbProviderFactoryNodes"></param>
 		/// <param name="tracker"></param>
-		public static void ConstructDbProviderFactories(List<XmlNode> dbProviderFactoryNodes, Action<string, Exception> tracker = null) => DbProviderFactories.ConstructDbProviderFactories(dbProviderFactoryNodes, tracker);
+		public static void ConstructDbProviderFactories(List<XmlNode> dbProviderFactoryNodes, Action<string, Exception> tracker = null)
+			=> DbProviderFactories.ConstructDbProviderFactories(dbProviderFactoryNodes, tracker);
 
 		/// <summary>
 		/// Constructs SQL database factory providers
 		/// </summary>
 		/// <param name="dbProviderFactoryNodes"></param>
 		/// <param name="tracker"></param>
-		public static void ConstructDbProviderFactories(XmlNodeList dbProviderFactoryNodes, Action<string, Exception> tracker = null) => RepositoryStarter.ConstructDbProviderFactories(dbProviderFactoryNodes.ToList(), tracker);
+		public static void ConstructDbProviderFactories(XmlNodeList dbProviderFactoryNodes, Action<string, Exception> tracker = null)
+			=> RepositoryStarter.ConstructDbProviderFactories(dbProviderFactoryNodes.ToList(), tracker);
 
 		static async Task EnsureSqlSchemasAsync(Action<string, Exception> tracker = null)
 		{

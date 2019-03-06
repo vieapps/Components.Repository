@@ -3104,7 +3104,7 @@ namespace net.vieapps.Components.Repository
 			{
 				// working privileges
 				if (json["Privileges"] == null && (this as IBusinessEntity).WorkingPrivileges != null)
-					json.Add("Privileges", JObject.FromObject(this.OriginalPrivileges));
+					json["Privileges"] = JObject.FromObject(this.OriginalPrivileges);
 
 				// extended properties
 				if ((this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
@@ -3113,7 +3113,7 @@ namespace net.vieapps.Components.Repository
 						var type = property.Value?.GetType();
 
 						if (addTypeOfExtendedProperties && type != null)
-							json.Add(property.Key + "$Type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName());
+							json[property.Key + "$Type"] = type.IsPrimitiveType() ? type.ToString() : type.GetTypeName();
 
 						var value = type == null || type.IsPrimitiveType()
 							? property.Value

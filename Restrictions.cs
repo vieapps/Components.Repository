@@ -875,7 +875,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		internal List<string> GetAttributes() => new List<string> { this.Attribute }.Concat(this.ThenBy != null ? this.ThenBy.GetAttributes() : new List<string>()).ToList();
+		internal List<string> GetAttributes() => new[] { this.Attribute }.Concat(this.ThenBy != null ? this.ThenBy.GetAttributes() : new List<string>()).ToList();
 	}
 
 	// ------------------------------------------
