@@ -600,7 +600,7 @@ namespace net.vieapps.Components.Repository
 				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
-			var statement = $"INSERT INTO {definition.TableName} ({string.Join(", ", columns)}) VALUES ({string.Join(", ", values)})";
+			var statement = $"INSERT INTO {definition.TableName} ({columns.Join(", ")}) VALUES ({values.Join(", ")})";
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -630,7 +630,7 @@ namespace net.vieapps.Components.Repository
 				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
-			var statement = $"INSERT INTO {definition.RepositoryDefinition.ExtendedPropertiesTableName} ({string.Join(", ", columns)}) VALUES ({string.Join(", ", values)})";
+			var statement = $"INSERT INTO {definition.RepositoryDefinition.ExtendedPropertiesTableName} ({columns.Join(", ")}) VALUES ({values.Join(", ")})";
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -779,7 +779,7 @@ namespace net.vieapps.Components.Repository
 				.ToList();
 
 			var info = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
-			var statement = $"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE {info.Item1}";
+			var statement = $"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE {info.Item1}";
 			var parameters = info.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -792,7 +792,7 @@ namespace net.vieapps.Components.Repository
 				.ToList();
 
 			var info = Filters<T>.Equals("ID", id).GetSqlStatement();
-			var statement = $"SELECT {string.Join(", ", fields)} FROM {RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE {info.Item1}";
+			var statement = $"SELECT {fields.Join(", ")} FROM {RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE {info.Item1}";
 			var parameters = info.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -816,7 +816,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var @object = ObjectService.CreateInstance<T>();
-				var command = connection.CreateCommand(@object.PrepareGetOrigin<T>(id, dbProviderFactory));
+				var command = connection.CreateCommand(@object.PrepareGetOrigin(id, dbProviderFactory));
 				try
 				{
 					using (var dataReader = command.ExecuteReader())
@@ -831,7 +831,7 @@ namespace net.vieapps.Components.Repository
 					if (@object != null && @object.IsGotExtendedProperties())
 					{
 						var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
-						command = connection.CreateCommand(@object.PrepareGetExtent<T>(id, dbProviderFactory, extendedProperties));
+						command = connection.CreateCommand(@object.PrepareGetExtent(id, dbProviderFactory, extendedProperties));
 						using (var dataReader = command.ExecuteReader())
 						{
 							if (dataReader.Read())
@@ -879,7 +879,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var @object = ObjectService.CreateInstance<T>();
-				var command = connection.CreateCommand(@object.PrepareGetOrigin<T>(id, dbProviderFactory));
+				var command = connection.CreateCommand(@object.PrepareGetOrigin(id, dbProviderFactory));
 				try
 				{
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
@@ -894,7 +894,7 @@ namespace net.vieapps.Components.Repository
 					if (@object != null && @object.IsGotExtendedProperties())
 					{
 						var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
-						command = connection.CreateCommand(@object.PrepareGetExtent<T>(id, dbProviderFactory, extendedProperties));
+						command = connection.CreateCommand(@object.PrepareGetExtent(id, dbProviderFactory, extendedProperties));
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 						{
 							if (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -987,7 +987,7 @@ namespace net.vieapps.Components.Repository
 					.ToDictionary(attribute => attribute.Name);
 
 				var fields = standardProperties.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Value.Column) ? attribute.Value.Name : attribute.Value.Column + " AS " + attribute.Value.Name));
-				var command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
+				var command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 				using (var dataReader = command.ExecuteReader())
 				{
 					@object = dataReader.Read()
@@ -1002,7 +1002,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
 					fields = extendedProperties.Select(attribute => $"Origin.{attribute.Value.Column} AS {attribute.Value.Name}");
-					command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
+					command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 					using (var dataReader = command.ExecuteReader())
 					{
 						if (dataReader.Read())
@@ -1059,7 +1059,7 @@ namespace net.vieapps.Components.Repository
 					.ToDictionary(attribute => attribute.Name);
 
 				var fields = standardProperties.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Value.Column) ? attribute.Value.Name : attribute.Value.Column + " AS " + attribute.Value.Name));
-				var command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
+				var command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 				using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 				{
 					@object = await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)
@@ -1074,7 +1074,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
 					fields = extendedProperties.Select(attribute => $"Origin.{attribute.Value.Column} AS {attribute.Value.Name}");
-					command = connection.CreateCommand($"SELECT {string.Join(", ", fields)} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
+					command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 					{
 						if (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -1126,7 +1126,7 @@ namespace net.vieapps.Components.Repository
 				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
-			var statement = $"UPDATE {definition.TableName} SET {string.Join(", ", columns)} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}";
+			var statement = $"UPDATE {definition.TableName} SET {columns.Join(", ")} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}";
 			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey))));
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -1148,7 +1148,7 @@ namespace net.vieapps.Components.Repository
 				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
-			var statement = $"UPDATE {definition.RepositoryDefinition.ExtendedPropertiesTableName} SET {string.Join(", ", columns)} WHERE ID=@ID";
+			var statement = $"UPDATE {definition.RepositoryDefinition.ExtendedPropertiesTableName} SET {columns.Join(", ")} WHERE ID=@ID";
 			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)));
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -1273,7 +1273,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			var statement = columns.Count > 0
-				? $"UPDATE {definition.TableName} SET {string.Join(", ", columns)} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}"
+				? $"UPDATE {definition.TableName} SET {columns.Join(", ")} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}"
 				: null;
 			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey))));
 
@@ -1300,7 +1300,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			var statement = columns.Count > 0
-				? $"UPDATE {definition.RepositoryDefinition.ExtendedPropertiesTableName} SET {string.Join(", ", columns)} WHERE ID=@ID"
+				? $"UPDATE {definition.RepositoryDefinition.ExtendedPropertiesTableName} SET {columns.Join(", ")} WHERE ID=@ID"
 				: null;
 			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)));
 
@@ -1428,7 +1428,7 @@ namespace net.vieapps.Components.Repository
 			{
 				var command = connection.CreateCommand(
 					$"DELETE FROM {context.EntityDefinition.TableName} WHERE {context.EntityDefinition.PrimaryKey}=@{context.EntityDefinition.PrimaryKey}",
-					new List<DbParameter>()
+					new List<DbParameter>
 					{
 						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(context.EntityDefinition.PrimaryKey, @object.GetEntityID(context.EntityDefinition.PrimaryKey)))
 					}
@@ -1443,7 +1443,7 @@ namespace net.vieapps.Components.Repository
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
-							new List<DbParameter>()
+							new List<DbParameter>
 							{
 								dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", (@object as IBusinessEntity).ID))
 							}
@@ -1456,7 +1456,7 @@ namespace net.vieapps.Components.Repository
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1487,7 +1487,7 @@ namespace net.vieapps.Components.Repository
 			{
 				var command = connection.CreateCommand(
 					$"DELETE FROM {context.EntityDefinition.TableName} WHERE {context.EntityDefinition.PrimaryKey}=@{context.EntityDefinition.PrimaryKey}",
-					new List<DbParameter>()
+					new List<DbParameter>
 					{
 						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(context.EntityDefinition.PrimaryKey, @object.GetEntityID(context.EntityDefinition.PrimaryKey)))
 					}
@@ -1502,7 +1502,7 @@ namespace net.vieapps.Components.Repository
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
-							new List<DbParameter>()
+							new List<DbParameter>
 							{
 								dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", (@object as IBusinessEntity).ID))
 							}
@@ -1515,7 +1515,7 @@ namespace net.vieapps.Components.Repository
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform DELETE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1789,7 +1789,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var statementsInfo = Extensions.PrepareSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Count() > 0
@@ -1824,7 +1824,7 @@ namespace net.vieapps.Components.Repository
 			var orderby = statementsInfo.Item2;
 
 			// statements
-			var select = $"SELECT {(gotAssociateWithMultipleParents ? "DISTINCT " : "")}" + string.Join(", ", columns) + tables + where;
+			var select = $"SELECT {(gotAssociateWithMultipleParents ? "DISTINCT " : "")}" + columns.Join(", ") + tables + where;
 			var statement = "";
 
 			// pagination with ROW_NUMBER
@@ -1848,11 +1848,11 @@ namespace net.vieapps.Components.Repository
 				}
 
 				// set pagination statement
-				statement = $"SELECT {string.Join(", ", fields)},"
+				statement = $"SELECT {fields.Join(", ")},"
 					+ $" ROW_NUMBER() OVER(ORDER BY {(!string.IsNullOrWhiteSpace(orderby) ? orderby : definition.PrimaryKey + " ASC")}) AS __RowNumber"
 					+ $" FROM ({select}) AS __Records";
 
-				statement = $"SELECT {string.Join(", ", fields)} FROM ({statement}) AS __Results"
+				statement = $"SELECT {fields.Join(", ")} FROM ({statement}) AS __Results"
 					+ $" WHERE __Results.__RowNumber > {(pageNumber - 1) * pageSize} AND __Results.__RowNumber <= {pageNumber * pageSize}"
 					+ " ORDER BY __Results.__RowNumber";
 			}
@@ -1948,7 +1948,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				DataTable dataTable = null;
-				var statement = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
+				var statement = dbProviderFactory.PrepareSelect(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -2022,7 +2022,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				DataTable dataTable = null;
-				var statement = dbProviderFactory.PrepareSelect<T>(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
+				var statement = dbProviderFactory.PrepareSelect(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -2529,7 +2529,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// statement
-			var select = "SELECT " + string.Join(", ", columns) + tables + where;
+			var select = "SELECT " + columns.Join(", ") + tables + where;
 			var statement = "";
 
 			// pagination with ROW_NUMBER
@@ -2553,10 +2553,10 @@ namespace net.vieapps.Components.Repository
 				}
 
 				// set pagination statement
-				statement = $"SELECT {string.Join(", ", fields)}, ROW_NUMBER() OVER(ORDER BY {(!string.IsNullOrWhiteSpace(orderby) ? orderby : definition.PrimaryKey + " ASC")}) AS __RowNumber"
+				statement = $"SELECT {fields.Join(", ")}, ROW_NUMBER() OVER(ORDER BY {(!string.IsNullOrWhiteSpace(orderby) ? orderby : definition.PrimaryKey + " ASC")}) AS __RowNumber"
 					+ $" FROM ({select}) AS __Records";
 
-				statement = $"SELECT {string.Join(", ", fields)} FROM ({statement}) AS __Results"
+				statement = $"SELECT {fields.Join(", ")} FROM ({statement}) AS __Results"
 					+ $" WHERE __Results.__RowNumber > {(pageNumber - 1) * pageSize} AND __Results.__RowNumber <= {pageNumber * pageSize}"
 					+ " ORDER BY __Results.__RowNumber";
 			}
@@ -3223,11 +3223,11 @@ namespace net.vieapps.Components.Repository
 				switch (dbProviderFactory.GetName())
 				{
 					case "MicrosoftSQL":
-						sql = $"CREATE FULLTEXT INDEX ON [{context.EntityDefinition.TableName}] ({string.Join(", ", columns)}) KEY INDEX [PK_{context.EntityDefinition.TableName}]";
+						sql = $"CREATE FULLTEXT INDEX ON [{context.EntityDefinition.TableName}] ({columns.Join(", ")}) KEY INDEX [PK_{context.EntityDefinition.TableName}]";
 						break;
 
 					case "MySQL":
-						sql = $"CREATE FULLTEXT INDEX FT_{context.EntityDefinition.TableName} ON {context.EntityDefinition.TableName} ({string.Join(", ", columns)})";
+						sql = $"CREATE FULLTEXT INDEX FT_{context.EntityDefinition.TableName} ON {context.EntityDefinition.TableName} ({columns.Join(", ")})";
 						break;
 
 					case "PostgreSQL":

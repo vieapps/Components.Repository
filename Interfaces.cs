@@ -221,7 +221,7 @@ namespace net.vieapps.Components.Repository
 		/// Converts the expression to JSON
 		/// </summary>
 		/// <returns></returns>
-		JObject ToJson();
+		JToken ToJson();
 
 		/// <summary>
 		/// Gets the statement of SQL

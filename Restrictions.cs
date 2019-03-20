@@ -75,46 +75,83 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Working with JSON
+		/// <summary>
+		/// Parses the JSON
+		/// </summary>
+		/// <param name="json"></param>
 		public void Parse(JObject json)
 		{
 			if (json != null)
 			{
-				var attribute = json["Attribute"];
-				this.Attribute = attribute != null && attribute is JValue && (attribute as JValue).Value != null
-					? (attribute as JValue).Value.ToString()
-					: null;
-
-				var @operator = json["Operator"];
-				this.Operator = @operator != null && @operator is JValue && (@operator as JValue).Value != null
-					? (@operator as JValue).Value.ToString().ToEnum<CompareOperator>()
-					: CompareOperator.Equals;
-
-				var value = json["Value"];
-				this.Value = value != null && value is JValue
-					? (value as JValue).Value
-					: null;
+				this.Attribute = json.Get<string>("Attribute");
+				this.Operator = (json.Get<string>("Operator") ?? "Equals").ToEnum<CompareOperator>();
+				this.Value = (json["Value"] as JValue)?.Value;
 			}
 		}
 
-		public JObject ToJson()
-		{
-			return new JObject()
+		/// <summary>
+		/// Converts to JSON
+		/// </summary>
+		/// <returns></returns>
+		public JToken ToJson()
+			=> new JObject
 			{
 				{ "Attribute", this.Attribute },
 				{ "Operator", this.Operator.ToString() },
 				{ "Value", new JValue(this.Value) }
 			};
-		}
+
+		public string ToString(Newtonsoft.Json.Formatting formatting = Newtonsoft.Json.Formatting.None)
+			=> this.ToJson().ToString(formatting);
 
 		public override string ToString()
-		{
-#if DEBUG
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.Indented);
-#else
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-#endif
-		}
+			=> this.ToString(Newtonsoft.Json.Formatting.None);
 		#endregion
+
+		object GetValue(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
+		{
+			if (this.Value == null)
+				return this.Value;
+
+			if (standardProperties.TryGetValue(this.Attribute, out AttributeInfo standardAttribute))
+			{
+				if (standardAttribute.GetType().IsDateTimeType())
+				{
+					var value = this.Value.GetType().IsDateTimeType()
+						? (DateTime)this.Value
+						: DateTime.Parse(this.Value.ToString());
+					return standardAttribute.IsStoredAsString()
+						? value.ToDTString() as object
+						: value;
+				}
+				else
+					return standardAttribute.GetType().IsStringType()
+						? this.Value.ToString()
+						: this.Value;
+			}
+
+			if (extendedProperties.TryGetValue(this.Attribute, out ExtendedPropertyDefinition extendedAttribute))
+				switch (extendedAttribute.Mode)
+				{
+					case ExtendedPropertyMode.SmallText:
+					case ExtendedPropertyMode.MediumText:
+					case ExtendedPropertyMode.LargeText:
+					case ExtendedPropertyMode.Select:
+					case ExtendedPropertyMode.Lookup:
+					case ExtendedPropertyMode.User:
+						return this.Value.ToString();
+
+					case ExtendedPropertyMode.DateTime:
+						return this.Value.GetType().IsDateTimeType()
+							? ((DateTime)this.Value).ToDTString()
+							: DateTime.Parse(this.Value.ToString()).ToDTString();
+
+					default:
+						return this.Value;
+				}
+
+			return this.Value;
+		}
 
 		#region Working with SQL
 		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
@@ -155,7 +192,7 @@ namespace net.vieapps.Components.Repository
 				var name = this.Attribute + (!string.IsNullOrEmpty(surfix) ? surfix : "");
 
 				var @operator = "=";
-				var value = this.Value;
+				var value = this.GetValue(standardProperties, extendedProperties);
 
 				var gotName = true;
 				switch (this.Operator)
@@ -236,9 +273,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		public Tuple<string, Dictionary<string, object>> GetSqlStatement()
-		{
-			return this.GetSqlStatement(null);
-		}
+			=> this.GetSqlStatement(null);
 		#endregion
 
 		#region Working with No SQL
@@ -265,48 +300,50 @@ namespace net.vieapps.Components.Repository
 				});
 
 			else
+			{
+				var value = this.GetValue(standardProperties, extendedProperties);
 				switch (this.Operator)
 				{
 					case CompareOperator.Equals:
-						filter = Builders<T>.Filter.Eq(attribute, this.Value);
+						filter = Builders<T>.Filter.Eq(attribute, value);
 						break;
 
 					case CompareOperator.NotEquals:
-						filter = Builders<T>.Filter.Ne(attribute, this.Value);
+						filter = Builders<T>.Filter.Ne(attribute, value);
 						break;
 
 					case CompareOperator.LessThan:
-						filter = Builders<T>.Filter.Lt(attribute, this.Value);
+						filter = Builders<T>.Filter.Lt(attribute, value);
 						break;
 
 					case CompareOperator.LessThanOrEquals:
-						filter = Builders<T>.Filter.Lte(attribute, this.Value);
+						filter = Builders<T>.Filter.Lte(attribute, value);
 						break;
 
 					case CompareOperator.Greater:
-						filter = Builders<T>.Filter.Gt(attribute, this.Value);
+						filter = Builders<T>.Filter.Gt(attribute, value);
 						break;
 
 					case CompareOperator.GreaterOrEquals:
-						filter = Builders<T>.Filter.Gte(attribute, this.Value);
+						filter = Builders<T>.Filter.Gte(attribute, value);
 						break;
 
 					case CompareOperator.Contains:
-						filter = this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
+						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("/.*" + this.Value + ".*/"));
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("/.*" + value + ".*/"));
 						break;
 
 					case CompareOperator.StartsWith:
-						filter = this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
+						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("^" + this.Value));
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("^" + value));
 						break;
 
 					case CompareOperator.EndsWith:
-						filter = this.Value == null || !this.Value.GetType().IsStringType() || this.Value.Equals("")
+						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression(this.Value + "$"));
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression(value + "$"));
 						break;
 
 					case CompareOperator.IsNull:
@@ -328,6 +365,7 @@ namespace net.vieapps.Components.Repository
 					default:
 						break;
 				}
+			}
 
 			return filter;
 		}
@@ -337,9 +375,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		public FilterDefinition<T> GetNoSqlStatement()
-		{
-			return this.GetNoSqlStatement(null, null);
-		}
+			=> this.GetNoSqlStatement(null, null);
 		#endregion
 
 	}
@@ -401,47 +437,40 @@ namespace net.vieapps.Components.Repository
 		}
 
 		#region Working with JSON
+		/// <summary>
+		/// Parses the JSON
+		/// </summary>
+		/// <param name="json"></param>
 		public void Parse(JObject json)
 		{
 			if (json != null)
 			{
-				var @operator = json["Operator"];
-				this.Operator = @operator != null && @operator is JValue && (@operator as JValue).Value != null
-					? (@operator as JValue).Value.ToString().ToEnum<GroupOperator>()
-					: GroupOperator.And;
-
-				var childrenJson = json["Children"];
-				if (childrenJson != null && childrenJson is JArray)
-					foreach (JObject childJson in childrenJson as JArray)
-					{
-						var childOperator = (childJson["Operator"] as JValue).Value.ToString();
-						var childFilter = childOperator.IsEquals("And") || childOperator.IsEquals("Or")
-							? new FilterBys<T>() as IFilterBy<T>
-							: new FilterBy<T>() as IFilterBy<T>;
-						childFilter.Parse(childJson);
-
-						this.Children.Add(childFilter);
-					}
+				this.Operator = (json.Get<string>("Operator") ?? "And").ToEnum<GroupOperator>();
+				json.Get<JArray>("Children")?.ForEach(cjson =>
+				{
+					var @operator = cjson.Get<string>("Operator");
+					if (!string.IsNullOrWhiteSpace(@operator))
+						this.Add(@operator.IsEquals("And") || @operator.IsEquals("Or") ? new FilterBys<T>(cjson as JObject) as IFilterBy<T> : new FilterBy<T>(cjson as JObject) as IFilterBy<T>);
+				});
 			}
 		}
 
-		public JObject ToJson()
-		{
-			return new JObject()
+		/// <summary>
+		/// Converts to JSON
+		/// </summary>
+		/// <returns></returns>
+		public JToken ToJson()
+			=> new JObject
 			{
 				{ "Operator", this.Operator.ToString() },
-				{ "Children", this.Children.Select(c => c.ToJson()).ToList().ToJArray() }
+				{ "Children", this.Children.Select(c => c.ToJson()).ToJArray() }
 			};
-		}
+
+		public string ToString(Newtonsoft.Json.Formatting formatting = Newtonsoft.Json.Formatting.None)
+			=> this.ToJson().ToString(formatting);
 
 		public override string ToString()
-		{
-#if DEBUG
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.Indented);
-#else
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-#endif
-		}
+			=> this.ToString(Newtonsoft.Json.Formatting.None);
 		#endregion
 
 		#region Working with statement of SQL
@@ -479,9 +508,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		public Tuple<string, Dictionary<string, object>> GetSqlStatement()
-		{
-			return this.GetSqlStatement(null);
-		}
+			=> this.GetSqlStatement(null);
 		#endregion
 
 		#region Working with statement of No SQL
@@ -520,9 +547,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		public FilterDefinition<T> GetNoSqlStatement()
-		{
-			return this.GetNoSqlStatement(null, null);
-		}
+			=> this.GetNoSqlStatement(null, null);
 		#endregion
 
 	}
@@ -576,9 +601,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filters"></param>
 		/// <returns></returns>
 		public static FilterBys<T> Or(IEnumerable<IFilterBy<T>> filters)
-		{
-			return new FilterBys<T>(GroupOperator.Or, filters?.ToList());
-		}
+			=> new FilterBys<T>(GroupOperator.Or, filters?.ToList());
 		#endregion
 
 		#region Compare
@@ -589,9 +612,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> Equals(string attribute, object value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.Equals, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.Equals, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with NOT-EQUALS operator (!=)
@@ -600,9 +621,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> NotEquals(string attribute, object value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.NotEquals, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.NotEquals, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with LESS THAN operator (&lt;)
@@ -611,9 +630,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> LessThan(string attribute, object value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.LessThan, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.LessThan, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with LESS THAN or EQUALS operator (&lt;=)
@@ -622,9 +639,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> LessThanOrEquals(string attribute, object value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.LessThanOrEquals, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.LessThanOrEquals, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with GREATER operator (&gt;)
@@ -633,9 +648,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> Greater(string attribute, object value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.Greater, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.Greater, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with GREATER or EQUALS operator (&gt;=)
@@ -644,9 +657,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> GreaterOrEquals(string attribute, object value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.GreaterOrEquals, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.GreaterOrEquals, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with CONTAINS operator (means the value of attribute must contains the sub-string)
@@ -655,9 +666,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> Contains(string attribute, object value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.Contains, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.Contains, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with STARTS WITH operator (means the value of attribute must starts with the sub-string)
@@ -666,9 +675,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> StartsWith(string attribute, string value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.StartsWith, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.StartsWith, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with ENDS WITH operator (means the value of attribute must ends with the sub-string)
@@ -677,9 +684,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="value"></param>
 		/// <returns></returns>
 		public static FilterBy<T> EndsWith(string attribute, string value)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.EndsWith, value);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.EndsWith, value);
 
 		/// <summary>
 		/// Creates a filter-by expressions with IS NULL operator (IS NULL)
@@ -687,9 +692,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static FilterBy<T> IsNull(string attribute)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.IsNull, null);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.IsNull, null);
 
 		/// <summary>
 		/// Creates a filter-by expressions with IS NOT NULL operator (IS NOT NULL)
@@ -697,9 +700,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static FilterBy<T> IsNotNull(string attribute)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.IsNotNull, null);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.IsNotNull, null);
 
 		/// <summary>
 		/// Creates a filter-by expressions with IS EMPTY operator (=='')
@@ -707,9 +708,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static FilterBy<T> IsEmpty(string attribute)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.IsEmpty, null);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.IsEmpty, null);
 
 		/// <summary>
 		/// Creates a filter-by expressions with IS NOT EMPTY operator (!='')
@@ -717,9 +716,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static FilterBy<T> IsNotEmpty(string attribute)
-		{
-			return new FilterBy<T>(attribute, CompareOperator.IsNotEmpty, null);
-		}
+			=> new FilterBy<T>(attribute, CompareOperator.IsNotEmpty, null);
 		#endregion
 
 	}
@@ -778,19 +775,11 @@ namespace net.vieapps.Components.Repository
 		{
 			if (json != null)
 			{
-				var attribute = json["Attribute"];
-				this.Attribute = attribute != null && attribute is JValue && (attribute as JValue).Value != null
-					? (attribute as JValue).Value.ToString()
-					: null;
-
-				var mode = json["Mode"];
-				this.Mode = mode != null && mode is JValue && (mode as JValue).Value != null
-					? (mode as JValue).Value.ToString().ToEnum<SortMode>()
-					: SortMode.Ascending;
-
-				var thenby = json["ThenBy"];
-				this.ThenBy = thenby != null && thenby is JObject
-					? new SortBy<T>(thenby as JObject)
+				this.Attribute = json.Get<string>("Attribute");
+				this.Mode = (json.Get<string>("Mode") ?? "Ascending").ToEnum<SortMode>();
+				var thenSortBy = json.Get<JObject>("ThenBy");
+				this.ThenBy = thenSortBy != null
+					? new SortBy<T>(thenSortBy as JObject)
 					: null;
 			}
 		}
@@ -800,23 +789,18 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		public JObject ToJson()
-		{
-			return new JObject()
+			=> new JObject
 			{
 				{ "Attribute", this.Attribute },
 				{ "Mode", this.Mode.ToString() },
 				{ "ThenBy", this.ThenBy?.ToJson() }
 			};
-		}
+
+		public string ToString(Newtonsoft.Json.Formatting formatting = Newtonsoft.Json.Formatting.None)
+			=> this.ToJson().ToString(formatting);
 
 		public override string ToString()
-		{
-#if DEBUG
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.Indented);
-#else
-			return this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-#endif
-		}
+			=> this.ToString(Newtonsoft.Json.Formatting.None);
 		#endregion
 
 		#region Working with statement of SQL
@@ -875,7 +859,8 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		internal List<string> GetAttributes() => new[] { this.Attribute }.Concat(this.ThenBy != null ? this.ThenBy.GetAttributes() : new List<string>()).ToList();
+		internal List<string> GetAttributes()
+			=> new[] { this.Attribute }.Concat(this.ThenBy?.GetAttributes() ?? new List<string>()).ToList();
 	}
 
 	// ------------------------------------------
@@ -888,12 +873,14 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Creates an ascending sort
 		/// </summary>
-		public static SortBy<T> Ascending(string attribute) => new SortBy<T>(attribute, SortMode.Ascending);
+		public static SortBy<T> Ascending(string attribute)
+			=> new SortBy<T>(attribute, SortMode.Ascending);
 
 		/// <summary>
 		/// Creates a descending sort
 		/// </summary>
-		public static SortBy<T> Descending(string attribute) => new SortBy<T>(attribute, SortMode.Descending);
+		public static SortBy<T> Descending(string attribute)
+			=> new SortBy<T>(attribute, SortMode.Descending);
 	}
 
 	// ------------------------------------------

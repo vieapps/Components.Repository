@@ -840,7 +840,8 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
 	public sealed class ExtendedPropertyDefinition
 	{
-		public ExtendedPropertyDefinition(JObject json = null) => this.CopyFrom(json ?? new JObject());
+		public ExtendedPropertyDefinition(JObject json = null)
+			=> this.CopyFrom(json ?? new JObject());
 
 		#region Properties
 		/// <summary>
