@@ -1410,7 +1410,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static List<BsonDocument> Select<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
-			=> collection.CreateSelectFluent(session ?? collection.StartSession(), attributes, filter, sort, pageSize, pageNumber, options).ToList();
+		{
+			var selectFluent = collection.CreateSelectFluent(session ?? collection.StartSession(), attributes, filter, sort, pageSize, pageNumber, options);
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Select [{typeof(T).GetTypeName()}]\r\n{selectFluent}");
+			return selectFluent.ToList();
+		}
 
 		/// <summary>
 		/// Finds all the matched documents and return the collection of <see cref="BsonDocument">BsonDocument</see> objects with limited attributes
@@ -1463,7 +1468,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static async Task<List<BsonDocument>> SelectAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> await collection.CreateSelectFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), attributes, filter, sort, pageSize, pageNumber, options).ToListAsync(cancellationToken).ConfigureAwait(false);
+		{
+			var selectFluent = collection.CreateSelectFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), attributes, filter, sort, pageSize, pageNumber, options);
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Select [{typeof(T).GetTypeName()}]\r\n{selectFluent}");
+			return await selectFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+		}
 
 		/// <summary>
 		/// Finds all the matched documents and return the collection of <see cref="BsonDocument">BsonDocument</see> objects with limited attributes
@@ -1623,7 +1633,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static List<T> Find<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
-			=> collection.CreateFindFluent(session ?? collection.StartSession(), filter, sort, pageSize, pageNumber, options).ToList();
+		{
+			var findFluent = collection.CreateFindFluent(session ?? collection.StartSession(), filter, sort, pageSize, pageNumber, options);
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Find [{typeof(T).GetTypeName()}]\r\n{findFluent}");
+			return findFluent.ToList();
+		}
 
 		/// <summary>
 		/// Finds all the matched documents
@@ -1673,7 +1688,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static async Task<List<T>> FindAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> await collection.CreateFindFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), filter, sort, pageSize, pageNumber, options).ToListAsync(cancellationToken).ConfigureAwait(false);
+		{
+			var findFluent = collection.CreateFindFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), filter, sort, pageSize, pageNumber, options);
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Find [{typeof(T).GetTypeName()}]\r\n{findFluent}");
+			return await findFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+		}
 
 		/// <summary>
 		/// Finds all the matched documents
@@ -1769,6 +1789,8 @@ namespace net.vieapps.Components.Repository
 		{
 			var info = Extensions.PrepareNoSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents);
 			var collection = context.GetCollection<T>(dataSource);
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{(info.Item1 ?? Builders<T>.Filter.Empty).Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
 			return collection.CountDocuments(context.NoSqlSession ?? collection.StartSession(), info.Item1 ?? Builders<T>.Filter.Empty, options);
 		}
 
@@ -1788,6 +1810,8 @@ namespace net.vieapps.Components.Repository
 		{
 			var info = Extensions.PrepareNoSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents);
 			var collection = context.GetCollection<T>(dataSource);
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{(info.Item1 ?? Builders<T>.Filter.Empty).Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
 			return await collection.CountDocumentsAsync(context.NoSqlSession ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), info.Item1 ?? Builders<T>.Filter.Empty, options, cancellationToken).ConfigureAwait(false);
 		}
 		#endregion
@@ -1807,7 +1831,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <returns></returns>
 		public static List<T> Search<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
-			=> collection.CreateSearchFluent(session ?? collection.StartSession(), scoreProperty, query, filter, pageSize, pageNumber, options).ToList();
+		{
+			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), scoreProperty, query, filter, pageSize, pageNumber, options);
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Search [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
+			return searchFluent.ToList();
+		}
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1868,7 +1897,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
 		public static async Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> await collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber, options).ToListAsync(cancellationToken).ConfigureAwait(false);
+		{
+			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber, options);
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Search [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
+			return await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+		}
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1949,7 +1983,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber"></param>
 		/// <returns></returns>
 		public static List<string> SearchIdentities<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber) where T : class
-			=> collection.CreateSearchFluent(session ?? collection.StartSession(), scoreProperty, query, filter, pageSize, pageNumber).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty)).ToList().Select(doc => doc["_id"].AsString).ToList();
+		{
+			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), scoreProperty, query, filter, pageSize, pageNumber).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
+			return searchFluent.ToList().Select(doc => doc["_id"].AsString).ToList();
+		}
 
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
@@ -1994,7 +2033,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
 		public static async Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> (await collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty)).ToListAsync(cancellationToken).ConfigureAwait(false)).Select(doc => doc["_id"].AsString).ToList();
+		{
+			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
+			return (await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false)).Select(doc => doc["_id"].AsString).ToList();
+		}
 
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
@@ -2040,7 +2084,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static long Count<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, CountOptions options = null) where T : class
-			=> collection.CountDocuments(session ?? collection.StartSession(), filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>(), options);
+		{
+			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>();
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{filterDefinition.Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
+			return collection.CountDocuments(session ?? collection.StartSession(), filterDefinition, options);
+		}
 
 		/// <summary>
 		/// Counts the number of all the matched documents
@@ -2080,7 +2129,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static async Task<long> CountAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> await collection.CountDocumentsAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>(), options, cancellationToken).ConfigureAwait(false);
+		{
+			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>();
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{filterDefinition.Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
+			return await collection.CountDocumentsAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), filterDefinition, options, cancellationToken).ConfigureAwait(false);
+		}
 
 		/// <summary>
 		/// Counts the number of all the matched documents

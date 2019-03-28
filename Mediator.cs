@@ -2796,7 +2796,7 @@ namespace net.vieapps.Components.Repository
 
 							// update results & cache
 							missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-							if  (context.EntityDefinition.Cache != null)
+							if (context.EntityDefinition.Cache != null)
 							{
 								await context.EntityDefinition.Cache.SetAsync(missing, cancellationToken).ConfigureAwait(false);
 								if (RepositoryMediator.IsDebugEnabled)
@@ -6312,6 +6312,9 @@ namespace net.vieapps.Components.Repository
 				if (hidden)
 					control["Hidden"] = hidden;
 
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"Control of a class-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
+
 				return control;
 			}
 
@@ -6319,13 +6322,15 @@ namespace net.vieapps.Components.Repository
 				? formControlInfo.ControlType
 				: attribute.IsCLOB != null && attribute.IsCLOB.Value
 					? "TextEditor"
-					: attribute.Type.IsPrimitiveType()
-						? attribute.Type == typeof(DateTime) || attribute.Type == typeof(DateTimeOffset)
-							? "DatePicker"
-							: attribute.Type == typeof(bool)
-								? "YesNo"
-								: "TextBox"
-						: "";
+					: attribute.Type.IsEnum || attribute.IsEnumString()
+						? "Select"
+						: attribute.Type.IsPrimitiveType()
+							? attribute.Type == typeof(DateTime) || attribute.Type == typeof(DateTimeOffset)
+								? "DatePicker"
+								: attribute.Type == typeof(bool)
+									? "YesNo"
+									: "TextBox"
+							: "";
 
 			var options = new JObject
 			{
@@ -6336,14 +6341,18 @@ namespace net.vieapps.Components.Repository
 				? formControlInfo.LookupType
 				: !string.IsNullOrWhiteSpace(formControlInfo?.DataType)
 					? formControlInfo.DataType
-					: RepositoryMediator.FormControlDataTypes[attribute.Type];
+					: attribute.Type.IsEnum || attribute.IsEnumString()
+						? "text"
+						: RepositoryMediator.FormControlDataTypes.TryGetValue(attribute.Type, out string predefinedDataType)
+							? predefinedDataType
+							: null;
 			if (!string.IsNullOrWhiteSpace(dataType))
 				options["Type"] = dataType;
 
 			if (formControlInfo?.PlaceHolder != null)
-				options["PlaceHolder"] = formControlInfo.PlaceHolder;
+				options["PlaceHolder"] = formControlInfo.PlaceHolder.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
 			if (formControlInfo?.Description != null)
-				options["Description"] = formControlInfo.Description;
+				options["Description"] = formControlInfo.Description.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
 			if (formControlInfo?.ValidatePattern != null)
 				options["ValidatePattern"] = formControlInfo.ValidatePattern;
 			if (formControlInfo != null && formControlInfo.Disabled)
@@ -6355,37 +6364,47 @@ namespace net.vieapps.Components.Repository
 
 			var minValue = formControlInfo?.MinValue ?? attribute?.MinValue;
 			if (minValue != null)
-			{
-				if (attribute.Type.IsIntegralType())
-					options["MinValue"] = minValue.CastAs<int>();
-				else if (attribute.Type.IsFloatingPointType())
-					options["MinValue"] = minValue.CastAs<double>();
-				else
-					options["MinValue"] = minValue;
-			}
+				try
+				{
+					if (attribute.Type.IsIntegralType())
+						options["MinValue"] = minValue.CastAs<int>();
+					else if (attribute.Type.IsFloatingPointType())
+						options["MinValue"] = minValue.CastAs<double>();
+					else
+						options["MinValue"] = minValue;
+				}
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs($"Error occurred while prepare options [{attribute.Name}] => {ex.Message}", ex);
+				}
 
 			var maxValue = formControlInfo?.MaxValue ?? attribute?.MaxValue;
 			if (maxValue != null)
-			{
-				if (attribute.Type.IsIntegralType())
-					options["MaxValue"] = maxValue.CastAs<int>();
-				else if (attribute.Type.IsFloatingPointType())
-					options["MaxValue"] = maxValue.CastAs<double>();
-				else
-					options["MaxValue"] = maxValue;
-			}
+				try
+				{
+					if (attribute.Type.IsIntegralType())
+						options["MaxValue"] = maxValue.CastAs<int>();
+					else if (attribute.Type.IsFloatingPointType())
+						options["MaxValue"] = maxValue.CastAs<double>();
+					else
+						options["MaxValue"] = maxValue;
+				}
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs($"Error occurred while prepare options [{attribute.Name}] => {ex.Message}", ex);
+				}
 
 			var minLength = formControlInfo != null && formControlInfo.MinLength > 0
 				? formControlInfo.MinLength.ToString()
 				: attribute.MinLength?.ToString();
-			if (minLength != null)
-				options["MinLength"] = minLength.CastAs<int>();
+			if (minLength != null && Int32.TryParse(minLength, out int minLen))
+				options["MinLength"] = minLen;
 
 			var maxLength = formControlInfo != null && formControlInfo.MaxLength > 0
 				? formControlInfo.MaxLength.ToString()
 				: attribute.MaxLength.ToString();
-			if (maxLength != null)
-				options["MaxLength"] = maxLength.CastAs<int>();
+			if (maxLength != null && Int32.TryParse(maxLength, out int maxLen))
+				options["MaxLength"] = maxLen;
 
 			var datepickerOptions = "DatePicker".IsEquals(controlType) && formControlInfo != null && formControlInfo.DatePickerWithTimes
 				? new JObject
@@ -6397,10 +6416,12 @@ namespace net.vieapps.Components.Repository
 				options["DatePickerOptions"] = datepickerOptions;
 
 			JObject selectOptions = null;
-			if ("Select".IsEquals(controlType) || attribute.IsEnumString())
+			if ("Select".IsEquals(controlType) || attribute.Type.IsEnum || attribute.IsEnumString())
 			{
 				selectOptions = new JObject
 				{
+					{ "Values", formControlInfo?.SelectValues ?? (attribute.Type.IsEnum || attribute.IsEnumString() ? Enum.GetValues(attribute.Type).ToEnumerable().Select(o => o.ToString()).Join(",") : null) },
+					{ "Multiple", formControlInfo != null && formControlInfo.Multiple },
 					{ "SelectAsBoxes", formControlInfo != null && formControlInfo.SelectAsBoxes }
 				};
 				if (formControlInfo?.SelectValuesRemoteURI != null)
@@ -6451,6 +6472,9 @@ namespace net.vieapps.Components.Repository
 					control["Hidden"] = hidden;
 			}
 
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs($"Control of a primitive-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
+
 			return control;
 		}
 
@@ -6460,7 +6484,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <param name="index"></param>
 		/// <returns></returns>
-		public static JToken GenerateFormControl(this ObjectService.AttributeInfo attribute, int index = 0) => new AttributeInfo(attribute).GenerateFormControl(index);
+		public static JToken GenerateFormControl(this ObjectService.AttributeInfo attribute, int index = 0)
+			=> new AttributeInfo(attribute).GenerateFormControl(index);
 
 		/// <summary>
 		/// Generates the form controls of this type
@@ -6470,7 +6495,11 @@ namespace net.vieapps.Components.Repository
 		public static JToken GenerateFormControls<T>() where T : class
 		{
 			var controls = new JArray();
-			RepositoryMediator.GetFormAttributes(typeof(T)).ForEach((attribute, index) =>
+			var attributes = RepositoryMediator.GetFormAttributes(typeof(T));
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs($"Start to generate form controls ({typeof(T).GetTypeName(true)}) => {attributes.Select(attribute => attribute.Name).Join(", ")}]");
+
+			attributes.ForEach((attribute, index) =>
 			{
 				try
 				{
@@ -6480,7 +6509,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while generating form control [{attribute.Name}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while generating form control [{attribute.Name}] => {ex.Message}", ex);
 				}
 			});
 			return controls;
@@ -6838,24 +6867,29 @@ namespace net.vieapps.Components.Repository
 		public static ILogger Logger { get; set; } = Utility.Logger.CreateLogger<RepositoryBase>();
 
 		/// <summary>
+		/// Gets the state that determines log level is trace or not
+		/// </summary>
+		public static bool IsTraceEnabled
+			=> RepositoryMediator.Logger != null && RepositoryMediator.Logger.IsEnabled(LogLevel.Trace);
+
+		/// <summary>
 		/// Gets the state that determines log level is debug or not
 		/// </summary>
-		public static bool IsDebugEnabled => RepositoryMediator.Logger != null && RepositoryMediator.Logger.IsEnabled(LogLevel.Debug);
+		public static bool IsDebugEnabled
+			=> RepositoryMediator.Logger != null && RepositoryMediator.Logger.IsEnabled(LogLevel.Debug);
 
 		internal static void WriteLogs(IEnumerable<string> logs, Exception ex = null, LogLevel logLevel = LogLevel.Debug)
 		{
-			if (RepositoryMediator.Logger != null)
-			{
-				if (logs != null)
-					logs.Where(log => !string.IsNullOrWhiteSpace(log)).ForEach(log => RepositoryMediator.Logger.Log(logLevel, log));
-				if (ex != null)
-					RepositoryMediator.Logger.LogError(ex.Message, ex);
-			}
+			logs?.Where(log => !string.IsNullOrWhiteSpace(log))?.ForEach(log => RepositoryMediator.Logger?.Log(logLevel, log));
+			if (ex != null)
+				RepositoryMediator.Logger?.LogError(ex.Message, ex);
 		}
 
-		internal static void WriteLogs(string log, Exception ex = null, LogLevel logLevel = LogLevel.Debug) => RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new[] { log }, ex, logLevel);
+		internal static void WriteLogs(string log, Exception ex = null, LogLevel logLevel = LogLevel.Debug)
+			=> RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new[] { log }, ex, logLevel);
 
-		internal static void WriteLogs(Exception ex, LogLevel logLevel = LogLevel.Debug) => RepositoryMediator.WriteLogs(new List<string>(), ex, logLevel);
+		internal static void WriteLogs(Exception ex, LogLevel logLevel = LogLevel.Debug)
+			=> RepositoryMediator.WriteLogs(new List<string>(), ex, logLevel);
 		#endregion
 
 	}

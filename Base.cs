@@ -37,7 +37,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the object identity (primary-key)
 		/// </summary>
-		[BsonId(IdGenerator = typeof(IdentityGenerator)), PrimaryKey(MaxLength = 32)]
+		[BsonId(IdGenerator = typeof(IdentityGenerator)), PrimaryKey(MaxLength = 32), FormControl(Hidden = true)]
 		public virtual string ID { get; set; } = "";
 
 		/// <summary>
@@ -2966,12 +2966,14 @@ namespace net.vieapps.Components.Repository
 		/// Generates the form controls of this type
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
-		public static JToken GenerateFormControls<TEntity>() where TEntity : class => RepositoryMediator.GenerateFormControls<TEntity>();
+		public static JToken GenerateFormControls<TEntity>() where TEntity : class
+			=> RepositoryMediator.GenerateFormControls<TEntity>();
 
 		/// <summary>
 		/// Generates the form controls of this type
 		/// </summary>
-		protected virtual JToken GenerateFormControls() => RepositoryMediator.GenerateFormControls<T>();
+		protected virtual JToken GenerateFormControls()
+			=> RepositoryMediator.GenerateFormControls<T>();
 		#endregion
 
 		#region [Public] Get/Set properties
@@ -3012,11 +3014,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="name">The name of the property</param>
 		/// <returns></returns>
 		public override object GetProperty(string name)
-		{
-			return this.TryGetProperty(name, out object value)
+			=> this.TryGetProperty(name, out object value)
 				? value
 				: null;
-		}
 
 		/// <summary>
 		/// Gets the value of a specified property
@@ -3222,19 +3222,19 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Excluded = true)]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
 		public virtual string SystemID { get; set; } = null;
 
 		/// <summary>
 		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Excluded = true)]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
 		public virtual string RepositoryID { get; set; } = null;
 
 		/// <summary>
 		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Excluded = true)]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
 		public virtual string EntityID { get; set; } = null;
 
 		/// <summary>
@@ -3265,7 +3265,8 @@ namespace net.vieapps.Components.Repository
 		/// Gets the actual privileges (mean the combined privileges)
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
-		public virtual Privileges WorkingPrivileges => this.Privileges ?? (this.Privileges = this.OriginalPrivileges.Combine(this.Parent?.WorkingPrivileges));
+		public virtual Privileges WorkingPrivileges
+			=> this.Privileges ?? (this.Privileges = this.OriginalPrivileges.Combine(this.Parent?.WorkingPrivileges));
 
 		long _totalVersions = -1;
 

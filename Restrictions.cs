@@ -347,11 +347,26 @@ namespace net.vieapps.Components.Repository
 						break;
 
 					case CompareOperator.IsNull:
-						filter = Builders<T>.Filter.Eq(attribute, BsonNull.Value);
-						break;
-
 					case CompareOperator.IsNotNull:
-						filter = Builders<T>.Filter.Ne(attribute, BsonNull.Value);
+						var type = standardProperties.TryGetValue(this.Attribute, out AttributeInfo standardAttribute)
+							? standardAttribute.Type
+							: extendedProperties.TryGetValue(this.Attribute, out ExtendedPropertyDefinition extendedAttribute)
+								? extendedAttribute.Type
+								: null;
+						if (this.Operator == CompareOperator.IsNull)
+						{
+							if (type != null && type.IsStringType())
+								filter = Builders<T>.Filter.Eq<string>(attribute, null);
+							else
+								filter = Builders<T>.Filter.Eq(attribute, BsonNull.Value);
+						}
+						else
+						{
+							if (type != null && type.IsStringType())
+								filter = Builders<T>.Filter.Ne<string>(attribute, null);
+							else
+								filter = Builders<T>.Filter.Ne(attribute, BsonNull.Value);
+						}
 						break;
 
 					case CompareOperator.IsEmpty:
