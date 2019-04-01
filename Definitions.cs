@@ -702,6 +702,22 @@ namespace net.vieapps.Components.Repository
 
 			// update into collection
 			RepositoryMediator.EntityDefinitions.Add(type, definition);
+			if (RepositoryMediator.IsTraceEnabled)
+			{
+				var info = definition.Attributes.ToJArray(attribute => new JObject
+				{
+					{ "Name", attribute.Name },
+					{ "Type", attribute.Type.GetTypeName(true) },
+					{ "MinLength", attribute.MinLength },
+					{ "MaxLength", attribute.MaxLength },
+					{ "MinValue", attribute.MinValue },
+					{ "MaxValue", attribute.MaxValue },
+					{ "NotNull", attribute.NotNull },
+					{ "NotEmpty", attribute.NotEmpty },
+					{ "CLOB", attribute.IsCLOB }
+				});
+				RepositoryMediator.WriteLogs($"The entity definition was registered\r\n-Type: {definition.Type.GetTypeName()}\r\n-Attributes:{info}");
+			}
 		}
 		#endregion
 

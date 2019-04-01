@@ -3736,9 +3736,9 @@ namespace net.vieapps.Components.Repository
 				var version = VersionContent.Prepare(@object);
 				var filter = !string.IsNullOrWhiteSpace(version.ServiceName) || !string.IsNullOrWhiteSpace(version.EntityID)
 					? Filters<VersionContent>.And(
-						Filters<VersionContent>.Equals("ObjectID", version.ObjectID),
-						!string.IsNullOrWhiteSpace(version.EntityID) ? Filters<VersionContent>.Equals("EntityID", version.EntityID) : Filters<VersionContent>.Equals("ServiceName", version.ServiceName)
-					) as IFilterBy<VersionContent>
+							Filters<VersionContent>.Equals("ObjectID", version.ObjectID),
+							!string.IsNullOrWhiteSpace(version.EntityID) ? Filters<VersionContent>.Equals("EntityID", version.EntityID) : Filters<VersionContent>.Equals("ServiceName", version.ServiceName)
+						) as IFilterBy<VersionContent>
 					: Filters<VersionContent>.Equals("ObjectID", version.ObjectID) as IFilterBy<VersionContent>;
 				var latest = await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", filter, Sorts<VersionContent>.Descending("VersionNumber"), 1, 1, cancellationToken).ConfigureAwait(false);
 				version.VersionNumber = latest != null && latest.Count > 0 ? latest[0].VersionNumber + 1 : 1;

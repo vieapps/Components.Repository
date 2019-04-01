@@ -113,7 +113,7 @@ namespace net.vieapps.Components.Repository
 			if (this.Value == null)
 				return this.Value;
 
-			if (standardProperties.TryGetValue(this.Attribute, out AttributeInfo standardAttribute))
+			if (standardProperties != null && standardProperties.TryGetValue(this.Attribute, out AttributeInfo standardAttribute) && standardAttribute != null)
 			{
 				if (standardAttribute.GetType().IsDateTimeType())
 				{
@@ -130,7 +130,7 @@ namespace net.vieapps.Components.Repository
 						: this.Value;
 			}
 
-			if (extendedProperties.TryGetValue(this.Attribute, out ExtendedPropertyDefinition extendedAttribute))
+			if (extendedProperties != null && extendedProperties.TryGetValue(this.Attribute, out ExtendedPropertyDefinition extendedAttribute) && extendedAttribute != null)
 				switch (extendedAttribute.Mode)
 				{
 					case ExtendedPropertyMode.SmallText:
