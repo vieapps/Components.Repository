@@ -110,47 +110,55 @@ namespace net.vieapps.Components.Repository
 
 		object GetValue(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
 		{
-			if (this.Value == null)
-				return this.Value;
-
-			if (standardProperties != null && standardProperties.TryGetValue(this.Attribute, out AttributeInfo standardAttribute) && standardAttribute != null)
+			try
 			{
-				if (standardAttribute.GetType().IsDateTimeType())
+				if (this.Attribute == null || this.Value == null)
+					return this.Value;
+
+				else if (standardProperties != null && standardProperties.TryGetValue(this.Attribute, out AttributeInfo standardProperty) && standardProperty != null)
 				{
-					var value = this.Value.GetType().IsDateTimeType()
-						? (DateTime)this.Value
-						: DateTime.Parse(this.Value.ToString());
-					return standardAttribute.IsStoredAsString()
-						? value.ToDTString() as object
-						: value;
+					if (standardProperty.GetType().IsDateTimeType())
+					{
+						var value = this.Value.GetType().IsDateTimeType()
+							? (DateTime)this.Value
+							: DateTime.Parse(this.Value.ToString());
+						return standardProperty.IsStoredAsString()
+							? value.ToDTString() as object
+							: value;
+					}
+					else
+						return standardProperty.GetType().IsStringType()
+							? this.Value.ToString()
+							: this.Value;
 				}
+
+				else if (extendedProperties != null && extendedProperties.TryGetValue(this.Attribute, out ExtendedPropertyDefinition extendedProperty) && extendedProperty != null)
+					switch (extendedProperty.Mode)
+					{
+						case ExtendedPropertyMode.SmallText:
+						case ExtendedPropertyMode.MediumText:
+						case ExtendedPropertyMode.LargeText:
+						case ExtendedPropertyMode.Select:
+						case ExtendedPropertyMode.Lookup:
+						case ExtendedPropertyMode.User:
+							return this.Value.ToString();
+
+						case ExtendedPropertyMode.DateTime:
+							return this.Value.GetType().IsDateTimeType()
+								? ((DateTime)this.Value).ToDTString()
+								: DateTime.Parse(this.Value.ToString()).ToDTString();
+
+						default:
+							return this.Value;
+					}
+
 				else
-					return standardAttribute.GetType().IsStringType()
-						? this.Value.ToString()
-						: this.Value;
+					return this.Value;
 			}
-
-			if (extendedProperties != null && extendedProperties.TryGetValue(this.Attribute, out ExtendedPropertyDefinition extendedAttribute) && extendedAttribute != null)
-				switch (extendedAttribute.Mode)
-				{
-					case ExtendedPropertyMode.SmallText:
-					case ExtendedPropertyMode.MediumText:
-					case ExtendedPropertyMode.LargeText:
-					case ExtendedPropertyMode.Select:
-					case ExtendedPropertyMode.Lookup:
-					case ExtendedPropertyMode.User:
-						return this.Value.ToString();
-
-					case ExtendedPropertyMode.DateTime:
-						return this.Value.GetType().IsDateTimeType()
-							? ((DateTime)this.Value).ToDTString()
-							: DateTime.Parse(this.Value.ToString()).ToDTString();
-
-					default:
-						return this.Value;
-				}
-
-			return this.Value;
+			catch
+			{
+				return this.Value;
+			}
 		}
 
 		#region Working with SQL
@@ -331,19 +339,19 @@ namespace net.vieapps.Components.Repository
 					case CompareOperator.Contains:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("/.*" + value + ".*/"));
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression($"/.*{value}.*/"));
 						break;
 
 					case CompareOperator.StartsWith:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression("^" + value));
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression($"^{value}"));
 						break;
 
 					case CompareOperator.EndsWith:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression(value + "$"));
+							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression($"{value}$"));
 						break;
 
 					case CompareOperator.IsNull:

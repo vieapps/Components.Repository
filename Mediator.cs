@@ -33,8 +33,11 @@ namespace net.vieapps.Components.Repository
 	public static class RepositoryMediator
 	{
 		internal static Dictionary<Type, RepositoryDefinition> RepositoryDefinitions { get; } = new Dictionary<Type, RepositoryDefinition>();
+
 		internal static Dictionary<Type, EntityDefinition> EntityDefinitions { get; } = new Dictionary<Type, EntityDefinition>();
+
 		internal static Dictionary<string, DataSource> DataSources { get; } = new Dictionary<string, DataSource>(StringComparer.OrdinalIgnoreCase);
+
 		internal static List<Type> EventHandlers { get; } = new List<Type>();
 
 		/// <summary>
