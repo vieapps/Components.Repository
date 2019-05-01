@@ -57,7 +57,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="type"></param>
 		/// <returns></returns>
 		public static RepositoryDefinition GetRepositoryDefinition(Type type)
-			=> RepositoryMediator.RepositoryDefinitions.TryGetValue(type, out RepositoryDefinition definition)
+			=> RepositoryMediator.RepositoryDefinitions.TryGetValue(type, out var definition)
 				? definition
 				: null;
 
@@ -75,7 +75,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="type"></param>
 		/// <returns></returns>
 		public static EntityDefinition GetEntityDefinition(Type type)
-			=> RepositoryMediator.EntityDefinitions.TryGetValue(type, out EntityDefinition definition)
+			=> RepositoryMediator.EntityDefinitions.TryGetValue(type, out var definition)
 				? definition
 				: null;
 
@@ -122,7 +122,7 @@ namespace net.vieapps.Components.Repository
 				.Select(kvp => kvp.Value.RuntimeRepositories)
 				.FirstOrDefault();
 
-			return repositories != null && repositories.TryGetValue(repositoryID, out IRepository repository)
+			return repositories != null && repositories.TryGetValue(repositoryID, out var repository)
 				? repository
 				: null;
 		}
@@ -142,7 +142,7 @@ namespace net.vieapps.Components.Repository
 				.Select(info => info.Value.RuntimeEntities)
 				.FirstOrDefault();
 
-			return entities != null && entities.TryGetValue(entityID, out IRepositoryEntity entity)
+			return entities != null && entities.TryGetValue(entityID, out var entity)
 				? entity
 				: null;
 		}
@@ -168,7 +168,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="name">The string that presents name of a data source</param>
 		/// <returns></returns>
 		public static DataSource GetDataSource(string name)
-			=> !string.IsNullOrWhiteSpace(name) && RepositoryMediator.DataSources.TryGetValue(name, out DataSource dataSource)
+			=> !string.IsNullOrWhiteSpace(name) && RepositoryMediator.DataSources.TryGetValue(name, out var dataSource)
 				? dataSource
 				: null;
 
@@ -264,10 +264,9 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<DataSource> GetSyncDataSources(string aliasTypeName, EntityDefinition definition)
 		{
-			return definition?.SyncDataSources
-				?? ((!string.IsNullOrWhiteSpace(aliasTypeName)
+			return definition?.SyncDataSources ?? (!string.IsNullOrWhiteSpace(aliasTypeName)
 					? RepositoryMediator.GetRepositoryDefinition(Type.GetType(aliasTypeName))
-					: definition?.RepositoryDefinition)?.SyncDataSources ?? new List<DataSource>());
+					: definition?.RepositoryDefinition)?.SyncDataSources ?? new List<DataSource>();
 		}
 
 		/// <summary>
@@ -420,7 +419,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<IClientSessionHandle> StartSessionAsync<T>(this DataSource dataSource, CancellationToken cancellationToken) where T : class => dataSource.StartSessionAsync<T>(null, cancellationToken);
+		public static Task<IClientSessionHandle> StartSessionAsync<T>(this DataSource dataSource, CancellationToken cancellationToken) where T : class
+			=> dataSource.StartSessionAsync<T>(null, cancellationToken);
 		#endregion
 
 		#region Connection String
@@ -439,14 +439,16 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static ConnectionStringSettings GetConnectionStringSettings(this DataSource dataSource) => RepositoryMediator.GetConnectionStringSettings(dataSource?.ConnectionStringName);
+		public static ConnectionStringSettings GetConnectionStringSettings(this DataSource dataSource)
+			=> RepositoryMediator.GetConnectionStringSettings(dataSource?.ConnectionStringName);
 
 		/// <summary>
 		/// Gets the connection string of the data source (for working with SQL/NoSQL database)
 		/// </summary>
 		/// <param name="dataSource">The data source</param>
 		/// <returns></returns>
-		public static string GetConnectionString(this DataSource dataSource) => dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString;
+		public static string GetConnectionString(this DataSource dataSource)
+			=> dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString;
 		#endregion
 
 		#region Validate
@@ -492,7 +494,7 @@ namespace net.vieapps.Components.Repository
 			// extended properties
 			stateData.TryGetValue("EntityID", out object entityID);
 			if (entityID != null && entityID is string && !string.IsNullOrWhiteSpace(entityID as string))
-				if (definition.RuntimeEntities.TryGetValue(entityID as string, out IRepositoryEntity repositoryEntity))
+				if (definition.RuntimeEntities.TryGetValue(entityID as string, out var repositoryEntity))
 					foreach (var attribute in (repositoryEntity?.ExtendedPropertyDefinitions ?? new List<ExtendedPropertyDefinition>()))
 					{
 						if (attribute.Mode.Equals(ExtendedPropertyMode.YesNo) || attribute.Mode.Equals(ExtendedPropertyMode.Number)
@@ -2454,16 +2456,15 @@ namespace net.vieapps.Components.Repository
 					: RepositoryMediator.FindIdentities<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new[]
-					{
-						"FIND: Find objects [" + context.EntityDefinition.Type.GetTypeName() + "]",
-						"- Total identities are found: " + (identities != null ? identities.Count.ToString() : "0"),
-						"- Mode: " + dataSource.Mode.ToString(),
-						"- Page Size: " + pageSize.ToString(),
-						"- Page Number: " + pageNumber.ToString(),
-						"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
-						"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
-					});
+					RepositoryMediator.WriteLogs(
+						$"FIND: Find objects [{context.EntityDefinition.Type.GetTypeName()}] - Caching storage: {context.EntityDefinition.Cache?.Name ?? "None"}" + "\r\n" +
+						$"- Total identities are found: {(identities != null ? identities.Count.ToString() : "0")}" + "\r\n" +
+						$"- Mode: {dataSource.Mode}" + "\r\n" +
+						$"- Page Size: {pageSize}" + "\r\n" +
+						$"- Page Number: {pageNumber}" + "\r\n" +
+						$"- Filter By: {filter?.ToString() ?? "None"}" + "\r\n" +
+						$"- Sort By: {sort?.ToString() ?? "None"}"
+					);
 
 				// process cache
 				if (identities != null && identities.Count > 0)
@@ -2746,16 +2747,15 @@ namespace net.vieapps.Components.Repository
 					: await RepositoryMediator.FindIdentitiesAsync<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new[]
-					{
-						"FIND: Find objects [" + context.EntityDefinition.Type.GetTypeName() + "]",
-						"- Total identities are found: " + (identities != null ? identities.Count.ToString() : "0"),
-						"- Mode: " + dataSource.Mode.ToString(),
-						"- Page Size: " + pageSize.ToString(),
-						"- Page Number: " + pageNumber.ToString(),
-						"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None"),
-						"- Sort By: " + (sort != null ? "\r\n" + sort.ToString() : "None"),
-					});
+					RepositoryMediator.WriteLogs(
+						$"FIND: Find objects [{context.EntityDefinition.Type.GetTypeName()}] - Caching storage: {context.EntityDefinition.Cache?.Name ?? "None"}" + "\r\n" +
+						$"- Total identities are found: {(identities != null ? identities.Count.ToString() : "0")}" + "\r\n" +
+						$"- Mode: {dataSource.Mode}" + "\r\n" +
+						$"- Page Size: {pageSize}" + "\r\n" +
+						$"- Page Number: {pageNumber}" + "\r\n" +
+						$"- Filter By: {filter?.ToString() ?? "None"}" + "\r\n" +
+						$"- Sort By: {sort?.ToString() ?? "None"}"
+					);
 
 				// process
 				if (identities != null && identities.Count > 0)
@@ -2938,13 +2938,12 @@ namespace net.vieapps.Components.Repository
 						: 0;
 
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new[]
-					{
-						"COUNT: Count objects [" + context.EntityDefinition.Type.GetTypeName() + "]",
-						"- Total: " + total.ToString(),
-						"- Mode: " + dataSource.Mode.ToString(),
-						"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
-					});
+					RepositoryMediator.WriteLogs(
+						$"COUNT: Count objects [{context.EntityDefinition.Type.GetTypeName()}]" + "\r\n" +
+						$"- Total: {total}" + "\r\n" +
+						$"- Mode: {dataSource.Mode}" + "\r\n" +
+						$"- Filter By: {filter?.ToString() ?? "None"}"
+					);
 
 				// update cache and return
 				if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
@@ -3040,13 +3039,12 @@ namespace net.vieapps.Components.Repository
 						: 0;
 
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new[]
-					{
-						"COUNT: Count objects [" + context.EntityDefinition.Type.GetTypeName() + "]",
-						"- Total: " + total.ToString(),
-						"- Mode: " + dataSource.Mode.ToString(),
-						"- Filter By: " + (filter != null ? "\r\n" + filter.ToString() : "None")
-					});
+					RepositoryMediator.WriteLogs(
+						$"COUNT: Count objects [{context.EntityDefinition.Type.GetTypeName()}]" + "\r\n" +
+						$"- Total: {total}" + "\r\n" +
+						$"- Mode: {dataSource.Mode}" + "\r\n" +
+						$"- Filter By: {filter?.ToString() ?? "None"}"
+					);
 
 				// update cache and return
 				if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
@@ -3143,7 +3141,7 @@ namespace net.vieapps.Components.Repository
 						$"- Page Size: {pageSize}" + "\r\n" +
 						$"- Page Number: {pageNumber}" + "\r\n" +
 						$"- Query: {(!string.IsNullOrWhiteSpace(query) ? query : "None")}" + "\r\n" +
-						$"- Filter By (Additional): {filter.ToString() ?? "None"}"
+						$"- Filter By (Additional): {filter?.ToString() ?? "None"}"
 					);
 
 				// no caching storage => direct search
@@ -3312,7 +3310,7 @@ namespace net.vieapps.Components.Repository
 						$"- Page Size: {pageSize}" + "\r\n" +
 						$"- Page Number: {pageNumber}" + "\r\n" +
 						$"- Query: {(!string.IsNullOrWhiteSpace(query) ? query : "None")}" + "\r\n" +
-						$"- Filter By (Additional): {filter.ToString() ?? "None"}"
+						$"- Filter By (Additional): {filter?.ToString() ?? "None"}"
 					);
 
 				// no caching storage => direct search
@@ -3492,7 +3490,7 @@ namespace net.vieapps.Components.Repository
 						$"- Total: {total}" + "\r\n" +
 						$"- Mode: {dataSource.Mode}" + "\r\n" +
 						$"- Query: {(!string.IsNullOrWhiteSpace(query) ? query : "None")}" + "\r\n" +
-						$"- Filter By (Additional): {filter.ToString() ?? "None"}"
+						$"- Filter By (Additional): {filter?.ToString() ?? "None"}"
 					);
 
 				return total;
@@ -3578,7 +3576,7 @@ namespace net.vieapps.Components.Repository
 						$"- Total: {total}" + "\r\n" +
 						$"- Mode: {dataSource.Mode}" + "\r\n" +
 						$"- Query: {(!string.IsNullOrWhiteSpace(query) ? query : "None")}" + "\r\n" +
-						$"- Filter By (Additional): {filter.ToString() ?? "None"}"
+						$"- Filter By (Additional): {filter?.ToString() ?? "None"}"
 					);
 
 				return total;
@@ -5704,7 +5702,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"SYNC: Operation canceled while deleting multiple objects [{typeof(T)}]");
+					RepositoryMediator.WriteLogs($"SYNC: Operation was cancelled while deleting multiple objects [{typeof(T)}]");
 				}
 				catch (Exception ex)
 				{
@@ -5736,7 +5734,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"SYNC: Operation canceled while syncing the object to primary data source [{@object?.GetType()}#{@object?.GetEntityID()}]");
+					RepositoryMediator.WriteLogs($"SYNC: Operation was cancelled while syncing the object to primary data source [{@object?.GetType()}#{@object?.GetEntityID()}]");
 				}
 				catch (Exception ex)
 				{
@@ -5818,7 +5816,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"SYNC: Operation canceled while {(isDelete ? "deleting" : "syncing")} the object [{typeof(T)}#{@object?.GetEntityID()}]");
+					RepositoryMediator.WriteLogs($"SYNC: Operation was cancelled while {(isDelete ? "deleting" : "syncing")} the object [{typeof(T)}#{@object?.GetEntityID()}]");
 				}
 				catch (Exception ex)
 				{
@@ -5919,7 +5917,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"Operation canceled while running the pre-create handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-create handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 				}
 				catch (Exception ex)
 				{
@@ -5955,7 +5953,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (OperationCanceledException)
 					{
-						RepositoryMediator.WriteLogs($"Operation canceled while running the post-create handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-create handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 					}
 					catch (Exception ex)
 					{
@@ -5994,7 +5992,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"Operation canceled while running the pre-get handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]");
+					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-get handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]");
 				}
 				catch (Exception ex)
 				{
@@ -6030,7 +6028,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (OperationCanceledException)
 					{
-						RepositoryMediator.WriteLogs($"Operation canceled while running the post-get handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-get handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 					}
 					catch (Exception ex)
 					{
@@ -6069,7 +6067,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"Operation canceled while running the pre-update handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-update handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 				}
 				catch (Exception ex)
 				{
@@ -6105,7 +6103,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (OperationCanceledException)
 					{
-						RepositoryMediator.WriteLogs($"Operation canceled while running the post-update handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-update handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 					}
 					catch (Exception ex)
 					{
@@ -6144,7 +6142,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"Operation canceled while running the pre-delete handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-delete handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 				}
 				catch (Exception ex)
 				{
@@ -6180,7 +6178,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (OperationCanceledException)
 					{
-						RepositoryMediator.WriteLogs($"Operation canceled while running the post-delete handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-delete handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 					}
 					catch (Exception ex)
 					{

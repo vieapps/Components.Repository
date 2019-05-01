@@ -169,7 +169,7 @@ namespace net.vieapps.Components.Repository
 			catch (ObjectDisposedException) { }
 			catch (TransactionAbortedException)
 			{
-				if (this.Exception == null)
+				if (this.Exception != null)
 					throw;
 			}
 			catch (Exception)

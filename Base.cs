@@ -2723,7 +2723,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
+		public static long Count<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
 			=> RepositoryMediator.Count(context, dataSource, query, filter, businessEntityID);
 
 		/// <summary>
@@ -2734,11 +2734,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
+		public static long Count<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return RepositoryBase<T>.CountByQuery<TEntity>(context, dataSource, query, filter, businessEntityID);
+				return RepositoryBase<T>.Count<TEntity>(context, dataSource, query, filter, businessEntityID);
 			}
 		}
 
@@ -2750,7 +2750,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
+		public static long Count<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID) where TEntity : class
 			=> RepositoryMediator.Count(aliasTypeName, query, filter, businessEntityID);
 
 		/// <summary>
@@ -2760,8 +2760,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery<TEntity>(string query, IFilterBy<TEntity> filter = null, string businessEntityID = null) where TEntity : class
-			=> RepositoryBase<T>.CountByQuery<TEntity>("", query, filter, businessEntityID);
+		public static long Count<TEntity>(string query, IFilterBy<TEntity> filter = null, string businessEntityID = null) where TEntity : class
+			=> RepositoryBase<T>.Count<TEntity>("", query, filter, businessEntityID);
 
 		/// <summary>
 		/// Counts the number of all matched objects
@@ -2771,8 +2771,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID)
-			=> RepositoryBase<T>.CountByQuery<T>(aliasTypeName, query, filter, businessEntityID);
+		public static long Count(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID)
+			=> RepositoryBase<T>.Count<T>(aliasTypeName, query, filter, businessEntityID);
 
 		/// <summary>
 		/// Counts the number of all matched objects
@@ -2781,8 +2781,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The number of all matched objects</returns>
-		public static long CountByQuery(string query, IFilterBy<T> filter = null, string businessEntityID = null)
-			=> RepositoryBase<T>.CountByQuery("", query, filter, businessEntityID);
+		public static long Count(string query, IFilterBy<T> filter = null, string businessEntityID = null)
+			=> RepositoryBase<T>.Count("", query, filter, businessEntityID);
 
 		/// <summary>
 		/// Counts the number of all matched objects
@@ -2794,7 +2794,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 			=> RepositoryMediator.CountAsync(context, dataSource, query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2806,11 +2806,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static async Task<long> CountByQueryAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<long> CountAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return await RepositoryBase<T>.CountByQueryAsync<TEntity>(context, dataSource, query, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
+				return await RepositoryBase<T>.CountAsync<TEntity>(context, dataSource, query, filter, businessEntityID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 
@@ -2823,7 +2823,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
 			=> RepositoryMediator.CountAsync(aliasTypeName, query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2834,8 +2834,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
-			=> RepositoryBase<T>.CountByQueryAsync<TEntity>("", query, filter, businessEntityID, cancellationToken);
+		public static Task<long> CountAsync<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+			=> RepositoryBase<T>.CountAsync<TEntity>("", query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
 		/// Counts the number of all matched objects
@@ -2844,8 +2844,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync<TEntity>(string query, IFilterBy<TEntity> filter = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
-			=> RepositoryBase<T>.CountByQueryAsync<TEntity>("", query, filter, null, cancellationToken);
+		public static Task<long> CountAsync<TEntity>(string query, IFilterBy<TEntity> filter = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+			=> RepositoryBase<T>.CountAsync<TEntity>("", query, filter, null, cancellationToken);
 
 		/// <summary>
 		/// Counts the number of all matched objects
@@ -2856,8 +2856,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
-			=> RepositoryBase<T>.CountByQueryAsync<T>(aliasTypeName, query, filter, businessEntityID, cancellationToken);
+		public static Task<long> CountAsync(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
+			=> RepositoryBase<T>.CountAsync<T>(aliasTypeName, query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
 		/// Counts the number of all matched objects
@@ -2867,8 +2867,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync(string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
-			=> RepositoryBase<T>.CountByQueryAsync("", query, filter, businessEntityID, cancellationToken);
+		public static Task<long> CountAsync(string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
+			=> RepositoryBase<T>.CountAsync("", query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
 		/// Counts the number of all matched objects
@@ -2877,8 +2877,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountByQueryAsync(string query, IFilterBy<T> filter = null, CancellationToken cancellationToken = default(CancellationToken))
-			=> RepositoryBase<T>.CountByQueryAsync(query, filter, null, cancellationToken);
+		public static Task<long> CountAsync(string query, IFilterBy<T> filter = null, CancellationToken cancellationToken = default(CancellationToken))
+			=> RepositoryBase<T>.CountAsync(query, filter, null, cancellationToken);
 		#endregion
 
 		#region [Static] Sync to other data sources
