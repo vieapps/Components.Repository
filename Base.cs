@@ -3694,7 +3694,7 @@ namespace net.vieapps.Components.Repository
 
 		internal static new VersionContent Prepare<T>(T @object, Action<VersionContent> onPreCompleted = null) where T : class
 		{
-			var content = ObjectService.CreateInstance<VersionContent>();
+			var content =  ObjectService.CreateInstance<VersionContent>();
 			content.CopyFrom(TrashContent.Prepare(@object));
 			content.ID = UtilityService.NewUUID;
 			content.ObjectID = @object.GetEntityID();
