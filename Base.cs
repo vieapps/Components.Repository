@@ -84,8 +84,17 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Serializes this object to JSON
 		/// </summary>
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
 		/// <returns></returns>
-		public virtual JObject ToJson() => this.ToJson(false, null);
+		public virtual JObject ToJson(Action<JObject> onPreCompleted)
+			=> this.ToJson(false, onPreCompleted);
+
+		/// <summary>
+		/// Serializes this object to JSON
+		/// </summary>
+		/// <returns></returns>
+		public virtual JObject ToJson()
+			=> this.ToJson(false, null);
 
 		/// <summary>
 		/// Parses the JSON and copy values into this object
@@ -105,8 +114,17 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Serializes this object to XML
 		/// </summary>
+		/// <param name="onPreCompleted">The action to run on pre-completed</param>
 		/// <returns></returns>
-		public virtual XElement ToXml() => this.ToXml(false, null);
+		public virtual XElement ToXml(Action<XElement> onPreCompleted)
+			=> this.ToXml(false, onPreCompleted);
+
+		/// <summary>
+		/// Serializes this object to XML
+		/// </summary>
+		/// <returns></returns>
+		public virtual XElement ToXml()
+			=> this.ToXml(false, null);
 
 		/// <summary>
 		/// Parses the XML and copy values into this object

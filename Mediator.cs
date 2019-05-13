@@ -6202,6 +6202,16 @@ namespace net.vieapps.Components.Repository
 				: objects.ToJArray(@object => @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object?.ToJson());
 
 		/// <summary>
+		/// Serializes the collection of objects to an array of JSON objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objects">The object to serialize</param>
+		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <returns></returns>
+		public static JArray ToJsonArray<T>(this List<T> objects, Action<JObject> onItemPreCompleted) where T : class
+			=> objects.ToJsonArray(false, onItemPreCompleted);
+
+		/// <summary>
 		/// Serializes the collection of objects to a JSON object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -6215,6 +6225,16 @@ namespace net.vieapps.Components.Repository
 			objects.ForEach(@object => json.Add(new JProperty(@object?.GetEntityID(), @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object?.ToJson())));
 			return json;
 		}
+
+		/// <summary>
+		/// Serializes the collection of objects to a JSON object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objects">The object to serialize</param>
+		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <returns></returns>
+		public static JObject ToJsonObject<T>(this List<T> objects, Action<JObject> onItemPreCompleted) where T : class
+			=> objects.ToJsonObject(false, onItemPreCompleted);
 
 		/// <summary>
 		/// Serializes the collection of objects to XML
@@ -6232,6 +6252,16 @@ namespace net.vieapps.Components.Repository
 				objects.ForEach(@object => xml.Add(@object is RepositoryBase ? (@object as RepositoryBase)?.ToXml(addTypeOfExtendedProperties, onItemPreCompleted) : @object?.ToXml()));
 			return xml;
 		}
+
+		/// <summary>
+		/// Serializes the collection of objects to XML
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objects">The object to serialize</param>
+		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <returns></returns>
+		public static XElement ToXml<T>(this List<T> objects, Action<XElement> onItemPreCompleted) where T : class
+			=> objects.ToXml(null, false, onItemPreCompleted);
 		#endregion
 
 		#region Generate form controls
