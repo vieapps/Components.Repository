@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Configuration;
 using System.Collections.Generic;
 using System.Transactions;
-
 using net.vieapps.Components.Utility;
 #endregion
 

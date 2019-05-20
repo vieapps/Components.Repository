@@ -11,11 +11,9 @@ using System.Threading.Tasks;
 using System.Configuration;
 using System.Reflection;
 using System.Diagnostics;
-
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
-
 using net.vieapps.Components.Caching;
 using net.vieapps.Components.Utility;
 #endregion
@@ -45,65 +43,36 @@ namespace net.vieapps.Components.Repository
 				: DbProviderFactories.GetFactory("System.Data.SqlClient");
 		}
 
-		static bool IsMicrosoftSQL(this DbProviderFactory dbProviderFactory)
-		{
-			return (dbProviderFactory != null
-				? dbProviderFactory.GetType().GetTypeName(true)
-				: "").Equals("SqlClientFactory");
-		}
-
-		static bool IsOracle(this DbProviderFactory dbProviderFactory)
-		{
-			return (dbProviderFactory != null
-				? dbProviderFactory.GetType().GetTypeName(true)
-				: "").Equals("OracleClientFactory");
-		}
+		static bool IsSQLServer(this DbProviderFactory dbProviderFactory)
+			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("SqlClientFactory");
 
 		static bool IsMySQL(this DbProviderFactory dbProviderFactory)
-		{
-			return (dbProviderFactory != null
-				? dbProviderFactory.GetType().GetTypeName(true)
-				: "").Equals("MySqlClientFactory");
-		}
+			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("MySqlClientFactory");
 
 		static bool IsPostgreSQL(this DbProviderFactory dbProviderFactory)
-		{
-			return (dbProviderFactory != null
-				? dbProviderFactory.GetType().GetTypeName(true)
-				: "").Equals("NpgsqlFactory");
-		}
+			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("NpgsqlFactory");
 
 		static bool IsGotRowNumber(this DbProviderFactory dbProviderFactory)
-		{
-			return dbProviderFactory != null && (dbProviderFactory.IsMicrosoftSQL() || dbProviderFactory.IsOracle());
-		}
+			=> dbProviderFactory != null && dbProviderFactory.IsSQLServer();
 
 		static bool IsGotLimitOffset(this DbProviderFactory dbProviderFactory)
-		{
-			return dbProviderFactory != null && (dbProviderFactory.IsMySQL() || dbProviderFactory.IsPostgreSQL());
-		}
+			=> dbProviderFactory != null && (dbProviderFactory.IsMySQL() || dbProviderFactory.IsPostgreSQL());
 
 		static string GetOffsetStatement(this DbProviderFactory dbProviderFactory, int pageSize, int pageNumber = 1)
-		{
-			return dbProviderFactory != null && dbProviderFactory.IsGotLimitOffset()
+			=> dbProviderFactory != null && dbProviderFactory.IsGotLimitOffset()
 				? $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}"
 				: "";
-		}
 
 		static string GetName(this DbProviderFactory dbProviderFactory)
-		{
-			return dbProviderFactory == null
+			=> dbProviderFactory == null
 				? "Unknown"
-				: dbProviderFactory.IsMicrosoftSQL()
-					? "MicrosoftSQL"
+				: dbProviderFactory.IsSQLServer()
+					? "SQLServer"
 					: dbProviderFactory.IsMySQL()
 						? "MySQL"
-						: dbProviderFactory.IsOracle()
-							? "OralceSQL"
-							: dbProviderFactory.IsPostgreSQL()
-								? "PostgreSQL"
-								: "ODBC";
-		}
+						: dbProviderFactory.IsPostgreSQL()
+							? "PostgreSQL"
+							: "ODBC";
 		#endregion
 
 		#region Connection
@@ -175,11 +144,9 @@ namespace net.vieapps.Components.Repository
 		}
 
 		internal static DbCommand CreateCommand(this DbConnection connection, Tuple<string, List<DbParameter>> info)
-		{
-			return info != null && !string.IsNullOrWhiteSpace(info.Item1)
+			=> info != null && !string.IsNullOrWhiteSpace(info.Item1)
 				? connection.CreateCommand(info.Item1, info.Item2)
 				: null;
-		}
 
 		internal static string GetInfo(this DbCommand command, bool addInfo = true)
 		{
@@ -210,29 +177,30 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region DbTypes
-		internal static Dictionary<Type, DbType> DbTypes { get; } = new Dictionary<Type, DbType>()
+		internal static Dictionary<Type, DbType> DbTypes { get; } = new Dictionary<Type, DbType>
 		{
-			{ typeof(String), DbType.String },
-			{ typeof(Char), DbType.StringFixedLength },
-			{ typeof(Byte[]), DbType.Binary },
-			{ typeof(Byte), DbType.Byte },
-			{ typeof(SByte), DbType.SByte },
-			{ typeof(Int16), DbType.Int16 },
-			{ typeof(UInt16), DbType.UInt16 },
-			{ typeof(Int32), DbType.Int32 },
-			{ typeof(UInt32), DbType.UInt32 },
-			{ typeof(Int64), DbType.Int64 },
-			{ typeof(UInt64), DbType.UInt64 },
-			{ typeof(Single), DbType.Single },
-			{ typeof(Double), DbType.Double },
-			{ typeof(Decimal), DbType.Decimal },
-			{ typeof(Boolean), DbType.Boolean },
+			{ typeof(string), DbType.String },
+			{ typeof(char), DbType.StringFixedLength },
+			{ typeof(byte[]), DbType.Binary },
+			{ typeof(byte), DbType.Byte },
+			{ typeof(sbyte), DbType.SByte },
+			{ typeof(short), DbType.Int16 },
+			{ typeof(ushort), DbType.UInt16 },
+			{ typeof(int), DbType.Int32 },
+			{ typeof(uint), DbType.UInt32 },
+			{ typeof(long), DbType.Int64 },
+			{ typeof(ulong), DbType.UInt64 },
+			{ typeof(float), DbType.Single },
+			{ typeof(double), DbType.Double },
+			{ typeof(decimal), DbType.Decimal },
+			{ typeof(bool), DbType.Boolean },
 			{ typeof(Guid), DbType.Guid },
 			{ typeof(DateTime), DbType.DateTime },
 			{ typeof(DateTimeOffset), DbType.DateTimeOffset }
 		};
 
-		internal static DbType GetDbType(this Type type) => SqlHelper.DbTypes[type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)) ? Nullable.GetUnderlyingType(type) : type];
+		internal static DbType GetDbType(this Type type)
+			=> SqlHelper.DbTypes[type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)) ? Nullable.GetUnderlyingType(type) : type];
 
 		internal static DbType GetDbType(this AttributeInfo attribute)
 			=> (attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))) || attribute.IsStoredAsString()
@@ -245,125 +213,128 @@ namespace net.vieapps.Components.Repository
 							: DbType.Int32
 					: attribute.Type.GetDbType();
 
-		internal static DbType GetDbType(this ExtendedPropertyDefinition attribute) => attribute.Type.Equals(typeof(DateTime)) ? DbType.AnsiString : attribute.Type.GetDbType();
+		internal static DbType GetDbType(this ExtendedPropertyDefinition attribute)
+			=> attribute.Type.Equals(typeof(DateTime))
+				? DbType.AnsiString
+				: attribute.Type.GetDbType();
 
-		internal static Dictionary<Type, Dictionary<string, string>> DbTypeStrings { get; } = new Dictionary<Type, Dictionary<string, string>>()
+		internal static Dictionary<Type, Dictionary<string, string>> DbTypeStrings { get; } = new Dictionary<Type, Dictionary<string, string>>
 		{
 			{
-				typeof(String),
+				typeof(string),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "NVARCHAR{0}" },
-					{ "Default", "VARCHAR{0}" },
+					{ "SQLServer", "NVARCHAR{0}" },
+					{ "Default", "VARCHAR{0}" }
 				}
 			},
 			{
-				typeof(Char),
+				typeof(char),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "Default", "CHAR{0}" },
+					{ "Default", "CHAR{0}" }
 				}
 			},
 			{
-				typeof(Char?),
+				typeof(char?),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "NTEXT" },
-					{ "Default", "TEXT" },
+					{ "SQLServer", "NTEXT" },
+					{ "Default", "TEXT" }
 				}
 			},
 			{
-				typeof(Byte),
+				typeof(byte),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "PostgreSQL", "SMALLINT" },
-					{ "Default", "TINYINT" },
+					{ "Default", "TINYINT" }
 				}
 			},
 			{
-				typeof(SByte),
+				typeof(sbyte),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "PostgreSQL", "SMALLINT" },
 					{ "MySQL", "TINYINT UNSIGNED" },
-					{ "Default", "TINYINT" },
+					{ "Default", "TINYINT" }
 				}
 			},
 			{
-				typeof(Int16),
+				typeof(short),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "Default", "SMALLINT" },
+					{ "Default", "SMALLINT" }
 				}
 			},
 			{
-				typeof(UInt16),
+				typeof(ushort),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "Default", "SMALLINT" },
+					{ "Default", "SMALLINT" }
 				}
 			},
 			{
-				typeof(Int32),
+				typeof(int),
+				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+				{
+					{ "Default", "INT" }
+				}
+			},
+			{
+				typeof(uint),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "Default", "INT" },
 				}
 			},
 			{
-				typeof(UInt32),
+				typeof(long),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "Default", "INT" },
+					{ "Default", "BIGINT" }
 				}
 			},
 			{
-				typeof(Int64),
+				typeof(ulong),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "Default", "BIGINT" },
+					{ "Default", "BIGINT" }
 				}
 			},
 			{
-				typeof(UInt64),
+				typeof(float),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "Default", "BIGINT" },
-				}
-			},
-			{
-				typeof(Single),
-				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-				{
-					{ "MicrosoftSQL", "FLOAT(24)" },
+					{ "SQLServer", "FLOAT(24)" },
 					{ "PostgreSQL", "REAL" },
-					{ "Default", "FLOAT" },
+					{ "Default", "FLOAT" }
 				}
 			},
 			{
-				typeof(Double),
+				typeof(double),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "FLOAT(53)" },
+					{ "SQLServer", "FLOAT(53)" },
 					{ "PostgreSQL", "DOUBLE PRECISION" },
-					{ "Default", "DOUBLE" },
+					{ "Default", "DOUBLE" }
 				}
 			},
 			{
-				typeof(Decimal),
+				typeof(decimal),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "DECIMAL(19,5)" },
-					{ "Default", "NUMERIC(19,5)" },
+					{ "SQLServer", "DECIMAL(19,5)" },
+					{ "Default", "NUMERIC(19,5)" }
 				}
 			},
 			{
-				typeof(Boolean),
+				typeof(bool),
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
-					{ "MicrosoftSQL", "BIT" },
+					{ "SQLServer", "BIT" },
 					{ "MySQL", "TINYINT(1)" },
-					{ "Default", "BOOLEAN" },
+					{ "Default", "BOOLEAN" }
 				}
 			},
 			{
@@ -371,22 +342,22 @@ namespace net.vieapps.Components.Repository
 				new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 				{
 					{ "PostgreSQL", "TIMESTAMP" },
-					{ "Default", "DATETIME" },
+					{ "Default", "DATETIME" }
 				}
 			}
 		};
 
 		internal static string GetDbTypeString(this AttributeInfo attribute, DbProviderFactory dbProviderFactory)
 			=> attribute.Type.IsStringType() && attribute.Name.EndsWith("ID") && (attribute.MaxLength.Equals(0) || attribute.MaxLength.Equals(32))
-				? typeof(String).GetDbTypeString(dbProviderFactory, 32, true, false)
+				? typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)
 				: attribute.IsStoredAsString()
-					? typeof(String).GetDbTypeString(dbProviderFactory, 19, true, false)
+					? typeof(string).GetDbTypeString(dbProviderFactory, 19, true, false)
 					: (attribute.IsCLOB != null && attribute.IsCLOB.Value) || attribute.IsStoredAsJson()
-						? typeof(String).GetDbTypeString(dbProviderFactory, 0, false, true)
+						? typeof(string).GetDbTypeString(dbProviderFactory, 0, false, true)
 						: attribute.Type.IsEnum
 							? attribute.IsEnumString()
-								? typeof(String).GetDbTypeString(dbProviderFactory, 50, false, false)
-								: typeof(Int32).GetDbTypeString(dbProviderFactory, 0, false, false)
+								? typeof(string).GetDbTypeString(dbProviderFactory, 50, false, false)
+								: typeof(int).GetDbTypeString(dbProviderFactory, 0, false, false)
 							: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength != null ? attribute.MaxLength.Value : 0);
 
 		internal static string GetDbTypeString(this Type type, DbProviderFactory dbProviderFactory, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
@@ -396,17 +367,17 @@ namespace net.vieapps.Components.Repository
 
 		internal static string GetDbTypeString(this Type type, string dbProviderFactoryName, int precision = 0, bool asFixedLength = false, bool asCLOB = false)
 		{
-			type = !type.Equals(typeof(String))
+			type = !type.Equals(typeof(string))
 				? type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>))
 					? Nullable.GetUnderlyingType(type)
 					: type
 				: asFixedLength
-					? typeof(Char)
+					? typeof(char)
 					: asCLOB
 						? typeof(Char?)
 						: type;
 
-			precision = precision < 1 && type.Equals(typeof(String))
+			precision = precision < 1 && type.Equals(typeof(string))
 				? 4000
 				: precision;
 
@@ -438,13 +409,10 @@ namespace net.vieapps.Components.Repository
 		}
 
 		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, KeyValuePair<string, object> info)
-		{
-			return dbProviderFactory.CreateParameter(info.Key, info.Key.EndsWith("ID") || info.Key.EndsWith("Id") ? DbType.AnsiStringFixedLength : info.Value.GetType().GetDbType(), info.Value);
-		}
+			=> dbProviderFactory.CreateParameter(info.Key, info.Key.EndsWith("ID") || info.Key.EndsWith("Id") ? DbType.AnsiStringFixedLength : info.Value.GetType().GetDbType(), info.Value);
 
 		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, AttributeInfo attribute, object value)
-		{
-			return dbProviderFactory.CreateParameter(attribute.Name, attribute.GetDbType(), attribute.IsStoredAsJson()
+			=> dbProviderFactory.CreateParameter(attribute.Name, attribute.GetDbType(), attribute.IsStoredAsJson()
 				? value == null
 					? ""
 					: value.ToJson().ToString(Newtonsoft.Json.Formatting.None)
@@ -453,16 +421,13 @@ namespace net.vieapps.Components.Repository
 						? ""
 						: ((DateTime)value).ToDTString()
 					: value);
-		}
 
 		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, ExtendedPropertyDefinition attribute, object value)
-		{
-			return dbProviderFactory.CreateParameter(attribute.Name, attribute.GetDbType(), attribute.Type.Equals(typeof(DateTime))
+			=> dbProviderFactory.CreateParameter(attribute.Name, attribute.GetDbType(), attribute.Type.Equals(typeof(DateTime))
 				? value == null
 					? ""
 					: ((DateTime)value).ToDTString()
 				: value);
-		}
 		#endregion
 
 		#region Data Adapter
@@ -669,7 +634,7 @@ namespace net.vieapps.Components.Repository
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -735,7 +700,7 @@ namespace net.vieapps.Components.Repository
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -788,7 +753,7 @@ namespace net.vieapps.Components.Repository
 		static Tuple<string, List<DbParameter>> PrepareGetExtent<T>(this T @object, string id, DbProviderFactory dbProviderFactory, List<ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			var fields = extendedProperties.Select(attribute => "Origin." + attribute.Column + " AS " + attribute.Name)
-				.Concat(new List<string>() { "Origin.ID" })
+				.Concat(new[] { "Origin.ID" })
 				.ToList();
 
 			var info = Filters<T>.Equals("ID", id).GetSqlStatement();
@@ -822,7 +787,7 @@ namespace net.vieapps.Components.Repository
 					using (var dataReader = command.ExecuteReader())
 					{
 						@object = dataReader.Read()
-							? @object.Copy<T>(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null)
+							? @object.Copy(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null)
 							: null;
 					}
 
@@ -835,7 +800,7 @@ namespace net.vieapps.Components.Repository
 						using (var dataReader = command.ExecuteReader())
 						{
 							if (dataReader.Read())
-								@object = @object.Copy<T>(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
+								@object = @object.Copy(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
 						}
 
 						if (RepositoryMediator.IsDebugEnabled)
@@ -844,7 +809,7 @@ namespace net.vieapps.Components.Repository
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -885,7 +850,7 @@ namespace net.vieapps.Components.Repository
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 					{
 						@object = await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)
-							? @object.Copy<T>(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null)
+							? @object.Copy(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null)
 							: null;
 					}
 
@@ -898,7 +863,7 @@ namespace net.vieapps.Components.Repository
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 						{
 							if (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-								@object = @object.Copy<T>(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
+								@object = @object.Copy(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
 						}
 
 						if (RepositoryMediator.IsDebugEnabled)
@@ -907,7 +872,7 @@ namespace net.vieapps.Components.Repository
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform SELECT command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1016,7 +981,7 @@ namespace net.vieapps.Components.Repository
 
 			stopwatch.Stop();
 			if (RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs(new List<string>()
+				RepositoryMediator.WriteLogs(new[]
 				{
 					$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name}",
 					$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1088,7 +1053,7 @@ namespace net.vieapps.Components.Repository
 
 			stopwatch.Stop();
 			if (RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs(new List<string>()
+				RepositoryMediator.WriteLogs(new[]
 				{
 					$"SQL: Perform SELECT command successful [{definition.Type}#{id}] @ {dataSource.Name}",
 					$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1122,7 +1087,7 @@ namespace net.vieapps.Components.Repository
 				if (attribute.Name.IsEquals(definition.PrimaryKey) || (value == null && attribute.IsIgnoredIfNull()))
 					continue;
 
-				columns.Add((string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "=" + "@" + attribute.Name);
+				columns.Add((string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "=@" + attribute.Name);
 				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
@@ -1187,7 +1152,7 @@ namespace net.vieapps.Components.Repository
 						info += "\r\n" + command.GetInfo();
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1236,7 +1201,7 @@ namespace net.vieapps.Components.Repository
 						info += "\r\n" + command.GetInfo();
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform REPLACE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1268,7 +1233,7 @@ namespace net.vieapps.Components.Repository
 				if (value == null && standardProperties[attribute.ToLower()].IsIgnoredIfNull())
 					continue;
 
-				columns.Add((string.IsNullOrEmpty(standardProperties[attribute.ToLower()].Column) ? standardProperties[attribute.ToLower()].Name : standardProperties[attribute.ToLower()].Column) + "=" + "@" + standardProperties[attribute.ToLower()].Name);
+				columns.Add((string.IsNullOrEmpty(standardProperties[attribute.ToLower()].Column) ? standardProperties[attribute.ToLower()].Name : standardProperties[attribute.ToLower()].Column) + "=@" + standardProperties[attribute.ToLower()].Name);
 				parameters.Add(dbProviderFactory.CreateParameter(standardProperties[attribute.ToLower()], value));
 			}
 
@@ -1344,7 +1309,7 @@ namespace net.vieapps.Components.Repository
 					info += command == null || !RepositoryMediator.IsDebugEnabled ? "" : "\r\n" + command.GetInfo();
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1397,7 +1362,7 @@ namespace net.vieapps.Components.Repository
 					info += command == null || !RepositoryMediator.IsDebugEnabled ? "" : "\r\n" + command.GetInfo();
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform UPDATE command successful [{@object?.GetType()}#{@object?.GetEntityID()}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1575,7 +1540,7 @@ namespace net.vieapps.Components.Repository
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1637,7 +1602,7 @@ namespace net.vieapps.Components.Repository
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform DELETE command successful [{typeof(T)}#{id}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1698,7 +1663,7 @@ namespace net.vieapps.Components.Repository
 						info += "\r\n" + command.GetInfo();
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1759,7 +1724,7 @@ namespace net.vieapps.Components.Repository
 						info += "\r\n" + command.GetInfo();
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
 							$"Execution times: {stopwatch.GetElapsedTimes()}",
@@ -1882,12 +1847,14 @@ namespace net.vieapps.Components.Repository
 			else
 				foreach (DataRow info in dataReader.GetSchemaTable().Rows)
 				{
-					var dataColumn = new DataColumn();
-					dataColumn.ColumnName = info["ColumnName"].ToString();
-					dataColumn.Unique = Convert.ToBoolean(info["IsUnique"]);
-					dataColumn.AllowDBNull = Convert.ToBoolean(info["AllowDBNull"]);
-					dataColumn.ReadOnly = Convert.ToBoolean(info["IsReadOnly"]);
-					dataColumn.DataType = (Type)info["DataType"];
+					var dataColumn = new DataColumn
+					{
+						ColumnName = info["ColumnName"].ToString(),
+						Unique = Convert.ToBoolean(info["IsUnique"]),
+						AllowDBNull = Convert.ToBoolean(info["AllowDBNull"]),
+						ReadOnly = Convert.ToBoolean(info["IsReadOnly"]),
+						DataType = (Type)info["DataType"]
+					};
 					dataTable.Columns.Add(dataColumn);
 				}
 
@@ -1988,7 +1955,7 @@ namespace net.vieapps.Components.Repository
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new List<string>()
+					RepositoryMediator.WriteLogs(new[]
 					{
 						$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
@@ -2062,7 +2029,7 @@ namespace net.vieapps.Components.Repository
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new List<string>()
+					RepositoryMediator.WriteLogs(new[]
 					{
 						$"SQL: Perform SELECT command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Total of results: {dataTable.Rows.Count} - Page number: {pageNumber} - Page size: {pageSize} - Execution times: {stopwatch.GetElapsedTimes()}",
@@ -2089,7 +2056,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns></returns>
 		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
-			=> SqlHelper.Select(context, dataSource, new List<string>() { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+			=> SqlHelper.Select(context, dataSource, new[] { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
 
@@ -2108,7 +2075,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
 		public static async Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> (await SqlHelper.SelectAsync(context, dataSource, new List<string>() { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
+			=> (await SqlHelper.SelectAsync(context, dataSource, new[] { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
 		#endregion
@@ -2140,11 +2107,11 @@ namespace net.vieapps.Components.Repository
 					.Select(info => info.Value.Name)
 					.Concat(extendedProperties != null ? extendedProperties.Select(info => info.Value.Name) : new List<string>());
 
-				var distinctAttributes = (new List<string>(sort != null ? sort.GetAttributes() : new List<string>()) { context.EntityDefinition.PrimaryKey })
+				var distinctAttributes = new List<string>(sort != null ? sort.GetAttributes() : new List<string>()) { context.EntityDefinition.PrimaryKey }
 					.Distinct()
 					.ToList();
 
-				var objects = context.Select<T>(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+				var objects = context.Select(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToDictionary(@object => @object.GetEntityID(context.EntityDefinition.PrimaryKey));
 
@@ -2152,7 +2119,7 @@ namespace net.vieapps.Components.Repository
 				if (otherAttributes.Count > 0)
 				{
 					otherAttributes.Add(context.EntityDefinition.PrimaryKey);
-					context.Select<T>(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false)
+					context.Select(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false)
 						.ForEach(data =>
 						{
 							var id = data[context.EntityDefinition.PrimaryKey].CastAs<string>();
@@ -2163,7 +2130,7 @@ namespace net.vieapps.Components.Repository
 				return objects.Select(item => item.Value).ToList();
 			}
 			else
-				return context.Select<T>(dataSource, null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+				return context.Select(dataSource, null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
 		}
@@ -2195,11 +2162,11 @@ namespace net.vieapps.Components.Repository
 					.Select(info => info.Value.Name)
 					.Concat(extendedProperties != null ? extendedProperties.Select(info => info.Value.Name) : new List<string>());
 
-				var distinctAttributes = (new List<string>(sort != null ? sort.GetAttributes() : new List<string>()) { context.EntityDefinition.PrimaryKey })
+				var distinctAttributes = new List<string>(sort != null ? sort.GetAttributes() : new List<string>()) { context.EntityDefinition.PrimaryKey }
 					.Distinct()
 					.ToList();
 
-				var objects = (await context.SelectAsync<T>(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
+				var objects = (await context.SelectAsync(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToDictionary(@object => @object.GetEntityID(context.EntityDefinition.PrimaryKey));
 
@@ -2207,7 +2174,7 @@ namespace net.vieapps.Components.Repository
 				if (otherAttributes.Count > 0)
 				{
 					otherAttributes.Add(context.EntityDefinition.PrimaryKey);
-					(await context.SelectAsync<T>(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false, cancellationToken).ConfigureAwait(false))
+					(await context.SelectAsync(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false, cancellationToken).ConfigureAwait(false))
 						.ForEach(data =>
 						{
 							var id = data[context.EntityDefinition.PrimaryKey].CastAs<string>();
@@ -2218,7 +2185,7 @@ namespace net.vieapps.Components.Repository
 				return objects.Select(item => item.Value).ToList();
 			}
 			else
-				return (await context.SelectAsync<T>(dataSource, null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
+				return (await context.SelectAsync(dataSource, null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
 		}
@@ -2270,7 +2237,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, null, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var statementsInfo = Extensions.PrepareSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// tables (FROM)
 			var tables = $" FROM {definition.TableName} AS Origin"
@@ -2310,14 +2277,14 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents));
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(filter, businessEntityID, autoAssociateWithMultipleParents));
 				try
 				{
 					var total = command.ExecuteScalar().CastAs<long>();
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
 							$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
@@ -2350,14 +2317,14 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(filter, businessEntityID, autoAssociateWithMultipleParents));
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(filter, businessEntityID, autoAssociateWithMultipleParents));
 				try
 				{
 					var total = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
 							$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
@@ -2379,22 +2346,24 @@ namespace net.vieapps.Components.Repository
 		{
 			var searchTerms = "";
 
-			// Microsoft SQL Server
-			if (dbProviderFactory.IsMicrosoftSQL())
+			// SQL Server
+			if (dbProviderFactory.IsSQLServer())
 			{
-				// prepare AND/OR/AND NOT terms
+				// prepare AND terms
 				var andSearchTerms = "";
 				searchQuery.AndWords.ForEach(word => andSearchTerms += "\"*" + word + "*\"" + " AND ");
 				searchQuery.AndPhrases.ForEach(phrase => andSearchTerms += "\"" + phrase + "\" AND ");
 				if (!andSearchTerms.Equals(""))
 					andSearchTerms = andSearchTerms.Left(andSearchTerms.Length - 5);
 
+				// prepare NOT terms
 				var notSearchTerms = "";
 				searchQuery.NotWords.ForEach(word => notSearchTerms += " AND NOT " + word);
 				searchQuery.NotPhrases.ForEach(phrase => notSearchTerms += " AND NOT \"" + phrase + "\"");
 				if (!notSearchTerms.Equals(""))
 					notSearchTerms = notSearchTerms.Trim();
 
+				// prepare OR terms
 				var orSearchTerms = "";
 				searchQuery.OrWords.ForEach(word => orSearchTerms += "\"*" + word + "*\"" + " OR ");
 				searchQuery.OrPhrases.ForEach(phrase => orSearchTerms += "\"" + phrase + "\" OR ");
@@ -2444,14 +2413,78 @@ namespace net.vieapps.Components.Repository
 			// MySQL
 			else if (dbProviderFactory.IsMySQL())
 			{
-				searchQuery.AndWords.ForEach(word => searchTerms += (searchTerms.Equals("") ? "" : " ") + "+" + word);
-				searchQuery.AndPhrases.ForEach(phrase => searchTerms += (searchTerms.Equals("") ? "" : " ") + "+\"" + phrase + "\"");
+				// prepare AND terms
+				var andSearchTerms = "";
+				searchQuery.AndWords.ForEach(word => andSearchTerms += (andSearchTerms.Equals("") ? "" : " ") + "+" + word);
+				searchQuery.AndPhrases.ForEach(phrase => andSearchTerms += (andSearchTerms.Equals("") ? "" : " ") + "+\"" + phrase + "\"");
 
-				searchQuery.NotWords.ForEach(word => searchTerms += (searchTerms.Equals("") ? "" : " ") + "-" + word);
-				searchQuery.NotPhrases.ForEach(phrase => searchTerms += (searchTerms.Equals("") ? "" : " ") + "-\"" + phrase + "\"");
+				// prepare NOT terms
+				var notSearchTerms = "";
+				searchQuery.NotWords.ForEach(word => notSearchTerms += (notSearchTerms.Equals("") ? "" : " ") + "-" + word);
+				searchQuery.NotPhrases.ForEach(phrase => notSearchTerms += (notSearchTerms.Equals("") ? "" : " ") + "-\"" + phrase + "\"");
 
-				searchQuery.OrWords.ForEach(word => searchTerms += (searchTerms.Equals("") ? "" : " ") + word);
-				searchQuery.OrPhrases.ForEach(phrase => searchTerms += (searchTerms.Equals("") ? "" : " ") + "\"" + phrase + "\"");
+				// prepare OR terms
+				var orSearchTerms = "";
+				searchQuery.OrWords.ForEach(word => orSearchTerms += (orSearchTerms.Equals("") ? "" : " ") + word);
+				searchQuery.OrPhrases.ForEach(phrase => orSearchTerms += (orSearchTerms.Equals("") ? "" : " ") + "\"" + phrase + "\"");
+
+				// build search terms
+				searchTerms = ((andSearchTerms + " " + notSearchTerms).Trim() + " " + orSearchTerms).Trim();
+			}
+
+			// PostgreSQL
+			else if (dbProviderFactory.IsPostgreSQL())
+			{
+				// prepare AND terms
+				var andSearchTerms = "";
+				searchQuery.AndWords.ForEach(word => andSearchTerms += (andSearchTerms.Equals("") ? "" : " & ") + word);
+				searchQuery.AndPhrases.ForEach(phrase => andSearchTerms += (andSearchTerms.Equals("") ? "" : " & ") + "(" + phrase.Replace(" ", "<->") + ")");
+
+				// prepare NOT terms
+				var notSearchTerms = "";
+				searchQuery.NotWords.ForEach(word => notSearchTerms += (notSearchTerms.Equals("") ? "" : " !") + word);
+				searchQuery.NotPhrases.ForEach(phrase => notSearchTerms += (notSearchTerms.Equals("") ? "" : " !") + "(" + phrase.Replace(" ", "<->") + ")");
+
+				// prepare OR terms
+				var orSearchTerms = "";
+				searchQuery.OrWords.ForEach(word => orSearchTerms += (orSearchTerms.Equals("") ? "" : " | ") + word);
+				searchQuery.OrPhrases.ForEach(phrase => orSearchTerms += (orSearchTerms.Equals("") ? "" : " | ") + "(" + phrase.Replace(" ", "<->") + ")");
+
+				// build search terms
+				if (!andSearchTerms.Equals("") && !notSearchTerms.Equals("") && !orSearchTerms.Equals(""))
+					searchTerms = andSearchTerms + " & (" + notSearchTerms + ") & (" + orSearchTerms + ")";
+
+				else if (andSearchTerms.Equals("") && orSearchTerms.Equals("") && !notSearchTerms.Equals(""))
+					searchTerms = "";
+
+				else if (andSearchTerms.Equals(""))
+				{
+					searchTerms = orSearchTerms;
+					if (!notSearchTerms.Equals(""))
+					{
+						if (!searchTerms.Equals(""))
+							searchTerms = "(" + searchTerms + ") ";
+						searchTerms += " & (" + notSearchTerms + ")";
+					}
+				}
+
+				else
+				{
+					searchTerms = andSearchTerms;
+					if (!notSearchTerms.Equals(""))
+					{
+						if (!searchTerms.Equals(""))
+							searchTerms += " & ";
+						searchTerms += notSearchTerms;
+					}
+					if (!orSearchTerms.Equals(""))
+					{
+						if (!searchTerms.Equals(""))
+							searchTerms += " & (" + orSearchTerms + ")";
+						else
+							searchTerms += orSearchTerms;
+					}
+				}
 			}
 
 			return searchTerms;
@@ -2466,7 +2499,7 @@ namespace net.vieapps.Components.Repository
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
-			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+			var statementsInfo = Extensions.PrepareSqlStatements(filter, null, businessEntityID, false, definition, null, propertiesInfo);
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Count() > 0
@@ -2502,8 +2535,8 @@ namespace net.vieapps.Components.Repository
 			// searching terms
 			var searchTerms = dbProviderFactory.GetSearchTerms(new SearchQuery(query));
 
-			// Microsoft SQL Server
-			if (dbProviderFactory.IsMicrosoftSQL())
+			// SQL Server
+			if (dbProviderFactory.IsSQLServer())
 			{
 				fields.Add("SearchScore");
 				columns.Add("Search.[RANK] AS SearchScore");
@@ -2519,12 +2552,27 @@ namespace net.vieapps.Components.Repository
 					: standardProperties
 						.Where(attribute => attribute.Value.IsSearchable())
 						.Select(attribute => "Origin." + attribute.Value.Name)
-						.ToList()
-						.ToString(",");
+						.Join(", ");
 
 				fields.Add("SearchScore");
 				columns.Add($"(MATCH({searchInColumns}) AGAINST ({searchTerms} IN BOOLEAN MODE) AS SearchScore");
-				where += !where.Equals("") ? " AND SearchScore > 0" : " WHERE SearchScore > 0";
+				where += (!where.Equals("") ? " AND " : " WHERE ") + "SearchScore > 0";
+				orderby = "SearchScore DESC";
+			}
+
+			// PostgreSQL
+			else if (dbProviderFactory.IsPostgreSQL())
+			{
+				searchInColumns = !searchInColumns.Equals("*")
+					? searchInColumns
+					: standardProperties
+						.Where(attribute => attribute.Value.IsSearchable())
+						.Select(attribute => "Origin." + attribute.Value.Name)
+						.Join(" || ");
+
+				fields.Add("SearchScore");
+				columns.Add($"ts_rank_cd(to_tsvector('english', {searchInColumns} || ' '), to_tsquery('{searchTerms.Replace("'", "''")}')) AS SearchScore");
+				where += (!where.Equals("") ? " AND " : " WHERE ") + $"to_tsvector('english', {searchInColumns} || ' ') @@ to_tsquery('{searchTerms.Replace("'", "''")}')";
 				orderby = "SearchScore DESC";
 			}
 
@@ -2599,7 +2647,7 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var statement = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch(null, query, filter, pageSize, pageNumber, businessEntityID);
 				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
@@ -2640,7 +2688,7 @@ namespace net.vieapps.Components.Repository
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new List<string>()
+					RepositoryMediator.WriteLogs(new[]
 					{
 						$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Query: {query}",
@@ -2679,7 +2727,7 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var statement = dbProviderFactory.PrepareSearch<T>(null, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch(null, query, filter, pageSize, pageNumber, businessEntityID);
 				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
@@ -2720,7 +2768,7 @@ namespace net.vieapps.Components.Repository
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new List<string>()
+					RepositoryMediator.WriteLogs(new[]
 					{
 						$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Query: {query}",
@@ -2761,7 +2809,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var identities = new List<string>();
-				var statement = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch(new List<string> { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -2805,7 +2853,7 @@ namespace net.vieapps.Components.Repository
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new List<string>()
+					RepositoryMediator.WriteLogs(new[]
 					{
 						$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Query: {query}",
@@ -2842,7 +2890,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var identities = new List<string>();
-				var statement = dbProviderFactory.PrepareSearch<T>(new List<string>() { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch(new List<string> { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -2887,7 +2935,7 @@ namespace net.vieapps.Components.Repository
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs(new List<string>
+					RepositoryMediator.WriteLogs(new[]
 					{
 						$"SQL: Perform SEARCH command successful [{typeof(T)}] @ {dataSource.Name}",
 						$"Query: {query}",
@@ -2910,7 +2958,7 @@ namespace net.vieapps.Components.Repository
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
-			var statementsInfo = Extensions.PrepareSqlStatements<T>(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+			var statementsInfo = Extensions.PrepareSqlStatements(filter, null, businessEntityID, false, definition, null, propertiesInfo);
 
 			// tables (FROM)
 			var tables = $" FROM {definition.TableName} AS Origin"
@@ -2924,8 +2972,8 @@ namespace net.vieapps.Components.Repository
 			// searching terms
 			var searchTerms = dbProviderFactory.GetSearchTerms(new SearchQuery(query));
 
-			// Microsoft SQL Server
-			if (dbProviderFactory.IsMicrosoftSQL())
+			// SQL Server
+			if (dbProviderFactory.IsSQLServer())
 				tables += $" INNER JOIN CONTAINSTABLE ({definition.TableName}, {searchInColumns}, {searchTerms}) AS Search ON Origin.{definition.PrimaryKey}=Search.[KEY]";
 
 			// MySQL
@@ -2936,10 +2984,21 @@ namespace net.vieapps.Components.Repository
 					: standardProperties
 						.Where(attribute => attribute.Value.IsSearchable())
 						.Select(attribute => $"Origin.{attribute.Value.Name}")
-						.ToList()
-						.ToString(",");
-				where += (!where.Equals("") ? " AND " : " WHERE ")
-					+ $"(MATCH({searchInColumns}) AGAINST ({searchTerms} IN BOOLEAN MODE) > 0";
+						.Join(", ");
+				where += (!where.Equals("") ? " AND " : " WHERE ") + $"(MATCH({searchInColumns}) AGAINST ({searchTerms} IN BOOLEAN MODE) > 0";
+			}
+
+			// PostgreSQL
+			else if (dbProviderFactory.IsPostgreSQL())
+			{
+				searchInColumns = !searchInColumns.Equals("*")
+					? searchInColumns
+					: standardProperties
+						.Where(attribute => attribute.Value.IsSearchable())
+						.Select(attribute => "Origin." + attribute.Value.Name)
+						.Join(" || ");
+
+				where += (!where.Equals("") ? " AND " : " WHERE ") + $"to_tsvector('english', {searchInColumns} || ' ') @@ to_tsquery('{searchTerms.Replace("'", "''")}')";
 			}
 
 			// statement
@@ -2970,14 +3029,14 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(query, filter, businessEntityID));
 				try
 				{
 					var total = command.ExecuteScalar().CastAs<long>();
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
 							$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
@@ -3010,14 +3069,14 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var command = connection.CreateCommand(dbProviderFactory.PrepareCount<T>(query, filter, businessEntityID));
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(query, filter, businessEntityID));
 				try
 				{
 					var total = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new List<string>()
+						RepositoryMediator.WriteLogs(new[]
 						{
 							$"SQL: Perform COUNT command successful [{typeof(T)}] @ {dataSource.Name}",
 							$"Total: {total} - Execution times: {stopwatch.GetElapsedTimes()}",
@@ -3042,9 +3101,9 @@ namespace net.vieapps.Components.Repository
 			var sql = "";
 			switch (dbProviderFactory.GetName())
 			{
-				case "MicrosoftSQL":
+				case "SQLServer":
 					sql = $"CREATE TABLE [{context.EntityDefinition.TableName}] ("
-						+ string.Join(", ", context.EntityDefinition.Attributes.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL"))
+						+ context.EntityDefinition.Attributes.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
 						+ $", CONSTRAINT [PK_{context.EntityDefinition.TableName}] PRIMARY KEY CLUSTERED ([{context.EntityDefinition.PrimaryKey}] ASC) "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY]";
 					break;
@@ -3052,7 +3111,7 @@ namespace net.vieapps.Components.Repository
 				case "MySQL":
 				case "PostgreSQL":
 					sql = $"CREATE TABLE {context.EntityDefinition.TableName} ("
-						+ string.Join(", ", context.EntityDefinition.Attributes.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL"))
+						+ context.EntityDefinition.Attributes.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
 						+ $", PRIMARY KEY ({context.EntityDefinition.PrimaryKey}))";
 					break;
 			}
@@ -3065,12 +3124,12 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
+						tracker?.Invoke($"Create SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
 
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs(new List<string>()
+							RepositoryMediator.WriteLogs(new[]
 							{
-								$"STARTER: Create SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"STARTER: Create SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
 								$"SQL Command: {sql}"
 							});
 					}
@@ -3085,7 +3144,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			var prefix = "IDX_" + context.EntityDefinition.TableName;
-			var indexes = new Dictionary<string, List<AttributeInfo>>()
+			var indexes = new Dictionary<string, List<AttributeInfo>>
 			{
 				{ prefix, new List<AttributeInfo>() }
 			};
@@ -3126,19 +3185,19 @@ namespace net.vieapps.Components.Repository
 			var sql = "";
 			switch (dbProviderFactory.GetName())
 			{
-				case "MicrosoftSQL":
+				case "SQLServer":
 					indexes.Where(info => info.Value.Count > 0).ForEach(info =>
 					{
 						sql += (sql.Equals("") ? "" : ";\n")
 							+ $"CREATE NONCLUSTERED INDEX [{info.Key}] ON [{context.EntityDefinition.TableName}] ("
-							+ string.Join(", ", info.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC"))
+							+ info.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC").Join(", ")
 							+ ") WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY]";
 					});
 					uniqueIndexes.Where(info => info.Value.Count > 0).ForEach(info =>
 					{
 						sql += (sql.Equals("") ? "" : ";")
 							+ $"CREATE UNIQUE NONCLUSTERED INDEX [{info.Key}] ON [{context.EntityDefinition.TableName}] ("
-							+ string.Join(", ", info.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC"))
+							+ info.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC").Join(", ")
 							+ ") WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY]";
 					});
 					break;
@@ -3149,14 +3208,14 @@ namespace net.vieapps.Components.Repository
 					{
 						sql += (sql.Equals("") ? "" : ";\n")
 							+ $"CREATE INDEX {info.Key} ON {context.EntityDefinition.TableName} ("
-							+ string.Join(", ", info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC"))
+							+ info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC").Join(", ")
 							+ ")";
 					});
 					uniqueIndexes.Where(info => info.Value.Count > 0).ForEach(info =>
 					{
 						sql += (sql.Equals("") ? "" : ";\n")
 							+ $"CREATE UNIQUE INDEX {info.Key} ON {context.EntityDefinition.TableName} ("
-							+ string.Join(", ", info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC"))
+							+ info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC").Join(", ")
 							+ ")";
 					});
 					break;
@@ -3170,12 +3229,12 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
+						tracker?.Invoke($"Create indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
 
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs(new List<string>()
+							RepositoryMediator.WriteLogs(new[]
 							{
-								$"STARTER: Create indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"STARTER: Create indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
 								$"SQL Command: {sql}"
 							});
 					}
@@ -3200,7 +3259,7 @@ namespace net.vieapps.Components.Repository
 			var sql = "";
 
 			// check to create default fulltext catalog on Microsoft SQL Server
-			if (dbProviderFactory.IsMicrosoftSQL())
+			if (dbProviderFactory.IsSQLServer())
 				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
 					var command = connection.CreateCommand();
@@ -3222,7 +3281,7 @@ namespace net.vieapps.Components.Repository
 			if (columns.Count > 0)
 				switch (dbProviderFactory.GetName())
 				{
-					case "MicrosoftSQL":
+					case "SQLServer":
 						sql = $"CREATE FULLTEXT INDEX ON [{context.EntityDefinition.TableName}] ({columns.Join(", ")}) KEY INDEX [PK_{context.EntityDefinition.TableName}]";
 						break;
 
@@ -3231,7 +3290,7 @@ namespace net.vieapps.Components.Repository
 						break;
 
 					case "PostgreSQL":
-						sql = $"CREATE INDEX FT_{context.EntityDefinition.TableName} ON {context.EntityDefinition.TableName} USING GIN (to_tsvector('english', {string.Join(" || ' ' || ", columns)}))";
+						sql = $"CREATE INDEX FT_{context.EntityDefinition.TableName} ON {context.EntityDefinition.TableName} USING GIN (to_tsvector('english', {columns.Join(" || ' ' || ")}))";
 						break;
 				}
 
@@ -3243,12 +3302,12 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create full-text indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
+						tracker?.Invoke($"Create full-text indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
 
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs(new List<string>()
+							RepositoryMediator.WriteLogs(new[]
 							{
-								$"STARTER: Create full-text indexes of SQL table successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"STARTER: Create full-text indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
 								$"SQL Command: {sql}"
 							});
 					}
@@ -3269,18 +3328,18 @@ namespace net.vieapps.Components.Repository
 			var sql = "";
 			switch (dbProviderFactory.GetName())
 			{
-				case "MicrosoftSQL":
+				case "SQLServer":
 					sql = $"CREATE TABLE [{context.EntityDefinition.MultipleParentAssociatesTable}] ("
-						+ string.Join(", ", columns.Select(info => "[" + info.Key + "] " + info.Value.GetDbTypeString(dbProviderFactory) + " NOT  NULL"))
-						+ $", CONSTRAINT [PK_{context.EntityDefinition.MultipleParentAssociatesTable}] PRIMARY KEY CLUSTERED ({string.Join(", ", columns.Select(info => $"[{info.Key}] ASC"))})"
+						+ columns.Select(info => "[" + info.Key + "] " + info.Value.GetDbTypeString(dbProviderFactory) + " NOT  NULL").Join(", ")
+						+ $", CONSTRAINT [PK_{context.EntityDefinition.MultipleParentAssociatesTable}] PRIMARY KEY CLUSTERED ({columns.Select(info => $"[{info.Key}] ASC").Join(", ")})"
 						+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
 					break;
 
 				case "MySQL":
 				case "PostgreSQL":
 					sql = $"CREATE TABLE {context.EntityDefinition.MultipleParentAssociatesTable} ("
-						+ string.Join(", ", columns.Select(info => $"{info.Key} {info.Value.GetDbTypeString(dbProviderFactory)} NOT  NULL"))
-						+ $", PRIMARY KEY ({string.Join(", ", columns.Select(info => $"{info.Key} ASC"))})"
+						+ columns.Select(info => $"{info.Key} {info.Value.GetDbTypeString(dbProviderFactory)} NOT  NULL").Join(", ")
+						+ $", PRIMARY KEY ({columns.Select(info => $"{info.Key} ASC").Join(", ")})"
 						+ ")";
 					break;
 			}
@@ -3293,12 +3352,12 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table of parent associated mapping successul [{context.EntityDefinition.MultipleParentAssociatesTable}] @ {dataSource.Name}", null);
+						tracker?.Invoke($"Create SQL table of parent associated mapping successful [{context.EntityDefinition.MultipleParentAssociatesTable}] @ {dataSource.Name}", null);
 
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs(new List<string>()
+							RepositoryMediator.WriteLogs(new[]
 							{
-								$"STARTER: Create SQL table of parent associated mapping successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"STARTER: Create SQL table of parent associated mapping successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
 								$"SQL Command: {sql}"
 							});
 					}
@@ -3315,52 +3374,52 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactoryName = dbProviderFactory.GetName();
 			var tableName = context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName;
 
-			var columns = new Dictionary<string, Tuple<Type, int>>()
+			var columns = new Dictionary<string, Tuple<Type, int>>
 			{
-				{ "ID", new Tuple<Type, int>(typeof(String), 32) },
-				{ "SystemID", new Tuple<Type, int>(typeof(String), 32) },
-				{ "RepositoryID", new Tuple<Type, int>(typeof(String), 32) },
-				{ "EntityID", new Tuple<Type, int>(typeof(String), 32) },
+				{ "ID", new Tuple<Type, int>(typeof(string), 32) },
+				{ "SystemID", new Tuple<Type, int>(typeof(string), 32) },
+				{ "RepositoryID", new Tuple<Type, int>(typeof(string), 32) },
+				{ "EntityID", new Tuple<Type, int>(typeof(string), 32) },
 			};
 
 			var max = dbProviderFactoryName.Equals("MySQL") ? 15 : 30;
 			for (var index = 1; index <= max; index++)
-				columns.Add("SmallText" + index.ToString(), new Tuple<Type, int>(typeof(String), 250));
+				columns.Add("SmallText" + index.ToString(), new Tuple<Type, int>(typeof(string), 250));
 
 			max = dbProviderFactoryName.Equals("MySQL") ? 3 : 10;
 			for (var index = 1; index <= max; index++)
-				columns.Add("MediumText" + index.ToString(), new Tuple<Type, int>(typeof(String), 4000));
+				columns.Add("MediumText" + index.ToString(), new Tuple<Type, int>(typeof(string), 4000));
 
 			max = 5;
 			for (var index = 1; index <= max; index++)
-				columns.Add("LargeText" + index.ToString(), new Tuple<Type, int>(typeof(String), 0));
+				columns.Add("LargeText" + index.ToString(), new Tuple<Type, int>(typeof(string), 0));
 
 			max = dbProviderFactoryName.Equals("MySQL") ? 20 : 40;
 			for (var index = 1; index <= max; index++)
-				columns.Add("Number" + index.ToString(), new Tuple<Type, int>(typeof(Int32), 0));
+				columns.Add("Number" + index.ToString(), new Tuple<Type, int>(typeof(int), 0));
 
 			max = 10;
 			for (var index = 1; index <= max; index++)
-				columns.Add("Decimal" + index.ToString(), new Tuple<Type, int>(typeof(Decimal), 0));
+				columns.Add("Decimal" + index.ToString(), new Tuple<Type, int>(typeof(decimal), 0));
 
 			for (var index = 1; index <= max; index++)
-				columns.Add("DateTime" + index.ToString(), new Tuple<Type, int>(typeof(String), 19));
+				columns.Add("DateTime" + index.ToString(), new Tuple<Type, int>(typeof(string), 19));
 
 			var sql = "";
 			switch (dbProviderFactoryName)
 			{
-				case "MicrosoftSQL":
+				case "SQLServer":
 					sql = $"CREATE TABLE [{tableName}] ("
-						+ string.Join(", ", columns.Select(info =>
+						+ columns.Select(info =>
 						{
 							var type = info.Value.Item1;
 							var precision = info.Value.Item2;
-							var asFixedLength = type.Equals(typeof(String)) && precision.Equals(32);
-							var asCLOB = type.Equals(typeof(String)) && precision.Equals(0);
+							var asFixedLength = type.Equals(typeof(string)) && precision.Equals(32);
+							var asCLOB = type.Equals(typeof(string)) && precision.Equals(0);
 							return "[" + info.Key + "] "
 								+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
 								+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
-						}))
+						}).Join(", ")
 						+ $", CONSTRAINT [PK_{tableName}] PRIMARY KEY CLUSTERED ([ID] ASC) "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];\n"
 						+ $"CREATE NONCLUSTERED INDEX [IDX_{tableName}] ON [{tableName}] ([ID] ASC, [SystemID] ASC, [RepositoryID] ASC, [EntityID] ASC)"
@@ -3369,7 +3428,7 @@ namespace net.vieapps.Components.Repository
 					{
 						var type = info.Value.Item1;
 						var precision = info.Value.Item2;
-						var isBigText = type.Equals(typeof(String)) && precision.Equals(0);
+						var isBigText = type.Equals(typeof(string)) && precision.Equals(0);
 						if (index > 3 && !isBigText)
 							sql += "\n"
 								+ $"CREATE NONCLUSTERED INDEX [IDX_{tableName}_{info.Key}] ON [{tableName}] ([{info.Key}] ASC)"
@@ -3380,23 +3439,23 @@ namespace net.vieapps.Components.Repository
 				case "MySQL":
 				case "PostgreSQL":
 					sql = $"CREATE TABLE {tableName} ("
-						+ string.Join(", ", columns.Select(info =>
+						+ columns.Select(info =>
 						{
 							var type = info.Value.Item1;
 							var precision = info.Value.Item2;
-							var asFixedLength = type.Equals(typeof(String)) && precision.Equals(32);
-							var asCLOB = type.Equals(typeof(String)) && precision.Equals(0);
+							var asFixedLength = type.Equals(typeof(string)) && precision.Equals(32);
+							var asCLOB = type.Equals(typeof(string)) && precision.Equals(0);
 							return info.Key + " "
 								+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
 								+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
-						}))
+						}).Join(", ")
 						+ ", PRIMARY KEY (ID ASC));\n"
 						+ $"CREATE INDEX IDX_{tableName} ON {tableName} (ID ASC, SystemID ASC, RepositoryID ASC, EntityID ASC);";
 					columns.ForEach((info, index) =>
 					{
 						var type = info.Value.Item1;
 						var precision = info.Value.Item2;
-						var isBigText = type.Equals(typeof(String)) && (precision.Equals(0) || precision.Equals(4000));
+						var isBigText = type.Equals(typeof(string)) && (precision.Equals(0) || precision.Equals(4000));
 						if (index > 3 && !isBigText)
 							sql += "\n" + $"CREATE INDEX IDX_{tableName}_{info.Key} ON {tableName} ({info.Key} ASC);";
 					});
@@ -3411,12 +3470,12 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table of extended properties successul [{tableName}] @ {dataSource.Name}", null);
+						tracker?.Invoke($"Create SQL table of extended properties successful [{tableName}] @ {dataSource.Name}", null);
 
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs(new List<string>()
+							RepositoryMediator.WriteLogs(new[]
 							{
-								$"STARTER: Create SQL table of extended properties successul [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"STARTER: Create SQL table of extended properties successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
 								$"SQL Command: {sql}"
 							});
 					}
@@ -3517,7 +3576,7 @@ namespace net.vieapps.Components.Repository
 
 		internal static Dictionary<string, Provider> DbProviders { get; private set; } = null;
 
-		internal static Dictionary<string, DbProviderFactory> ProviderFactories { get; } = new Dictionary<string, DbProviderFactory>();
+		internal static Dictionary<string, DbProviderFactory> ProviderFactories { get; } = new Dictionary<string, DbProviderFactory>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Gest the current installed of provider factories
@@ -3541,7 +3600,7 @@ namespace net.vieapps.Components.Repository
 
 		internal static void ConstructDbProviderFactories(List<XmlNode> nodes, Action<string, Exception> tracker = null)
 		{
-			DbProviderFactories.DbProviders = DbProviderFactories.DbProviders ?? new Dictionary<string, Provider>();
+			DbProviderFactories.DbProviders = DbProviderFactories.DbProviders ?? new Dictionary<string, Provider>(StringComparer.OrdinalIgnoreCase);
 			nodes.ForEach(node =>
 			{
 				var invariant = node.Attributes["invariant"]?.Value;
@@ -3554,7 +3613,7 @@ namespace net.vieapps.Components.Repository
 				if (type == null && !string.IsNullOrWhiteSpace(node.Attributes["type"]?.Value))
 					try
 					{
-						var typeInfo = node.Attributes["type"].Value.Split(',').Select(info => info.Trim()).ToList();
+						var typeInfo = node.Attributes["type"].Value.ToArray().ToList();
 						type = new Enyim.Caching.AssemblyLoader(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{typeInfo[1]}.dll")).Assembly.GetExportedTypes().FirstOrDefault(serviceType => typeInfo[0].Equals(serviceType.ToString()));
 					}
 					catch (Exception ex)

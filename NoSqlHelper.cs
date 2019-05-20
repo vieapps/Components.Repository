@@ -7,11 +7,9 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
-
 using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
-
 using net.vieapps.Components.Utility;
 #endregion
 
@@ -25,6 +23,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Client
 		internal static ConcurrentDictionary<string, IMongoClient> Clients { get; } = new ConcurrentDictionary<string, IMongoClient>();
+
 		internal static ConcurrentDictionary<int, bool> ReplicaSetClients { get; } = new ConcurrentDictionary<int, bool>();
 
 		/// <summary>
@@ -305,15 +304,15 @@ namespace net.vieapps.Components.Repository
 		#region Helpers (filter, sort, projection, find fluent)
 		static FilterDefinition<T> CreateFilterDefinition<T>(this string query) where T : class
 		{
-			var searchBy = "";
+			var searchTerms = "";
 			var searchQuery = new SearchQuery(query);
-			searchQuery.AndWords.ForEach(word => searchBy += (!searchBy.Equals("") ? " " : "") + word);
-			searchQuery.OrWords.ForEach(word => searchBy += (!searchBy.Equals("") ? " " : "") + word);
-			searchQuery.NotWords.ForEach(word => searchBy += (!searchBy.Equals("") ? " " : "") + "-" + word);
-			searchQuery.AndPhrases.ForEach(phrase => searchBy += (!searchBy.Equals("") ? " " : "") + $"\"{phrase}\"");
-			searchQuery.OrPhrases.ForEach(phrase => searchBy += (!searchBy.Equals("") ? " " : "") + $"\"{phrase}\"");
-			searchQuery.NotPhrases.ForEach(phrase => searchBy += (!searchBy.Equals("") ? " " : "") + "-" + $"\"{phrase}\"");
-			return Builders<T>.Filter.Text(searchBy, new TextSearchOptions { CaseSensitive = false });
+			searchQuery.AndWords.ForEach(word => searchTerms += (!searchTerms.Equals("") ? " " : "") + word);
+			searchQuery.OrWords.ForEach(word => searchTerms += (!searchTerms.Equals("") ? " " : "") + word);
+			searchQuery.NotWords.ForEach(word => searchTerms += (!searchTerms.Equals("") ? " " : "") + "-" + word);
+			searchQuery.AndPhrases.ForEach(phrase => searchTerms += (!searchTerms.Equals("") ? " " : "") + $"\"{phrase}\"");
+			searchQuery.OrPhrases.ForEach(phrase => searchTerms += (!searchTerms.Equals("") ? " " : "") + $"\"{phrase}\"");
+			searchQuery.NotPhrases.ForEach(phrase => searchTerms += (!searchTerms.Equals("") ? " " : "") + "-" + $"\"{phrase}\"");
+			return Builders<T>.Filter.Text(searchTerms, new TextSearchOptions { CaseSensitive = false });
 		}
 
 		static FilterDefinition<T> CreateFilterDefinition<T>(this IFilterBy<T> filter, string businessEntityID = null) where T : class
@@ -2275,13 +2274,11 @@ namespace net.vieapps.Components.Repository
 				{
 					var @object = definition.Type.CreateInstance() as RepositoryBase;
 					@object.ID = UtilityService.BlankUUID;
-					await collection.InsertOneAsync(@object.ToBsonDocument(), null, cancellationToken)
-						.ContinueWith(async _ =>
-						{
-							await Task.Delay(456, cancellationToken).ConfigureAwait(false);
-							await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUUID), null, cancellationToken).ConfigureAwait(false);
-						}, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current)
-						.ConfigureAwait(false);
+					await collection.InsertOneAsync(@object.ToBsonDocument(), null, cancellationToken).ContinueWith(async _ =>
+					{
+						await Task.Delay(456, cancellationToken).ConfigureAwait(false);
+						await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUUID), null, cancellationToken).ConfigureAwait(false);
+					}, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current).ConfigureAwait(false);
 				}
 				catch { }
 		}

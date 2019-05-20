@@ -97,7 +97,7 @@ namespace net.vieapps.Components.Repository
 			assemblies.ForEach(assembly => RepositoryStarter.Initialize(assembly, tracker));
 
 			// read configuration and update
-			if (ConfigurationManager.GetSection("net.vieapps.repositories") is AppConfigurationSectionHandler config)
+			if (ConfigurationManager.GetSection(UtilityService.GetAppSetting("Section:Repositories", "net.vieapps.repositories")) is AppConfigurationSectionHandler config)
 				try
 				{
 					// update settings of data sources
@@ -136,7 +136,7 @@ namespace net.vieapps.Components.Repository
 				}
 
 			else if (updateFromConfigurationFile)
-				throw new ConfigurationErrorsException("Cannot find the configuration section named 'net.vieapps.repositories' in the configuration file");
+				throw new ConfigurationErrorsException("Cannot find the configuration section (might be named as 'net.vieapps.repositories') in the configuration file");
 
 			tracker?.Invoke($"Total of registered repositories: {RepositoryMediator.RepositoryDefinitions.Count}", null);
 			tracker?.Invoke($"Total of registered repository entities: {RepositoryMediator.EntityDefinitions.Count}", null);
@@ -209,9 +209,8 @@ namespace net.vieapps.Components.Repository
 		public static void ConstructDbProviderFactories(XmlNodeList dbProviderFactoryNodes, Action<string, Exception> tracker = null)
 			=> RepositoryStarter.ConstructDbProviderFactories(dbProviderFactoryNodes.ToList(), tracker);
 
-		static async Task EnsureSqlSchemasAsync(Action<string, Exception> tracker = null)
-		{
-			await RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
+		static Task EnsureSqlSchemasAsync(Action<string, Exception> tracker = null)
+			=> RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
 			{
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
 				primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.SQL)
@@ -266,12 +265,10 @@ namespace net.vieapps.Components.Repository
 							RepositoryMediator.WriteLogs($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
 						}
 					}, cancellationToken, true, false).ConfigureAwait(false);
-			}, CancellationToken.None, true, false).ConfigureAwait(false);
-		}
+			}, CancellationToken.None, true, false);
 
-		static async Task EnsureNoSqlIndexesAsync(Action<string, Exception> tracker = null)
-		{
-			await RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
+		static Task EnsureNoSqlIndexesAsync(Action<string, Exception> tracker = null)
+			=> RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
 			{
 				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
 				primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
@@ -326,7 +323,6 @@ namespace net.vieapps.Components.Repository
 							RepositoryMediator.WriteLogs($"Cannot ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
 						}
 					}, cancellationToken, true, false).ConfigureAwait(false);
-			}, CancellationToken.None, true, false).ConfigureAwait(false);
-		}
+			}, CancellationToken.None, true, false);
 	}
 }
