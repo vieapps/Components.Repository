@@ -6623,6 +6623,15 @@ namespace net.vieapps.Components.Repository
 				: Task.FromResult(false);
 
 		/// <summary>
+		/// Adds an object into cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cache">The cache storage</param>
+		/// <param name="object">The object to update into cache storage</param>
+		public static Task<bool> SetAsync<T>(this Cache cache, T @object, CancellationToken cancellationToken) where T : class
+			=> cache.SetAsync(@object, 0, cancellationToken);
+
+		/// <summary>
 		/// Adds an object into cache storage (when its no cached)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -6647,6 +6656,15 @@ namespace net.vieapps.Components.Repository
 				: Task.FromResult(false);
 
 		/// <summary>
+		/// Adds an object into cache storage (when its no cached)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cache">The cache storage</param>
+		/// <param name="object">The object to update into cache storage</param>
+		public static Task<bool> AddAsync<T>(this Cache cache, T @object, CancellationToken cancellationToken) where T : class
+			=> cache.AddAsync(@object, 0, cancellationToken);
+
+		/// <summary>
 		/// Replaces an object in the cache storage
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -6669,6 +6687,15 @@ namespace net.vieapps.Components.Repository
 			=> @object != null
 				? cache.ReplaceAsync(@object.GetCacheKey(), @object, expirationTime, cancellationToken)
 				: Task.FromResult(false);
+
+		/// <summary>
+		/// Replaces an object in the cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cache">The cache storage</param>
+		/// <param name="object">The object to update into cache storage</param>
+		public static Task<bool> ReplaceAsync<T>(this Cache cache, T @object, CancellationToken cancellationToken) where T : class
+			=> cache.ReplaceAsync(@object, 0, cancellationToken);
 
 		/// <summary>
 		/// Adds the collection of objects into cache storage
@@ -6717,6 +6744,15 @@ namespace net.vieapps.Components.Repository
 			=> objects != null
 				? cache.SetAsync(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()), null, expirationTime, cancellationToken)
 				: Task.CompletedTask;
+
+		/// <summary>
+		/// Adds the collection of objects into cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cache">The cache storage</param>
+		/// <param name="objects">The collection of objects</param>
+		public static Task SetAsync<T>(this Cache cache, IEnumerable<T> objects, CancellationToken cancellationToken) where T : class
+			=> cache.SetAsync(objects, 0, cancellationToken);
 
 		/// <summary>
 		/// Fetchs an object from cache storage

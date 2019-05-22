@@ -9,14 +9,14 @@
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
 		<SignAssembly>false</SignAssembly>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
-		<AssemblyVersion>10.2.1905.2</AssemblyVersion>
-		<FileVersion>10.2.1905.2</FileVersion>
-		<InformationalVersion>v10.2.netstandard-2+rev:2019.05.20-postgresql</InformationalVersion>
+		<AssemblyVersion>10.2.1906.1</AssemblyVersion>
+		<FileVersion>10.2.1906.1</FileVersion>
+		<InformationalVersion>v10.2.netstandard-2+rev:2019.05.23-postgresql</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.2.1905.2</Version>
+		<Version>10.2.1906.1</Version>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time on .NET Standard 2.0</Description>
 		<Authors>VIEApps.net</Authors>
@@ -24,9 +24,9 @@
 		<PackageLicense>LICENSE.md</PackageLicense>
 		<PackageOutputPath>..\</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Improvement: extension methods</PackageReleaseNotes>
+		<PackageReleaseNotes>Improvement: extension methods for working well with PostgreSQL</PackageReleaseNotes>
+		<PackageProjectUrl>https://vieapps.net/</PackageProjectUrl>
 		<PackageIconUrl>https://github.com/vieapps/Components.Utility/raw/master/logo.png</PackageIconUrl>
-		<PackageProjectUrl>https://github.com/vieapps/Components.Repository</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 	</PropertyGroup>
 
@@ -39,9 +39,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.8.0" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1905.2" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1905.2" />
+		<PackageReference Include="MongoDB.Driver" Version="2.8.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1906.1" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1906.1" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.2.1906.1" />
 	</ItemGroup>
 
 </Project>
