@@ -46,6 +46,9 @@ namespace net.vieapps.Components.Repository
 		static bool IsSQLServer(this DbProviderFactory dbProviderFactory)
 			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("SqlClientFactory");
 
+		static bool IsOracleRDBMS(this DbProviderFactory dbProviderFactory)
+			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("OracleClientFactory");
+
 		static bool IsMySQL(this DbProviderFactory dbProviderFactory)
 			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("MySqlClientFactory");
 
@@ -53,7 +56,7 @@ namespace net.vieapps.Components.Repository
 			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("NpgsqlFactory");
 
 		static bool IsGotRowNumber(this DbProviderFactory dbProviderFactory)
-			=> dbProviderFactory != null && dbProviderFactory.IsSQLServer();
+			=> dbProviderFactory != null && (dbProviderFactory.IsSQLServer() || dbProviderFactory.IsOracleRDBMS());
 
 		static bool IsGotLimitOffset(this DbProviderFactory dbProviderFactory)
 			=> dbProviderFactory != null && (dbProviderFactory.IsMySQL() || dbProviderFactory.IsPostgreSQL());
@@ -72,7 +75,9 @@ namespace net.vieapps.Components.Repository
 						? "MySQL"
 						: dbProviderFactory.IsPostgreSQL()
 							? "PostgreSQL"
-							: "ODBC";
+							: dbProviderFactory.IsOracleRDBMS()
+								? "OralceRDBMS"
+								: "ODBC";
 		#endregion
 
 		#region Connection
