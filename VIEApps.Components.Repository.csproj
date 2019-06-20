@@ -9,16 +9,16 @@
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
 		<SignAssembly>false</SignAssembly>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
-		<AssemblyVersion>10.3.1906.3</AssemblyVersion>
-		<FileVersion>10.3.1906.3</FileVersion>
-		<InformationalVersion>v10.3.netstandard-2.x+rev:2019.06.18-multiple.targets.preview</InformationalVersion>
+		<AssemblyVersion>10.3.1906.4</AssemblyVersion>
+		<FileVersion>10.3.1906.4</FileVersion>
+		<InformationalVersion>v10.3+rev:2019.06.20-multiple.targets</InformationalVersion>
 		<Product>VIEApps NGX</Product>
 		<Company>VIEApps.net</Company>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.3.1906.3-preview</Version>
+		<Version>10.3.1906.4-preview</Version>
 		<Title>VIEApps NGX Repository</Title>
-		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time on .NET Standard 2.x</Description>
+		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time with .NET Standard 2.x</Description>
 		<Authors>VIEApps.net</Authors>
 		<Copyright>© 2019 VIEApps.net</Copyright>
 		<PackageLicense>LICENSE.md</PackageLicense>
@@ -38,11 +38,18 @@
 		<None Remove="README.md" />
 	</ItemGroup>
 
-	<ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+		<PackageReference Include="MongoDB.Driver" Version="2.8.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.2.1906.2" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.2.1906.2" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.2.1906.2" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
 		<PackageReference Include="MongoDB.Driver" Version="2.9.0-beta2" />
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.1906.3-preview" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.3.1906.3-preview" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.1906.3-preview" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.1906.4-preview" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.3.1906.4-preview" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.1906.4-preview" />
 	</ItemGroup>
 
 </Project>
