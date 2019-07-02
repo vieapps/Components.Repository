@@ -7,20 +7,21 @@
 		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\VIEApps.Components.Repository.xml</DocumentationFile>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
-		<SignAssembly>false</SignAssembly>
+		<SignAssembly>$(Sign)</SignAssembly>
+		<DefineConstants>$(SignConstant)</DefineConstants>
 		<AssemblyOriginatorKeyFile>../VIEApps.Components.snk</AssemblyOriginatorKeyFile>
-		<AssemblyVersion>10.3.1906.5</AssemblyVersion>
-		<FileVersion>10.3.1906.5</FileVersion>
-		<InformationalVersion>v10.3.1906+rev:2019.06.21-multiple.targets</InformationalVersion>
+		<AssemblyVersion>10.3$(ReleaseVersion)</AssemblyVersion>
+		<FileVersion>10.3$(ReleaseVersion)</FileVersion>
+		<InformationalVersion>10.3-$(TargetFramework)-$(ReleaseRevision)</InformationalVersion>
+		<Version>10.3$(ReleaseVersion)$(ReleaseSurfix)</Version>
 		<Product>VIEApps NGX</Product>
-		<Company>VIEApps.net</Company>
-		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-		<PackageId>VIEApps.Components.Repository</PackageId>
-		<Version>10.3.1906.5-preview</Version>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time with .NET Standard 2.x</Description>
-		<Authors>VIEApps.net</Authors>
 		<Copyright>© 2019 VIEApps.net</Copyright>
+		<Authors>VIEApps.net</Authors>
+		<Company>VIEApps.net</Company>
+		<GeneratePackageOnBuild>$(GeneratePackage)</GeneratePackageOnBuild>
+		<PackageId>VIEApps.Components.Repository$(PackageSurfix)</PackageId>
 		<PackageLicense>LICENSE.md</PackageLicense>
 		<PackageOutputPath>..\</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
@@ -39,9 +40,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.1906.5-preview" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.3.1906.5-preview" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.1906.5-preview" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.1907.1-preview" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.3.1907.1-preview" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.1907.1-preview" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
