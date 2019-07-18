@@ -33,7 +33,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static bool IsReplicaSet(this IMongoClient mongoClient)
 		{
-			if (NoSqlHelper.ReplicaSetClients.TryGetValue(mongoClient.GetHashCode(), out bool status))
+			if (NoSqlHelper.ReplicaSetClients.TryGetValue(mongoClient.GetHashCode(), out var status))
 				return status;
 
 			try
@@ -55,9 +55,9 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="mongoClient"></param>
 		/// <returns></returns>
-		public static async Task<bool> IsReplicaSetAsync(this IMongoClient mongoClient, CancellationToken cancellationToken = default(CancellationToken))
+		public static async Task<bool> IsReplicaSetAsync(this IMongoClient mongoClient, CancellationToken cancellationToken = default)
 		{
-			if (NoSqlHelper.ReplicaSetClients.TryGetValue(mongoClient.GetHashCode(), out bool status))
+			if (NoSqlHelper.ReplicaSetClients.TryGetValue(mongoClient.GetHashCode(), out var status))
 				return status;
 
 			try
@@ -85,7 +85,7 @@ namespace net.vieapps.Components.Repository
 				return null;
 
 			var key = "MongoClient#" + connectionString.Trim().ToLower().GenerateUUID();
-			if (!NoSqlHelper.Clients.TryGetValue(key, out IMongoClient client))
+			if (!NoSqlHelper.Clients.TryGetValue(key, out var client))
 				lock (NoSqlHelper.Clients)
 				{
 					if (!NoSqlHelper.Clients.TryGetValue(key, out client))
@@ -126,7 +126,7 @@ namespace net.vieapps.Components.Repository
 				return null;
 
 			var key = databaseName.Trim() + "#" + connectionString.Trim().ToLower().GenerateUUID();
-			if (!NoSqlHelper.Databases.TryGetValue(key, out IMongoDatabase database))
+			if (!NoSqlHelper.Databases.TryGetValue(key, out var database))
 				lock (NoSqlHelper.Databases)
 				{
 					if (!NoSqlHelper.Databases.TryGetValue(key, out database))
@@ -154,7 +154,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<IClientSessionHandle> StartSessionAsync(this IMongoDatabase database, ClientSessionOptions options = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<IClientSessionHandle> StartSessionAsync(this IMongoDatabase database, ClientSessionOptions options = null, CancellationToken cancellationToken = default)
 			=> database.Client.StartSessionAsync(options, cancellationToken);
 
 		/// <summary>
@@ -170,7 +170,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="database"></param>
 		/// <returns></returns>
-		public static Task<bool> IsReplicaSetAsync(this IMongoDatabase database, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<bool> IsReplicaSetAsync(this IMongoDatabase database, CancellationToken cancellationToken = default)
 			=> database.Client.IsReplicaSetAsync(cancellationToken);
 		#endregion
 
@@ -210,7 +210,7 @@ namespace net.vieapps.Components.Repository
 				return NoSqlHelper.GetCollection<T>(NoSqlHelper.GetDatabase(connectionString, databaseName, databaseSettings), collectionName, collectionSettings);
 
 			var key = collectionName.Trim() + "#" + (databaseName.Trim() + "#" + connectionString.Trim()).ToLower().GetMD5();
-			if (!NoSqlHelper.Collections.TryGetValue(key, out object collection))
+			if (!NoSqlHelper.Collections.TryGetValue(key, out var collection))
 				lock (NoSqlHelper.Collections)
 				{
 					if (!NoSqlHelper.Collections.TryGetValue(key, out collection))
@@ -269,7 +269,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<IClientSessionHandle> StartSessionAsync<T>(this IMongoCollection<T> collection, ClientSessionOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<IClientSessionHandle> StartSessionAsync<T>(this IMongoCollection<T> collection, ClientSessionOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.Database.StartSessionAsync(options, cancellationToken);
 
 		/// <summary>
@@ -297,7 +297,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
 		/// <returns></returns>
-		public static Task<bool> IsReplicaSetAsync<T>(this IMongoCollection<T> collection, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<bool> IsReplicaSetAsync<T>(this IMongoCollection<T> collection, CancellationToken cancellationToken = default)
 			=> collection.Database.IsReplicaSetAsync(cancellationToken);
 		#endregion
 
@@ -452,7 +452,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static async Task CreateAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task CreateAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "The object is null");
@@ -477,7 +477,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task CreateAsync<T>(this IMongoCollection<T> collection, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task CreateAsync<T>(this IMongoCollection<T> collection, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.CreateAsync(null, @object, options, cancellationToken);
 
 		/// <summary>
@@ -487,7 +487,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
-		public static Task CreateAsync<T>(DataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task CreateAsync<T>(DataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).CreateAsync(@object, options, cancellationToken);
 
 		/// <summary>
@@ -496,7 +496,7 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
-		public static Task CreateAsync<T>(T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task CreateAsync<T>(T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> NoSqlHelper.CreateAsync(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), @object, options, cancellationToken);
 
 		/// <summary>
@@ -508,7 +508,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
-		public static Task CreateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task CreateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, InsertOneOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).CreateAsync(context.NoSqlSession, @object, options, cancellationToken);
 		#endregion
 
@@ -525,7 +525,7 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string id, FindOptions options = null) where T : class
 			=> !string.IsNullOrWhiteSpace(id)
 				? collection.Get(session, Builders<T>.Filter.Eq("_id", id), null, options)
-				: default(T);
+				: default;
 
 		/// <summary>
 		/// Gets document of an object
@@ -550,7 +550,7 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(this RepositoryContext context, DataSource dataSource, string id, FindOptions options = null) where T : class
 			=> !string.IsNullOrWhiteSpace(id)
 				? context.GetCollection<T>(dataSource).Get(context.NoSqlSession, id, options)
-				: default(T);
+				: default;
 
 		/// <summary>
 		/// Gets document of an object
@@ -562,7 +562,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<T> GetAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string id, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> !string.IsNullOrWhiteSpace(id)
 				? collection.GetAsync(session, Builders<T>.Filter.Eq("_id", id), null, options, cancellationToken)
 				: Task.FromResult(default(T));
@@ -576,7 +576,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(this IMongoCollection<T> collection, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<T> GetAsync<T>(this IMongoCollection<T> collection, string id, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.GetAsync(null, id, options, cancellationToken);
 
 		/// <summary>
@@ -589,7 +589,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, string id, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).GetAsync(context.NoSqlSession, id, options, cancellationToken);
 		#endregion
 
@@ -631,7 +631,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static T Get<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).Get(context.NoSqlSession, NoSqlHelper.CreateFilterDefinition<T>(filter), NoSqlHelper.CreateSortDefinition<T>(sort), options);
+			=> context.GetCollection<T>(dataSource).Get(context.NoSqlSession, NoSqlHelper.CreateFilterDefinition<T>(filter, businessEntityID), NoSqlHelper.CreateSortDefinition<T>(sort, businessEntityID), options);
 
 		/// <summary>
 		/// Gets document of an object
@@ -644,7 +644,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<T> GetAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<T> GetAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> (await collection.FindAsync(session, filter, sort, 1, 1, options, cancellationToken).ConfigureAwait(false)).First();
 
 		/// <summary>
@@ -657,7 +657,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<T> GetAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.GetAsync(null, filter, sort, options, cancellationToken);
 
 		/// <summary>
@@ -672,8 +672,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> context.GetCollection<T>(dataSource).GetAsync(context.NoSqlSession, NoSqlHelper.CreateFilterDefinition<T>(filter), NoSqlHelper.CreateSortDefinition<T>(sort), options, cancellationToken);
+		public static Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).GetAsync(context.NoSqlSession, NoSqlHelper.CreateFilterDefinition<T>(filter, businessEntityID), NoSqlHelper.CreateSortDefinition<T>(sort, businessEntityID), options, cancellationToken);
 		#endregion
 
 		#region Get (by definition and identity)
@@ -703,7 +703,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static object Get(EntityDefinition definition, string id, FindOptions options = null)
-			=> NoSqlHelper.Get(definition?.GetPrimaryDataSource(), definition, id);
+			=> NoSqlHelper.Get(definition?.GetPrimaryDataSource(), definition, id, options);
 
 		/// <summary>
 		/// Gets document of an object
@@ -714,7 +714,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<object> GetAsync(DataSource dataSource, EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static async Task<object> GetAsync(DataSource dataSource, EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default)
 		{
 			dataSource = dataSource ?? definition.GetPrimaryDataSource();
 			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
@@ -732,7 +732,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<object> GetAsync(EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<object> GetAsync(EntityDefinition definition, string id, FindOptions options = null, CancellationToken cancellationToken = default)
 			=> NoSqlHelper.GetAsync(definition?.GetPrimaryDataSource(), definition, id, options, cancellationToken);
 		#endregion
 
@@ -804,7 +804,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			try
@@ -838,7 +838,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.ReplaceAsync(null, @object, options, cancellationToken);
 
 		/// <summary>
@@ -851,7 +851,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-	public static Task<ReplaceOneResult> ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+	public static Task<ReplaceOneResult> ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).ReplaceAsync(context.NoSqlSession, @object, options, cancellationToken);
 		#endregion
 
@@ -1049,7 +1049,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task UpdateAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task UpdateAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "The object is null");
@@ -1146,7 +1146,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<T>(this IMongoCollection<T> collection, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task UpdateAsync<T>(this IMongoCollection<T> collection, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.UpdateAsync(null, @object, attributes, options, cancellationToken);
 
 		/// <summary>
@@ -1160,7 +1160,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).UpdateAsync(context.NoSqlSession, @object, attributes, options, cancellationToken);
 
 		/// <summary>
@@ -1174,7 +1174,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<UpdateResult> UpdateAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<UpdateResult> UpdateAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> @object != null
 				? update != null
 					? await collection.UpdateOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), update, options, cancellationToken).ConfigureAwait(false)
@@ -1191,7 +1191,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<UpdateResult> UpdateAsync<T>(this IMongoCollection<T> collection, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<UpdateResult> UpdateAsync<T>(this IMongoCollection<T> collection, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.UpdateAsync(null, @object, update, options, cancellationToken);
 
 		/// <summary>
@@ -1205,7 +1205,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<UpdateResult> UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<UpdateResult> UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateDefinition<T> update, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).UpdateAsync(context.NoSqlSession, @object, update, options, cancellationToken);
 		#endregion
 
@@ -1292,7 +1292,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static async Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string id, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string id, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> !string.IsNullOrWhiteSpace(id)
 				? await collection.DeleteOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", id), options, cancellationToken).ConfigureAwait(false)
 				: null;
@@ -1306,7 +1306,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, string id, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, string id, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.DeleteAsync(id, options, cancellationToken);
 
 		/// <summary>
@@ -1317,7 +1317,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <returns></returns>
-		public static Task<DeleteResult> DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, string id, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<DeleteResult> DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, string id, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).DeleteAsync(context.NoSqlSession, id, options, cancellationToken);
 
 		/// <summary>
@@ -1330,7 +1330,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> @object != null
 				? collection.DeleteAsync(session, @object.GetEntityID(), options, cancellationToken)
 				: Task.FromException<DeleteResult>(new ArgumentNullException(nameof(@object), "The object is null"));
@@ -1344,7 +1344,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options"></param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<DeleteResult> DeleteAsync<T>(this IMongoCollection<T> collection, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.DeleteAsync(@object, options, cancellationToken);
 
 		/// <summary>
@@ -1355,7 +1355,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="object"></param>
 		/// <returns></returns>
-		public static Task<DeleteResult> DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<DeleteResult> DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).DeleteAsync(context.NoSqlSession, @object, options, cancellationToken);
 		#endregion
 
@@ -1387,7 +1387,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<DeleteResult> DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, DeleteOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<DeleteResult> DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var collection = context.GetCollection<T>(dataSource);
 			return await collection.DeleteManyAsync(context.NoSqlSession ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), NoSqlHelper.CreateFilterDefinition<T>(filter, businessEntityID) ?? Builders<T>.Filter.Empty, options, cancellationToken).ConfigureAwait(false);
@@ -1466,7 +1466,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<BsonDocument>> SelectAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<BsonDocument>> SelectAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var selectFluent = collection.CreateSelectFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), attributes, filter, sort, pageSize, pageNumber, options);
 			if (RepositoryMediator.IsTraceEnabled)
@@ -1487,8 +1487,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<BsonDocument>> SelectAsync<T>(this IMongoCollection<T> collection, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> collection.SelectAsync(null, attributes, filter, sort, pageSize, pageNumber, options);
+		public static Task<List<BsonDocument>> SelectAsync<T>(this IMongoCollection<T> collection, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> collection.SelectAsync(null, attributes, filter, sort, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
 		/// Finds all the matched documents and return the collection of <see cref="BsonDocument">BsonDocument</see> objects with limited attributes
@@ -1506,7 +1506,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<BsonDocument>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<BsonDocument>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectAsync(context.NoSqlSession, attributes, info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
@@ -1578,7 +1578,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> SelectIdentitiesAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<string>> SelectIdentitiesAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> (await collection.SelectAsync(session, null, filter, sort, pageSize, pageNumber, options, cancellationToken).ConfigureAwait(false)).Select(doc => doc["_id"].AsString).ToList();
 
 		/// <summary>
@@ -1593,7 +1593,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<string>> SelectIdentitiesAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<string>> SelectIdentitiesAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.SelectIdentitiesAsync(null, filter, sort, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
@@ -1611,7 +1611,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectIdentitiesAsync(context.NoSqlSession, info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
@@ -1686,7 +1686,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> FindAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> FindAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var findFluent = collection.CreateFindFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), filter, sort, pageSize, pageNumber, options);
 			if (RepositoryMediator.IsTraceEnabled)
@@ -1706,7 +1706,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(this IMongoCollection<T> collection, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.FindAsync(null, filter, sort, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
@@ -1724,7 +1724,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The options</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).FindAsync(context.NoSqlSession, info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
@@ -1763,7 +1763,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			if (identities == null || identities.Count < 1)
 				return Task.FromResult(new List<T>());
@@ -1805,7 +1805,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var info = Extensions.PrepareNoSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents);
 			var collection = context.GetCollection<T>(dataSource);
@@ -1857,6 +1857,21 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
+		/// <param name="scoreProperty"></param>
+		/// <param name="query"></param>
+		/// <param name="pageSize"></param>
+		/// <param name="pageNumber"></param>
+		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="options">The options</param>
+		/// <returns></returns>
+		public static List<T> Search<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
+			=> collection.Search(scoreProperty, query, NoSqlHelper.CreateFilterDefinition<T>(null, businessEntityID), pageSize, pageNumber, options);
+
+		/// <summary>
+		/// Searchs all the matched documents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="collection"></param>
 		/// <param name="query"></param>
 		/// <param name="filter"></param>
 		/// <param name="pageSize"></param>
@@ -1880,7 +1895,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).Search(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options = null);
+			=> context.GetCollection<T>(dataSource).Search(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1895,7 +1910,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static async Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber, options);
 			if (RepositoryMediator.IsTraceEnabled)
@@ -1916,7 +1931,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.SearchAsync(null, scoreProperty, query, filter, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
@@ -1932,8 +1947,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> collection.SearchAsync(scoreProperty, query, null, pageSize, pageNumber, options, cancellationToken);
+		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> collection.SearchAsync(scoreProperty, query, NoSqlHelper.CreateFilterDefinition<T>(null, businessEntityID), pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1947,7 +1962,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.SearchAsync(null, query, filter, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
@@ -1964,7 +1979,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).SearchAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options, cancellationToken);
 		#endregion
 
@@ -1980,10 +1995,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
+		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber) where T : class
+		public static List<string> SearchIdentities<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
-			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), scoreProperty, query, filter, pageSize, pageNumber).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
+			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), scoreProperty, query, filter, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
 			return searchFluent.ToList().Select(doc => doc["_id"].AsString).ToList();
@@ -2016,7 +2032,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <returns></returns>
 		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).SearchIdentities(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber);
+			=> context.GetCollection<T>(dataSource).SearchIdentities(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
@@ -2029,11 +2045,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
+		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static async Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
+			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
 			return (await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false)).Select(doc => doc["_id"].AsString).ToList();
@@ -2048,10 +2065,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
+		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> collection.SearchIdentitiesAsync(null, null, query, filter, pageSize, pageNumber, cancellationToken);
+		public static Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> collection.SearchIdentitiesAsync(null, null, query, filter, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
@@ -2067,8 +2085,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
-			=> context.GetCollection<T>(dataSource).SearchIdentitiesAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, cancellationToken);
+		public static Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).SearchIdentitiesAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options, cancellationToken);
 		#endregion
 
 		#region Count (searching)
@@ -2127,7 +2145,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<long> CountAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>();
 			if (RepositoryMediator.IsTraceEnabled)
@@ -2145,7 +2163,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.CountAsync(null, query, filter, options, cancellationToken);
 
 		/// <summary>
@@ -2160,12 +2178,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter = null, string businessEntityID = null, CountOptions options = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter = null, string businessEntityID = null, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).CountAsync(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), options, cancellationToken);
 		#endregion
 
 		#region Schemas & Indexes
-		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default(CancellationToken))
+		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			// prepare indexes
 			var prefix = "IDX_" + definition.CollectionName;

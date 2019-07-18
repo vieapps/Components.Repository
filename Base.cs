@@ -209,7 +209,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="object">The object to create new instance in the repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task CreateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task CreateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CreateAsync(context, dataSource, @object, cancellationToken);
 
 		/// <summary>
@@ -219,7 +219,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="object">The object to create new instance in the repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task CreateAsync<TEntity>(DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task CreateAsync<TEntity>(DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -236,7 +236,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in the repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task CreateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task CreateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CreateAsync(context, aliasTypeName, @object, cancellationToken);
 
 		/// <summary>
@@ -247,7 +247,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in the repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task CreateAsync<TEntity>(string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task CreateAsync<TEntity>(string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CreateAsync(aliasTypeName, @object, cancellationToken);
 
 		/// <summary>
@@ -257,7 +257,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in the repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task CreateAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task CreateAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.CreateAsync<TEntity>("", @object, cancellationToken);
 		#endregion
 
@@ -289,7 +289,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task CreateAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task CreateAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CreateAsync<T>(context, aliasTypeName, this as T, cancellationToken);
 
 		/// <summary>
@@ -298,7 +298,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual async Task CreateAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task CreateAsync(string aliasTypeName = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -385,7 +385,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
 				? RepositoryMediator.GetAsync<TEntity>(context, dataSource, id, true, cancellationToken, true, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
@@ -399,7 +399,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
@@ -417,7 +417,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
 				? RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id, true, cancellationToken, true, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
@@ -431,7 +431,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
 				? RepositoryMediator.GetAsync<TEntity>(aliasTypeName, id, cancellationToken, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
@@ -444,7 +444,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(string id, CancellationToken cancellationToken = default(CancellationToken), bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> RepositoryBase<T>.GetAsync<TEntity>("", id, cancellationToken, processSecondaryWhenNotFound);
 		#endregion
 
@@ -483,7 +483,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual async Task GetAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task GetAsync(RepositoryContext context, string aliasTypeName, CancellationToken cancellationToken = default)
 		{
 			if (!string.IsNullOrWhiteSpace(this.ID))
 			{
@@ -499,7 +499,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual async Task GetAsync(string aliasTypeName = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task GetAsync(string aliasTypeName = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext(false))
 			{
@@ -607,7 +607,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.GetAsync<TEntity>(context, dataSource, filter, sort, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -620,7 +620,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
@@ -639,7 +639,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, filter, sort, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -652,7 +652,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.GetAsync<TEntity>(aliasTypeName, filter, sort, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -664,7 +664,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<TEntity> GetAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.GetAsync<TEntity>("", filter, sort, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -676,7 +676,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<T> GetAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<T> GetAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.GetAsync<T>(aliasTypeName, filter, sort, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -687,7 +687,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
-		public static Task<T> GetAsync(IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<T> GetAsync(IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.GetAsync("", filter, sort, businessEntityID, cancellationToken);
 		#endregion
 
@@ -815,7 +815,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.ReplaceAsync(context, dataSource, @object, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -828,7 +828,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.ReplaceAsync<TEntity>(context, dataSource, @object, false, userID, cancellationToken);
 
 		/// <summary>
@@ -841,7 +841,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -858,7 +858,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.ReplaceAsync<TEntity>(dataSource, @object, false, userID, cancellationToken);
 
 		/// <summary>
@@ -872,7 +872,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.ReplaceAsync(context, aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -885,7 +885,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.ReplaceAsync<TEntity>(context, aliasTypeName, @object, false, userID, cancellationToken);
 
 		/// <summary>
@@ -898,7 +898,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.ReplaceAsync(aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -910,7 +910,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.ReplaceAsync<TEntity>(aliasTypeName, @object, false, userID, cancellationToken);
 
 		/// <summary>
@@ -921,7 +921,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.ReplaceAsync<TEntity>("", @object, userID, cancellationToken);
 
 		/// <summary>
@@ -933,7 +933,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.ReplaceAsync<TEntity>("", @object, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -944,7 +944,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.ReplaceAsync<TEntity>(@object, dontCreateNewVersion, null, cancellationToken);
 
 		/// <summary>
@@ -954,7 +954,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that presents the instance in the repository need to be updated</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task ReplaceAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task ReplaceAsync<TEntity>(TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.ReplaceAsync<TEntity>(@object, false, cancellationToken);
 		#endregion
 
@@ -996,7 +996,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		protected virtual Task ReplaceAsync(RepositoryContext context, string aliasTypeName, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task ReplaceAsync(RepositoryContext context, string aliasTypeName, string userID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.ReplaceAsync<T>(context, aliasTypeName, this as T, userID, cancellationToken);
 
 		/// <summary>
@@ -1005,7 +1005,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		protected virtual Task ReplaceAsync(bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task ReplaceAsync(bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.ReplaceAsync<T>(this as T, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -1013,7 +1013,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		protected virtual Task ReplaceAsync(bool dontCreateNewVersion, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task ReplaceAsync(bool dontCreateNewVersion, CancellationToken cancellationToken = default)
 			=> this.ReplaceAsync(dontCreateNewVersion, null, cancellationToken);
 
 		/// <summary>
@@ -1030,7 +1030,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual async Task ReplaceAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task ReplaceAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -1163,7 +1163,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.UpdateAsync(context, dataSource, @object, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -1176,7 +1176,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.UpdateAsync<TEntity>(context, dataSource, @object, false, userID, cancellationToken);
 
 		/// <summary>
@@ -1189,7 +1189,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -1206,7 +1206,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.UpdateAsync<TEntity>(dataSource, @object, false, userID, cancellationToken);
 
 		/// <summary>
@@ -1220,7 +1220,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.UpdateAsync(context, aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -1233,7 +1233,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(RepositoryContext context, string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.UpdateAsync<TEntity>(context, aliasTypeName, @object, false, userID, cancellationToken);
 
 		/// <summary>
@@ -1246,7 +1246,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(string aliasTypeName, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.UpdateAsync(aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -1258,7 +1258,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(string aliasTypeName, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.UpdateAsync<TEntity>(aliasTypeName, @object, false, userID, cancellationToken);
 
 		/// <summary>
@@ -1269,7 +1269,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.UpdateAsync<TEntity>("", @object, userID, cancellationToken);
 
 		/// <summary>
@@ -1281,7 +1281,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.UpdateAsync<TEntity>("", @object, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -1292,7 +1292,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task UpdateAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task UpdateAsync<TEntity>(TEntity @object, bool dontCreateNewVersion, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.UpdateAsync<TEntity>(@object, dontCreateNewVersion, null, cancellationToken);
 		#endregion
 
@@ -1335,7 +1335,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task UpdateAsync(RepositoryContext context, string aliasTypeName, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task UpdateAsync(RepositoryContext context, string aliasTypeName, string userID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.UpdateAsync<T>(context, aliasTypeName, this as T, userID, cancellationToken);
 
 		/// <summary>
@@ -1344,7 +1344,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		protected virtual Task UpdateAsync(bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task UpdateAsync(bool dontCreateNewVersion, string userID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.UpdateAsync<T>(this as T, dontCreateNewVersion, userID, cancellationToken);
 
 		/// <summary>
@@ -1352,7 +1352,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dontCreateNewVersion">Force to not create new version when update the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		protected virtual Task UpdateAsync(bool dontCreateNewVersion, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task UpdateAsync(bool dontCreateNewVersion, CancellationToken cancellationToken = default)
 			=> this.UpdateAsync(dontCreateNewVersion, null, cancellationToken);
 
 		/// <summary>
@@ -1369,7 +1369,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who updates the object (for creating new version)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual async Task UpdateAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task UpdateAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -1418,7 +1418,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in repository</param>
 		/// <param name="userID">The identity of user who created this verion of the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task<VersionContent> CreateVersionAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<VersionContent> CreateVersionAsync<TEntity>(RepositoryContext context, DataSource dataSource, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CreateVersionAsync(context, dataSource, @object, userID, cancellationToken);
 
 		/// <summary>
@@ -1429,7 +1429,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in repository</param>
 		/// <param name="userID">The identity of user who created this verion of the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task<VersionContent> CreateVersionAsync<TEntity>(RepositoryContext context, TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<VersionContent> CreateVersionAsync<TEntity>(RepositoryContext context, TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CreateVersionAsync(context, @object, userID, cancellationToken);
 
 		/// <summary>
@@ -1439,7 +1439,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to create new instance in repository</param>
 		/// <param name="userID">The identity of user who created this verion of the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static Task<VersionContent> CreateVersionAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<VersionContent> CreateVersionAsync<TEntity>(TEntity @object, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CreateVersionAsync(@object, userID, cancellationToken);
 		#endregion
 
@@ -1456,7 +1456,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="userID">The identity of user who created this verion of the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		protected virtual Task<VersionContent> CreateVersionAsync(string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task<VersionContent> CreateVersionAsync(string userID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CreateVersionAsync<T>(this as T, userID, cancellationToken);
 		#endregion
 
@@ -1512,7 +1512,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who performs the rollback action</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<TEntity> RollbackAsync<TEntity>(RepositoryContext context, VersionContent version, string userID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> RollbackAsync<TEntity>(RepositoryContext context, VersionContent version, string userID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.RollbackAsync<TEntity>(context, version, userID, cancellationToken);
 
 		/// <summary>
@@ -1523,7 +1523,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who performs the rollback action</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<TEntity> RollbackAsync<TEntity>(VersionContent version, string userID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> RollbackAsync<TEntity>(VersionContent version, string userID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.RollbackAsync<TEntity>(version, userID, cancellationToken);
 
 		/// <summary>
@@ -1535,7 +1535,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who performs the rollback action</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<TEntity> RollbackAsync<TEntity>(RepositoryContext context, string versionID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> RollbackAsync<TEntity>(RepositoryContext context, string versionID, string userID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.RollbackAsync<TEntity>(context, versionID, userID, cancellationToken);
 
 		/// <summary>
@@ -1546,7 +1546,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who performs the rollback action</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<TEntity> RollbackAsync<TEntity>(string versionID, string userID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<TEntity> RollbackAsync<TEntity>(string versionID, string userID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.RollbackAsync<TEntity>(versionID, userID, cancellationToken);
 		#endregion
 
@@ -1576,7 +1576,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who performs the rollback action</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task<T> RollbackAsync(VersionContent version, string userID, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task<T> RollbackAsync(VersionContent version, string userID, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.RollbackAsync<T>(version, userID, cancellationToken);
 
 		/// <summary>
@@ -1586,7 +1586,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who performs the rollback action</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task<T> RollbackAsync(string versionID, string userID, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task<T> RollbackAsync(string versionID, string userID, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.RollbackAsync<T>(versionID, userID, cancellationToken);
 		#endregion
 
@@ -1607,7 +1607,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="objectID">The identity of object that associates with</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountVersionsAsync<TEntity>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountVersionsAsync<TEntity>(string objectID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CountVersionContentsAsync<TEntity>(objectID, cancellationToken);
 		#endregion
 
@@ -1629,7 +1629,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected async Task<long> CountVersionsAsync(CancellationToken cancellationToken = default(CancellationToken))
+		protected async Task<long> CountVersionsAsync(CancellationToken cancellationToken = default)
 		{
 			this._totalVersions = string.IsNullOrWhiteSpace(this.ID)
 				? 0
@@ -1655,7 +1655,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="objectID">The identity of object that associates with</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<VersionContent>> FindVersionsAsync<TEntity>(string objectID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<VersionContent>> FindVersionsAsync<TEntity>(string objectID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.FindVersionContentsAsync<TEntity>(objectID, cancellationToken);
 		#endregion
 
@@ -1674,7 +1674,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected Task<List<VersionContent>> FindVersionsAsync(CancellationToken cancellationToken = default(CancellationToken))
+		protected Task<List<VersionContent>> FindVersionsAsync(CancellationToken cancellationToken = default)
 			=> string.IsNullOrWhiteSpace(this.ID)
 				? Task.FromResult<List<VersionContent>>(null)
 				: RepositoryBase<T>.FindVersionsAsync<T>(this.ID, cancellationToken);
@@ -1747,7 +1747,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task DeleteAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.DeleteAsync<TEntity>(context, dataSource, id, userID, cancellationToken);
 
 		/// <summary>
@@ -1759,7 +1759,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task DeleteAsync<TEntity>(DataSource dataSource, string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task DeleteAsync<TEntity>(DataSource dataSource, string id, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -1777,7 +1777,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task DeleteAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.DeleteAsync<TEntity>(context, aliasTypeName, id, userID, cancellationToken);
 
 		/// <summary>
@@ -1789,7 +1789,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<TEntity>(string aliasTypeName, string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task DeleteAsync<TEntity>(string aliasTypeName, string id, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.DeleteAsync<TEntity>(aliasTypeName, id, userID, cancellationToken);
 
 		/// <summary>
@@ -1800,7 +1800,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteAsync<TEntity>(string id, string userID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task DeleteAsync<TEntity>(string id, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.DeleteAsync<TEntity>("", id, userID, cancellationToken);
 		#endregion
 
@@ -1838,7 +1838,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual Task DeleteAsync(RepositoryContext context, string aliasTypeName, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual Task DeleteAsync(RepositoryContext context, string aliasTypeName, string userID = null, CancellationToken cancellationToken = default)
 			=> !string.IsNullOrWhiteSpace(this.ID)
 				? RepositoryBase<T>.DeleteAsync<T>(context, aliasTypeName, this.ID, userID, cancellationToken)
 				: Task.FromException(new ArgumentException("The identity of the object is null or empty", nameof(this.ID)));
@@ -1850,7 +1850,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="userID">The identity of user who deletes the object (for creating new trash content)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected virtual async Task DeleteAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected virtual async Task DeleteAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -1953,7 +1953,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task DeleteManyAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.DeleteManyAsync(context, dataSource, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -1965,7 +1965,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task DeleteManyAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task DeleteManyAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -1983,7 +1983,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task DeleteManyAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.DeleteManyAsync(context, aliasTypeName, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -1995,7 +1995,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task DeleteManyAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.DeleteManyAsync(aliasTypeName, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2006,7 +2006,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task DeleteManyAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task DeleteManyAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.DeleteManyAsync<TEntity>("", filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2018,7 +2018,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected static Task DeleteManyAsync(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected static Task DeleteManyAsync(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.DeleteManyAsync<T>(context, aliasTypeName, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2029,7 +2029,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected static Task DeleteManyAsync(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected static Task DeleteManyAsync(string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.DeleteManyAsync<T>(aliasTypeName, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2039,7 +2039,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected static Task DeleteManyAsync(IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken))
+		protected static Task DeleteManyAsync(IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.DeleteManyAsync("", filter, businessEntityID, cancellationToken);
 		#endregion
 
@@ -2189,7 +2189,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> FindAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.FindAsync(context, dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2207,7 +2207,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static async Task<List<TEntity>> FindAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<List<TEntity>> FindAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
@@ -2230,7 +2230,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> FindAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.FindAsync(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2247,7 +2247,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> FindAsync<TEntity>(IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.FindAsync<TEntity>("", filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2264,7 +2264,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> FindAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> FindAsync(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.FindAsync<T>(aliasTypeName, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2280,7 +2280,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.FindAsync("", filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2294,7 +2294,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID, string cacheKey, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID, string cacheKey, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.FindAsync(filter, sort, pageSize, pageNumber, businessEntityID, true, cacheKey, 0, cancellationToken);
 
 		/// <summary>
@@ -2307,7 +2307,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string cacheKey, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> FindAsync(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string cacheKey, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.FindAsync(filter, sort, pageSize, pageNumber, null, cacheKey, cancellationToken);
 		#endregion
 
@@ -2434,7 +2434,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CountAsync(context, dataSource, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2449,7 +2449,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static async Task<long> CountAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<long> CountAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
@@ -2469,7 +2469,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CountAsync(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2483,7 +2483,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.CountAsync<TEntity>("", filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2495,7 +2495,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, string cacheKey = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(IFilterBy<TEntity> filter, string businessEntityID, string cacheKey = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.CountAsync<TEntity>(filter, businessEntityID, true, cacheKey, 0, cancellationToken);
 
 		/// <summary>
@@ -2509,7 +2509,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(string aliasTypeName, IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(string aliasTypeName, IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CountAsync<T>(aliasTypeName, filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2522,7 +2522,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(IFilterBy<T> filter, string businessEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CountAsync("", filter, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
@@ -2533,7 +2533,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(IFilterBy<T> filter, string businessEntityID, string cacheKey = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(IFilterBy<T> filter, string businessEntityID, string cacheKey = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CountAsync(filter, businessEntityID, true, cacheKey, 0, cancellationToken);
 
 		/// <summary>
@@ -2543,7 +2543,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cacheKey">The string that presents key for fetching/storing cache of total number of objects</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(IFilterBy<T> filter = null, string cacheKey = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(IFilterBy<T> filter = null, string cacheKey = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CountAsync(filter, null, cacheKey, cancellationToken);
 		#endregion
 
@@ -2642,7 +2642,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> SearchAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.SearchAsync(context, dataSource, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2656,7 +2656,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static async Task<List<TEntity>> SearchAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<List<TEntity>> SearchAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
@@ -2675,7 +2675,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> SearchAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.SearchAsync(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2688,7 +2688,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.SearchAsync<TEntity>("", query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2702,7 +2702,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> SearchAsync(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.SearchAsync<T>(aliasTypeName, query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2715,7 +2715,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.SearchAsync("", query, filter, pageSize, pageNumber, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2727,7 +2727,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.SearchAsync("", query, filter, pageSize, pageNumber, null, cancellationToken);
 		#endregion
 
@@ -2812,7 +2812,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CountAsync(context, dataSource, query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2824,7 +2824,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static async Task<long> CountAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static async Task<long> CountAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
@@ -2841,7 +2841,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.CountAsync(aliasTypeName, query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2852,7 +2852,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(string query, IFilterBy<TEntity> filter, string businessEntityID, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.CountAsync<TEntity>("", query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2862,7 +2862,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync<TEntity>(string query, IFilterBy<TEntity> filter = null, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task<long> CountAsync<TEntity>(string query, IFilterBy<TEntity> filter = null, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryBase<T>.CountAsync<TEntity>("", query, filter, null, cancellationToken);
 
 		/// <summary>
@@ -2874,7 +2874,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(string aliasTypeName, string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CountAsync<T>(aliasTypeName, query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2885,7 +2885,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(string query, IFilterBy<T> filter, string businessEntityID, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CountAsync("", query, filter, businessEntityID, cancellationToken);
 
 		/// <summary>
@@ -2895,7 +2895,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The expression (additional filter) for counting objects</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The number of all matched objects</returns>
-		public static Task<long> CountAsync(string query, IFilterBy<T> filter = null, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<long> CountAsync(string query, IFilterBy<T> filter = null, CancellationToken cancellationToken = default)
 			=> RepositoryBase<T>.CountAsync(query, filter, null, cancellationToken);
 		#endregion
 
@@ -2926,7 +2926,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task SyncAsync<TEntity>(RepositoryContext context, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task SyncAsync<TEntity>(RepositoryContext context, TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.SyncAsync(context, @object, cancellationToken);
 
 		/// <summary>
@@ -2937,7 +2937,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task SyncAsync<TEntity>(string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default(CancellationToken)) where TEntity : class
+		public static Task SyncAsync<TEntity>(string aliasTypeName, TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 			=> RepositoryMediator.SyncAsync(aliasTypeName, @object, cancellationToken);
 		#endregion
 
@@ -2965,7 +2965,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected Task SyncAsync(RepositoryContext context, T @object, CancellationToken cancellationToken = default(CancellationToken))
+		protected Task SyncAsync(RepositoryContext context, T @object, CancellationToken cancellationToken = default)
 			=> RepositoryMediator.SyncAsync(context, @object, cancellationToken);
 
 		/// <summary>
@@ -2975,7 +2975,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		protected Task SyncAsync(string aliasTypeName, T @object, CancellationToken cancellationToken = default(CancellationToken))
+		protected Task SyncAsync(string aliasTypeName, T @object, CancellationToken cancellationToken = default)
 			=> RepositoryMediator.SyncAsync(aliasTypeName, @object, cancellationToken);
 		#endregion
 
@@ -3048,12 +3048,12 @@ namespace net.vieapps.Components.Repository
 			// get value & cast
 			if (this.TryGetProperty(name, out object theValue))
 			{
-				value = theValue != null ? theValue.CastAs<TValue>() : default(TValue);
+				value = theValue != null ? theValue.CastAs<TValue>() : default;
 				return true;
 			}
 
 			// default
-			value = default(TValue);
+			value = default;
 			return false;
 		}
 
@@ -3065,7 +3065,7 @@ namespace net.vieapps.Components.Repository
 		public virtual TValue GetProperty<TValue>(string name)
 			=> this.TryGetProperty(name, out TValue value)
 				? value
-				: default(TValue);
+				: default;
 
 		/// <summary>
 		/// Gets the value of a specified property
@@ -3402,7 +3402,7 @@ namespace net.vieapps.Components.Repository
 				return 0;
 		}
 
-		internal static async Task<long> CountAsync<T>(DataSource dataSource, string name, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		internal static async Task<long> CountAsync<T>(DataSource dataSource, string name, IFilterBy<T> filter, CancellationToken cancellationToken = default) where T : class
 		{
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
@@ -3478,7 +3478,7 @@ namespace net.vieapps.Components.Repository
 				return null;
 		}
 
-		internal static async Task<List<T>> FindAsync<T>(DataSource dataSource, string name, IFilterBy<T> filter, SortBy<T> sort, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		internal static async Task<List<T>> FindAsync<T>(DataSource dataSource, string name, IFilterBy<T> filter, SortBy<T> sort, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default) where T : class
 		{
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
@@ -3560,7 +3560,7 @@ namespace net.vieapps.Components.Repository
 			return null;
 		}
 
-		internal static async Task<T> CreateAsync<T>(DataSource dataSource, string name, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		internal static async Task<T> CreateAsync<T>(DataSource dataSource, string name, T @object, CancellationToken cancellationToken = default) where T : class
 		{
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
@@ -3612,7 +3612,7 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 
-		internal static async Task DeleteAsync<T>(DataSource dataSource, string name, IFilterBy<T> filter, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		internal static async Task DeleteAsync<T>(DataSource dataSource, string name, IFilterBy<T> filter, CancellationToken cancellationToken = default) where T : class
 		{
 			if (dataSource == null)
 				throw new ArgumentNullException(nameof(dataSource), "Data source is invalid");
@@ -3639,7 +3639,7 @@ namespace net.vieapps.Components.Repository
 
 		internal static TrashContent Prepare<T>(T @object, Action<TrashContent> onPreCompleted = null) where T : class
 		{
-			string serviceName = null, systemID = null, repositoryID = null, entityID = null, objectID = null, title = null;
+			string serviceName, systemID, repositoryID = null, entityID = null, objectID, title;
 
 			if (@object is IBusinessEntity)
 			{

@@ -111,7 +111,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="openWhenCreated">true to open the connection when its created</param>
 		/// <returns></returns>
-		public static async Task<DbConnection> CreateConnectionAsync(this DbProviderFactory dbProviderFactory, DataSource dataSource, CancellationToken cancellationToken = default(CancellationToken), bool openWhenCreated = true)
+		public static async Task<DbConnection> CreateConnectionAsync(this DbProviderFactory dbProviderFactory, DataSource dataSource, CancellationToken cancellationToken = default, bool openWhenCreated = true)
 		{
 			var connection = dbProviderFactory.CreateConnection(dataSource, false);
 			if (openWhenCreated)
@@ -618,6 +618,7 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "The object is null");
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -678,12 +679,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task CreateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task CreateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default) where T : class
 		{
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "The object is null");
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -727,7 +729,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for creating new instance in storage</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task CreateAsync<T>(DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task CreateAsync<T>(DataSource dataSource, T @object, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
 			{
@@ -779,9 +781,10 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(this RepositoryContext context, DataSource dataSource, string id) where T : class
 		{
 			if (string.IsNullOrEmpty(id))
-				return default(T);
+				return default;
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -839,12 +842,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The string that presents identity</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default) where T : class
 		{
 			if (string.IsNullOrEmpty(id))
-				return default(T);
+				return default;
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -924,7 +928,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var objects = await context.FindAsync(dataSource, filter, sort, 1, 1, businessEntityID, false, cancellationToken).ConfigureAwait(false);
 			return objects != null && objects.Count > 0
@@ -1013,7 +1017,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<object> GetAsync(DataSource dataSource, EntityDefinition definition, string id, CancellationToken cancellationToken = default(CancellationToken))
+		public static async Task<object> GetAsync(DataSource dataSource, EntityDefinition definition, string id, CancellationToken cancellationToken = default)
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var info = "";
@@ -1075,7 +1079,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<object> GetAsync(EntityDefinition definition, string id, CancellationToken cancellationToken = default(CancellationToken))
+		public static Task<object> GetAsync(EntityDefinition definition, string id, CancellationToken cancellationToken = default)
 			=> SqlHelper.GetAsync(definition?.GetPrimaryDataSource(), definition, id, cancellationToken);
 		#endregion
 
@@ -1137,6 +1141,7 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1180,12 +1185,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default) where T : class
 		{
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1293,6 +1299,7 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentException("No attribute to update", nameof(attributes));
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1338,7 +1345,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attributes">The collection of attributes for updating individually</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task UpdateAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, List<string> attributes, CancellationToken cancellationToken = default) where T : class
 		{
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
@@ -1346,6 +1353,7 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentException("No attribute to update", nameof(attributes));
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1393,6 +1401,7 @@ namespace net.vieapps.Components.Repository
 		public static void Delete<T>(this RepositoryContext context, DataSource dataSource, T @object) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1449,9 +1458,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to delete</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -1512,6 +1522,7 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -1532,7 +1543,7 @@ namespace net.vieapps.Components.Repository
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID=@ID",
-							new List<DbParameter>()
+							new List<DbParameter>
 							{
 								dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("ID", id))
 							}
@@ -1568,18 +1579,19 @@ namespace net.vieapps.Components.Repository
 		/// <param name="id">The identity of the document of an object for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteAsync<T>(this RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default) where T : class
 		{
 			if (string.IsNullOrWhiteSpace(id))
 				return;
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var command = connection.CreateCommand(
 					$"DELETE FROM {context.EntityDefinition.TableName} WHERE {context.EntityDefinition.PrimaryKey}=@{context.EntityDefinition.PrimaryKey}",
-					new List<DbParameter>()
+					new List<DbParameter>
 					{
 						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>(context.EntityDefinition.PrimaryKey, id))
 					}
@@ -1637,6 +1649,7 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -1650,7 +1663,7 @@ namespace net.vieapps.Components.Repository
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID IN "
-							+ $"(SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")})",
+								+ $"(SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")})",
 							statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 						);
 						command.ExecuteNonQuery();
@@ -1692,12 +1705,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static async Task DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			if (filter == null)
 				return;
 
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
@@ -1711,7 +1725,7 @@ namespace net.vieapps.Components.Repository
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID IN "
-							+ $"SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")}",
+								+ $"SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")}",
 							statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 						);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -1882,7 +1896,7 @@ namespace net.vieapps.Components.Repository
 			return dataTable;
 		}
 
-		internal static async Task<DataTable> ToDataTableAsync<T>(this DbDataReader dataReader, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		internal static async Task<DataTable> ToDataTableAsync<T>(this DbDataReader dataReader, CancellationToken cancellationToken = default) where T : class
 		{
 			var dataTable = dataReader.CreateDataTable(typeof(T).GetTypeName(true));
 			while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -1915,6 +1929,7 @@ namespace net.vieapps.Components.Repository
 		public static List<DataRow> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -1986,9 +2001,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
@@ -2079,7 +2095,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
 			=> (await SqlHelper.SelectAsync(context, dataSource, new[] { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
@@ -2154,7 +2170,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
 		{
 			var standardProperties = context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name);
 			var extendedProperties = !string.IsNullOrWhiteSpace(businessEntityID) && context.EntityDefinition.RuntimeEntities.ContainsKey(businessEntityID)
@@ -2223,7 +2239,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
 			=> identities == null || identities.Count < 1
 				? Task.FromResult(new List<T>())
 				: context.FindAsync(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessEntityID, false, cancellationToken);
@@ -2279,6 +2295,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -2316,9 +2333,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -2644,6 +2662,7 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
@@ -2721,9 +2740,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
@@ -2810,6 +2830,7 @@ namespace net.vieapps.Components.Repository
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -2883,7 +2904,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var info = "";
@@ -2891,6 +2912,7 @@ namespace net.vieapps.Components.Repository
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -3031,6 +3053,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
@@ -3068,9 +3091,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default(CancellationToken)) where T : class
+		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
@@ -3099,7 +3123,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Schemas & Indexes
-		internal static async Task CreateTableAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default(CancellationToken))
+		internal static async Task CreateTableAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			// prepare
 			var dbProviderFactory = dataSource.GetProviderFactory();
@@ -3145,7 +3169,7 @@ namespace net.vieapps.Components.Repository
 				}
 		}
 
-		internal static async Task CreateTableIndexesAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default(CancellationToken))
+		internal static async Task CreateTableIndexesAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			// prepare
 			var prefix = "IDX_" + context.EntityDefinition.TableName;
@@ -3250,7 +3274,7 @@ namespace net.vieapps.Components.Repository
 				}
 		}
 
-		internal static async Task CreateTableFulltextIndexAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default(CancellationToken))
+		internal static async Task CreateTableFulltextIndexAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			// prepare
 			var columns = context.EntityDefinition.Searchable
@@ -3323,7 +3347,7 @@ namespace net.vieapps.Components.Repository
 				}
 		}
 
-		internal static async Task CreateMapTableAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default(CancellationToken))
+		internal static async Task CreateMapTableAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			// prepare
 			var columns = context.EntityDefinition.Attributes
@@ -3373,7 +3397,7 @@ namespace net.vieapps.Components.Repository
 				}
 		}
 
-		internal static async Task CreateExtentTableAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default(CancellationToken))
+		internal static async Task CreateExtentTableAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var dbProviderFactoryName = dbProviderFactory.GetName();
@@ -3491,7 +3515,7 @@ namespace net.vieapps.Components.Repository
 				}
 		}
 
-		internal static async Task EnsureSchemasAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default(CancellationToken))
+		internal static async Task EnsureSchemasAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			// check existed
 			var isExisted = true;
