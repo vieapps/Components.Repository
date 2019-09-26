@@ -13,7 +13,7 @@
 		<AssemblyVersion>10.3$(ReleaseVersion)</AssemblyVersion>
 		<FileVersion>10.3$(ReleaseVersion)</FileVersion>
 		<InformationalVersion>10.3-$(TargetFramework)-$(ReleaseRevision)</InformationalVersion>
-		<Version>10.3$(ReleaseVersion)$(ReleaseSurfix)</Version>
+		<Version>10.3$(ReleaseVersion)$(ReleaseSuffix)</Version>
 		<Product>VIEApps NGX</Product>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time with .NET Standard 2.x</Description>
@@ -21,8 +21,9 @@
 		<Authors>VIEApps.net</Authors>
 		<Company>VIEApps.net</Company>
 		<GeneratePackageOnBuild>$(GeneratePackage)</GeneratePackageOnBuild>
-		<PackageId>VIEApps.Components.Repository$(PackageSurfix)</PackageId>
-		<PackageLicense>LICENSE.md</PackageLicense>
+		<PackageId>VIEApps.Components.Repository$(PackageSuffix)</PackageId>
+		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>..\</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
 		<PackageReleaseNotes>Support .NET Standard 2.1</PackageReleaseNotes>
@@ -35,22 +36,16 @@
 		<None Remove=".DS_Store" />
 		<None Remove=".gitattributes" />
 		<None Remove=".gitignore" />
-		<None Remove="LICENSE.md" />
 		<None Remove="README.md" />
+		<None Visible="false" Include="LICENSE.md" Pack="true" PackagePath="\" />
+		<None Visible="false" Include="Icon.png" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.1907.1-preview" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.3.1907.1-preview" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.1907.1-preview" />
-	</ItemGroup>
-
-	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-		<PackageReference Include="MongoDB.Driver" Version="2.8.1" />
-	</ItemGroup>
-
-	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-		<PackageReference Include="MongoDB.Driver" Version="2.9.0-beta2" />
+		<PackageReference Include="MongoDB.Driver" Version="2.9.1" />
+		<PackageReference Include="VIEApps.Components.Caching$(PackageSuffix)" Version="10.3.1910.1" />
+		<PackageReference Include="VIEApps.Components.Security$(PackageSuffix)" Version="10.3.1910.1" />
+		<PackageReference Include="VIEApps.Components.Utility$(PackageSuffix)" Version="10.3.1910.1" />
 	</ItemGroup>
 
 </Project>
