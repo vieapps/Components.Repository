@@ -13,7 +13,7 @@
 		<Version>10.3$(ReleaseVersion)$(ReleaseSuffix)</Version>
 		<Product>VIEApps NGX</Product>
 		<Title>VIEApps NGX Repository</Title>
-		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time with .NET Standard 2.x</Description>
+		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time with .NET Standard 2.x/.NET Core 3.0</Description>
 		<Copyright>© 2019 VIEApps.net</Copyright>
 		<Authors>VIEApps.net</Authors>
 		<Company>VIEApps.net</Company>
@@ -29,7 +29,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Support .NET Standard 2.1/.NET CoreApp 3.0</PackageReleaseNotes>
+		<PackageReleaseNotes>Add support of multiple target frameworks (.NET Standard 2.x/.NET Core 3.0) with latest components</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 	</PropertyGroup>
@@ -44,13 +44,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.9.1" />
+		<PackageReference Include="MongoDB.Driver" Version="2.9.2" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)'!='true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.1910.3" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.3.1910.3" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.1910.3" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.1910.4" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.3.1910.4" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.1910.4" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)'=='true'">
