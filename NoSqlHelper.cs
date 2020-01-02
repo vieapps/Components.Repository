@@ -746,13 +746,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for updating</param>
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
-		public static ReplaceOneResult Replace<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, UpdateOptions options = null) where T : class
+		public static ReplaceOneResult Replace<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, ReplaceOptions options = null) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			try
 			{
 				return @object != null
-					? collection.ReplaceOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions { IsUpsert = true })
+					? collection.ReplaceOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new ReplaceOptions { IsUpsert = true })
 					: throw new ArgumentNullException(nameof(@object), "The object is null");
 			}
 			catch (Exception)
@@ -779,7 +779,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for updating</param>
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
-		public static ReplaceOneResult Replace<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null) where T : class
+		public static ReplaceOneResult Replace<T>(this IMongoCollection<T> collection, T @object, ReplaceOptions options = null) where T : class
 			=> collection.Replace(null, @object, options);
 
 		/// <summary>
@@ -791,7 +791,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object for updating</param>
 		/// <param name="options">The options for updating</param>
 		/// <returns></returns>
-		public static ReplaceOneResult Replace<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateOptions options = null) where T : class
+		public static ReplaceOneResult Replace<T>(this RepositoryContext context, DataSource dataSource, T @object, ReplaceOptions options = null) where T : class
 			=> context.GetCollection<T>(dataSource).Replace(context.NoSqlSession, @object, options);
 
 		/// <summary>
@@ -804,13 +804,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, T @object, ReplaceOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			try
 			{
 				return @object != null
-					? await collection.ReplaceOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions { IsUpsert = true }, cancellationToken).ConfigureAwait(false)
+					? await collection.ReplaceOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new ReplaceOptions { IsUpsert = true }, cancellationToken).ConfigureAwait(false)
 					: throw new ArgumentNullException(nameof(@object), "The object is null");
 			}
 			catch (Exception)
@@ -838,7 +838,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static Task<ReplaceOneResult> ReplaceAsync<T>(this IMongoCollection<T> collection, T @object, ReplaceOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> collection.ReplaceAsync(null, @object, options, cancellationToken);
 
 		/// <summary>
@@ -851,7 +851,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-	public static Task<ReplaceOneResult> ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, UpdateOptions options = null, CancellationToken cancellationToken = default) where T : class
+	public static Task<ReplaceOneResult> ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, ReplaceOptions options = null, CancellationToken cancellationToken = default) where T : class
 			=> context.GetCollection<T>(dataSource).ReplaceAsync(context.NoSqlSession, @object, options, cancellationToken);
 		#endregion
 
@@ -917,7 +917,7 @@ namespace net.vieapps.Components.Repository
 			// replace whole document when got a generic of primitive (workaround)
 			if (gotGenericPrimitives)
 			{
-				collection.ReplaceOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions { IsUpsert = true });
+				collection.ReplaceOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, new ReplaceOptions { IsUpsert = options != null ? options.IsUpsert : true });
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
@@ -1080,7 +1080,7 @@ namespace net.vieapps.Components.Repository
 			// replace whole document when got a generic of primitive (workaround)
 			if (gotGenericPrimitives)
 			{
-				await collection.ReplaceOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, options ?? new UpdateOptions { IsUpsert = true }, cancellationToken).ConfigureAwait(false);
+				await collection.ReplaceOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, new ReplaceOptions { IsUpsert = options != null ? options.IsUpsert : true }, cancellationToken).ConfigureAwait(false);
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
