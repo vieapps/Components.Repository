@@ -3529,7 +3529,7 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					var command = connection.CreateCommand(sql);
-					isExisted = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<int>() > 0;
+					isExisted = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>() > 0;
 				}
 				catch (Exception ex)
 				{
@@ -3569,6 +3569,10 @@ namespace net.vieapps.Components.Repository
 	/// </summary>
 	public class DbProviderFactories
 	{
+		internal static Dictionary<string, Provider> DbProviders { get; private set; } = null;
+
+		internal static Dictionary<string, DbProviderFactory> ProviderFactories { get; } = new Dictionary<string, DbProviderFactory>(StringComparer.OrdinalIgnoreCase);
+
 		/// <summary>
 		/// An instance of a DbProviderFactory for a specified provider name
 		/// </summary>
@@ -3579,13 +3583,12 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(invariant))
 				throw new ArgumentException("The invariant name is invalid", nameof(invariant));
 
-			if (!DbProviderFactories.ProviderFactories.TryGetValue(invariant, out DbProviderFactory dbProviderFactory))
+			if (!DbProviderFactories.ProviderFactories.TryGetValue(invariant, out var dbProviderFactory))
 				lock (DbProviderFactories.ProviderFactories)
 				{
 					if (!DbProviderFactories.ProviderFactories.TryGetValue(invariant, out dbProviderFactory))
 					{
-						DbProviderFactories.Providers.TryGetValue(invariant, out Provider provider);
-						if (provider == null)
+						if (!DbProviderFactories.Providers.TryGetValue(invariant, out var provider) || provider == null)
 							throw new NotImplementedException($"Provider ({invariant}) is not installed");
 						else if (provider.Type == null)
 							throw new InvalidCastException($"Provider ({invariant}) is invalid");
@@ -3602,10 +3605,6 @@ namespace net.vieapps.Components.Repository
 
 			return dbProviderFactory ?? throw new NotImplementedException($"The provider ({invariant}) is not installed");
 		}
-
-		internal static Dictionary<string, Provider> DbProviders { get; private set; } = null;
-
-		internal static Dictionary<string, DbProviderFactory> ProviderFactories { get; } = new Dictionary<string, DbProviderFactory>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Gest the current installed of provider factories

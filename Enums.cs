@@ -9,7 +9,7 @@ namespace net.vieapps.Components.Repository
 	public enum RepositoryMode
 	{
 		/// <summary>
-		/// Specifies to use SQL database (SQL Server, MySQL, Oracle, ...)
+		/// Specifies to use SQL database (SQLServer, MySQL, PostgreSQL)
 		/// </summary>
 		SQL,
 

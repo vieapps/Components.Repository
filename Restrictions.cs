@@ -34,7 +34,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="operator"></param>
 		/// <param name="attribute"></param>
 		/// <param name="value"></param>
-		public FilterBy(string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null) : this(null, attribute, @operator, value) { }
+		public FilterBy(string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null)
+			: this(null, attribute, @operator, value) { }
 
 		/// <summary>
 		/// Initializes a filtering expression
@@ -101,7 +102,7 @@ namespace net.vieapps.Components.Repository
 				{ "Value", new JValue(this.Value) }
 			};
 
-		public string ToString(Newtonsoft.Json.Formatting formatting = Newtonsoft.Json.Formatting.None)
+		public string ToString(Newtonsoft.Json.Formatting formatting)
 			=> this.ToJson().ToString(formatting);
 
 		public override string ToString()
@@ -416,7 +417,8 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="operator"></param>
 		/// <param name="children"></param>
-		public FilterBys(GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null) : this(null, @operator, children) { }
+		public FilterBys(GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null)
+			: this(null, @operator, children) { }
 
 		/// <summary>
 		/// Initializes a group of filtering expression
@@ -489,7 +491,7 @@ namespace net.vieapps.Components.Repository
 				{ "Children", this.Children.Select(c => c.ToJson()).ToJArray() }
 			};
 
-		public string ToString(Newtonsoft.Json.Formatting formatting = Newtonsoft.Json.Formatting.None)
+		public string ToString(Newtonsoft.Json.Formatting formatting)
 			=> this.ToJson().ToString(formatting);
 
 		public override string ToString()
@@ -757,7 +759,8 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <param name="mode"></param>
-		public SortBy(string attribute = null, SortMode mode = SortMode.Ascending) : this(null, attribute, mode) { }
+		public SortBy(string attribute = null, SortMode mode = SortMode.Ascending)
+			: this(null, attribute, mode) { }
 
 		/// <summary>
 		/// Initializes a sorting expression
@@ -802,7 +805,7 @@ namespace net.vieapps.Components.Repository
 				this.Mode = (json.Get<string>("Mode") ?? "Ascending").ToEnum<SortMode>();
 				var thenSortBy = json.Get<JObject>("ThenBy");
 				this.ThenBy = thenSortBy != null
-					? new SortBy<T>(thenSortBy as JObject)
+					? new SortBy<T>(thenSortBy)
 					: null;
 			}
 		}
@@ -819,7 +822,7 @@ namespace net.vieapps.Components.Repository
 				{ "ThenBy", this.ThenBy?.ToJson() }
 			};
 
-		public string ToString(Newtonsoft.Json.Formatting formatting = Newtonsoft.Json.Formatting.None)
+		public string ToString(Newtonsoft.Json.Formatting formatting)
 			=> this.ToJson().ToString(formatting);
 
 		public override string ToString()
@@ -832,10 +835,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
 
-			var next = this.ThenBy != null
-				? this.ThenBy.GetSqlStatement(standardProperties, extendedProperties)
-				: null;
-
+			var next = this.ThenBy?.GetSqlStatement(standardProperties, extendedProperties);
 			return this.Attribute + (this.Mode.Equals(SortMode.Ascending) ? " ASC" : " DESC") + (!string.IsNullOrWhiteSpace(next) ? ", " + next : "");
 		}
 
@@ -844,9 +844,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		public SortDefinition<T> GetSqlStatement()
-		{
-			return this.GetSqlStatement(null, null);
-		}
+			=> this.GetSqlStatement(null, null);
 		#endregion
 
 		#region Working with statement of No SQL
@@ -877,9 +875,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		public SortDefinition<T> GetNoSqlStatement()
-		{
-			return this.GetNoSqlStatement(null);
-		}
+			=> this.GetNoSqlStatement(null);
 		#endregion
 
 		internal List<string> GetAttributes()

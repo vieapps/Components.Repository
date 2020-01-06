@@ -528,7 +528,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Create
 		/// <summary>
-		/// Creates new instance of object in repository
+		/// Creates new instance of object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -593,7 +593,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new instance of object in repository
+		/// Creates new instance of object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -607,7 +607,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new instance of object in repository
+		/// Creates new instance of object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -621,7 +621,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new instance of object in repository
+		/// Creates new instance of object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -692,7 +692,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new instance of object in repository
+		/// Creates new instance of object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -709,7 +709,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new instance of object in repository
+		/// Creates new instance of object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -725,7 +725,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Get
 		/// <summary>
-		/// Gets the instance of a object from repository
+		/// Gets the instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -834,7 +834,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the instance of a object from repository
+		/// Gets the instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -851,7 +851,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the instance of a object from repository
+		/// Gets the instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -867,7 +867,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the instance of a object from repository
+		/// Gets the instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -989,7 +989,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the instance of a object from repository
+		/// Gets the instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1007,7 +1007,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the instance of a object from repository
+		/// Gets the instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -1026,7 +1026,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Get (first match)
 		/// <summary>
-		/// Finds the first instance of object that matched with the filter
+		/// Finds the first instance of an object that matched with the filter expression
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1074,7 +1074,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the first instance of object that matched with the filter
+		/// Finds the first instance of an object that matched with the filter expression
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1090,7 +1090,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the first instance of object that matched with the filter
+		/// Finds the first instance of an object that matched with the filter expression
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -1107,7 +1107,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the first instance of object that matched with the filter
+		/// Finds the first instance of an object that matched with the filter expression
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1163,7 +1163,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the first instance of object that matched with the filter
+		/// Finds the first instance of an object that matched with the filter expression
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1180,7 +1180,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the first instance of object that matched with the filter
+		/// Finds the first instance of an object that matched with the filter expression
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -1429,7 +1429,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Replace
 		/// <summary>
-		/// Updates instance of object into repository (using replace method)
+		/// Updates instance of an object (using replace method)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1530,7 +1530,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (using replace method)
+		/// Updates instance of an object (using replace method)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1546,7 +1546,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (using replace method)
+		/// Updates instance of an object (using replace method)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -1562,7 +1562,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (using replace method)
+		/// Updates instance of an object (using replace method)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1669,7 +1669,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (using replace method)
+		/// Updates instance of an object (using replace method)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1688,7 +1688,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (using replace method)
+		/// Updates instance of an object (using replace method)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -1707,7 +1707,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Update
 		/// <summary>
-		/// Updates instance of object into repository (only update changed attributes)
+		/// Updates instance of an object (only update changed attributes) 
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1805,7 +1805,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (only update changed attributes)
+		/// Updates instance of an object (only update changed attributes) 
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1821,7 +1821,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (only update changed attributes)
+		/// Updates instance of an object (only update changed attributes) 
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -1837,7 +1837,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (only update changed attributes)
+		/// Updates instance of an object (only update changed attributes) 
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1941,7 +1941,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (only update changed attributes)
+		/// Updates instance of an object (only update changed attributes) 
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -1960,7 +1960,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Updates instance of object into repository (only update changed attributes)
+		/// Updates instance of an object (only update changed attributes) 
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -1979,7 +1979,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Delete
 		/// <summary>
-		/// Deletes instance of object from repository
+		/// Deletes instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2037,7 +2037,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes instance of object from repository
+		/// Deletes instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2053,7 +2053,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes instance of object from repository
+		/// Deletes instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -2068,7 +2068,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes instance of object from repository
+		/// Deletes instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2132,7 +2132,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes instance of object from repository
+		/// Deletes instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2151,7 +2151,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes instance of object from repository
+		/// Deletes instance of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -2169,7 +2169,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Delete (many)
 		/// <summary>
-		/// Deletes many instances of objects from repository
+		/// Deletes many instances of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2210,7 +2210,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes many instances of objects from repository
+		/// Deletes many instances of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2224,7 +2224,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes many instances of objects from repository
+		/// Deletes many instances of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -2239,7 +2239,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes many instances of objects from repository
+		/// Deletes many instances of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2286,7 +2286,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes many instances of objects from repository
+		/// Deletes many instances of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2301,7 +2301,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Deletes many instances of objects from repository
+		/// Deletes many instances of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -2319,7 +2319,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Find
 		/// <summary>
-		/// Finds the identity of objects from repository
+		/// Finds the identity of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2367,7 +2367,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the identity of objects from repository
+		/// Finds the identity of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2388,7 +2388,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the identity of objects from repository
+		/// Finds the identity of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -2410,7 +2410,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the identity of objects from repository
+		/// Finds the identity of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="filter">Filter expression</param>
@@ -2426,7 +2426,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindIdentities<T>(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 
 		/// <summary>
-		/// Finds document of objects
+		/// Finds objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2557,7 +2557,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds document of objects
+		/// Finds objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2578,7 +2578,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds intances of objects from repository
+		/// Finds objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -2600,7 +2600,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the identity of objects from repository
+		/// Finds the identity of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2654,7 +2654,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the identity of objects from repository
+		/// Finds the identity of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2676,7 +2676,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the identity of objects from repository
+		/// Finds the identity of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -2699,7 +2699,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds the identity of objects from repository
+		/// Finds the identity of objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="filter">Filter expression</param>
@@ -2716,7 +2716,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindIdentitiesAsync<T>(null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
-		/// Finds document of objects
+		/// Finds objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2858,7 +2858,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds document of objects
+		/// Finds objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2880,7 +2880,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds intances of objects from repository
+		/// Finds objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -2905,7 +2905,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Count
 		/// <summary>
-		/// Counts document of objects
+		/// Counts objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2968,7 +2968,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects
+		/// Counts objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -2986,7 +2986,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects
+		/// Counts objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3005,7 +3005,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects
+		/// Counts objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3074,7 +3074,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects
+		/// Counts objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3093,7 +3093,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects
+		/// Counts objects
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3115,7 +3115,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Search
 		/// <summary>
-		/// Searchs intances of objects from repository (using full-text search)
+		/// Searchs objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3246,7 +3246,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Searchs intances of objects from repository (using full-text search)
+		/// Searchs objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3264,7 +3264,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Searchs intances of objects from repository (using full-text search)
+		/// Searchs objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3283,7 +3283,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Searchs intances of objects from repository (using full-text search)
+		/// Searchs objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3420,7 +3420,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Searchs intances of objects from repository (using full-text search)
+		/// Searchs objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3439,7 +3439,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Searchs intances of objects from repository (using full-text search)
+		/// Searchs objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3461,7 +3461,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Count (searching)
 		/// <summary>
-		/// Counts document of objects (using full-text search)
+		/// Counts objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3512,7 +3512,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects (using full-text search)
+		/// Counts objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3528,7 +3528,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects (using full-text search)
+		/// Counts objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3545,7 +3545,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects (using full-text search)
+		/// Counts objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3603,7 +3603,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects (using full-text search)
+		/// Counts objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3620,7 +3620,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Counts document of objects (using full-text search)
+		/// Counts objects (using full-text search)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
@@ -3640,7 +3640,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Create version
 		/// <summary>
-		/// Creates new version of object
+		/// Creates a new version of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3690,7 +3690,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new version of object
+		/// Creates a new version of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3700,7 +3700,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.CreateVersion<T>(context, null, @object, userID);
 
 		/// <summary>
-		/// Creates new version of object
+		/// Creates a new version of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="object">The object to create new instance in repository</param>
@@ -3714,7 +3714,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new version of object
+		/// Creates a new version of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3770,7 +3770,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new version of object
+		/// Creates a new version of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -3781,7 +3781,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.CreateVersionAsync<T>(context, null, @object, userID, cancellationToken);
 
 		/// <summary>
-		/// Creates new version of object
+		/// Creates a new version of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="object">The object to create new instance in repository</param>
@@ -4288,7 +4288,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Find version contents
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4338,7 +4338,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4355,7 +4355,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindVersionContents<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber);
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objectID">The identity of object that associates with</param>
@@ -4376,7 +4376,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4389,7 +4389,7 @@ namespace net.vieapps.Components.Repository
 				: RepositoryMediator.FindVersionContents<T>(context, dataSource, objectID, null, null, null, null, null, 0, 1);
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4399,7 +4399,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindVersionContents<T>(context, null, objectID);
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objectID">The identity of object that associates with</param>
@@ -4413,7 +4413,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4469,7 +4469,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4487,7 +4487,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindVersionContentsAsync<T>(context, null, objectID, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber, cancellationToken);
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objectID">The identity of object that associates with</param>
@@ -4509,7 +4509,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4523,7 +4523,7 @@ namespace net.vieapps.Components.Repository
 				: RepositoryMediator.FindVersionContentsAsync<T>(context, dataSource, objectID, null, null, null, null, null, 0, 1, cancellationToken);
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4534,7 +4534,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindVersionContentsAsync<T>(context, null, objectID, cancellationToken);
 
 		/// <summary>
-		/// Gets the collection of version contents
+		/// Finds version contents of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objectID">The identity of object that associates with</param>
@@ -4654,7 +4654,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Create trash content
 		/// <summary>
-		/// Creates new trash content of object
+		/// Creates a new trash content of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4704,7 +4704,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new trash content of object
+		/// Creates a new trash content of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4714,7 +4714,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.CreateTrashContent(context, null, @object, userID);
 
 		/// <summary>
-		/// Creates new trash content of object
+		/// Creates a new trash content of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="object">The object to create new instance in repository</param>
@@ -4728,7 +4728,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new trash content of object
+		/// Creates a new trash content of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4784,7 +4784,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Creates new trash content of object
+		/// Creates a new trash content of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -4795,7 +4795,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.CreateTrashContentAsync(context, null, @object, userID, cancellationToken);
 
 		/// <summary>
-		/// Creates new trash content of object
+		/// Creates a new trash content of an object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="object">The object to create new instance in repository</param>
@@ -5294,7 +5294,7 @@ namespace net.vieapps.Components.Repository
 
 		#region Find trash contents
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -5343,7 +5343,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -5359,7 +5359,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindTrashContents<T>(context, null, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber);
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="serviceName">The name of service that associates with</param>
@@ -5379,7 +5379,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -5395,7 +5395,7 @@ namespace net.vieapps.Components.Repository
 				: RepositoryMediator.FindTrashContents<T>(context, dataSource, serviceName, systemID, null, null, null, pageSize, pageNumber);
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -5408,7 +5408,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindTrashContents<T>(context, null, serviceName, systemID, pageSize, pageNumber);
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="serviceName">The name of service that associates with</param>
@@ -5425,7 +5425,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -5480,7 +5480,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -5497,7 +5497,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindTrashContentsAsync<T>(context, null, serviceName, systemID, repositoryID, entityID, userID, pageSize, pageNumber, cancellationToken);
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="serviceName">The name of service that associates with</param>
@@ -5518,7 +5518,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -5535,7 +5535,7 @@ namespace net.vieapps.Components.Repository
 				: RepositoryMediator.FindTrashContentsAsync<T>(context, dataSource, serviceName, systemID, null, null, null, pageSize, pageNumber, cancellationToken);
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
@@ -5549,7 +5549,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.FindTrashContentsAsync<T>(context, null, serviceName, systemID, pageSize, pageNumber, cancellationToken);
 
 		/// <summary>
-		/// Gets the collection of trash contents
+		/// Finds trash contents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="systemID">The identity of system that associates with</param>
@@ -6872,7 +6872,7 @@ namespace net.vieapps.Components.Repository
 
 			if (filter is FilterBy<T>)
 				return (filter as FilterBy<T>).Attribute.Equals(definition.ParentAssociatedProperty)
-					? new List<string>() { (filter as FilterBy<T>).Value as string }
+					? new List<string> { (filter as FilterBy<T>).Value as string }
 					: null;
 
 			if ((filter as FilterBys<T>).Children == null || (filter as FilterBys<T>).Children.Count < 1)

@@ -1133,7 +1133,8 @@ namespace net.vieapps.Components.Repository
 
 		public string ViewXslt { get; set; } = "";
 
-		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
+		public override string ToString()
+			=> this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -1150,7 +1151,8 @@ namespace net.vieapps.Components.Repository
 				this.CopyFrom(json);
 		}
 
-		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
+		public override string ToString()
+			=> this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
 
 		#region Properties
 		/// <summary>

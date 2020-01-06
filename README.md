@@ -1,6 +1,6 @@
 # VIEApps.Components.Repository
 
-The tiny polyglot library to help POCO objects work with both NoSQL and SQL databases in the same time (just another ORM-ish component) on  .NET Standard 2.x/.NET Core 3.x
+The tiny polyglot library to help POCO objects work with both NoSQL and SQL databases in the same time (just another ORM-ish component) on  .NET Standard 2.x/.NET Core 2.x+
 
 - POCO objects can be stored in both NoSQL database (MongoDB) and SQL database (SQLServer, MySQL, PostgreSQL) at the same time as individual objects or synced objects
 - Attributes/Columns are mapped like ActiveRecord acts

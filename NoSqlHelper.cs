@@ -962,7 +962,7 @@ namespace net.vieapps.Components.Repository
 			});
 
 			if (updater != null)
-				collection.UpdateOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options);
+				collection.UpdateOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options ?? new UpdateOptions { IsUpsert = true });
 
 			stopwatch.Stop();
 			if (RepositoryMediator.IsDebugEnabled)
@@ -1125,7 +1125,7 @@ namespace net.vieapps.Components.Repository
 			});
 
 			if (updater != null)
-				await collection.UpdateOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options, cancellationToken).ConfigureAwait(false);
+				await collection.UpdateOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), updater, options ?? new UpdateOptions { IsUpsert = true }, cancellationToken).ConfigureAwait(false);
 
 			stopwatch.Stop();
 			if (RepositoryMediator.IsDebugEnabled)

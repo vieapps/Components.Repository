@@ -75,8 +75,8 @@ namespace net.vieapps.Components.Repository
 		internal void Prepare(RepositoryOperation operation = RepositoryOperation.Query, EntityDefinition entityDefinition = null, string aliasTypeName = null, MongoDB.Driver.IClientSessionHandle nosqlSession = null)
 		{
 			this.ID = this.ID ?? UtilityService.GetUUID();
-			this.PreviousStateData = this.PreviousStateData ?? new Dictionary<string, Dictionary<string, object>>();
-			this.CurrentStateData = this.CurrentStateData ?? new Dictionary<string, Dictionary<string, object>>();
+			this.PreviousStateData = this.PreviousStateData ?? new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
+			this.CurrentStateData = this.CurrentStateData ?? new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 			this.Operation = operation;
 
 			if (entityDefinition != null)
@@ -189,7 +189,7 @@ namespace net.vieapps.Components.Repository
 		internal Dictionary<string, object> GetStateData(object @object)
 		{
 			// initialize
-			var stateData = new Dictionary<string, object>();
+			var stateData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
 			// standard properties
 			@object?.GetProperties().Where(attribute => !attribute.IsIgnored()).ForEach(attribute =>
@@ -238,7 +238,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public Dictionary<string, object> GetPreviousState(object @object)
 			=> @object != null
-				? this.PreviousStateData.TryGetValue(@object.GetCacheKey(true), out Dictionary<string, object> stateData)
+				? this.PreviousStateData.TryGetValue(@object.GetCacheKey(true), out var stateData)
 					? stateData
 					: null
 				: null;

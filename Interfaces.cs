@@ -22,7 +22,7 @@ using net.vieapps.Components.Security;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Presents a repository (means information of a business module object in the run-time)
+	/// Presents a repository (means information of a business module object at the run-time)
 	/// </summary>
 	public interface IRepository
 	{
@@ -62,7 +62,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents an entity of a repository (means information of a business content-type object in the run-time)
+	/// Presents an entity of a repository (means information of a business content-type object at the run-time)
 	/// </summary>
 	public interface IRepositoryEntity
 	{
@@ -122,7 +122,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents a business entity (means information of a business object in the run-time)
+	/// Presents a business entity (means information of a business object at the run-time)
 	/// </summary>
 	public interface IBusinessEntity
 	{
@@ -239,7 +239,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Called before creating new instance of object
+	/// Presents a handler that be called before creating new instance of an object
 	/// </summary>
 	public interface IPreCreateHandler
 	{
@@ -266,7 +266,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Called after creating new instance of object successful
+	/// Presents a handler that be called after creating new instance of an object successful
 	/// </summary>
 	public interface IPostCreateHandler
 	{
@@ -298,7 +298,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Called before getting (loading) instance of object
+	/// Presents a handler that be called before getting (loading) instance of an object
 	/// </summary>
 	public interface IPreGetHandler
 	{
@@ -323,7 +323,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Called after getting instance of object successful
+	/// Presents a handler that be called after getting (loading) instance of an object successful
 	/// </summary>
 	public interface IPostGetHandler
 	{
@@ -353,7 +353,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Called before updating instance of object
+	/// Presents a handler that be called before updating instance of an object
 	/// </summary>
 	public interface IPreUpdateHandler
 	{
@@ -382,7 +382,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Called after updating instance of object successful
+	/// Presents a handler that be called after updating instance of an object successful
 	/// </summary>
 	public interface IPostUpdateHandler
 	{
@@ -416,7 +416,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Called before deleting instance of object
+	/// Presents a handler that be called before deleting instance of an object
 	/// </summary>
 	public interface IPreDeleteHandler
 	{
@@ -441,7 +441,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Called after deleting instance of object successful
+	/// Presents a handler that be called after deleting instance of an object successful
 	/// </summary>
 	public interface IPostDeleteHandler
 	{
@@ -467,5 +467,4 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		Task OnPostDeleteAsync<T>(RepositoryContext context, T @object, CancellationToken cancellationToken) where T : class;
 	}
-
 }

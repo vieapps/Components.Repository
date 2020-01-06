@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp2.0;netcoreapp2.1;netcoreapp2.2;netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
 		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
 		<WarningLevel>3</WarningLevel>
 		<DocumentationFile>bin/$(Configuration)/$(TargetFramework)/VIEApps.Components.Repository.xml</DocumentationFile>
@@ -13,7 +13,7 @@
 		<Version>10.3$(ReleaseVersion)$(ReleaseSuffix)</Version>
 		<Product>VIEApps NGX</Product>
 		<Title>VIEApps NGX Repository</Title>
-		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time with .NET Standard 2.x/.NET Core 3.x</Description>
+		<Description>A polyglot library to help POCO objects work with both NoSQL and SQL databases at the same time with .NET Standard 2.x/.NET Core 2.x+</Description>
 		<Copyright>© 2020 VIEApps.net</Copyright>
 		<Authors>VIEApps.net</Authors>
 		<Company>VIEApps.net</Company>
