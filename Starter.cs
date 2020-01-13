@@ -88,7 +88,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="assemblies">The collection of assemblies</param>
 		/// <param name="tracker">The tracker for tracking logs</param>
 		/// <param name="updateFromConfigurationFile">true to update other settings from configuration file on the disc</param>
-		public static void Initialize(IEnumerable<Assembly> assemblies, Action<string, Exception> tracker = null, bool updateFromConfigurationFile = true)
+		/// <param name="config">The XML node that contains configuration</param>
+		public static void Initialize(IEnumerable<Assembly> assemblies, Action<string, Exception> tracker = null, bool updateFromConfigurationFile = true, XmlNode config = null)
 		{
 			if (RepositoryMediator.IsDebugEnabled)
 				RepositoryMediator.WriteLogs("Start to initialize repositories & entities [" + assemblies.Select(a => a.GetName().Name).ToString(", ") + "]");
@@ -96,16 +97,25 @@ namespace net.vieapps.Components.Repository
 			// initialize & register all types
 			assemblies.ForEach(assembly => RepositoryStarter.Initialize(assembly, tracker));
 
-			// read configuration and update
-			if (ConfigurationManager.GetSection(UtilityService.GetAppSetting("Section:Repositories", "net.vieapps.repositories")) is AppConfigurationSectionHandler config)
+			// read configuration
+			if (updateFromConfigurationFile && config == null)
+			{
+				if (ConfigurationManager.GetSection(UtilityService.GetAppSetting("Section:Repositories", "net.vieapps.repositories")) is AppConfigurationSectionHandler configSection)
+					config = configSection.Section;
+				if (config == null)
+					throw new ConfigurationErrorsException("Cannot find the configuration section (might be named as 'net.vieapps.repositories') in the configuration file");
+			}
+
+			// update configuration
+			if (config != null)
 				try
 				{
 					// update settings of data sources
-					if (config.Section.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
+					if (config.SelectNodes("dataSources/dataSource") is XmlNodeList dataSourceNodes)
 						RepositoryMediator.ConstructDataSources(dataSourceNodes.ToList(), tracker);
 
 					// update settings of repositories
-					if (config.Section.SelectNodes("repository") is XmlNodeList repositoryNodes)
+					if (updateFromConfigurationFile && config.SelectNodes("repository") is XmlNodeList repositoryNodes)
 						repositoryNodes.ToList().ForEach(repositoryNode =>
 						{
 							// update repository
@@ -117,15 +127,15 @@ namespace net.vieapps.Components.Repository
 						});
 
 					// default data sources
-					RepositoryMediator.DefaultVersionDataSourceName = config.Section.Attributes["versionDataSource"]?.Value;
-					RepositoryMediator.DefaultTrashDataSourceName = config.Section.Attributes["trashDataSource"]?.Value;
+					RepositoryMediator.DefaultVersionDataSourceName = config.Attributes["versionDataSource"]?.Value;
+					RepositoryMediator.DefaultTrashDataSourceName = config.Attributes["trashDataSource"]?.Value;
 
 					// schemas (SQL)
-					if ("true".IsEquals(config.Section.Attributes["ensureSchemas"]?.Value))
+					if ("true".IsEquals(config.Attributes["ensureSchemas"]?.Value))
 						Task.Run(async () => await RepositoryStarter.EnsureSqlSchemasAsync(tracker).ConfigureAwait(false)).ConfigureAwait(false);
 
 					// indexes (NoSQL)
-					if ("true".IsEquals(config.Section.Attributes["ensureIndexes"]?.Value))
+					if ("true".IsEquals(config.Attributes["ensureIndexes"]?.Value))
 						Task.Run(async () => await RepositoryStarter.EnsureNoSqlIndexesAsync(tracker).ConfigureAwait(false)).ConfigureAwait(false);
 				}
 				catch (Exception ex)
@@ -134,9 +144,6 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs("Error occurred while updating the repository", ex);
 					throw ex;
 				}
-
-			else if (updateFromConfigurationFile)
-				throw new ConfigurationErrorsException("Cannot find the configuration section (might be named as 'net.vieapps.repositories') in the configuration file");
 
 			tracker?.Invoke($"Total of registered repositories: {RepositoryMediator.RepositoryDefinitions.Count}", null);
 			tracker?.Invoke($"Total of registered repository entities: {RepositoryMediator.EntityDefinitions.Count}", null);
@@ -199,7 +206,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dbProviderFactoryNodes"></param>
 		/// <param name="tracker"></param>
 		public static void ConstructDbProviderFactories(List<XmlNode> dbProviderFactoryNodes, Action<string, Exception> tracker = null)
-			=> DbProviderFactories.ConstructDbProviderFactories(dbProviderFactoryNodes, tracker);
+			=> DbProvider.ConstructDbProviderFactories(dbProviderFactoryNodes, tracker);
 
 		/// <summary>
 		/// Constructs SQL database factory providers
