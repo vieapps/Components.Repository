@@ -130,13 +130,49 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.DefaultVersionDataSourceName = config.Attributes["versionDataSource"]?.Value;
 					RepositoryMediator.DefaultTrashDataSourceName = config.Attributes["trashDataSource"]?.Value;
 
-					// schemas (SQL)
+					// ensure schemas (SQL)
 					if ("true".IsEquals(config.Attributes["ensureSchemas"]?.Value))
-						Task.Run(async () => await RepositoryStarter.EnsureSqlSchemasAsync(tracker).ConfigureAwait(false)).ConfigureAwait(false);
+						Task.Run(async () => await RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
+						{
+							var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
+							primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.SQL)
+								? primaryDataSource
+								: null;
+							await RepositoryStarter.EnsureSqlSchemasAsync(definition, primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
 
-					// indexes (NoSQL)
+							var secondaryDataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
+							secondaryDataSource = secondaryDataSource != null && secondaryDataSource.Mode.Equals(RepositoryMode.SQL)
+								? secondaryDataSource
+								: null;
+							await RepositoryStarter.EnsureSqlSchemasAsync(definition, secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
+
+							await RepositoryMediator.GetSyncDataSources(null, definition)
+								.Where(dataSource => dataSource.Mode.Equals(RepositoryMode.SQL) && !dataSource.Name.IsEquals(primaryDataSource?.Name) && !dataSource.Name.IsEquals(secondaryDataSource?.Name))
+								.ForEachAsync(async (dataSource, token) => await RepositoryStarter.EnsureSqlSchemasAsync(definition, dataSource, tracker, token).ConfigureAwait(false), cancellationToken, true, false)
+								.ConfigureAwait(false);
+						}, CancellationToken.None, true, false)).ConfigureAwait(false);
+
+					// ensure indexes (NoSQL)
 					if ("true".IsEquals(config.Attributes["ensureIndexes"]?.Value))
-						Task.Run(async () => await RepositoryStarter.EnsureNoSqlIndexesAsync(tracker).ConfigureAwait(false)).ConfigureAwait(false);
+						Task.Run(async () => await RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
+						{
+							var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
+							primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+								? primaryDataSource
+								: null;
+							await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
+
+							var secondaryDataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
+							secondaryDataSource = secondaryDataSource != null && secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
+								? secondaryDataSource
+								: null;
+							await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
+
+							await RepositoryMediator.GetSyncDataSources(null, definition)
+								.Where(dataSource => dataSource.Mode.Equals(RepositoryMode.NoSQL) && !dataSource.Name.IsEquals(primaryDataSource?.Name) && !dataSource.Name.IsEquals(secondaryDataSource?.Name))
+								.ForEachAsync(async (dataSource, token) => await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, dataSource, tracker, token).ConfigureAwait(false), cancellationToken, true, false)
+								.ConfigureAwait(false);
+						}, CancellationToken.None, true, false)).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
@@ -216,120 +252,54 @@ namespace net.vieapps.Components.Repository
 		public static void ConstructDbProviderFactories(XmlNodeList dbProviderFactoryNodes, Action<string, Exception> tracker = null)
 			=> RepositoryStarter.ConstructDbProviderFactories(dbProviderFactoryNodes.ToList(), tracker);
 
-		static Task EnsureSqlSchemasAsync(Action<string, Exception> tracker = null)
-			=> RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
-			{
-				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
-				primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? primaryDataSource
-					: null;
-				if (primaryDataSource != null)
-					try
-					{
-						tracker?.Invoke($"Ensure schemas of SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.TableName}]", null);
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"Ensure schemas of SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.TableName}]", null);
-						await definition.EnsureSchemasAsync(primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
-					}
-					catch (Exception ex)
-					{
-						tracker?.Invoke($"Error occurred while ensuring schemas of SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.TableName}]", ex);
-						RepositoryMediator.WriteLogs($"Error occurred while ensuring schemas of SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.TableName}]", ex);
-					}
+		/// <summary>
+		/// Ensures schemas of an entity in SQL database
+		/// </summary>
+		/// <param name="definition"></param>
+		/// <param name="dataSource"></param>
+		/// <param name="tracker"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static async Task EnsureSqlSchemasAsync(EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
+		{
+			if (definition != null && dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL))
+				try
+				{
+					tracker?.Invoke($"Ensure schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Ensure schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
+					await definition.EnsureSchemasAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
+				}
+				catch (Exception ex)
+				{
+					tracker?.Invoke($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
+				}
+		}
 
-				var secondaryDataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
-				secondaryDataSource = secondaryDataSource != null && secondaryDataSource.Mode.Equals(RepositoryMode.SQL)
-					? secondaryDataSource
-					: null;
-				if (secondaryDataSource != null)
-					try
-					{
-						tracker?.Invoke($"Ensure schemas of SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.TableName}]", null);
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"Ensure schemas of SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.TableName}]", null);
-						await definition.EnsureSchemasAsync(secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
-					}
-					catch (Exception ex)
-					{
-						tracker?.Invoke($"Error occurred while ensuring schemas of SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.TableName}]", ex);
-						RepositoryMediator.WriteLogs($"Error occurred while ensuring schemas of SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.TableName}]", ex);
-					}
-
-				await RepositoryMediator.GetSyncDataSources(null, definition)
-					.Where(dataSource => dataSource.Mode.Equals(RepositoryMode.SQL) && !dataSource.Name.IsEquals(primaryDataSource?.Name) && !dataSource.Name.IsEquals(secondaryDataSource?.Name))
-					.ForEachAsync(async (dataSource, canceltoken) =>
-					{
-						try
-						{
-							tracker?.Invoke($"Ensure schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
-							if (RepositoryMediator.IsDebugEnabled)
-								RepositoryMediator.WriteLogs($"Ensure schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
-							await definition.EnsureSchemasAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
-						}
-						catch (Exception ex)
-						{
-							tracker?.Invoke($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
-							RepositoryMediator.WriteLogs($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
-						}
-					}, cancellationToken, true, false).ConfigureAwait(false);
-			}, CancellationToken.None, true, false);
-
-		static Task EnsureNoSqlIndexesAsync(Action<string, Exception> tracker = null)
-			=> RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
-			{
-				var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
-				primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? primaryDataSource
-					: null;
-				if (primaryDataSource != null)
-					try
-					{
-						tracker?.Invoke($"Ensure indexes of No SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.CollectionName}]", null);
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"Ensure indexes of No SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.CollectionName}]", null);
-						await definition.EnsureIndexesAsync(primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
-					}
-					catch (Exception ex)
-					{
-						tracker?.Invoke($"Error occurred while ensuring indexes of No SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.CollectionName}]", ex);
-						RepositoryMediator.WriteLogs($"Cannot ensure indexes of No SQL: {definition.Type} [{primaryDataSource.Name} @ {primaryDataSource.Mode} => {definition.CollectionName}]", ex);
-					}
-
-				var secondaryDataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
-				secondaryDataSource = secondaryDataSource != null && secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
-					? secondaryDataSource
-					: null;
-				if (secondaryDataSource != null)
-					try
-					{
-						tracker?.Invoke($"Ensure indexes of No SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.CollectionName}]", null);
-						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"Ensure indexes of No SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.CollectionName}]", null);
-						await definition.EnsureIndexesAsync(secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
-					}
-					catch (Exception ex)
-					{
-						tracker?.Invoke($"Error occurred while ensuring indexes of No SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.CollectionName}]", ex);
-						RepositoryMediator.WriteLogs($"Cannot ensure indexes of No SQL: {definition.Type} [{secondaryDataSource.Name} @ {secondaryDataSource.Mode} => {definition.CollectionName}]", ex);
-					}
-
-				await RepositoryMediator.GetSyncDataSources(null, definition)
-					.Where(dataSource => dataSource.Mode.Equals(RepositoryMode.NoSQL) && !dataSource.Name.IsEquals(primaryDataSource?.Name) && !dataSource.Name.IsEquals(secondaryDataSource?.Name))
-					.ForEachAsync(async (dataSource, token) =>
-					{
-						try
-						{
-							tracker?.Invoke($"Ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
-							if (RepositoryMediator.IsDebugEnabled)
-								RepositoryMediator.WriteLogs($"Ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
-							await definition.EnsureIndexesAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
-						}
-						catch (Exception ex)
-						{
-							tracker?.Invoke($"Error occurred while ensuring indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
-							RepositoryMediator.WriteLogs($"Cannot ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
-						}
-					}, cancellationToken, true, false).ConfigureAwait(false);
-			}, CancellationToken.None, true, false);
+		/// <summary>
+		/// Ensures indexes of an entity in No SQL database
+		/// </summary>
+		/// <param name="definition"></param>
+		/// <param name="dataSource"></param>
+		/// <param name="tracker"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static async Task EnsureNoSqlIndexesAsync(EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
+		{
+			if (definition != null && dataSource != null && dataSource.Mode.Equals(RepositoryMode.NoSQL))
+				try
+				{
+					tracker?.Invoke($"Ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
+					await definition.EnsureIndexesAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
+				}
+				catch (Exception ex)
+				{
+					tracker?.Invoke($"Error occurred while ensuring indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
+					RepositoryMediator.WriteLogs($"Cannot ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
+				}
+		}
 	}
 }

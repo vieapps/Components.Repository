@@ -31,7 +31,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Add more targets and do some little code refactoring</PackageReleaseNotes>
+		<PackageReleaseNotes>Upgrade to latest components and add methods to ensures schemas and indexes</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -47,13 +47,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.10.0" />
+		<PackageReference Include="MongoDB.Driver" Version="2.10.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)'!='true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.2001.2" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.3.2001.2" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.2001.2" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.2001.4" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.3.2001.4" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.2001.4" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)'=='true'">
