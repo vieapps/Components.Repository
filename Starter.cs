@@ -28,9 +28,9 @@ namespace net.vieapps.Components.Repository
 			try
 			{
 				var types = assembly.GetExportedTypes();
-				tracker?.Invoke($"Initialize the assembly: {assembly.GetName().Name} [{types.Length} type(s)]", null);
+				tracker?.Invoke($"Initialize the assembly: {assembly.GetName().Name} with {types.Length} exported type(s)", null);
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"Initialize the assembly: {assembly.GetName().Name}", null);
+					RepositoryMediator.WriteLogs($"Initialize the assembly: {assembly.GetName().Name} with {types.Length} exported type(s)", null);
 
 				// repositories
 				types.Where(type => type.IsDefined(typeof(RepositoryAttribute), false)).ForEach(type =>

@@ -20,9 +20,9 @@ namespace net.vieapps.Components.Repository
 		public string ID { get; set; }
 
 		/// <summary>
-		/// Gets or sets the path to folder that contains all UI files (when this object is defined as a module definition)
+		/// Gets or sets the name of the directory that contains all files for working with user interfaces (when this object is defined as a module definition - will be placed in directory named '/themes/modules/', the value of 'ServiceName' will be used if no value was provided)
 		/// </summary>
-		public string Path { get; set; }
+		public string Directory { get; set; }
 
 		/// <summary>
 		/// Gets or sets the title (when this object is defined as a module definition)
@@ -35,7 +35,12 @@ namespace net.vieapps.Components.Repository
 		public string Description { get; set; }
 
 		/// <summary>
-		/// Gets or sets the name of the SQL table for storing extended properties, default is 'T_Data_Extended_Properties' (when this object is defined as a module definition)
+		/// Gets or sets the name of the icon for working with user interfaces (when this object is defined as a module definition)
+		/// </summary>
+		public string Icon { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the data table (in SQL databases) for storing extended properties, default is 'T_Data_Extended_Properties' (when this object is defined as a module definition)
 		/// </summary>
 		public string ExtendedPropertiesTableName { get; set; }
 	}
@@ -89,6 +94,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the description (when this object is defined as a content-type definition)
 		/// </summary>
 		public string Description { get; set; }
+
+		/// <summary>
+		/// Gets or sets the name of the icon for working with user interfaces (when this object is defined as a content-type definition)
+		/// </summary>
+		public string Icon { get; set; }
 
 		/// <summary>
 		/// Gets or sets the state that allow to use multiple instances, default is false (when this object is defined as a content-type definition)
@@ -146,9 +156,9 @@ namespace net.vieapps.Components.Repository
 		public bool CreateNewVersionWhenUpdated { get; set; } = true;
 
 		/// <summary>
-		/// Gets or sets the name of the property to use as short-name (when this object is defined as a content-type definition)
+		/// Gets or sets the name of the property to use as alias (means short-name when this object is defined as a content-type definition)
 		/// </summary>
-		public string ShortnameProperty { get; set; }
+		public string AliasProperty { get; set; }
 
 		/// <summary>
 		/// Gets or sets the type of a class that use to generate navigator menu (when this object is defined as a content-type definition)
@@ -282,7 +292,7 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this property is ignore
+	/// Specifies this property is be ignored
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 	public class IgnoreAttribute : Attribute
@@ -293,7 +303,7 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this property is ignore if null
+	/// Specifies this property is be ignored if value is null
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
 	public class IgnoreIfNullAttribute : Attribute
@@ -358,7 +368,7 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this class is handler of repository events
+	/// Specifies this class is a handler of a repository event (CRUD event)
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 	public class EventHandlersAttribute : Attribute
@@ -535,12 +545,12 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Extension methods for working with repository
+	/// Extension methods for working with repository objects
 	/// </summary>
 	public static partial class Extensions
 	{
 		/// <summary>
-		/// Gets the state that determines this attribute is ignored or not
+		/// Gets the state that determines this attribute is be ignored or not
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
@@ -550,7 +560,7 @@ namespace net.vieapps.Components.Repository
 				: attribute.Info.GetCustomAttributes(typeof(MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute), true).Length > 0;
 
 		/// <summary>
-		/// Gets the state that determines this attribute is ignored if null or not
+		/// Gets the state that determines this attribute is be ignored if value is null or not
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
@@ -558,7 +568,7 @@ namespace net.vieapps.Components.Repository
 			=> attribute.Info.GetCustomAttributes(typeof(IgnoreIfNullAttribute), true).Length > 0;
 
 		/// <summary>
-		/// Gets the state that determines this object attribute is store as JSON or not
+		/// Gets the state that determines this object attribute is be stored as JSON or not
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
@@ -566,7 +576,7 @@ namespace net.vieapps.Components.Repository
 			=> attribute.Type.IsClassType() && attribute.Info.GetCustomAttributes(typeof(AsJsonAttribute), true).Length > 0;
 
 		/// <summary>
-		/// Gets the state that determines this date-time attribute is store as string or not
+		/// Gets the state that determines this date-time attribute is be stored as string or not
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
@@ -602,5 +612,4 @@ namespace net.vieapps.Components.Repository
 		public static bool IsSearchable(this ObjectService.AttributeInfo attribute)
 			=> attribute.Type.IsStringType() && attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0;
 	}
-
 }

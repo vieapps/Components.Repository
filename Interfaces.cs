@@ -22,12 +22,10 @@ using net.vieapps.Components.Security;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Presents a repository (means information of a business module object at the run-time)
+	/// Presents a business repository (means a business module at the run-time)
 	/// </summary>
 	public interface IRepository
 	{
-
-		#region Properites
 		/// <summary>
 		/// Gets the identity (primary-key)
 		/// </summary>
@@ -37,6 +35,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the title
 		/// </summary>
 		string Title { get; }
+
+		/// <summary>
+		/// Gets the description
+		/// </summary>
+		string Description { get; }
 
 		/// <summary>
 		/// Gets the identity of a business system that the object is belong to
@@ -52,22 +55,15 @@ namespace net.vieapps.Components.Repository
 		/// Gets the definition of the repository (means module definition)
 		/// </summary>
 		RepositoryDefinition Definition { get; }
-		#endregion
-
-		#region Methods
-		#endregion
-
 	}
 
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents an entity of a repository (means information of a business content-type object at the run-time)
+	/// Presents a business entity of a business repository (means a business content-type at the run-time)
 	/// </summary>
 	public interface IRepositoryEntity
 	{
-
-		#region Properites
 		/// <summary>
 		/// Gets the identity (primary-key)
 		/// </summary>
@@ -77,6 +73,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the title
 		/// </summary>
 		string Title { get; }
+
+		/// <summary>
+		/// Gets the description
+		/// </summary>
+		string Description { get; }
 
 		/// <summary>
 		/// Gets the identity of a business system that the object is belong to
@@ -92,6 +93,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the name of the service that associates with this repository entity
 		/// </summary>
 		string ServiceName { get; }
+
+		/// <summary>
+		/// Gets the name of the service's object that associates with this repository entity
+		/// </summary>
+		string ObjectName { get; }
 
 		/// <summary>
 		/// Gets the state to create new version when an entity object is updated
@@ -112,22 +118,15 @@ namespace net.vieapps.Components.Repository
 		/// Gets the definition of the entity (means content-type definition)
 		/// </summary>
 		EntityDefinition Definition { get; }
-		#endregion
-
-		#region Methods
-		#endregion
-
 	}
 
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents a business entity (means information of a business object at the run-time)
+	/// Presents a business entity (means a business object at the run-time)
 	/// </summary>
 	public interface IBusinessEntity
 	{
-
-		#region Properites
 		/// <summary>
 		/// Gets the identity (primary-key)
 		/// </summary>
@@ -157,6 +156,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the name of the service that associates with this business entity
 		/// </summary>
 		string ServiceName { get; }
+
+		/// <summary>
+		/// Gets the name of the service's object that associates with this business entity
+		/// </summary>
+		string ObjectName { get; }
 
 		/// <summary>
 		/// Gets or sets the collection of extended properties
@@ -197,11 +201,6 @@ namespace net.vieapps.Components.Repository
 		/// Gets the identity of an user who modifies this object at the last-time
 		/// </summary>
 		string LastModifiedID { get; }
-		#endregion
-
-		#region Methods
-		#endregion
-
 	}
 
 	//  --------------------------------------------------------------------------------------------

@@ -180,7 +180,7 @@ namespace net.vieapps.Components.Repository
 		MediumText,
 
 		/// <summary>
-		/// Large (CLOB) unicode text
+		/// Large Unicode text (CLOB)
 		/// </summary>
 		LargeText,
 

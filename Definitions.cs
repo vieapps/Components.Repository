@@ -21,7 +21,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Definition of a respository
+	/// Presents a respository definition (means a module definition)
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
 	public class RepositoryDefinition
@@ -125,9 +125,9 @@ namespace net.vieapps.Components.Repository
 		public string ID { get; internal set; }
 
 		/// <summary>
-		/// Gets the path to folder that contains all UI files (when this object is defined as a module definition)
+		/// Gets or sets the name of the directory that contains all files for working with user interfaces (when this object is defined as a module definition - will be placed in directory named '/themes/modules/', the value of 'ServiceName' will be used if no value was provided)
 		/// </summary>
-		public string Path { get; internal set; }
+		public string Directory { get; internal set; }
 
 		/// <summary>
 		/// Gets the title (when this object is defined as a module definition)
@@ -140,44 +140,48 @@ namespace net.vieapps.Components.Repository
 		public string Description { get; internal set; }
 
 		/// <summary>
+		/// Gets or sets the name of the icon for working with user interfaces (when this object is defined as a module definition)
+		/// </summary>
+		public string Icon { get; set; }
+
+		/// <summary>
 		/// Gets the name of the SQL table for storing extended properties, default is 'T_Data_Extended_Properties' (when this object is defined as a module definition)
 		/// </summary>
 		public string ExtendedPropertiesTableName { get; internal set; }
 
 		/// <summary>
-		/// Gets the collection of business repositories at run-time (means business modules at run-time)
+		/// Gets the collection of run-time business repositories (means business modules at run-time)
 		/// </summary>
 		public Dictionary<string, IRepository> RuntimeRepositories { get; internal set; } = new Dictionary<string, IRepository>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
-		#region Register
+		#region Register & Update settings
 		internal static void Register(Type type)
 		{
 			// check
 			if (type == null || RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
 				return;
 
-			// initialize
-			var info = type.GetCustomAttributes(false)
-				.Where(attribute => attribute is RepositoryAttribute)
-				.ToList()[0] as RepositoryAttribute;
+			// get info
+			var info = type.GetCustomAttributes(typeof(RepositoryAttribute), false).FirstOrDefault() as RepositoryAttribute;
 
-			var definition = new RepositoryDefinition()
+			// initialize
+			var definition = new RepositoryDefinition
 			{
 				Type = type,
 				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
-				Path = !string.IsNullOrWhiteSpace(info.Path) ? info.Path : "",
+				Directory = !string.IsNullOrWhiteSpace(info.Directory) ? info.Directory : null,
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
 				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
+				Icon = !string.IsNullOrWhiteSpace(info.Icon) ? info.Icon : null,
 				ExtendedPropertiesTableName = !string.IsNullOrWhiteSpace(info.ExtendedPropertiesTableName) ? info.ExtendedPropertiesTableName : "T_Data_Extended_Properties"
 			};
 
 			// update into collection
-			RepositoryMediator.RepositoryDefinitions.Add(type, definition);
+			if (RepositoryMediator.RepositoryDefinitions.TryAdd(type, definition) && RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs($"The repository definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]");
 		}
-		#endregion
 
-		#region Update settings
 		internal static void Update(JObject settings, Action<string, Exception> tracker = null)
 		{
 			// check
@@ -187,48 +191,45 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException("type", "[type] attribute of settings");
 
 			// prepare
+			Type aliasOf = null;
 			var isAlias = settings["isAlias"] != null
 				? "true".IsEquals((settings["isAlias"] as JValue).Value as string)
 				: false;
-
-			Type targetType = null;
 			if (isAlias)
 			{
-				var target = settings["target"] != null
+				var targetType = settings["target"] != null
 					? (settings["target"] as JValue).Value as string
 					: null;
 
-				if (string.IsNullOrWhiteSpace(target))
+				if (string.IsNullOrWhiteSpace(targetType))
 					isAlias = false;
 				else
 				{
-					targetType = Type.GetType(target);
-					if (targetType == null)
+					aliasOf = Type.GetType(targetType);
+					if (aliasOf == null)
 						isAlias = false;
 				}
 			}
 
-			var type = isAlias
-				? targetType
-				: Type.GetType((settings["type"] as JValue).Value as string);
-
-			// no type is found
+			var type = Type.GetType((settings["type"] as JValue).Value as string);
 			if (type == null)
 				return;
 
 			// clone definition for new alias
 			if (isAlias)
 			{
-				if (!RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
-					throw new ArgumentException("The target type named '" + type.GetTypeName() + "' is not available");
-
-				RepositoryMediator.RepositoryDefinitions.Add(type, RepositoryMediator.RepositoryDefinitions[type].Clone());
-				RepositoryMediator.RepositoryDefinitions[type].IsAlias = true;
-				RepositoryMediator.RepositoryDefinitions[type].ExtraSettings = RepositoryMediator.RepositoryDefinitions[type].ExtraSettings;
+				if (!RepositoryMediator.RepositoryDefinitions.TryGetValue(aliasOf, out var targetDef))
+					throw new ArgumentException($"The target type named '{aliasOf.GetTypeName()}' is not available");
+				RepositoryMediator.RepositoryDefinitions.Add(type, RepositoryMediator.RepositoryDefinitions[aliasOf].Clone(cloneDef =>
+				{
+					cloneDef.IsAlias = true;
+					cloneDef.ExtraSettings = targetDef.ExtraSettings.Clone();
+				}));
 			}
 
-			// check existing
-			else if (!RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
+			// get definition
+			var definition = RepositoryMediator.GetRepositoryDefinition(type);
+			if (definition == null)
 				return;
 
 			// update
@@ -238,45 +239,45 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrEmpty(data))
 				throw new ArgumentNullException("primaryDataSource", "[primaryDataSource] attribute of settings");
 			else if (!RepositoryMediator.DataSources.ContainsKey(data))
-				throw new ArgumentException("The data source named '" + data + "' is not available");
-			RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSourceName = data;
+				throw new ArgumentException($"The data source named '{data}' is not available");
+			definition.PrimaryDataSourceName = data;
 
 			data = settings["secondaryDataSource"] != null
 				? (settings["secondaryDataSource"] as JValue).Value as string
 				: null;
-			RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+			definition.SecondaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
 				? data
 				: null;
 
-			RepositoryMediator.RepositoryDefinitions[type].SyncDataSourceNames = settings["syncDataSources"] != null
+			definition.SyncDataSourceNames = settings["syncDataSources"] != null
 				? (settings["syncDataSources"] as JValue).Value as string
 				: null;
 
 			data = settings["versionDataSource"] != null
 				? (settings["versionDataSource"] as JValue).Value as string
 				: null;
-			RepositoryMediator.RepositoryDefinitions[type].VersionDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+			definition.VersionDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
 				? data
 				: null;
 
 			data = settings["trashDataSource"] != null
 				? (settings["trashDataSource"] as JValue).Value as string
 				: null;
-			RepositoryMediator.RepositoryDefinitions[type].TrashDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+			definition.TrashDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
 				? data
 				: null;
 
-			RepositoryMediator.RepositoryDefinitions[type].AutoSync = "true".IsEquals(settings["autoSync"] != null ? (settings["autoSync"] as JValue).Value as string : "false");
+			definition.AutoSync = "true".IsEquals(settings["autoSync"] != null ? (settings["autoSync"] as JValue).Value as string : "false");
 
 			tracker?.Invoke(
-				$"Update settings of repository [{type.GetTypeName()}]:" + "\r\n" +
-				$"- Primary data source: {(RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].PrimaryDataSource.Mode})" : "None")}" + "\r\n" +
-				$"- Secondary data source: {(RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource != null ? $"{RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource.Name} ({RepositoryMediator.RepositoryDefinitions[type].SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
-				$"- Sync data sources: {(RepositoryMediator.RepositoryDefinitions[type].SyncDataSources.Count > 0 ? RepositoryMediator.RepositoryDefinitions[type].SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
-				$"- Version data source: {RepositoryMediator.RepositoryDefinitions[type].VersionDataSource?.Name ?? "(None)"}" + "\r\n" +
-				$"- Trash data source: {RepositoryMediator.RepositoryDefinitions[type].TrashDataSource?.Name ?? "(None)"}" + "\r\n" +
-				$"- Auto sync: {RepositoryMediator.RepositoryDefinitions[type].AutoSync}"
-				, null);
+				$"Settings of a repository was updated [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]" + "\r\n" +
+				$"- Primary data source: {(definition.PrimaryDataSource != null ? $"{definition.PrimaryDataSource.Name} ({definition.PrimaryDataSource.Mode})" : "None")}" + "\r\n" +
+				$"- Secondary data source: {(definition.SecondaryDataSource != null ? $"{definition.SecondaryDataSource.Name} ({definition.SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
+				$"- Sync data sources: {(definition.SyncDataSources.Count > 0 ? definition.SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
+				$"- Version data source: {definition.VersionDataSource?.Name ?? "(None)"}" + "\r\n" +
+				$"- Trash data source: {definition.TrashDataSource?.Name ?? "(None)"}" + "\r\n" +
+				$"- Auto sync: {definition.AutoSync}"
+			, null);
 		}
 		#endregion
 
@@ -285,7 +286,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Definition of an entity in a respository
+	/// Presents a repository entity definition (means a content-type definition)
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
 	public class EntityDefinition
@@ -363,12 +364,14 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the primary data-source
 		/// </summary>
-		public DataSource PrimaryDataSource => RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
+		public DataSource PrimaryDataSource
+			=> RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
 
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
-		public DataSource SecondaryDataSource => RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
+		public DataSource SecondaryDataSource
+			=> RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
 
 		/// <summary>
 		/// Gets the other data sources that are available for synchronizing
@@ -385,12 +388,14 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the data-source that use to store versioning contents
 		/// </summary>
-		public DataSource VersionDataSource => RepositoryMediator.GetDataSource(this.VersionDataSourceName);
+		public DataSource VersionDataSource
+			=> RepositoryMediator.GetDataSource(this.VersionDataSourceName);
 
 		/// <summary>
 		/// Gets the data-source that use to store trash contents
 		/// </summary>
-		public DataSource TrashDataSource => RepositoryMediator.GetDataSource(this.TrashDataSourceName);
+		public DataSource TrashDataSource
+			=> RepositoryMediator.GetDataSource(this.TrashDataSourceName);
 
 		/// <summary>
 		/// Gets the collection of all attributes (properties and fields)
@@ -407,7 +412,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of sortable properties
 		/// </summary>
-		public List<string> SortableAttributes { get; internal set; } = new List<string>() { "ID" };
+		public List<string> SortableAttributes { get; internal set; } = new List<string> { "ID" };
 
 		/// <summary>
 		/// Gets the type of the class that presents the repository of this repository entity
@@ -435,6 +440,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the description (when this object is defined as a content-type definition)
 		/// </summary>
 		public string Description { get; internal set; }
+
+		/// <summary>
+		/// Gets or sets the name of the icon for working with user interfaces (when this object is defined as a content-type definition)
+		/// </summary>
+		public string Icon { get; set; }
 
 		/// <summary>
 		/// Gets the state that allow to use multiple instances, default is false (when this object is defined as a content-type definition)
@@ -487,9 +497,9 @@ namespace net.vieapps.Components.Repository
 		public string MultipleParentAssociatesLinkColumn { get; internal set; }
 
 		/// <summary>
-		/// Gets the name of the property to use as short-name (when this object is defined as a content-type definition)
+		/// Gets the name of the property to use as alias (means short-name when this object is defined as a content-type definition)
 		/// </summary>
-		public string ShortnameProperty { get; internal set; }
+		public string AliasProperty { get; internal set; }
 
 		/// <summary>
 		/// Gets the type of a class that use to generate navigator menu (when this object is defined as a content-type definition)
@@ -497,45 +507,48 @@ namespace net.vieapps.Components.Repository
 		public Type NavigatorType { get; internal set; }
 
 		/// <summary>
-		/// Gets the collection of business entities at run-time (means business conten-types at run-time)
+		/// Gets the collection of run-time business entities (means business conten-types at run-time)
 		/// </summary>
 		public Dictionary<string, IRepositoryEntity> RuntimeEntities { get; internal set; } = new Dictionary<string, IRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
-		#region Register
+		#region Register & Update settings
 		internal static void Register(Type type)
 		{
-			// check existed
+			// check
 			if (type == null || RepositoryMediator.EntityDefinitions.ContainsKey(type))
 				return;
 
-			// check table/collection name
-			var entityInfo = type.GetCustomAttributes(typeof(EntityAttribute), false).FirstOrDefault() as EntityAttribute;
-			if (string.IsNullOrWhiteSpace(entityInfo.TableName) && string.IsNullOrWhiteSpace(entityInfo.CollectionName))
+			// get info
+			var info = type.GetCustomAttributes(typeof(EntityAttribute), false).FirstOrDefault() as EntityAttribute;
+
+			// verify name of table/collection
+			if (string.IsNullOrWhiteSpace(info.TableName) && string.IsNullOrWhiteSpace(info.CollectionName))
 				throw new ArgumentException("The type [" + type.ToString() + "] must have name of SQL table or NoSQL collection");
 
 			// initialize
 			var definition = new EntityDefinition
 			{
 				Type = type,
-				TableName = entityInfo.TableName,
-				CollectionName = entityInfo.CollectionName,
-				Searchable = entityInfo.Searchable,
-				ID = !string.IsNullOrWhiteSpace(entityInfo.ID) ? entityInfo.ID : "",
-				Title = !string.IsNullOrWhiteSpace(entityInfo.Title) ? entityInfo.Title : "",
-				Description = !string.IsNullOrWhiteSpace(entityInfo.Description) ? entityInfo.Description : "",
-				MultipleIntances = entityInfo.MultipleIntances,
-				Extendable = entityInfo.Extendable,
-				Indexable = entityInfo.Indexable,
-				ParentType = entityInfo.ParentType,
-				CreateNewVersionWhenUpdated = entityInfo.CreateNewVersionWhenUpdated,
-				NavigatorType = entityInfo.NavigatorType
+				TableName = info.TableName,
+				CollectionName = info.CollectionName,
+				Searchable = info.Searchable,
+				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
+				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
+				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
+				Icon = !string.IsNullOrWhiteSpace(info.Icon) ? info.Icon : null,
+				MultipleIntances = info.MultipleIntances,
+				Extendable = info.Extendable,
+				Indexable = info.Indexable,
+				ParentType = info.ParentType,
+				CreateNewVersionWhenUpdated = info.CreateNewVersionWhenUpdated,
+				NavigatorType = info.NavigatorType
 			};
 
 			// cache
-			if (entityInfo.CacheClass != null && !string.IsNullOrWhiteSpace(entityInfo.CacheName))
+			if (info.CacheClass != null && !string.IsNullOrWhiteSpace(info.CacheName))
 			{
-				var cache = entityInfo.CacheClass.GetStaticObject(entityInfo.CacheName);
+				var cache = info.CacheClass.GetStaticObject(info.CacheName);
 				definition.Cache = cache != null && cache is Caching.Cache
 					? cache as Caching.Cache
 					: null;
@@ -553,7 +566,7 @@ namespace net.vieapps.Components.Repository
 			definition.RepositoryType = Type.GetType(typename.Left(typename.IndexOf("[")) + typename.Substring(typename.IndexOf("]") + 2));
 
 			// public properties
-			var numberOfKeys = 0;
+			var numberOfPrimaryKeys = 0;
 			var properties = ObjectService.GetProperties(type);
 			properties.Where(attr => !attr.IsIgnored()).ForEach(attr =>
 			{
@@ -570,7 +583,7 @@ namespace net.vieapps.Components.Repository
 						attribute.MaxLength = keyInfo.MaxLength;
 
 					definition.PrimaryKey = attribute.Name;
-					numberOfKeys += attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).Length;
+					numberOfPrimaryKeys += attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).Length;
 				}
 
 				// property
@@ -609,9 +622,9 @@ namespace net.vieapps.Components.Repository
 			});
 
 			// check primary key
-			if (numberOfKeys == 0)
+			if (numberOfPrimaryKeys == 0)
 				throw new ArgumentException("The type [" + type.ToString() + "] has no primary-key");
-			else if (numberOfKeys > 1)
+			else if (numberOfPrimaryKeys > 1)
 				throw new ArgumentException("The type [" + type.ToString() + "] has multiple primary-keys");
 
 			// fields
@@ -653,36 +666,36 @@ namespace net.vieapps.Components.Repository
 			var parentEntity = definition.ParentType?.CreateInstance();
 			if (parentEntity != null)
 			{
-				var property = string.IsNullOrWhiteSpace(entityInfo.ParentAssociatedProperty)
+				var property = string.IsNullOrWhiteSpace(info.ParentAssociatedProperty)
 					? null
-					: properties.FirstOrDefault(p => p.Name.Equals(entityInfo.ParentAssociatedProperty));
+					: properties.FirstOrDefault(p => p.Name.Equals(info.ParentAssociatedProperty));
 				definition.ParentAssociatedProperty = property != null
-					? entityInfo.ParentAssociatedProperty
+					? info.ParentAssociatedProperty
 					: "";
 
 				if (!string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty))
 				{
-					definition.MultipleParentAssociates = entityInfo.MultipleParentAssociates;
+					definition.MultipleParentAssociates = info.MultipleParentAssociates;
 
-					property = string.IsNullOrWhiteSpace(entityInfo.MultipleParentAssociatesProperty)
+					property = string.IsNullOrWhiteSpace(info.MultipleParentAssociatesProperty)
 						? null
-						: properties.FirstOrDefault(p => p.Name.Equals(entityInfo.MultipleParentAssociatesProperty));
+						: properties.FirstOrDefault(p => p.Name.Equals(info.MultipleParentAssociatesProperty));
 					definition.MultipleParentAssociatesProperty = property != null && property.Type.IsGenericListOrHashSet()
-						? entityInfo.MultipleParentAssociatesProperty
+						? info.MultipleParentAssociatesProperty
 						: "";
 
-					definition.MultipleParentAssociatesTable = !string.IsNullOrWhiteSpace(entityInfo.MultipleParentAssociatesTable)
-						? entityInfo.MultipleParentAssociatesTable
+					definition.MultipleParentAssociatesTable = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesTable)
+						? info.MultipleParentAssociatesTable
 						: "";
 
 					if (!string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable))
 					{
-						definition.MultipleParentAssociatesMapColumn = !string.IsNullOrWhiteSpace(entityInfo.MultipleParentAssociatesMapColumn)
-							? entityInfo.MultipleParentAssociatesMapColumn
+						definition.MultipleParentAssociatesMapColumn = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesMapColumn)
+							? info.MultipleParentAssociatesMapColumn
 							: "";
 
-						definition.MultipleParentAssociatesLinkColumn = !string.IsNullOrWhiteSpace(entityInfo.MultipleParentAssociatesLinkColumn)
-							? entityInfo.MultipleParentAssociatesLinkColumn
+						definition.MultipleParentAssociatesLinkColumn = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesLinkColumn)
+							? info.MultipleParentAssociatesLinkColumn
 							: "";
 					}
 				}
@@ -690,9 +703,9 @@ namespace net.vieapps.Components.Repository
 			else
 				definition.ParentType = null;
 
-			// shortname
-			definition.ShortnameProperty = !string.IsNullOrWhiteSpace(entityInfo.ShortnameProperty) && properties.FirstOrDefault(p => p.Name.Equals(entityInfo.ShortnameProperty)) != null
-				? entityInfo.ShortnameProperty
+			// alias (short-name)
+			definition.AliasProperty = !string.IsNullOrWhiteSpace(info.AliasProperty) && properties.FirstOrDefault(p => p.Name.Equals(info.AliasProperty)) != null
+				? info.AliasProperty
 				: "";
 
 			// navigator
@@ -701,27 +714,24 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			// update into collection
-			RepositoryMediator.EntityDefinitions.Add(type, definition);
-			if (RepositoryMediator.IsTraceEnabled)
-			{
-				var info = definition.Attributes.ToJArray(attribute => new JObject
-				{
-					{ "Name", attribute.Name },
-					{ "Type", attribute.Type.GetTypeName(true) },
-					{ "MinLength", attribute.MinLength },
-					{ "MaxLength", attribute.MaxLength },
-					{ "MinValue", attribute.MinValue },
-					{ "MaxValue", attribute.MaxValue },
-					{ "NotNull", attribute.NotNull },
-					{ "NotEmpty", attribute.NotEmpty },
-					{ "CLOB", attribute.IsCLOB }
-				});
-				RepositoryMediator.WriteLogs($"The entity definition was registered\r\n-Type: {definition.Type.GetTypeName()}\r\n-Attributes:{info}");
-			}
+			if (RepositoryMediator.EntityDefinitions.TryAdd(type, definition) && RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(
+					$"The repository entity definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]" + "\r\n" +
+					$"- Attributes: " + "\r\n" + definition.Attributes.ToJArray(attribute => new JObject
+					{
+						{ "Name", attribute.Name },
+						{ "Type", attribute.Type.GetTypeName(true) },
+						{ "MinLength", attribute.MinLength },
+						{ "MaxLength", attribute.MaxLength },
+						{ "MinValue", attribute.MinValue },
+						{ "MaxValue", attribute.MaxValue },
+						{ "NotNull", attribute.NotNull },
+						{ "NotEmpty", attribute.NotEmpty },
+						{ "CLOB", attribute.IsCLOB }
+					}).ToString(Newtonsoft.Json.Formatting.Indented)
+				);
 		}
-		#endregion
 
-		#region Update settings
 		internal static void Update(JObject settings, Action<string, Exception> tracker = null)
 		{
 			// check
@@ -731,40 +741,40 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException("type", "[type] attribute of settings");
 
 			// prepare
-			var type = Type.GetType((settings["type"] as JValue).Value as string);
-			if (type == null || !RepositoryMediator.EntityDefinitions.ContainsKey(type))
+			var definition = RepositoryMediator.GetEntityDefinition(Type.GetType((settings["type"] as JValue).Value as string));
+			if (definition == null)
 				return;
 
 			// update
 			var data = settings["primaryDataSource"] != null
 				? (settings["primaryDataSource"] as JValue).Value as string
 				: null;
-			RepositoryMediator.EntityDefinitions[type].PrimaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+			definition.PrimaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
 				? data
 				: null;
 
 			data = settings["secondaryDataSource"] != null
 				? (settings["secondaryDataSource"] as JValue).Value as string
 				: null;
-			RepositoryMediator.EntityDefinitions[type].SecondaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+			definition.SecondaryDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
 				? data
 				: null;
 
-			RepositoryMediator.EntityDefinitions[type].SyncDataSourceNames = settings["syncDataSources"] != null
+			definition.SyncDataSourceNames = settings["syncDataSources"] != null
 				? (settings["syncDataSources"] as JValue).Value as string
 				: null;
 
 			data = settings["versionDataSource"] != null
 				? (settings["versionDataSource"] as JValue).Value as string
 				: null;
-			RepositoryMediator.EntityDefinitions[type].VersionDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+			definition.VersionDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
 				? data
 				: null;
 
 			data = settings["trashDataSource"] != null
 				? (settings["trashDataSource"] as JValue).Value as string
 				: null;
-			RepositoryMediator.EntityDefinitions[type].TrashDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
+			definition.TrashDataSourceName = !string.IsNullOrEmpty(data) && RepositoryMediator.DataSources.ContainsKey(data)
 				? data
 				: null;
 
@@ -787,22 +797,22 @@ namespace net.vieapps.Components.Repository
 				var cacheProvider = settings["cacheProvider"] != null
 					? (settings["cacheProvider"] as JValue).Value as string
 					: null;
-				RepositoryMediator.EntityDefinitions[type].Cache = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
+				definition.Cache = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
 			}
 
-			RepositoryMediator.EntityDefinitions[type].AutoSync = settings["autoSync"] != null
+			definition.AutoSync = settings["autoSync"] != null
 				? "true".IsEquals((settings["autoSync"] as JValue).Value as string)
-				: RepositoryMediator.EntityDefinitions[type].RepositoryDefinition.AutoSync;
+				: definition.RepositoryDefinition.AutoSync;
 
 			tracker?.Invoke(
-				$"Update settings of repository entity [{type.GetTypeName()}]:" + "\r\n" +
-				$"- Primary data source: {(RepositoryMediator.EntityDefinitions[type].PrimaryDataSource != null ? $"{RepositoryMediator.EntityDefinitions[type].PrimaryDataSource.Name} ({RepositoryMediator.EntityDefinitions[type].PrimaryDataSource.Mode})" : "None")}" + "\r\n" +
-				$"- Secondary data source: {(RepositoryMediator.EntityDefinitions[type].SecondaryDataSource != null ? $"{RepositoryMediator.EntityDefinitions[type].SecondaryDataSource.Name} ({RepositoryMediator.EntityDefinitions[type].SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
-				$"- Sync data sources: {(RepositoryMediator.EntityDefinitions[type].SyncDataSources != null && RepositoryMediator.EntityDefinitions[type].SyncDataSources.Count > 0 ? RepositoryMediator.EntityDefinitions[type].SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
-				$"- Version data source: {RepositoryMediator.EntityDefinitions[type].VersionDataSource?.Name ?? "(None)"}" + "\r\n" +
-				$"- Trash data source: {RepositoryMediator.EntityDefinitions[type].TrashDataSource?.Name ?? "(None)"}" + "\r\n" +
-				$"- Auto sync: {RepositoryMediator.EntityDefinitions[type].AutoSync}"
-				, null);
+				$"Settings of a repository entity was updated [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]" + "\r\n" +
+				$"- Primary data source: {(definition.PrimaryDataSource != null ? $"{definition.PrimaryDataSource.Name} ({definition.PrimaryDataSource.Mode})" : "None")}" + "\r\n" +
+				$"- Secondary data source: {(definition.SecondaryDataSource != null ? $"{definition.SecondaryDataSource.Name} ({definition.SecondaryDataSource.Mode})" : "None")}" + "\r\n" +
+				$"- Sync data sources: {(definition.SyncDataSources != null && definition.SyncDataSources.Count > 0 ? definition.SyncDataSources.Select(dataSource => $"{dataSource.Name} ({dataSource.Mode})").ToString(", ") : "None")}" + "\r\n" +
+				$"- Version data source: {definition.VersionDataSource?.Name ?? "(None)"}" + "\r\n" +
+				$"- Trash data source: {definition.TrashDataSource?.Name ?? "(None)"}" + "\r\n" +
+				$"- Auto sync: {definition.AutoSync}"
+			, null);
 		}
 
 		/// <summary>
@@ -1125,7 +1135,8 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public sealed class ExtendedUIDefinition
 	{
-		public ExtendedUIDefinition(JObject json = null) => this.CopyFrom(json ?? new JObject());
+		public ExtendedUIDefinition(JObject json = null)
+			=> this.CopyFrom(json ?? new JObject());
 
 		public List<ExtendedUIControlDefinition> Controls { get; set; } = new List<ExtendedUIControlDefinition>();
 
@@ -1146,10 +1157,7 @@ namespace net.vieapps.Components.Repository
 	public sealed class ExtendedUIControlDefinition
 	{
 		public ExtendedUIControlDefinition(JObject json = null)
-		{
-			if (json != null)
-				this.CopyFrom(json);
-		}
+			=> this.CopyFrom(json ?? new JObject());
 
 		public override string ToString()
 			=> this.ToJson().ToString(Newtonsoft.Json.Formatting.None);

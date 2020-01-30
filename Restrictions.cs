@@ -85,7 +85,7 @@ namespace net.vieapps.Components.Repository
 			if (json != null)
 			{
 				this.Attribute = json.Get<string>("Attribute");
-				this.Operator = (json.Get<string>("Operator") ?? "Equals").ToEnum<CompareOperator>();
+				this.Operator = (json.Get<string>("Operator") ?? "Equals").TryToEnum(out CompareOperator @operator) ? @operator : CompareOperator.Equals;
 				this.Value = (json["Value"] as JValue)?.Value;
 			}
 		}
@@ -470,7 +470,7 @@ namespace net.vieapps.Components.Repository
 		{
 			if (json != null)
 			{
-				this.Operator = (json.Get<string>("Operator") ?? "And").ToEnum<GroupOperator>();
+				this.Operator = (json.Get<string>("Operator") ?? "And").TryToEnum(out GroupOperator op) ? op : GroupOperator.And;
 				json.Get<JArray>("Children")?.ForEach(cjson =>
 				{
 					var @operator = cjson.Get<string>("Operator");

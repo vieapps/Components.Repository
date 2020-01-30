@@ -3228,38 +3228,44 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the title
 		/// </summary>
-		[BsonIgnoreIfNull, Property(MaxLength = 250), IgnoreIfNull, Sortable, Searchable]
-		public virtual string Title { get; set; } = null;
+		[BsonIgnoreIfNull, Property(MaxLength = 250), IgnoreIfNull, Sortable(IndexName = "Title"), Searchable]
+		public virtual string Title { get; set; }
 
 		/// <summary>
-		/// Gets the name of service that associates with this repository
+		/// Gets the name of service that associates with this repository object
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore, FormControl(Excluded = true)]
+		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
 		public virtual string ServiceName { get; }
+
+		/// <summary>
+		/// Gets the name of service's object that associates with this repository object
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
+		public virtual string ObjectName => this.GetTypeName(true);
 
 		/// <summary>
 		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
-		public virtual string SystemID { get; set; } = null;
+		public virtual string SystemID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
-		public virtual string RepositoryID { get; set; } = null;
+		public virtual string RepositoryID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
-		public virtual string EntityID { get; set; } = null;
+		public virtual string EntityID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the collection of extended properties
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Ignore]
-		public virtual Dictionary<string, object> ExtendedProperties { get; set; } = null;
+		public virtual Dictionary<string, object> ExtendedProperties { get; set; }
 
 		/// <summary>
 		/// Gets the business entity that marks as parent of this object
@@ -3271,7 +3277,7 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the original privileges (means original working permissions)
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, AsJson, FormControl(Excluded = true)]
-		public virtual Privileges OriginalPrivileges { get; set; } = null;
+		public virtual Privileges OriginalPrivileges { get; set; }
 
 		/// <summary>
 		/// The privileges that are combined from original privileges and parent privileges
@@ -3284,7 +3290,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
 		public virtual Privileges WorkingPrivileges
-			=> this.Privileges ?? (this.Privileges = this.OriginalPrivileges.Combine(this.Parent?.WorkingPrivileges));
+			=> this.Privileges ?? (this.Privileges = this.OriginalPrivileges?.Combine(this.Parent?.WorkingPrivileges) ?? new Privileges());
 
 		long _totalVersions = -1;
 
