@@ -208,7 +208,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a filtering expression
 	/// </summary>
-	public interface IFilterBy<T> where T : class
+	public interface IFilterBy
 	{
 		/// <summary>
 		/// Parses the expression from JSON
@@ -221,7 +221,15 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		JToken ToJson();
+	}
 
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
+	/// Presents a filtering expression with a specified class
+	/// </summary>
+	public interface IFilterBy<T> : IFilterBy where T : class
+	{
 		/// <summary>
 		/// Gets the statement of SQL
 		/// </summary>
@@ -233,6 +241,67 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		FilterDefinition<T> GetNoSqlStatement();
+	}
+
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
+	/// Presents a sorting expression
+	/// </summary>
+	public interface ISortBy
+	{
+		/// <summary>
+		/// Gets or sets the attribute for sorting
+		/// </summary>
+		string Attribute { get; set; }
+
+		/// <summary>
+		/// Gets or sets the mode for sorting
+		/// </summary>
+		SortMode Mode { get; set; }
+
+		/// <summary>
+		/// Gets or sets the next-sibling
+		/// </summary>
+		ISortBy ThenBy { get; set; }
+
+		/// <summary>
+		/// Parses the expression from JSON
+		/// </summary>
+		/// <param name="json"></param>
+		void Parse(JObject json);
+
+		/// <summary>
+		/// Converts the expression to JSON
+		/// </summary>
+		/// <returns></returns>
+		JToken ToJson();
+	}
+
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
+	/// Presents a sorting expression with a specified class
+	/// </summary>
+	public interface ISortBy<T> : ISortBy where T : class
+	{
+
+		/// <summary>
+		/// Gets or sets the next-sibling
+		/// </summary>
+		new ISortBy<T> ThenBy { get; set; }
+
+		/// <summary>
+		/// Gets the statement of SQL
+		/// </summary>
+		/// <returns></returns>
+		string GetSqlStatement();
+
+		/// <summary>
+		/// Gets the statement of No SQL
+		/// </summary>
+		/// <returns></returns>
+		SortDefinition<T> GetNoSqlStatement();
 	}
 
 	//  --------------------------------------------------------------------------------------------

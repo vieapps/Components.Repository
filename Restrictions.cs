@@ -23,10 +23,10 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Filtering expression for using with comparing operators
+	/// Presents a filtering expression for using with comparing operators
 	/// </summary>
 	[Serializable]
-	public class FilterBy<T> : IFilterBy<T> where T : class
+	public class FilterBy : IFilterBy
 	{
 		/// <summary>
 		/// Initializes a new filtering expression
@@ -52,34 +52,21 @@ namespace net.vieapps.Components.Repository
 			this.Parse(json);
 		}
 
-		#region Properties
 		/// <summary>
-		/// Gets or sets the operator
-		/// </summary>
-		public CompareOperator Operator { get; set; }
-
-		/// <summary>
-		/// Gets or sets the attribute for comparing/filtering
+		/// Gets or sets the name of an attribute for comparing
 		/// </summary>
 		public string Attribute { get; set; }
 
 		/// <summary>
-		/// Gets or sets the attribute's value for comparing/filtering
+		/// Gets or sets the operator for comparing
+		/// </summary>
+		public CompareOperator Operator { get; set; }
+
+		/// <summary>
+		/// Gets or sets the attribute's value for comparing
 		/// </summary>
 		public object Value { get; set; }
 
-		/// <summary>
-		/// Gets the parent filtering expression
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore]
-		public FilterBys<T> Parent { get; internal set; }
-		#endregion
-
-		#region Working with JSON
-		/// <summary>
-		/// Parses the JSON
-		/// </summary>
-		/// <param name="json"></param>
 		public void Parse(JObject json)
 		{
 			if (json != null)
@@ -90,10 +77,6 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 
-		/// <summary>
-		/// Converts to JSON
-		/// </summary>
-		/// <returns></returns>
 		public JToken ToJson()
 			=> new JObject
 			{
@@ -102,12 +85,54 @@ namespace net.vieapps.Components.Repository
 				{ "Value", new JValue(this.Value) }
 			};
 
+		/// <summary>
+		/// Converts this filtering expression to JSON string
+		/// </summary>
+		/// <param name="formatting"></param>
+		/// <returns></returns>
 		public string ToString(Newtonsoft.Json.Formatting formatting)
 			=> this.ToJson().ToString(formatting);
 
+		/// <summary>
+		/// Converts this filtering expression to JSON string
+		/// </summary>
+		/// <returns></returns>
 		public override string ToString()
 			=> this.ToString(Newtonsoft.Json.Formatting.None);
-		#endregion
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Presents a filtering expression for using with comparing operators
+	/// </summary>
+	[Serializable]
+	public class FilterBy<T> : FilterBy, IFilterBy<T> where T : class
+	{
+		/// <summary>
+		/// Initializes a new filtering expression
+		/// </summary>
+		/// <param name="operator"></param>
+		/// <param name="attribute"></param>
+		/// <param name="value"></param>
+		public FilterBy(string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null)
+			: base(attribute, @operator, value) { }
+
+		/// <summary>
+		/// Initializes a filtering expression
+		/// </summary>
+		/// <param name="json"></param>
+		/// <param name="operator"></param>
+		/// <param name="attribute"></param>
+		/// <param name="value"></param>
+		public FilterBy(JObject json, string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null)
+			: base(json, attribute, @operator, value) { }
+
+		/// <summary>
+		/// Gets the filtering expression that mark as parent of this expression
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnore]
+		public FilterBys<T> Parent { get; internal set; }
 
 		object GetValue(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
 		{
@@ -179,13 +204,13 @@ namespace net.vieapps.Components.Repository
 				{
 					var surf = (!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString();
 					statement += (statement.Equals("") ? "" : " OR ")
-						+ $"Origin.{this.Attribute}=@{this.Attribute + surf}"
-						+ $" OR Link.{definition.MultipleParentAssociatesMapColumn}=@{this.Attribute + surf}_L";
+						+ $"Origin.{this.Attribute}=@{this.Attribute}{surf}"
+						+ $" OR Link.{definition.MultipleParentAssociatesMapColumn}=@{this.Attribute}{surf}_L";
 
-					parameters.Add("@" + this.Attribute + surf, id);
-					parameters.Add("@" + this.Attribute + surf + "_L", id);
+					parameters.Add($"@{this.Attribute}{surf}", id);
+					parameters.Add($"@{this.Attribute}{surf}_L", id);
 				});
-				statement = "(" + statement + ")";
+				statement = $"({statement})";
 			}
 
 			else
@@ -271,11 +296,9 @@ namespace net.vieapps.Components.Repository
 						break;
 				}
 
-				statement = (extendedProperties != null && extendedProperties.ContainsKey(this.Attribute) ? "Extent" : "Origin") + "." + column
-					+ @operator + (gotName ? $"@{name}" : "");
-
+				statement = (extendedProperties != null && extendedProperties.ContainsKey(this.Attribute) ? "Extent" : "Origin") + "." + column + @operator + (gotName ? $"@{name}" : "");
 				if (value != null)
-					parameters.Add("@" + name, value);
+					parameters.Add($"@{name}", value);
 			}
 
 			return new Tuple<string, Dictionary<string, object>>(statement, parameters);
@@ -407,49 +430,128 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Filtering expression for using with combining operators (AND/OR)
+	/// Presents a filtering expression for using with with combining operators (AND/OR)
 	/// </summary>
 	[Serializable]
-	public class FilterBys<T> : IFilterBy<T> where T : class
+	public class FilterBys : IFilterBy
 	{
 		/// <summary>
-		/// Initializes a group of filtering expression
+		/// Initializes a group of filtering expressions
 		/// </summary>
-		/// <param name="operator"></param>
-		/// <param name="children"></param>
-		public FilterBys(GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null)
+		/// <param name="operator">The initializing operator</param>
+		/// <param name="children">The initializing child expressions</param>
+		public FilterBys(GroupOperator @operator = GroupOperator.And, List<IFilterBy> children = null)
 			: this(null, @operator, children) { }
 
 		/// <summary>
-		/// Initializes a group of filtering expression
+		/// Initializes a group of filtering expressions
 		/// </summary>
-		/// <param name="json"></param>
-		/// <param name="operator"></param>
-		/// <param name="children"></param>
-		public FilterBys(JObject json, GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null)
+		/// <param name="json">The JSON to parse</param>
+		/// <param name="operator">The initializing operator</param>
+		/// <param name="children">The initializing child expressions</param>
+		public FilterBys(JObject json, GroupOperator @operator = GroupOperator.And, List<IFilterBy> children = null)
 		{
 			this.Operator = @operator;
-			this.Children = children ?? new List<IFilterBy<T>>();
+			this.Children = children ?? new List<IFilterBy>();
 			this.Parse(json);
 		}
 
-		#region Properties
 		/// <summary>
 		/// Gets or sets the operator
 		/// </summary>
 		public GroupOperator Operator { get; set; }
 
 		/// <summary>
-		/// Gets the parent filtering expression
+		/// Gets the collection of child expressions
+		/// </summary>
+		public List<IFilterBy> Children { get; }
+
+		/// <summary>
+		/// Adds a filtering expression into the collection of children
+		/// </summary>
+		/// <param name="filter"></param>
+		public void Add(IFilterBy filter)
+		{
+			if (filter != null)
+				this.Children.Add(filter);
+		}
+
+		public void Parse(JObject json)
+		{
+			if (json != null)
+			{
+				this.Operator = (json.Get<string>("Operator") ?? "And").TryToEnum(out GroupOperator op) ? op : GroupOperator.And;
+				json.Get<JArray>("Children")?.ForEach(cjson =>
+				{
+					var @operator = cjson.Get<string>("Operator");
+					if (!string.IsNullOrWhiteSpace(@operator))
+						this.Add(@operator.IsEquals("And") || @operator.IsEquals("Or") ? new FilterBys(cjson as JObject) as IFilterBy : new FilterBy(cjson as JObject) as IFilterBy);
+				});
+			}
+		}
+
+		public JToken ToJson()
+			=> new JObject
+			{
+				{ "Operator", this.Operator.ToString() },
+				{ "Children", this.Children.Select(c => c.ToJson()).ToJArray() }
+			};
+
+		/// <summary>
+		/// Converts this filtering expression to JSON string
+		/// </summary>
+		/// <param name="formatting"></param>
+		/// <returns></returns>
+		public string ToString(Newtonsoft.Json.Formatting formatting)
+			=> this.ToJson().ToString(formatting);
+
+		/// <summary>
+		/// Converts this filtering expression to JSON string
+		/// </summary>
+		/// <returns></returns>
+		public override string ToString()
+			=> this.ToString(Newtonsoft.Json.Formatting.None);
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Presents a filtering expression for using with with combining operators (AND/OR)
+	/// </summary>
+	[Serializable]
+	public class FilterBys<T> : FilterBys, IFilterBy<T> where T : class
+	{
+		/// <summary>
+		/// Initializes a group of filtering expressions
+		/// </summary>
+		/// <param name="operator">The initializing operator</param>
+		/// <param name="children">The initializing child expressions</param>
+		public FilterBys(GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null)
+			: this(null, @operator, children) { }
+
+		/// <summary>
+		/// Initializes a group of filtering expressions
+		/// </summary>
+		/// <param name="json">The JSON to parse</param>
+		/// <param name="operator">The initializing operator</param>
+		/// <param name="children">The initializing child expressions</param>
+		public FilterBys(JObject json, GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null)
+			: base(null, @operator, null)
+		{
+			this.Children = children ?? new List<IFilterBy<T>>();
+			this.Parse(json);
+		}
+
+		/// <summary>
+		/// Gets the collection of child expressions
+		/// </summary>
+		public new List<IFilterBy<T>> Children { get; }
+
+		/// <summary>
+		/// Gets the filtering expression that mark as parent of this expression
 		/// </summary>
 		[JsonIgnore, XmlIgnore]
 		public FilterBys<T> Parent { get; internal set; }
-
-		/// <summary>
-		/// Gets the collection of children
-		/// </summary>
-		public List<IFilterBy<T>> Children { get; internal set; }
-		#endregion
 
 		/// <summary>
 		/// Adds a filtering expression into the collection of children
@@ -458,15 +560,16 @@ namespace net.vieapps.Components.Repository
 		public void Add(IFilterBy<T> filter)
 		{
 			if (filter != null)
+			{
+				if (filter is FilterBy<T>)
+					(filter as FilterBy<T>).Parent = this;
+				else if (filter is FilterBys<T>)
+					(filter as FilterBys<T>).Parent = this;
 				this.Children.Add(filter);
+			}
 		}
 
-		#region Working with JSON
-		/// <summary>
-		/// Parses the JSON
-		/// </summary>
-		/// <param name="json"></param>
-		public void Parse(JObject json)
+		public new void Parse(JObject json)
 		{
 			if (json != null)
 			{
@@ -479,24 +582,6 @@ namespace net.vieapps.Components.Repository
 				});
 			}
 		}
-
-		/// <summary>
-		/// Converts to JSON
-		/// </summary>
-		/// <returns></returns>
-		public JToken ToJson()
-			=> new JObject
-			{
-				{ "Operator", this.Operator.ToString() },
-				{ "Children", this.Children.Select(c => c.ToJson()).ToJArray() }
-			};
-
-		public string ToString(Newtonsoft.Json.Formatting formatting)
-			=> this.ToJson().ToString(formatting);
-
-		public override string ToString()
-			=> this.ToString(Newtonsoft.Json.Formatting.None);
-		#endregion
 
 		#region Working with statement of SQL
 		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
@@ -749,10 +834,10 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Sorting expression
+	/// Presents a sorting expression
 	/// </summary>
 	[Serializable]
-	public class SortBy<T> where T : class
+	public class SortBy : ISortBy
 	{
 		/// <summary>
 		/// Initializes a sorting expression
@@ -775,46 +860,26 @@ namespace net.vieapps.Components.Repository
 			this.Parse(json);
 		}
 
-		#region Properties
-		/// <summary>
-		/// Gets or sets the attribute for sorting
-		/// </summary>
 		public string Attribute { get; set; }
 
-		/// <summary>
-		/// Gets or sets the mode for sorting
-		/// </summary>
 		public SortMode Mode { get; set; }
 
-		/// <summary>
-		/// Gets or sets the next-sibling
-		/// </summary>
-		public SortBy<T> ThenBy { get; set; }
-		#endregion
+		public ISortBy ThenBy { get; set; }
 
-		#region Working with JSON
-		/// <summary>
-		/// Parses from JSON
-		/// </summary>
-		/// <param name="json"></param>
 		public void Parse(JObject json)
 		{
 			if (json != null)
 			{
 				this.Attribute = json.Get<string>("Attribute");
-				this.Mode = (json.Get<string>("Mode") ?? "Ascending").ToEnum<SortMode>();
-				var thenSortBy = json.Get<JObject>("ThenBy");
-				this.ThenBy = thenSortBy != null
-					? new SortBy<T>(thenSortBy)
+				this.Mode = (json.Get<string>("Mode") ?? "Ascending").TryToEnum(out SortMode sortMode) ? sortMode : SortMode.Ascending;
+				var thenBy = json.Get<JObject>("ThenBy");
+				this.ThenBy = thenBy != null
+					? new SortBy(thenBy)
 					: null;
 			}
 		}
 
-		/// <summary>
-		/// Converts to JSON
-		/// </summary>
-		/// <returns></returns>
-		public JObject ToJson()
+		public JToken ToJson()
 			=> new JObject
 			{
 				{ "Attribute", this.Attribute },
@@ -822,32 +887,102 @@ namespace net.vieapps.Components.Repository
 				{ "ThenBy", this.ThenBy?.ToJson() }
 			};
 
+		/// <summary>
+		/// Converts this sorting expression to JSON string
+		/// </summary>
+		/// <param name="formatting"></param>
+		/// <returns></returns>
 		public string ToString(Newtonsoft.Json.Formatting formatting)
 			=> this.ToJson().ToString(formatting);
 
+		/// <summary>
+		/// Converts this sorting expression to JSON string
+		/// </summary>
+		/// <returns></returns>
 		public override string ToString()
 			=> this.ToString(Newtonsoft.Json.Formatting.None);
-		#endregion
+	}
 
-		#region Working with statement of SQL
+	// ------------------------------------------
+
+	/// <summary>
+	/// Presents a sorting expression
+	/// </summary>
+	[Serializable]
+	public class SortBy<T> : SortBy, ISortBy<T> where T : class
+	{
+		/// <summary>
+		/// Initializes a sorting expression
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <param name="mode"></param>
+		public SortBy(string attribute = null, SortMode mode = SortMode.Ascending)
+			: base(attribute, mode) { }
+
+		/// <summary>
+		/// Initializes a sorting expression
+		/// </summary>
+		/// <param name="json"></param>
+		/// <param name="attribute"></param>
+		/// <param name="mode"></param>
+		public SortBy(JObject json, string attribute = null, SortMode mode = SortMode.Ascending)
+			: base(null, attribute, mode)
+			=> this.Parse(json);
+
+		/// <summary>
+		/// Gets or sets the next-sibling
+		/// </summary>
+		public new ISortBy<T> ThenBy { get; set; }
+
+		/// <summary>
+		/// Parses from JSON
+		/// </summary>
+		/// <param name="json"></param>
+		public new void Parse(JObject json)
+		{
+			if (json != null)
+			{
+				this.Attribute = json.Get<string>("Attribute");
+				this.Mode = (json.Get<string>("Mode") ?? "Ascending").TryToEnum(out SortMode sortMode) ? sortMode : SortMode.Ascending;
+				var thenBy = json.Get<JObject>("ThenBy");
+				this.ThenBy = thenBy != null
+					? new SortBy<T>(thenBy)
+					: null;
+			}
+		}
+
+		/// <summary>
+		/// Gets the listing of all attributes that use to sort
+		/// </summary>
+		/// <returns></returns>
+		internal List<string> GetAttributes()
+			=> new[] { this.Attribute }.Concat((this.ThenBy as SortBy<T>)?.GetAttributes() ?? new List<string>()).ToList();
+
+		/// <summary>
+		/// Gets the statement of SQL
+		/// </summary>
+		/// <param name="standardProperties"></param>
+		/// <param name="extendedProperties"></param>
+		/// <returns></returns>
 		internal string GetSqlStatement(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
 		{
 			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
 
-			var next = this.ThenBy?.GetSqlStatement(standardProperties, extendedProperties);
+			var next = (this.ThenBy as SortBy<T>)?.GetSqlStatement(standardProperties, extendedProperties);
 			return this.Attribute + (this.Mode.Equals(SortMode.Ascending) ? " ASC" : " DESC") + (!string.IsNullOrWhiteSpace(next) ? ", " + next : "");
 		}
 
-		/// <summary>
-		/// Gets the statement of SQL
-		/// </summary>
-		/// <returns></returns>
-		public SortDefinition<T> GetSqlStatement()
+		public string GetSqlStatement()
 			=> this.GetSqlStatement(null, null);
-		#endregion
 
-		#region Working with statement of No SQL
+		/// <summary>
+		/// Gets the statement of No SQL
+		/// </summary>
+		/// <param name="previous"></param>
+		/// <param name="standardProperties"></param>
+		/// <param name="extendedProperties"></param>
+		/// <returns></returns>
 		internal SortDefinition<T> GetNoSqlStatement(SortDefinition<T> previous, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null)
 		{
 			if (string.IsNullOrWhiteSpace(this.Attribute))
@@ -866,20 +1001,12 @@ namespace net.vieapps.Components.Repository
 					: Builders<T>.Sort.Descending(attribute);
 
 			return this.ThenBy != null
-				? this.ThenBy.GetNoSqlStatement(sort, standardProperties, extendedProperties)
+				? (this.ThenBy as SortBy<T>).GetNoSqlStatement(sort, standardProperties, extendedProperties)
 				: sort;
 		}
 
-		/// <summary>
-		/// Gets the statement of No SQL
-		/// </summary>
-		/// <returns></returns>
 		public SortDefinition<T> GetNoSqlStatement()
 			=> this.GetNoSqlStatement(null);
-		#endregion
-
-		internal List<string> GetAttributes()
-			=> new[] { this.Attribute }.Concat(this.ThenBy?.GetAttributes() ?? new List<string>()).ToList();
 	}
 
 	// ------------------------------------------
@@ -904,9 +1031,6 @@ namespace net.vieapps.Components.Repository
 
 	// ------------------------------------------
 
-	/// <summary>
-	/// Extension methods for working with repository
-	/// </summary>
 	public static partial class Extensions
 	{
 
