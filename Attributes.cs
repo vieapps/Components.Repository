@@ -387,9 +387,14 @@ namespace net.vieapps.Components.Repository
 		public FormControlAttribute() { }
 
 		/// <summary>
-		/// Gets or sets the type of the control (TextBox, TextArea, Select, DatePicker, YesNo, Range, Completer)
+		/// Gets or sets the type of the control (TextBox, TextArea, Select, DatePicker, FilePicker, YesNo, Range, Completer)
 		/// </summary>
 		public string ControlType { get; set; }
+
+		/// <summary>
+		/// Gets or sets the segment (means a tab that contains group of controls)
+		/// </summary>
+		public string Segment { get; set; }
 
 		/// <summary>
 		/// Gets or sets the data-type (text, date, number, tel, url, ... - follow the HTML5 input data-type)

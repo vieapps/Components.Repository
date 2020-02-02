@@ -31,19 +31,19 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Initializes a new filtering expression
 		/// </summary>
-		/// <param name="operator"></param>
-		/// <param name="attribute"></param>
-		/// <param name="value"></param>
+		/// <param name="attribute">The attribute to compare</param>
+		/// <param name="operator">The operator to compare</param>
+		/// <param name="value">The value to compare</param>
 		public FilterBy(string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null)
 			: this(null, attribute, @operator, value) { }
 
 		/// <summary>
 		/// Initializes a filtering expression
 		/// </summary>
-		/// <param name="json"></param>
-		/// <param name="operator"></param>
-		/// <param name="attribute"></param>
-		/// <param name="value"></param>
+		/// <param name="json">The JSON object that contains the expression</param>
+		/// <param name="attribute">The attribute to compare</param>
+		/// <param name="operator">The operator to compare</param>
+		/// <param name="value">The value to compare</param>
 		public FilterBy(JObject json, string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null)
 		{
 			this.Attribute = attribute;
@@ -112,19 +112,19 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Initializes a new filtering expression
 		/// </summary>
-		/// <param name="operator"></param>
-		/// <param name="attribute"></param>
-		/// <param name="value"></param>
+		/// <param name="attribute">The attribute to compare</param>
+		/// <param name="operator">The operator to compare</param>
+		/// <param name="value">The value to compare</param>
 		public FilterBy(string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null)
 			: base(attribute, @operator, value) { }
 
 		/// <summary>
 		/// Initializes a filtering expression
 		/// </summary>
-		/// <param name="json"></param>
-		/// <param name="operator"></param>
-		/// <param name="attribute"></param>
-		/// <param name="value"></param>
+		/// <param name="json">The JSON object that contains the expression</param>
+		/// <param name="attribute">The attribute to compare</param>
+		/// <param name="operator">The operator to compare</param>
+		/// <param name="value">The value to compare</param>
 		public FilterBy(JObject json, string attribute = null, CompareOperator @operator = CompareOperator.Equals, object value = null)
 			: base(json, attribute, @operator, value) { }
 
@@ -469,7 +469,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Adds a filtering expression into the collection of children
 		/// </summary>
-		/// <param name="filter"></param>
+		/// <param name="filter">The filtering expression</param>
 		public void Add(IFilterBy filter)
 		{
 			if (filter != null)
@@ -556,7 +556,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Adds a filtering expression into the collection of children
 		/// </summary>
-		/// <param name="filter"></param>
+		/// <param name="filter">The filtering expression</param>
 		public void Add(IFilterBy<T> filter)
 		{
 			if (filter != null)
@@ -842,17 +842,17 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Initializes a sorting expression
 		/// </summary>
-		/// <param name="attribute"></param>
-		/// <param name="mode"></param>
+		/// <param name="attribute">The sorting-by attribute</param>
+		/// <param name="mode">The sorting mode</param>
 		public SortBy(string attribute = null, SortMode mode = SortMode.Ascending)
 			: this(null, attribute, mode) { }
 
 		/// <summary>
 		/// Initializes a sorting expression
 		/// </summary>
-		/// <param name="json"></param>
-		/// <param name="attribute"></param>
-		/// <param name="mode"></param>
+		/// <param name="json">The JSON object that contains the expression</param>
+		/// <param name="attribute">The sorting-by attribute</param>
+		/// <param name="mode">The sorting mode</param>
 		public SortBy(JObject json, string attribute = null, SortMode mode = SortMode.Ascending)
 		{
 			this.Attribute = attribute;
@@ -914,17 +914,17 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Initializes a sorting expression
 		/// </summary>
-		/// <param name="attribute"></param>
-		/// <param name="mode"></param>
+		/// <param name="attribute">The sorting-by attribute</param>
+		/// <param name="mode">The sorting mode</param>
 		public SortBy(string attribute = null, SortMode mode = SortMode.Ascending)
 			: base(attribute, mode) { }
 
 		/// <summary>
 		/// Initializes a sorting expression
 		/// </summary>
-		/// <param name="json"></param>
-		/// <param name="attribute"></param>
-		/// <param name="mode"></param>
+		/// <param name="json">The JSON object that contains the expression</param>
+		/// <param name="attribute">The sorting-by attribute</param>
+		/// <param name="mode">The sorting mode</param>
 		public SortBy(JObject json, string attribute = null, SortMode mode = SortMode.Ascending)
 			: base(null, attribute, mode)
 			=> this.Parse(json);
@@ -934,10 +934,6 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public new ISortBy<T> ThenBy { get; set; }
 
-		/// <summary>
-		/// Parses from JSON
-		/// </summary>
-		/// <param name="json"></param>
 		public new void Parse(JObject json)
 		{
 			if (json != null)
@@ -966,11 +962,12 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		internal string GetSqlStatement(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
 		{
-			if (string.IsNullOrWhiteSpace(this.Attribute))
-				return null;
-
-			var next = (this.ThenBy as SortBy<T>)?.GetSqlStatement(standardProperties, extendedProperties);
-			return this.Attribute + (this.Mode.Equals(SortMode.Ascending) ? " ASC" : " DESC") + (!string.IsNullOrWhiteSpace(next) ? ", " + next : "");
+			if (!string.IsNullOrWhiteSpace(this.Attribute))
+			{
+				var next = (this.ThenBy as SortBy<T>)?.GetSqlStatement(standardProperties, extendedProperties);
+				return this.Attribute + (this.Mode.Equals(SortMode.Ascending) ? " ASC" : " DESC") + (!string.IsNullOrWhiteSpace(next) ? ", " + next : "");
+			}
+			return null;
 		}
 
 		public string GetSqlStatement()

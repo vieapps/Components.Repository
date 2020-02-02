@@ -21,7 +21,7 @@ using net.vieapps.Components.Utility;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Collection of methods for working with SQL database (support Microsoft SQL Server, MySQL, PostgreSQL, Oracle RDBMS and ODBC)
+	/// Collection of methods for working with SQL database (support Microsoft SQL Server, Oracle RDBMS, MySQL, and PostgreSQL)
 	/// </summary>
 	public static class SqlHelper
 	{
@@ -37,10 +37,7 @@ namespace net.vieapps.Components.Repository
 			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
 				? RepositoryMediator.GetConnectionStringSettings(dataSource)
 				: null;
-
-			return connectionStringSettings != null && !string.IsNullOrWhiteSpace(connectionStringSettings.ProviderName)
-				? DbProvider.GetFactory(connectionStringSettings.ProviderName)
-				: DbProvider.GetFactory("System.Data.SqlClient");
+			return DbProvider.GetFactory(!string.IsNullOrWhiteSpace(connectionStringSettings?.ProviderName) ? connectionStringSettings.ProviderName : "System.Data.SqlClient");
 		}
 
 		static bool IsSQLServer(this DbProviderFactory dbProviderFactory)
@@ -77,7 +74,7 @@ namespace net.vieapps.Components.Repository
 							? "PostgreSQL"
 							: dbProviderFactory.IsOracleRDBMS()
 								? "OralceRDBMS"
-								: "ODBC";
+								: $"Unknown [{dbProviderFactory.GetType()}]";
 		#endregion
 
 		#region Connection
@@ -86,15 +83,15 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="dbProviderFactory">The object that presents information of a database provider factory</param>
 		/// <param name="dataSource">The object that presents related information of a data source in SQL database</param>
-		/// <param name="openWhenCreated">true to open the connection when its created</param>
+		/// <param name="openWhenItsCreated">true to open the connection when its created</param>
 		/// <returns></returns>
-		public static DbConnection CreateConnection(this DbProviderFactory dbProviderFactory, DataSource dataSource, bool openWhenCreated = true)
+		public static DbConnection CreateConnection(this DbProviderFactory dbProviderFactory, DataSource dataSource, bool openWhenItsCreated = true)
 		{
 			var connection = dbProviderFactory.CreateConnection();
 			connection.ConnectionString = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
 				? dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString.Replace(StringComparison.OrdinalIgnoreCase, "{database}", dataSource.DatabaseName).Replace(StringComparison.OrdinalIgnoreCase, "{DatabaseName}", dataSource.DatabaseName)
 				: null;
-			if (openWhenCreated)
+			if (openWhenItsCreated)
 			{
 				if (string.IsNullOrWhiteSpace(connection.ConnectionString))
 					throw new ArgumentException("The connection string is invalid");
@@ -109,12 +106,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dbProviderFactory">The object that presents information of a database provider factory</param>
 		/// <param name="dataSource">The object that presents related information of a data source in SQL database</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		/// <param name="openWhenCreated">true to open the connection when its created</param>
+		/// <param name="openWhenItsCreated">true to open the connection when its created</param>
 		/// <returns></returns>
-		public static async Task<DbConnection> CreateConnectionAsync(this DbProviderFactory dbProviderFactory, DataSource dataSource, CancellationToken cancellationToken = default, bool openWhenCreated = true)
+		public static async Task<DbConnection> CreateConnectionAsync(this DbProviderFactory dbProviderFactory, DataSource dataSource, CancellationToken cancellationToken = default, bool openWhenItsCreated = true)
 		{
 			var connection = dbProviderFactory.CreateConnection(dataSource, false);
-			if (openWhenCreated)
+			if (openWhenItsCreated)
 			{
 				if (string.IsNullOrWhiteSpace(connection.ConnectionString))
 					throw new ArgumentException("The connection string is invalid");
@@ -3173,11 +3170,11 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			var prefix = "IDX_" + context.EntityDefinition.TableName;
-			var indexes = new Dictionary<string, List<AttributeInfo>>
+			var indexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ prefix, new List<AttributeInfo>() }
 			};
-			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>();
+			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase);
 
 			context.EntityDefinition.Attributes.ForEach(attribute =>
 			{
@@ -3563,7 +3560,7 @@ namespace net.vieapps.Components.Repository
 
 	}
 
-	#region --- Providers of SQL Databases -----
+	#region Providers of SQL databases
 	/// <summary>
 	/// Information of a database provider for working with DbProviderFactory (replacement of System.Data.Common.DbProviderFactories)
 	/// </summary>
@@ -3604,27 +3601,25 @@ namespace net.vieapps.Components.Repository
 					? Type.GetType(node.Attributes["type"]?.Value)
 					: null;
 
-				if (type == null && !string.IsNullOrWhiteSpace(node.Attributes["type"]?.Value))
+				if (type == null && !string.IsNullOrWhiteSpace(node.Attributes["type"]?.Value) && !DbProvider.DbProviders.ContainsKey(invariant))
 					try
 					{
-						var typeInfo = node.Attributes["type"].Value.ToArray().ToList();
-						type = new Enyim.Caching.AssemblyLoader(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"{typeInfo[1]}.dll")).Assembly.GetExportedTypes().FirstOrDefault(serviceType => typeInfo[0].Equals(serviceType.ToString()));
+						type = Enyim.Caching.AssemblyLoader.GetType(node.Attributes["type"].Value);
 					}
 					catch (Exception ex)
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while loading a SQL Provider [{invariant}] => {ex.Message}", ex);
 					}
 
-				if (type != null && !DbProvider.DbProviders.ContainsKey(invariant))
+				if (type != null)
 				{
 					var name = node.Attributes["name"]?.Value;
-					var description = node.Attributes["description"]?.Value;
 					DbProvider.DbProviders[invariant] = new DbProvider
 					{
 						Invariant = invariant,
 						Type = type,
 						Name = name,
-						Description = description
+						Description = node.Attributes["description"]?.Value
 					};
 					tracker?.Invoke($"Construct SQL Provider [{invariant} - {name}]", null);
 					if (RepositoryMediator.IsDebugEnabled)

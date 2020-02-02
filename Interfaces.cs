@@ -213,7 +213,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Parses the expression from JSON
 		/// </summary>
-		/// <param name="json"></param>
+		/// <param name="json">The JSON object that contains the expression</param>
 		void Parse(JObject json);
 
 		/// <summary>
@@ -268,7 +268,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Parses the expression from JSON
 		/// </summary>
-		/// <param name="json"></param>
+		/// <param name="json">The JSON object that contains the expression</param>
 		void Parse(JObject json);
 
 		/// <summary>

@@ -2187,11 +2187,11 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare indexes
 			var prefix = "IDX_" + definition.CollectionName;
-			var indexes = new Dictionary<string, List<AttributeInfo>>
+			var indexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ prefix, new List<AttributeInfo>() }
 			};
-			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>();
+			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase);
 
 			definition.Attributes.ForEach(attribute =>
 			{

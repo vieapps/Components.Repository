@@ -6355,6 +6355,7 @@ namespace net.vieapps.Components.Repository
 				{
 					{ "Name", attribute.Name },
 					{ "Order", order },
+					{ "Segment", formControlInfo?.Segment },
 					{ "Options", new JObject
 						{
 							{ "Label", label }
@@ -6498,6 +6499,7 @@ namespace net.vieapps.Components.Repository
 			{
 				{ "Name", attribute.Name },
 				{ "Order", order },
+				{ "Segment", formControlInfo?.Segment },
 				{ "Options", options }
 			};
 
@@ -6514,6 +6516,7 @@ namespace net.vieapps.Components.Repository
 				{
 					{ "Name", attribute.Name },
 					{ "Order", order },
+					{ "Segment", formControlInfo?.Segment },
 					{ "Options", new JObject
 						{
 							{ "Label", label }
