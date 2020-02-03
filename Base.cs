@@ -37,13 +37,80 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the object identity (primary-key)
 		/// </summary>
-		[BsonId(IdGenerator = typeof(IdentityGenerator)), PrimaryKey(MaxLength = 32), FormControl(Hidden = true)]
+		[PrimaryKey(MaxLength = 32), FormControl(Hidden = true), BsonId(IdGenerator = typeof(IdentityGenerator))]
 		public virtual string ID { get; set; } = "";
+
+		/// <summary>
+		/// Gets or sets the title
+		/// </summary>
+		[Property(MaxLength = 250), Sortable(IndexName = "Title"), Searchable, IgnoreIfNull, BsonIgnoreIfNull]
+		public virtual string Title { get; set; }
+
+		/// <summary>
+		/// Gets the name of service that associates with this repository object
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public virtual string ServiceName { get; }
+
+		/// <summary>
+		/// Gets the name of service's object that associates with this repository object
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public virtual string ObjectName => this.GetTypeName(true);
+
+		/// <summary>
+		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
+		/// </summary>
+		[Property(MaxLength = 32), Sortable(IndexName = "System"), FormControl(Hidden = true), IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		public virtual string SystemID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
+		/// </summary>
+		[Property(MaxLength = 32), Sortable(IndexName = "System"), FormControl(Hidden = true), IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		public virtual string RepositoryID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
+		/// </summary>
+		[Property(MaxLength = 32), Sortable(IndexName = "System"), FormControl(Hidden = true), IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		public virtual string EntityID { get; set; }
+
+		/// <summary>
+		/// Gets or sets the collection of extended properties
+		/// </summary>
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Ignore]
+		public virtual Dictionary<string, object> ExtendedProperties { get; set; }
+
+		/// <summary>
+		/// Gets the business entity that marks as parent of this object
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public virtual RepositoryBase Parent { get; }
+
+		/// <summary>
+		/// Gets or sets the original privileges (means original working permissions)
+		/// </summary>
+		[FormControl(Excluded = true), AsJson, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		public virtual Privileges OriginalPrivileges { get; set; }
+
+		/// <summary>
+		/// The privileges that are combined from original privileges and parent privileges
+		/// </summary>
+		[NonSerialized]
+		protected Privileges _workingPrivileges = null;
+
+		/// <summary>
+		/// Gets the actual privileges (mean the combined privileges)
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public virtual Privileges WorkingPrivileges
+			=> this._workingPrivileges ?? (this._workingPrivileges = this.OriginalPrivileges?.Combine(this.Parent?.WorkingPrivileges) ?? new Privileges());
 
 		/// <summary>
 		/// Gets the score while searching
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Ignore]
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
 		public virtual double? SearchScore { get; set; } = null;
 		#endregion
 
@@ -132,6 +199,21 @@ namespace net.vieapps.Components.Repository
 		/// <param name="xml">The XML object that contains information</param>
 		/// <param name="onPreCompleted">The action to run on pre-completed</param>
 		public abstract void ParseXml(XContainer xml, Action<XContainer> onPreCompleted);
+
+		/// <summary>
+		/// Converts this object to JSON string
+		/// </summary>
+		/// <param name="formatting"></param>
+		/// <returns></returns>
+		public virtual string ToString(Formatting formatting)
+			=> this.ToJson().ToString(formatting);
+
+		/// <summary>
+		/// Converts this object to JSON string
+		/// </summary>
+		/// <returns></returns>
+		public override string ToString()
+			=> this.ToString(Formatting.None);
 		#endregion
 
 	}
@@ -148,6 +230,25 @@ namespace net.vieapps.Components.Repository
 		/// Initialize a new instance
 		/// </summary>
 		public RepositoryBase() : base() { }
+
+		/// <summary>
+		/// The number that presents the total of version contents
+		/// </summary>
+		protected long _totalVersions = -1;
+
+		/// <summary>
+		/// Gets the total number of version contents
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public virtual long TotalVersions
+		{
+			get
+			{
+				if (this._totalVersions < 0)
+					this.CountVersions();
+				return this._totalVersions;
+			}
+		}
 
 		#region [Static] Create
 		/// <summary>
@@ -3224,91 +3325,6 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region [Public] IBussineEntitys' properties & methods
-		/// <summary>
-		/// Gets or sets the title
-		/// </summary>
-		[BsonIgnoreIfNull, Property(MaxLength = 250), IgnoreIfNull, Sortable(IndexName = "Title"), Searchable]
-		public virtual string Title { get; set; }
-
-		/// <summary>
-		/// Gets the name of service that associates with this repository object
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
-		public virtual string ServiceName { get; }
-
-		/// <summary>
-		/// Gets the name of service's object that associates with this repository object
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
-		public virtual string ObjectName => this.GetTypeName(true);
-
-		/// <summary>
-		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
-		public virtual string SystemID { get; set; }
-
-		/// <summary>
-		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
-		public virtual string RepositoryID { get; set; }
-
-		/// <summary>
-		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Property(MaxLength = 32), IgnoreIfNull, Sortable(IndexName = "System"), FormControl(Hidden = true)]
-		public virtual string EntityID { get; set; }
-
-		/// <summary>
-		/// Gets or sets the collection of extended properties
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Ignore]
-		public virtual Dictionary<string, object> ExtendedProperties { get; set; }
-
-		/// <summary>
-		/// Gets the business entity that marks as parent of this object
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
-		public virtual IBusinessEntity Parent { get; }
-
-		/// <summary>
-		/// Gets or sets the original privileges (means original working permissions)
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, AsJson, FormControl(Excluded = true)]
-		public virtual Privileges OriginalPrivileges { get; set; }
-
-		/// <summary>
-		/// The privileges that are combined from original privileges and parent privileges
-		/// </summary>
-		[NonSerialized]
-		protected Privileges Privileges = null;
-
-		/// <summary>
-		/// Gets the actual privileges (mean the combined privileges)
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
-		public virtual Privileges WorkingPrivileges
-			=> this.Privileges ?? (this.Privileges = this.OriginalPrivileges?.Combine(this.Parent?.WorkingPrivileges) ?? new Privileges());
-
-		long _totalVersions = -1;
-
-		/// <summary>
-		/// Gets the total number of version contents
-		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore, Ignore]
-		public virtual long TotalVersions
-		{
-			get
-			{
-				if (this._totalVersions < 0)
-					this.CountVersions();
-				return this._totalVersions;
-			}
-		}
-		#endregion
-		
 	}
 
 	//  --------------------------------------------------------------------------------------------

@@ -205,7 +205,7 @@ namespace net.vieapps.Components.Repository
 			=> SqlHelper.DbTypes[type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)) ? Nullable.GetUnderlyingType(type) : type];
 
 		internal static DbType GetDbType(this AttributeInfo attribute)
-			=> (attribute.Type.IsStringType() && (attribute.Name.EndsWith("ID") || attribute.MaxLength.Equals(32))) || attribute.IsStoredAsString()
+			=> (attribute.Type.IsStringType() && (attribute.MaxLength.Equals(32) || attribute.Name.EndsWith("ID"))) || attribute.IsStoredAsString()
 				? DbType.AnsiStringFixedLength
 				: attribute.IsStoredAsJson()
 					? DbType.String

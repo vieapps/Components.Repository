@@ -537,16 +537,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="children">The initializing child expressions</param>
 		public FilterBys(JObject json, GroupOperator @operator = GroupOperator.And, List<IFilterBy<T>> children = null)
 			: base(null, @operator, null)
-		{
-			this.Children = children ?? new List<IFilterBy<T>>();
-			this.Parse(json);
-		}
+			{
+				children?.ForEach(filter => this.Add(filter));
+				this.Parse(json);
+			}
 
 		/// <summary>
 		/// Gets the collection of child expressions
 		/// </summary>
-		public new List<IFilterBy<T>> Children { get; }
-
+		public new List<IFilterBy<T>> Children => base.Children.Select(filter => filter as IFilterBy<T>).ToList();
+		
 		/// <summary>
 		/// Gets the filtering expression that mark as parent of this expression
 		/// </summary>
@@ -565,8 +565,18 @@ namespace net.vieapps.Components.Repository
 					(filter as FilterBy<T>).Parent = this;
 				else if (filter is FilterBys<T>)
 					(filter as FilterBys<T>).Parent = this;
-				this.Children.Add(filter);
+				base.Children.Add(filter);
 			}
+		}
+
+		/// <summary>
+		/// Adds a filtering expression into the collection of children
+		/// </summary>
+		/// <param name="filter">The filtering expression</param>
+		public new void Add(IFilterBy filter)
+		{
+			if (filter != null && filter is IFilterBy<T>)
+				this.Add(filter as IFilterBy<T>);
 		}
 
 		public new void Parse(JObject json)
@@ -586,19 +596,20 @@ namespace net.vieapps.Components.Repository
 		#region Working with statement of SQL
 		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
-			if (this.Children == null || this.Children.Count < 1)
+			var children = this.Children;
+			if (children == null || children.Count < 1)
 				return null;
 
-			else if (this.Children.Count.Equals(1))
-				return this.Children[0] is FilterBys<T>
-					? (this.Children[0] as FilterBys<T>).GetSqlStatement(surfix, standardProperties, extendedProperties, definition, parentIDs)
-					: (this.Children[0] as FilterBy<T>).GetSqlStatement(surfix, standardProperties, extendedProperties, definition, parentIDs);
+			else if (children.Count.Equals(1))
+				return children[0] is FilterBys<T>
+					? (children[0] as FilterBys<T>).GetSqlStatement(surfix, standardProperties, extendedProperties, definition, parentIDs)
+					: (children[0] as FilterBy<T>).GetSqlStatement(surfix, standardProperties, extendedProperties, definition, parentIDs);
 
 			else
 			{
 				var statement = "";
 				var parameters = new Dictionary<string, object>();
-				this.Children.ForEach((child, index) =>
+				children.ForEach((child, index) =>
 				{
 					var data = child is FilterBys<T>
 						? (child as FilterBys<T>).GetSqlStatement((!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs)
@@ -625,17 +636,18 @@ namespace net.vieapps.Components.Repository
 		internal FilterDefinition<T> GetNoSqlStatement(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			FilterDefinition<T> filter = null;
+			var children = this.Children;
 
-			if (this.Children == null || this.Children.Count < 1)
+			if (children == null || children.Count < 1)
 				filter = Builders<T>.Filter.Empty;
 
-			else if (this.Children.Count.Equals(1))
-				filter = this.Children[0] is FilterBys<T>
-					? (this.Children[0] as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs)
-					: (this.Children[0] as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs);
+			else if (children.Count.Equals(1))
+				filter = children[0] is FilterBys<T>
+					? (children[0] as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs)
+					: (children[0] as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs);
 
 			else
-				this.Children.ForEach(child =>
+				children.ForEach(child =>
 				{
 					var childFilter = child is FilterBys<T>
 						? (child as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs)
@@ -929,10 +941,16 @@ namespace net.vieapps.Components.Repository
 			: base(null, attribute, mode)
 			=> this.Parse(json);
 
+		ISortBy<T> _thenBy;
+
 		/// <summary>
 		/// Gets or sets the next-sibling
 		/// </summary>
-		public new ISortBy<T> ThenBy { get; set; }
+		public new ISortBy<T> ThenBy
+		{
+			get => this._thenBy ?? (this._thenBy = base.ThenBy != null && base.ThenBy is ISortBy<T> ? base.ThenBy as ISortBy<T> : null);
+			set => base.ThenBy = this._thenBy = value;
+		}
 
 		public new void Parse(JObject json)
 		{

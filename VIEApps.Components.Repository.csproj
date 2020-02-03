@@ -31,7 +31,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Improvement: add 'Segment'</PackageReleaseNotes>
+		<PackageReleaseNotes>Restructure objects' properties and fix bugs of restrictions</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -51,9 +51,9 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)'!='true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.2002.1" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.3.2002.1" />
-		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.2002.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.2002.2" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.3.2002.2" />
+		<PackageReference Include="VIEApps.Components.Utility" Version="10.3.2002.2" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)'=='true'">

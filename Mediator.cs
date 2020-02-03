@@ -6903,20 +6903,25 @@ namespace net.vieapps.Components.Repository
 					? new List<string> { (filter as FilterBy<T>).Value as string }
 					: null;
 
-			if ((filter as FilterBys<T>).Children == null || (filter as FilterBys<T>).Children.Count < 1)
+			var children = (filter as FilterBys<T>).Children;
+			if (children == null || children.Count < 1)
 				return null;
 
 			var parentIDs = new List<string>();
 
-			(filter as FilterBys<T>).Children.ForEach(info =>
+			children.ForEach(info =>
 			{
 				if (info is FilterBy<T> && (info as FilterBy<T>).Attribute.Equals(definition.ParentAssociatedProperty))
 					parentIDs.Add((info as FilterBy<T>).Value as string);
-				else if (info is FilterBys<T> && (info as FilterBys<T>).Children != null && (info as FilterBys<T>).Children.Count > 0)
+				else
 				{
-					var ids = info.GetAssociatedParentIDs(definition);
-					if (ids != null)
-						parentIDs.Append(ids);
+					var nextchildren = info is FilterBys<T> ? (info as FilterBys<T>).Children : null;
+					if (nextchildren != null && nextchildren.Count > 0)
+					{
+						var ids = info.GetAssociatedParentIDs(definition);
+						if (ids != null)
+							parentIDs.Append(ids);
+					}
 				}
 			});
 
