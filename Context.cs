@@ -192,7 +192,7 @@ namespace net.vieapps.Components.Repository
 			var stateData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
 			// standard properties
-			@object?.GetProperties().Where(attribute => !attribute.IsIgnored()).ForEach(attribute =>
+			@object?.GetProperties(attribute => !attribute.IsIgnored())?.ForEach(attribute =>
 			{
 				try
 				{
@@ -202,7 +202,7 @@ namespace net.vieapps.Components.Repository
 			});
 
 			// standard fields
-			@object?.GetFields().Where(attribute => !attribute.IsIgnored()).ForEach(attribute =>
+			@object?.GetFields(attribute => !attribute.IsIgnored())?.ForEach(attribute =>
 			{
 				try
 				{
@@ -212,14 +212,15 @@ namespace net.vieapps.Components.Repository
 			});
 
 			// extended properties
-			(@object as IBusinessEntity)?.ExtendedProperties?.ForEach(kvp =>
-			{
-				try
+			if (@object is IBusinessEntity)
+				(@object as IBusinessEntity)?.ExtendedProperties?.ForEach(kvp =>
 				{
-					stateData[$"ExtendedProperties.{kvp.Key}"] = kvp.Value;
-				}
-				catch { }
-			});
+					try
+					{
+						stateData[$"ExtendedProperties.{kvp.Key}"] = kvp.Value;
+					}
+					catch { }
+				});
 
 			return stateData;
 		}
@@ -251,7 +252,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets current state of the object
+		/// Gets the current state of the object
 		/// </summary>
 		/// <param name="object">The object that need to get current state</param>
 		/// <returns></returns>
@@ -266,7 +267,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Finds dirty attributes (means changed attributes)
+		/// Finds the dirty attributes (means the changed attributes)
 		/// </summary>
 		/// <param name="previousStateData">The previous state</param>
 		/// <param name="currentStateData">The current state</param>

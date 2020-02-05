@@ -340,7 +340,7 @@ namespace net.vieapps.Components.Repository
 		public bool Searchable { get; internal set; } = true;
 
 		/// <summary>
-		/// Gets the state to create new version when an entity object is updated
+		/// Gets the state to create new version when a repository entity object is updated
 		/// </summary>
 		public bool CreateNewVersionWhenUpdated { get; internal set; } = true;
 
@@ -816,9 +816,9 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Sets the cache storage of an entity definition
+		/// Sets the cache storage of a repository entity definition
 		/// </summary>
-		/// <param name="type">The type that presents information of an entity definition</param>
+		/// <param name="type">The type that presents information of a repository entity definition</param>
 		/// <param name="cache">The cache storage</param>
 		public void SetCacheStorage(Type type, Caching.Cache cache)
 		{
@@ -832,14 +832,16 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents information of an attribute of an entity
+	/// Presents information of an attribute of a repository entity
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Name}")]
 	public class AttributeInfo : ObjectService.AttributeInfo
 	{
-		public AttributeInfo() : this(null) { }
+		public AttributeInfo()
+			: this(null) { }
 
-		public AttributeInfo(ObjectService.AttributeInfo derived) : base(derived?.Name, derived?.Info) { }
+		public AttributeInfo(ObjectService.AttributeInfo derived)
+			: base(derived?.Name, derived?.Info) { }
 
 		public string Column { get; internal set; }
 
@@ -861,7 +863,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Information of a definition of extended property in a respository 
+	/// Presents a definition of an extended property of an entiry in a respository 
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
 	public sealed class ExtendedPropertyDefinition
@@ -1130,7 +1132,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// UI definition for working with a custom property in a respository 
+	/// Presents an UI definition for working with extended properties of a repository entity in a respository 
 	/// </summary>
 	[Serializable]
 	public sealed class ExtendedUIDefinition
@@ -1151,7 +1153,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// UI definition of a custom property in a respository 
+	/// Presents an UI definition for working with an extended property of a repository entity in a respository 
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Name}")]
 	public sealed class ExtendedUIControlDefinition
@@ -1314,7 +1316,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Information of a data source
+	/// Presents a data source
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
 	public class DataSource

@@ -44,7 +44,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		Delete,
 		/// <summary>
-		/// Query objects (search/count)
+		/// Query objects (find/search/count)
 		/// </summary>
 		Query
 	}

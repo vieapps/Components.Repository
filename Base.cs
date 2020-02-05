@@ -23,7 +23,7 @@ using net.vieapps.Components.Security;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Base class of an entity in the a repository
+	/// Presents the base of a repository entity in a repository
 	/// </summary>
 	[Serializable]
 	public abstract class RepositoryBase
@@ -33,9 +33,9 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public RepositoryBase() { }
 
-		#region Properties
+		#region Mandatory properties
 		/// <summary>
-		/// Gets or sets the object identity (primary-key)
+		/// Gets or sets the identity (primary-key)
 		/// </summary>
 		[PrimaryKey(MaxLength = 32), FormControl(Hidden = true), BsonId(IdGenerator = typeof(IdentityGenerator))]
 		public virtual string ID { get; set; } = "";
@@ -47,31 +47,39 @@ namespace net.vieapps.Components.Repository
 		public virtual string Title { get; set; }
 
 		/// <summary>
-		/// Gets the name of service that associates with this repository object
+		/// Gets the searching score for ordering the results
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		public virtual double? SearchScore { get; set; } = null;
+		#endregion
+
+		#region Virtual properties (of IBusinessEntity)
+		/// <summary>
+		/// Gets the name of service that associates with this object
 		/// </summary>
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
 		public virtual string ServiceName { get; }
 
 		/// <summary>
-		/// Gets the name of service's object that associates with this repository object
+		/// Gets the name of service's object that associates with this object
 		/// </summary>
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
 		public virtual string ObjectName => this.GetTypeName(true);
 
 		/// <summary>
-		/// Gets or sets the identity of the business system that the object is belong to (means the run-time system)
+		/// Gets or sets the identity of the system that the object is belong to (means the system/organization at run-time )
 		/// </summary>
 		[Property(MaxLength = 32), Sortable(IndexName = "System"), FormControl(Hidden = true), IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
 		public virtual string SystemID { get; set; }
 
 		/// <summary>
-		/// Gets or sets the identity of the business repository that the object is belong to (means the run-time business module)
+		/// Gets or sets the identity of the business repository that the object is belong to (means the business module at run-time)
 		/// </summary>
 		[Property(MaxLength = 32), Sortable(IndexName = "System"), FormControl(Hidden = true), IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
 		public virtual string RepositoryID { get; set; }
 
 		/// <summary>
-		/// Gets or sets the identity of the business entity that the object is belong to (means the run-time business content-type)
+		/// Gets or sets the identity of the business entity that the object is belong to (means the business content-type at run-time)
 		/// </summary>
 		[Property(MaxLength = 32), Sortable(IndexName = "System"), FormControl(Hidden = true), IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
 		public virtual string EntityID { get; set; }
@@ -79,11 +87,11 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the collection of extended properties
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, Ignore]
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
 		public virtual Dictionary<string, object> ExtendedProperties { get; set; }
 
 		/// <summary>
-		/// Gets the business entity that marks as parent of this object
+		/// Gets the object that marks as parent of this object
 		/// </summary>
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
 		public virtual RepositoryBase Parent { get; }
@@ -101,17 +109,11 @@ namespace net.vieapps.Components.Repository
 		protected Privileges _workingPrivileges = null;
 
 		/// <summary>
-		/// Gets the actual privileges (mean the combined privileges)
+		/// Gets the working privileges (means the actual working permissions - that combined with parents' privileges)
 		/// </summary>
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
 		public virtual Privileges WorkingPrivileges
-			=> this._workingPrivileges ?? (this._workingPrivileges = this.OriginalPrivileges?.Combine(this.Parent?.WorkingPrivileges) ?? new Privileges());
-
-		/// <summary>
-		/// Gets the score while searching
-		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		public virtual double? SearchScore { get; set; } = null;
+			=> this._workingPrivileges ?? (this._workingPrivileges = (this.OriginalPrivileges ?? new Privileges()).Combine(this.Parent?.WorkingPrivileges));
 		#endregion
 
 		#region Methods
@@ -221,7 +223,7 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Base class of an entity of a repository with helper methods to perform CRUD operations, count, find, and query (full-text search)
+	/// Presents the base of a repository entity of a repository with helper methods to perform CRUD operations, count, find, and query (full-text search)
 	/// </summary>
 	[Serializable, DebuggerDisplay("ID = {ID}, Type = {typeof(T).FullName}")]
 	public abstract class RepositoryBase<T> : RepositoryBase where T : class
@@ -3210,7 +3212,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Serializes this object to JSON object
 		/// </summary>
-		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (named with surfix '$Type')</param>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (named with suffix '$type')</param>
 		/// <param name="onPreCompleted">The action to run on pre-completed</param>
 		/// <returns></returns>
 		public override JObject ToJson(bool addTypeOfExtendedProperties = false, Action<JObject> onPreCompleted = null)
@@ -3218,31 +3220,27 @@ namespace net.vieapps.Components.Repository
 			// serialize the original object
 			var json = (this as T).ToJson(null) as JObject;
 
-			// serialize privileges & extended properties
-			if (this is IBusinessEntity)
-			{
-				// working privileges
-				if (json["Privileges"] == null && (this as IBusinessEntity).WorkingPrivileges != null)
-					json["Privileges"] = JObject.FromObject(this.OriginalPrivileges);
+			// serialize working privileges
+			if (json["Privileges"] == null && this.WorkingPrivileges != null)
+				json["Privileges"] = JObject.FromObject(this.WorkingPrivileges);
 
-				// extended properties
-				if ((this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
-					(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
-					{
-						var type = property.Value?.GetType();
+			// serialize extended properties (IBusinessEntity)
+			if (this is IBusinessEntity && this.ExtendedProperties != null && this.ExtendedProperties.Count > 0)
+				this.ExtendedProperties.ForEach(property =>
+				{
+					var type = property.Value?.GetType();
 
-						if (addTypeOfExtendedProperties && type != null)
-							json[property.Key + "$Type"] = type.IsPrimitiveType() ? type.ToString() : type.GetTypeName();
+					if (addTypeOfExtendedProperties && type != null)
+						json[property.Key + "$type"] = type.IsPrimitiveType() ? type.ToString() : type.GetTypeName();
 
-						var value = type == null || type.IsPrimitiveType()
-							? property.Value
-							: property.Value is RepositoryBase
-								? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
-								: property.Value.ToJson(null);
+					var value = type == null || type.IsPrimitiveType()
+						? property.Value
+						: property.Value is RepositoryBase
+							? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
+							: property.Value.ToJson(null);
 
-						json.Add(new JProperty(property.Key, value));
-					});
-			}
+					json.Add(new JProperty(property.Key, value));
+				});
 
 			// run the handler on pre-completed
 			onPreCompleted?.Invoke(json);
@@ -3276,32 +3274,28 @@ namespace net.vieapps.Components.Repository
 			// serialize the original object
 			var xml = (this as T).ToXml(null);
 
-			// serialize privileges & extended properties
-			if (this is IBusinessEntity)
-			{
-				// working privileges				
-				if (xml.Elements().FirstOrDefault(e => e.Name.Equals("Privileges")) == null && (this as IBusinessEntity).WorkingPrivileges != null)
-					xml.Add(new XElement("Privileges", (this as IBusinessEntity).WorkingPrivileges.ToXml()));
+			// serialize working privileges				
+			if (xml.Elements().FirstOrDefault(e => e.Name.Equals("Privileges")) == null && this.WorkingPrivileges != null)
+				xml.Add(new XElement("Privileges", this.WorkingPrivileges.ToXml()));
 
-				// extended properties
-				if ((this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.Count > 0)
-					(this as IBusinessEntity).ExtendedProperties.ForEach(property =>
-					{
-						var type = property.Value?.GetType();
+			// serialize extended properties (IBusinessEntity)
+			if (this is IBusinessEntity && this.ExtendedProperties != null && this.ExtendedProperties.Count > 0)
+				this.ExtendedProperties.ForEach(property =>
+				{
+					var type = property.Value?.GetType();
 
-						var value = type == null || type.IsPrimitiveType()
-							? property.Value
-							: property.Value is RepositoryBase
-								? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
-								: property.Value.ToXml();
+					var value = type == null || type.IsPrimitiveType()
+						? property.Value
+						: property.Value is RepositoryBase
+							? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
+							: property.Value.ToXml();
 
-						var element = addTypeOfExtendedProperties && type != null
-							? new XElement(XName.Get(property.Key), new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()), value)
-							: new XElement(XName.Get(property.Key), value);
+					var element = addTypeOfExtendedProperties && type != null
+						? new XElement(XName.Get(property.Key), new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()), value)
+						: new XElement(XName.Get(property.Key), value);
 
-						xml.Add(element);
-					});
-			}
+					xml.Add(element);
+				});
 
 			// run the handler
 			onPreCompleted?.Invoke(xml);
@@ -3385,7 +3379,8 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public string Data { get; internal set; }
 
-		object _Object = null;
+		[NonSerialized]
+		protected object _Object = null;
 
 		/// <summary>
 		/// Gets the original object
@@ -3458,9 +3453,7 @@ namespace net.vieapps.Components.Repository
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
 					var info = filter?.GetSqlStatement();
-					var statement = $"SELECT * FROM T_Data_{name}"
-						+ (info != null ? " WHERE " + info.Item1 : "")
-						+ (sort != null ? " ORDER BY " + sort.GetSqlStatement() : "");
+					var statement = $"SELECT * FROM T_Data_{name}{(info != null ? " WHERE " + info.Item1 : "")}{(sort != null ? " ORDER BY " + sort.GetSqlStatement() : "")}";
 
 					DataTable dataTable = null;
 					if (pageSize == 0)
@@ -3513,9 +3506,7 @@ namespace net.vieapps.Components.Repository
 				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
 					var info = filter?.GetSqlStatement();
-					var statement = $"SELECT * FROM T_Data_{name}"
-						+ (info != null ? " WHERE " + info.Item1 : "")
-						+ (sort != null ? " ORDER BY " + sort.GetSqlStatement() : "");
+					var statement = $"SELECT * FROM T_Data_{name}{(info != null ? " WHERE " + info.Item1 : "")}{(sort != null ? " ORDER BY " + sort.GetSqlStatement() : "")}";
 
 					DataTable dataTable = null;
 					if (pageSize == 0)
@@ -3626,7 +3617,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var info = filter?.GetSqlStatement();
 					var command = connection.CreateCommand(
-						$"DELETE FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""),
+						$"DELETE FROM T_Data_{name}{(info != null ? " WHERE " + info.Item1 : "")}",
 						info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					command.ExecuteNonQuery();
@@ -3651,7 +3642,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var info = filter?.GetSqlStatement();
 					var command = connection.CreateCommand(
-						$"DELETE FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""),
+						$"DELETE FROM T_Data_{name}{(info != null ? " WHERE " + info.Item1 : "")}",
 						info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -3663,7 +3654,16 @@ namespace net.vieapps.Components.Repository
 		{
 			string serviceName, systemID, repositoryID = null, entityID = null, objectID, title;
 
-			if (@object is IBusinessEntity)
+			if (@object is RepositoryBase)
+			{
+				serviceName = (@object as RepositoryBase).ServiceName;
+				systemID = (@object as RepositoryBase).SystemID;
+				repositoryID = (@object as RepositoryBase).RepositoryID;
+				entityID = (@object as RepositoryBase).EntityID;
+				objectID = (@object as RepositoryBase).ID;
+				title = (@object as RepositoryBase).Title;
+			}
+			else if (@object is IBusinessEntity)
 			{
 				serviceName = (@object as IBusinessEntity).ServiceName;
 				systemID = (@object as IBusinessEntity).SystemID;

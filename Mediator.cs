@@ -1448,7 +1448,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 			return entity != null
 				? RepositoryMediator.GetAsync(entity.Definition, objectID, cancellationToken, processSecondaryWhenNotFound)
-				: null;
+				: Task.FromResult<object>(null);
 		}
 		#endregion
 
@@ -2319,10 +2319,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">Filter expression to filter instances to delete</param>
 		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		public static async Task DeleteManyAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static Task DeleteManyAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			context.AliasTypeName = aliasTypeName;
-			await RepositoryMediator.DeleteManyAsync<T>(context, context.GetPrimaryDataSource(), filter, businessEntityID, cancellationToken).ConfigureAwait(false);
+			return RepositoryMediator.DeleteManyAsync<T>(context, context.GetPrimaryDataSource(), filter, businessEntityID, cancellationToken);
 		}
 
 		/// <summary>
@@ -2369,13 +2369,22 @@ namespace net.vieapps.Components.Repository
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find identities
-				return context.EntityDefinition.Cache != null && !string.IsNullOrWhiteSpace(cacheKey)
+				var identites = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
 					? context.EntityDefinition.Cache.Get<List<string>>(cacheKey)
-					: dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					: null;
+
+				if (identites == null)
+				{
+					identites = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? context.SelectIdentities(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null)
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? context.SelectIdentities(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
 							: new List<string>();
+					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
+						context.EntityDefinition.Cache.Set(cacheKey, identites, cacheTime);
+				}
+
+				return identites;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2507,17 +2516,17 @@ namespace net.vieapps.Components.Repository
 							RepositoryMediator.WriteLogs($"FIND: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
 
 						// prepare
-						var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T));
+						var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T), StringComparer.OrdinalIgnoreCase);
 
 						// add cached objects
 						var ids = new List<string>();
-						cached.ForEach(item =>
+						cached.ForEach(kvp =>
 						{
-							var id = item.Value.GetEntityID();
+							var id = kvp.Value.GetEntityID();
 							if (!string.IsNullOrWhiteSpace(id))
 							{
 								ids.Add(id);
-								results[id] = item.Value;
+								results[id] = kvp.Value;
 							}
 						});
 
@@ -2540,7 +2549,7 @@ namespace net.vieapps.Components.Repository
 						}
 
 						// update the collection of objects
-						objects = results.Select(item => item.Value).ToList();
+						objects = results.Select(kvp => kvp.Value).ToList();
 					}
 				}
 
@@ -2651,13 +2660,22 @@ namespace net.vieapps.Components.Repository
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find identities
-				return context.EntityDefinition.Cache != null && !string.IsNullOrWhiteSpace(cacheKey)
+				var identites = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
 					? await context.EntityDefinition.Cache.GetAsync<List<string>>(cacheKey)
-					: dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					: null;
+
+				if (identites == null)
+				{
+					identites = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken)
 							: new List<string>();
+					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
+						await context.EntityDefinition.Cache.SetAsync(cacheKey, identites, cacheTime, cancellationToken).ConfigureAwait(false);
+				}
+
+				return identites;
 			}
 			catch (OperationCanceledException ex)
 			{
@@ -2800,17 +2818,17 @@ namespace net.vieapps.Components.Repository
 							RepositoryMediator.WriteLogs($"FIND: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
 
 						// prepare
-						var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T));
+						var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T), StringComparer.OrdinalIgnoreCase);
 
 						// add cached objects
 						var ids = new List<string>();
-						cached.ForEach(item =>
+						cached.ForEach(kvp =>
 						{
-							var id = item.Value.GetEntityID();
+							var id = kvp.Value.GetEntityID();
 							if (!string.IsNullOrWhiteSpace(id))
 							{
 								ids.Add(id);
-								results[id] = item.Value;
+								results[id] = kvp.Value;
 							}
 						});
 
@@ -2835,7 +2853,7 @@ namespace net.vieapps.Components.Repository
 						}
 
 						// update the collection of objects
-						objects = results.Select(item => item.Value).ToList();
+						objects = results.Select(kvp => kvp.Value).ToList();
 					}
 				}
 
@@ -3201,17 +3219,17 @@ namespace net.vieapps.Components.Repository
 						RepositoryMediator.WriteLogs($"SEARCH: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
 
 					// prepare
-					var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T));
+					var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T), StringComparer.OrdinalIgnoreCase);
 
 					// add cached objects
 					var ids = new List<string>();
-					cached.Where(item => item.Value != null).ForEach(item =>
+					cached.Where(kvp => kvp.Value != null).ForEach(kvp =>
 					{
-						var id = item.Value.GetEntityID();
+						var id = kvp.Value.GetEntityID();
 						if (!string.IsNullOrWhiteSpace(id))
 						{
 							ids.Add(id);
-							results[id] = item.Value as T;
+							results[id] = kvp.Value as T;
 						}
 					});
 
@@ -3370,17 +3388,17 @@ namespace net.vieapps.Components.Repository
 						RepositoryMediator.WriteLogs($"SEARCH: Total {cached.Count} cached object(s) are found [{cached.Select(item => item.Key).ToString(" - ")}]");
 
 					// prepare
-					var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T));
+					var results = identities.Where(id => !string.IsNullOrWhiteSpace(id)).ToDictionary(id => id, id => default(T), StringComparer.OrdinalIgnoreCase);
 
 					// add cached objects
 					var ids = new List<string>();
-					cached.Where(item => item.Value != null).ForEach(item =>
+					cached.Where(kvp => kvp.Value != null).ForEach(kvp =>
 					{
-						var id = item.Value.GetEntityID();
+						var id = kvp.Value.GetEntityID();
 						if (!string.IsNullOrWhiteSpace(id))
 						{
 							ids.Add(id);
-							results[id] = item.Value as T;
+							results[id] = kvp.Value as T;
 						}
 					});
 
@@ -3681,6 +3699,7 @@ namespace net.vieapps.Components.Repository
 				if (@object == null)
 					throw new ArgumentNullException(nameof(@object), "The object is null");
 
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetVersionDataSource();
 				if (dataSource == null)
 					return null;
@@ -3756,6 +3775,7 @@ namespace net.vieapps.Components.Repository
 				if (@object == null)
 					throw new ArgumentNullException(nameof(@object), "The object is null");
 
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? context.GetVersionDataSource();
 				if (dataSource == null)
 					return null;
@@ -3833,7 +3853,7 @@ namespace net.vieapps.Components.Repository
 		public static T Rollback<T>(RepositoryContext context, VersionContent version, string userID) where T : class
 		{
 			// prepare
-			if (version == null)
+			if (version == null || version.Object == null)
 				throw new ArgumentNullException(nameof(version), "Version content is invalid");
 			else if (!(version.Object is T))
 				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T)}]");
@@ -3915,20 +3935,14 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static T Rollback<T>(RepositoryContext context, string versionID, string userID) where T : class
 		{
-			// prepare
 			if (string.IsNullOrWhiteSpace(versionID))
 				throw new ArgumentNullException(nameof(versionID), "The identity of version content is invalid");
 
-			if (context.EntityDefinition == null)
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			var dataSource = context.GetVersionDataSource();
-
-			var versions = VersionContent.Find(dataSource, "Versions", Filters<VersionContent>.Equals("ID", versionID), null, 0, 1);
-			if (versions == null || versions.Count < 1)
-				throw new InformationInvalidException("The identity of version content is invalid");
-
-			// rollback
-			return RepositoryMediator.Rollback<T>(context, versions[0], userID);
+			context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+			var versions = VersionContent.Find(context.GetVersionDataSource(), "Versions", Filters<VersionContent>.Equals("ID", versionID), null, 0, 1);
+			return versions != null && versions.Count > 0
+				? RepositoryMediator.Rollback<T>(context, versions.First(), userID)
+				: throw new InformationInvalidException("The identity of version content is invalid");
 		}
 
 		/// <summary>
@@ -3958,7 +3972,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<T> RollbackAsync<T>(RepositoryContext context, VersionContent version, string userID, CancellationToken cancellationToken = default) where T : class
 		{
 			// prepare
-			if (version == null)
+			if (version == null || version.Object == null)
 				throw new ArgumentNullException(nameof(version), "Version content is invalid");
 			else if (!(version.Object is T))
 				throw new InformationInvalidException($"Original object of the version content is not matched with type [{typeof(T)}]");
@@ -4051,16 +4065,11 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(versionID))
 				throw new ArgumentNullException(nameof(versionID), "The identity of version content is invalid");
 
-			if (context.EntityDefinition == null)
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			var dataSource = context.GetVersionDataSource();
-
-			var versions = await VersionContent.FindAsync(dataSource, "Versions", Filters<VersionContent>.Equals("ID", versionID), null, 0, 1, cancellationToken).ConfigureAwait(false);
-			if (versions == null || versions.Count < 1)
-				throw new InformationInvalidException("The identity of version content is invalid");
-
-			// rollback
-			return await RepositoryMediator.RollbackAsync<T>(context, versions[0], userID, cancellationToken).ConfigureAwait(false);
+			context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+			var versions = await VersionContent.FindAsync(context.GetVersionDataSource(), "Versions", Filters<VersionContent>.Equals("ID", versionID), null, 0, 1, cancellationToken).ConfigureAwait(false);
+			return versions != null && versions.Count > 0
+				? await RepositoryMediator.RollbackAsync<T>(context, versions.First(), userID, cancellationToken).ConfigureAwait(false)
+				: throw new InformationInvalidException("The identity of version content is invalid");
 		}
 
 		/// <summary>
@@ -4119,21 +4128,11 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = context.GetVersionDataSource();
-				}
-
-				// check
-				if (dataSource == null)
-					return 0;
-
-				// count
-				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				return VersionContent.Count(dataSource, "Versions", filter);
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? context.GetVersionDataSource();
+				return dataSource != null
+					? VersionContent.Count(dataSource, "Versions", RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID))
+					: 0;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -4201,21 +4200,11 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = context.GetVersionDataSource();
-				}
-
-				// check
-				if (dataSource == null)
-					return 0;
-
-				// count
-				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				return await VersionContent.CountAsync(dataSource, "Versions", filter, cancellationToken).ConfigureAwait(false);
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? context.GetVersionDataSource();
+				return dataSource != null
+					? await VersionContent.CountAsync(dataSource, "Versions", RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID), cancellationToken).ConfigureAwait(false)
+					: 0;
 			}
 			catch (OperationCanceledException ex)
 			{
@@ -4331,22 +4320,11 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = context.GetVersionDataSource();
-				}
-
-				// check
-				if (dataSource == null)
-					return null;
-
-				// find
-				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
-				return VersionContent.Find(dataSource, "Versions", filter, sort, pageSize, pageNumber);
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? context.GetVersionDataSource();
+				return dataSource != null
+					? VersionContent.Find(dataSource, "Versions", RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID), Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber"), pageSize, pageNumber)
+					: new List<VersionContent>();
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -4453,26 +4431,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default) where T : class
+		public static Task<List<VersionContent>> FindVersionContentsAsync<T>(RepositoryContext context, DataSource dataSource, string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default) where T : class
 		{
 			try
 			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = context.GetVersionDataSource();
-				}
-
-				// check
-				if (dataSource == null)
-					return null;
-
-				// find
-				var filter = RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID);
-				var sort = Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber");
-				return await VersionContent.FindAsync<VersionContent>(dataSource, "Versions", filter, sort, pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? context.GetVersionDataSource();
+				return dataSource != null
+					? VersionContent.FindAsync<VersionContent>(dataSource, "Versions", RepositoryMediator.PrepareVersionFilter(objectID, serviceName, systemID, repositoryID, entityID, userID), Sorts<VersionContent>.Descending(string.IsNullOrWhiteSpace(objectID) ? "Created" : "VersionNumber"), pageSize, pageNumber, cancellationToken)
+					: Task.FromResult(new List<VersionContent>());
 			}
 			catch (OperationCanceledException ex)
 			{
@@ -4694,9 +4661,7 @@ namespace net.vieapps.Components.Repository
 				if (@object == null)
 					throw new ArgumentNullException(nameof(@object), "The object is null");
 
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? RepositoryMediator.GetTrashDataSource(context);
 				if (dataSource == null)
 					return null;
@@ -4769,9 +4734,7 @@ namespace net.vieapps.Components.Repository
 				if (@object == null)
 					throw new ArgumentNullException(nameof(@object), "The object is null");
 
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
 				dataSource = dataSource ?? RepositoryMediator.GetTrashDataSource(context);
 				if (dataSource == null)
 					return null;
@@ -4847,7 +4810,7 @@ namespace net.vieapps.Components.Repository
 		public static T Restore<T>(RepositoryContext context, TrashContent trashContent, string userID) where T : class
 		{
 			// prepare
-			if (trashContent == null)
+			if (trashContent == null || trashContent.Object == null)
 				throw new ArgumentNullException(nameof(trashContent), "Trash content is invalid");
 			else if (!(trashContent.Object is T))
 				throw new InformationInvalidException($"Original object of the trash content is not matched with type [{typeof(T)}]");
@@ -4857,8 +4820,7 @@ namespace net.vieapps.Components.Repository
 			{
 				// prepare
 				context.Operation = RepositoryOperation.Create;
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
 				var dataSource = context.GetPrimaryDataSource();
 				if (dataSource == null)
 					return null;
@@ -4929,20 +4891,14 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static T Restore<T>(RepositoryContext context, string trashContentID, string userID) where T : class
 		{
-			// prepare
 			if (string.IsNullOrWhiteSpace(trashContentID))
 				throw new ArgumentNullException(nameof(trashContentID), "The identity of trash content is invalid");
 
-			if (context.EntityDefinition == null)
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			var dataSource = RepositoryMediator.GetTrashDataSource(context);
-
-			var trashs = TrashContent.Find(dataSource, "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1);
-			if (trashs == null || trashs.Count < 1)
-				throw new InformationInvalidException("The identity of trash content is invalid");
-
-			// rollback
-			return RepositoryMediator.Restore<T>(context, trashs[0], userID);
+			context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+			var trashs = TrashContent.Find(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1);
+			return trashs != null && trashs.Count > 0
+				? RepositoryMediator.Restore<T>(context, trashs.First(), userID)
+				:  throw new InformationInvalidException("The identity of trash content is invalid");
 		}
 
 		/// <summary>
@@ -4982,8 +4938,7 @@ namespace net.vieapps.Components.Repository
 			{
 				// prepare
 				context.Operation = RepositoryOperation.Create;
-				if (context.EntityDefinition == null)
-					context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
 				var dataSource = context.GetPrimaryDataSource();
 				if (dataSource == null)
 					return null;
@@ -5061,20 +5016,14 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<T> RestoreAsync<T>(RepositoryContext context, string trashContentID, string userID, CancellationToken cancellationToken = default) where T : class
 		{
-			// prepare
 			if (string.IsNullOrWhiteSpace(trashContentID))
 				throw new ArgumentNullException(nameof(trashContentID), "The identity of trash content is invalid");
 
-			if (context.EntityDefinition == null)
-				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			var dataSource = RepositoryMediator.GetTrashDataSource(context);
-
-			var trashs = await TrashContent.FindAsync(dataSource, "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1, cancellationToken).ConfigureAwait(false);
-			if (trashs == null || trashs.Count < 1)
-				throw new InformationInvalidException("The identity of trash content is invalid");
-
-			// rollback
-			return await RepositoryMediator.RestoreAsync<T>(context, trashs[0], userID, cancellationToken).ConfigureAwait(false);
+			context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+			var trashs = await TrashContent.FindAsync(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1, cancellationToken).ConfigureAwait(false);
+			return trashs != null && trashs.Count > 0
+				? await RepositoryMediator.RestoreAsync<T>(context, trashs.First(), userID, cancellationToken).ConfigureAwait(false)
+				: throw new InformationInvalidException("The identity of trash content is invalid");
 		}
 
 		/// <summary>
@@ -5127,21 +5076,11 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = RepositoryMediator.GetTrashDataSource(context);
-				}
-
-				// check
-				if (dataSource == null)
-					return 0;
-
-				// count
-				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
-				return TrashContent.Count<TrashContent>(dataSource, "Trashs", filter);
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetTrashDataSource(context);
+				return dataSource != null
+					? TrashContent.Count(dataSource, "Trashs", RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID))
+					: 0;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -5206,21 +5145,11 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = RepositoryMediator.GetTrashDataSource(context);
-				}
-
-				// check
-				if (dataSource == null)
-					return 0;
-
-				// count
-				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
-				return await TrashContent.CountAsync<TrashContent>(dataSource, "Trashs", filter, cancellationToken).ConfigureAwait(false);
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetTrashDataSource(context);
+				return dataSource != null
+					? await TrashContent.CountAsync(dataSource, "Trashs", RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID), cancellationToken).ConfigureAwait(false)
+					: 0;
 			}
 			catch (OperationCanceledException ex)
 			{
@@ -5336,22 +5265,11 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = RepositoryMediator.GetTrashDataSource(context);
-				}
-
-				// check
-				if (dataSource == null)
-					return null;
-
-				// find
-				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
-				var sort = Sorts<TrashContent>.Descending("Created");
-				return TrashContent.Find<TrashContent>(dataSource, "Trashs", filter, sort, pageSize, pageNumber);
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetTrashDataSource(context);
+				return dataSource != null
+					? TrashContent.Find(dataSource, "Trashs", RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID), Sorts<TrashContent>.Descending("Created"), pageSize, pageNumber)
+					: new List<TrashContent>();
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -5464,26 +5382,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber">The identity of business repository entity that associates with</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<TrashContent>> FindTrashContentsAsync<T>(RepositoryContext context, DataSource dataSource, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default) where T : class
+		public static Task<List<TrashContent>> FindTrashContentsAsync<T>(RepositoryContext context, DataSource dataSource, string serviceName = null, string systemID = null, string repositoryID = null, string entityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default) where T : class
 		{
 			try
 			{
-				// prepare
-				if (dataSource == null)
-				{
-					if (context.EntityDefinition == null)
-						context.EntityDefinition = RepositoryMediator.GetEntityDefinition(typeof(T));
-					dataSource = RepositoryMediator.GetTrashDataSource(context);
-				}
-
-				// check
-				if (dataSource == null)
-					return null;
-
-				// find
-				var filter = RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID);
-				var sort = Sorts<TrashContent>.Descending("Created");
-				return await TrashContent.FindAsync<TrashContent>(dataSource, "Trashs", filter, sort, pageSize, pageNumber, cancellationToken).ConfigureAwait(false);
+				context.EntityDefinition = context.EntityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+				dataSource = dataSource ?? RepositoryMediator.GetTrashDataSource(context);
+				return dataSource != null
+					? TrashContent.FindAsync<TrashContent>(dataSource, "Trashs", RepositoryMediator.PrepareTrashFilter(serviceName, systemID, repositoryID, entityID, userID), Sorts<TrashContent>.Descending("Created"), pageSize, pageNumber, cancellationToken)
+					: Task.FromResult(new List<TrashContent>());
 			}
 			catch (OperationCanceledException ex)
 			{
@@ -5719,7 +5626,7 @@ namespace net.vieapps.Components.Repository
 
 						stopwatch.Stop();
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs(new List<string>()
+							RepositoryMediator.WriteLogs(new[]
 							{
 								$"SYNC: Delete multiple objects successful [{typeof(T)}]",
 								$"- Synced data sources: {dataSources.Select(dataSource => dataSource.Name + " (" + dataSource.Mode + ")").ToString(", ")}",
@@ -5833,7 +5740,7 @@ namespace net.vieapps.Components.Repository
 
 						stopwatch.Stop();
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs(new List<string>()
+							RepositoryMediator.WriteLogs(new[]
 							{
 								$"SYNC: {(isDelete ? "Delete" : "Sync")} the object successful [{typeof(T)}#{@object?.GetEntityID()}]",
 								$"- Synced data sources: {dataSources.Select(dataSource => dataSource.Name + " (" + dataSource.Mode + ")").ToString(", ")}",
@@ -5996,7 +5903,7 @@ namespace net.vieapps.Components.Repository
 			for (var index = 0; index < handlers.Count; index++)
 				try
 				{
-					var handler = ObjectService.CreateInstance(handlers[index]) as IPreGetHandler;
+					var handler = handlers[index].CreateInstance() as IPreGetHandler;
 					if (handler.OnPreGet<T>(context, id))
 						return true;
 				}
@@ -6013,7 +5920,7 @@ namespace net.vieapps.Components.Repository
 			for (var index = 0; index < handlers.Count; index++)
 				try
 				{
-					var handler = ObjectService.CreateInstance(handlers[index]) as IPreGetHandler;
+					var handler = handlers[index].CreateInstance() as IPreGetHandler;
 					if (await handler.OnPreGetAsync<T>(context, id, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
@@ -6034,7 +5941,7 @@ namespace net.vieapps.Components.Repository
 				{
 					try
 					{
-						var handler = ObjectService.CreateInstance(type) as IPostGetHandler;
+						var handler = type.CreateInstance() as IPostGetHandler;
 						handler.OnPostGet(context, @object);
 					}
 					catch (Exception ex)
@@ -6050,7 +5957,7 @@ namespace net.vieapps.Components.Repository
 				{
 					try
 					{
-						var handler = ObjectService.CreateInstance(type) as IPostGetHandler;
+						var handler = type.CreateInstance() as IPostGetHandler;
 						await handler.OnPostGetAsync(context, @object, token).ConfigureAwait(false);
 					}
 					catch (OperationCanceledException)
@@ -6071,7 +5978,7 @@ namespace net.vieapps.Components.Repository
 			for (var index = 0; index < handlers.Count; index++)
 				try
 				{
-					var handler = ObjectService.CreateInstance(handlers[index]) as IPreUpdateHandler;
+					var handler = handlers[index].CreateInstance() as IPreUpdateHandler;
 					if (handler.OnPreUpdate(context, @object, changed, isRollback))
 						return true;
 				}
@@ -6088,7 +5995,7 @@ namespace net.vieapps.Components.Repository
 			for (var index = 0; index < handlers.Count; index++)
 				try
 				{
-					var handler = ObjectService.CreateInstance(handlers[index]) as IPreUpdateHandler;
+					var handler = handlers[index].CreateInstance() as IPreUpdateHandler;
 					if (await handler.OnPreUpdateAsync(context, @object, changed, isRestore, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
@@ -6109,7 +6016,7 @@ namespace net.vieapps.Components.Repository
 				{
 					try
 					{
-						var handler = ObjectService.CreateInstance(type) as IPostUpdateHandler;
+						var handler = type.CreateInstance() as IPostUpdateHandler;
 						handler.OnPostUpdate(context, @object, changed, isRestore);
 					}
 					catch (Exception ex)
@@ -6125,7 +6032,7 @@ namespace net.vieapps.Components.Repository
 				{
 					try
 					{
-						var handler = ObjectService.CreateInstance(type) as IPostUpdateHandler;
+						var handler = type.CreateInstance() as IPostUpdateHandler;
 						await handler.OnPostUpdateAsync(context, @object, changed, isRestore, token).ConfigureAwait(false);
 					}
 					catch (OperationCanceledException)
@@ -6146,7 +6053,7 @@ namespace net.vieapps.Components.Repository
 			for (var index = 0; index < handlers.Count; index++)
 				try
 				{
-					var handler = ObjectService.CreateInstance(handlers[index]) as IPreDeleteHandler;
+					var handler = handlers[index].CreateInstance() as IPreDeleteHandler;
 					if (handler.OnPreDelete(context, @object))
 						return true;
 				}
@@ -6163,7 +6070,7 @@ namespace net.vieapps.Components.Repository
 			for (var index = 0; index < handlers.Count; index++)
 				try
 				{
-					var handler = ObjectService.CreateInstance(handlers[index]) as IPreDeleteHandler;
+					var handler = handlers[index].CreateInstance() as IPreDeleteHandler;
 					if (await handler.OnPreDeleteAsync(context, @object, cancellationToken).ConfigureAwait(false))
 						return true;
 				}
@@ -6184,7 +6091,7 @@ namespace net.vieapps.Components.Repository
 				{
 					try
 					{
-						var handler = ObjectService.CreateInstance(type) as IPostDeleteHandler;
+						var handler = type.CreateInstance() as IPostDeleteHandler;
 						handler.OnPostDelete(context, @object);
 					}
 					catch (Exception ex)
@@ -6200,7 +6107,7 @@ namespace net.vieapps.Components.Repository
 				{
 					try
 					{
-						var handler = ObjectService.CreateInstance(type) as IPostDeleteHandler;
+						var handler = type.CreateInstance() as IPostDeleteHandler;
 						await handler.OnPostDeleteAsync(context, @object, token).ConfigureAwait(false);
 					}
 					catch (OperationCanceledException)
@@ -6224,9 +6131,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
 		/// <returns></returns>
 		public static JArray ToJsonArray<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemPreCompleted = null) where T : class
-			=> objects == null || objects.Count < 1
-				? new JArray()
-				: objects.ToJArray(@object => @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object?.ToJson());
+			=> objects != null && objects.Count > 0
+				? objects.ToJArray(@object => @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object?.ToJson())
+				: new JArray();
 
 		/// <summary>
 		/// Serializes the collection of objects to an array of JSON objects
@@ -6328,18 +6235,18 @@ namespace net.vieapps.Components.Repository
 
 		internal static JToken GenerateFormControl(this AttributeInfo attribute, int index = 0)
 		{
-			var formControlInfo = attribute.Info.GetCustomAttributes(typeof(FormControlAttribute), true).FirstOrDefault() as FormControlAttribute;
-			if (formControlInfo != null ? formControlInfo.Excluded : attribute.IsIgnored())
+			var info = attribute.Info.GetCustomAttributes(typeof(FormControlAttribute), true).FirstOrDefault() as FormControlAttribute;
+			if (info != null ? info.Excluded : attribute.IsIgnored())
 				return null;
 
 			JObject control;
-			var hidden = formControlInfo != null
-				? formControlInfo.Hidden
+			var hidden = info != null
+				? info.Hidden
 				: attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() != null;
-			var order = formControlInfo != null && formControlInfo.Order > -1
-				? formControlInfo.Order
+			var order = info != null && info.Order > -1
+				? info.Order
 				: index;
-			var label = (formControlInfo?.Label ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
+			var label = (info?.Label ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
 
 			if (attribute.Type.IsClassType())
 			{
@@ -6355,7 +6262,7 @@ namespace net.vieapps.Components.Repository
 				{
 					{ "Name", attribute.Name },
 					{ "Order", order },
-					{ "Segment", formControlInfo?.Segment },
+					{ "Segment", info?.Segment },
 					{ "Options", new JObject
 						{
 							{ "Label", label }
@@ -6363,7 +6270,7 @@ namespace net.vieapps.Components.Repository
 					},
 					{ "SubControls", new JObject
 						{
-							{ "AsArray", formControlInfo != null ? formControlInfo.AsArray : false },
+							{ "AsArray", info != null ? info.AsArray : false },
 							{ "Controls", subControls }
 						}
 					}
@@ -6377,8 +6284,8 @@ namespace net.vieapps.Components.Repository
 				return control;
 			}
 
-			var controlType = !string.IsNullOrWhiteSpace(formControlInfo?.ControlType)
-				? formControlInfo.ControlType
+			var controlType = !string.IsNullOrWhiteSpace(info?.ControlType)
+				? info.ControlType
 				: attribute.IsCLOB != null && attribute.IsCLOB.Value
 					? "TextEditor"
 					: attribute.Type.IsEnum || attribute.IsEnumString()
@@ -6396,10 +6303,10 @@ namespace net.vieapps.Components.Repository
 				{ "Label", label }
 			};
 
-			var dataType = "Lookup".IsEquals(formControlInfo?.ControlType) && !string.IsNullOrWhiteSpace(formControlInfo?.LookupType)
-				? formControlInfo.LookupType
-				: !string.IsNullOrWhiteSpace(formControlInfo?.DataType)
-					? formControlInfo.DataType
+			var dataType = "Lookup".IsEquals(info?.ControlType) && !string.IsNullOrWhiteSpace(info?.LookupType)
+				? info.LookupType
+				: !string.IsNullOrWhiteSpace(info?.DataType)
+					? info.DataType
 					: attribute.Type.IsEnum || attribute.IsEnumString()
 						? "text"
 						: RepositoryMediator.FormControlDataTypes.TryGetValue(attribute.Type, out string predefinedDataType)
@@ -6408,20 +6315,20 @@ namespace net.vieapps.Components.Repository
 			if (!string.IsNullOrWhiteSpace(dataType))
 				options["Type"] = dataType;
 
-			if (formControlInfo?.PlaceHolder != null)
-				options["PlaceHolder"] = formControlInfo.PlaceHolder.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
-			if (formControlInfo?.Description != null)
-				options["Description"] = formControlInfo.Description.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
-			if (formControlInfo?.ValidatePattern != null)
-				options["ValidatePattern"] = formControlInfo.ValidatePattern;
-			if (formControlInfo != null && formControlInfo.Disabled)
+			if (info?.PlaceHolder != null)
+				options["PlaceHolder"] = info.PlaceHolder.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
+			if (info?.Description != null)
+				options["Description"] = info.Description.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
+			if (info?.ValidatePattern != null)
+				options["ValidatePattern"] = info.ValidatePattern;
+			if (info != null && info.Disabled)
 				options["Disabled"] = true;
-			if (formControlInfo != null && formControlInfo.ReadOnly)
+			if (info != null && info.ReadOnly)
 				options["ReadOnly"] = true;
-			if (formControlInfo != null && formControlInfo.AutoFocus)
+			if (info != null && info.AutoFocus)
 				options["AutoFocus"] = true;
 
-			var minValue = formControlInfo?.MinValue ?? attribute?.MinValue;
+			var minValue = info?.MinValue ?? attribute?.MinValue;
 			if (minValue != null)
 				try
 				{
@@ -6437,7 +6344,7 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs($"Error occurred while prepare options [{attribute.Name}] => {ex.Message}", ex);
 				}
 
-			var maxValue = formControlInfo?.MaxValue ?? attribute?.MaxValue;
+			var maxValue = info?.MaxValue ?? attribute?.MaxValue;
 			if (maxValue != null)
 				try
 				{
@@ -6453,19 +6360,19 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs($"Error occurred while prepare options [{attribute.Name}] => {ex.Message}", ex);
 				}
 
-			var minLength = formControlInfo != null && formControlInfo.MinLength > 0
-				? formControlInfo.MinLength.ToString()
+			var minLength = info != null && info.MinLength > 0
+				? info.MinLength.ToString()
 				: attribute.MinLength?.ToString();
 			if (minLength != null && Int32.TryParse(minLength, out int minLen))
 				options["MinLength"] = minLen;
 
-			var maxLength = formControlInfo != null && formControlInfo.MaxLength > 0
-				? formControlInfo.MaxLength.ToString()
+			var maxLength = info != null && info.MaxLength > 0
+				? info.MaxLength.ToString()
 				: attribute.MaxLength.ToString();
 			if (maxLength != null && Int32.TryParse(maxLength, out int maxLen))
 				options["MaxLength"] = maxLen;
 
-			var datepickerOptions = "DatePicker".IsEquals(controlType) && formControlInfo != null && formControlInfo.DatePickerWithTimes
+			var datepickerOptions = "DatePicker".IsEquals(controlType) && info != null && info.DatePickerWithTimes
 				? new JObject
 				{
 					{ "AllowTimes", true }
@@ -6479,27 +6386,27 @@ namespace net.vieapps.Components.Repository
 			{
 				selectOptions = new JObject
 				{
-					{ "Values", formControlInfo?.SelectValues ?? (attribute.Type.IsEnum || attribute.IsEnumString() ? Enum.GetValues(attribute.Type).ToEnumerable().Select(o => o.ToString()).Join(",") : null) },
-					{ "Multiple", formControlInfo != null && formControlInfo.Multiple },
-					{ "SelectAsBoxes", formControlInfo != null && formControlInfo.SelectAsBoxes }
+					{ "Values", info?.SelectValues ?? (attribute.Type.IsEnum || attribute.IsEnumString() ? Enum.GetValues(attribute.Type).ToEnumerable().Select(o => o.ToString()).Join(",") : null) },
+					{ "Multiple", info != null && info.Multiple },
+					{ "SelectAsBoxes", info != null && info.SelectAsBoxes }
 				};
-				if (formControlInfo?.SelectValuesRemoteURI != null)
-					selectOptions["RemoteURI"] = formControlInfo?.SelectValuesRemoteURI;
-				if (formControlInfo?.SelectInterface != null)
-					selectOptions["Interface"] = formControlInfo?.SelectInterface;
+				if (info?.SelectValuesRemoteURI != null)
+					selectOptions["RemoteURI"] = info?.SelectValuesRemoteURI;
+				if (info?.SelectInterface != null)
+					selectOptions["Interface"] = info?.SelectInterface;
 			}
 			if (selectOptions != null)
 				options["SelectOptions"] = selectOptions;
 
 			var required = attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() != null
 				? false
-				: attribute.NotNull || (attribute.NotEmpty != null && attribute.NotEmpty.Value) || (formControlInfo != null && formControlInfo.Required);
+				: attribute.NotNull || (attribute.NotEmpty != null && attribute.NotEmpty.Value) || (info != null && info.Required);
 
 			control = new JObject
 			{
 				{ "Name", attribute.Name },
 				{ "Order", order },
-				{ "Segment", formControlInfo?.Segment },
+				{ "Segment", info?.Segment },
 				{ "Options", options }
 			};
 
@@ -6510,13 +6417,13 @@ namespace net.vieapps.Components.Repository
 			if (hidden)
 				control["Hidden"] = hidden;
 
-			if (formControlInfo != null && formControlInfo.AsArray)
+			if (info != null && info.AsArray)
 			{
 				control = new JObject
 				{
 					{ "Name", attribute.Name },
 					{ "Order", order },
-					{ "Segment", formControlInfo?.Segment },
+					{ "Segment", info?.Segment },
 					{ "Options", new JObject
 						{
 							{ "Label", label }

@@ -27,11 +27,6 @@ namespace net.vieapps.Components.Repository
 	public interface IRepository
 	{
 		/// <summary>
-		/// Gets the identity (primary-key)
-		/// </summary>
-		string ID { get; }
-
-		/// <summary>
 		/// Gets the title
 		/// </summary>
 		string Title { get; }
@@ -40,6 +35,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the description
 		/// </summary>
 		string Description { get; }
+
+		/// <summary>
+		/// Gets the identity
+		/// </summary>
+		string ID { get; }
 
 		/// <summary>
 		/// Gets the identity of a business system that the object is belong to
@@ -65,11 +65,6 @@ namespace net.vieapps.Components.Repository
 	public interface IRepositoryEntity
 	{
 		/// <summary>
-		/// Gets the identity (primary-key)
-		/// </summary>
-		string ID { get; }
-
-		/// <summary>
 		/// Gets the title
 		/// </summary>
 		string Title { get; }
@@ -78,6 +73,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the description
 		/// </summary>
 		string Description { get; }
+
+		/// <summary>
+		/// Gets the identity
+		/// </summary>
+		string ID { get; }
 
 		/// <summary>
 		/// Gets the identity of a business system that the object is belong to
@@ -128,14 +128,14 @@ namespace net.vieapps.Components.Repository
 	public interface IBusinessEntity
 	{
 		/// <summary>
-		/// Gets the identity (primary-key)
-		/// </summary>
-		string ID { get; }
-
-		/// <summary>
 		/// Gets the title
 		/// </summary>
 		string Title { get; }
+
+		/// <summary>
+		/// Gets the identity
+		/// </summary>
+		string ID { get; }
 
 		/// <summary>
 		/// Gets the identity of a system (at run-time) that the object is belong to
