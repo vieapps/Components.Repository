@@ -23,34 +23,46 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the identity of the context
 		/// </summary>
-		public string ID { get; internal set; }
+		public string ID { get; internal set; } = UtilityService.NewUUID;
 
 		/// <summary>
 		/// Gets the operation of the context
 		/// </summary>
+		public RepositoryOperation Operation
+		{
+			get;
 #if DEBUG
-		public RepositoryOperation Operation { get; set; }
+			set;
 #else
-		public RepositoryOperation Operation { get; internal set; }
+			internal set;
 #endif
+		}
 
 		/// <summary>
 		/// Gets the entity definition of the context
 		/// </summary>
+		public EntityDefinition EntityDefinition
+		{
+			get;
 #if DEBUG
-		public EntityDefinition EntityDefinition { get; set; }
+			set;
 #else
-		public EntityDefinition EntityDefinition { get; internal set; }
+			internal set;
 #endif
+		}
 
 		/// <summary>
 		/// Gets the alias type name of the context (if got alias type name, means working with diffirent data source because the module is alias of other module)
 		/// </summary>
+		public string AliasTypeName
+		{
+			get;
 #if DEBUG
-		public string AliasTypeName { get; set; }
+			set;
 #else
-		public string AliasTypeName { get; internal set; }
+			internal set;
 #endif
+		}
 
 		/// <summary>
 		/// Gets the state that determines to use transaction or don't use
@@ -74,7 +86,7 @@ namespace net.vieapps.Components.Repository
 		#region Prepare
 		internal void Prepare(RepositoryOperation operation = RepositoryOperation.Query, EntityDefinition entityDefinition = null, string aliasTypeName = null, MongoDB.Driver.IClientSessionHandle nosqlSession = null)
 		{
-			this.ID = this.ID ?? UtilityService.GetUUID();
+			this.ID = this.ID ?? UtilityService.NewUUID;
 			this.PreviousStateData = this.PreviousStateData ?? new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 			this.CurrentStateData = this.CurrentStateData ?? new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 			this.Operation = operation;
@@ -115,7 +127,8 @@ namespace net.vieapps.Components.Repository
 			GC.SuppressFinalize(this);
 		}
 
-		~RepositoryContext() => this.Dispose();
+		~RepositoryContext()
+			=> this.Dispose();
 		#endregion
 
 		#region Start/Commit/Abort Transaction
@@ -238,11 +251,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that need to get previous state</param>
 		/// <returns></returns>
 		public Dictionary<string, object> GetPreviousState(object @object)
-			=> @object != null
-				? this.PreviousStateData.TryGetValue(@object.GetCacheKey(true), out var stateData)
-					? stateData
-					: null
-				: null;
+			=> @object != null && this.PreviousStateData.TryGetValue(@object.GetCacheKey(true), out var stateData) ? stateData : null;
 
 		internal Dictionary<string, object> SetCurrentState(object @object, Dictionary<string, object> stateData = null)
 		{
@@ -257,21 +266,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object that need to get current state</param>
 		/// <returns></returns>
 		public Dictionary<string, object> GetCurrentState(object @object)
-		{
-			var key = @object?.GetCacheKey(true);
-			return @object != null
-				? this.CurrentStateData.ContainsKey(key)
-					? this.CurrentStateData[key]
+			=> @object != null
+				? this.CurrentStateData.TryGetValue(@object.GetCacheKey(true), out var stateData)
+					? stateData
 					: this.SetCurrentState(@object)
 				: null;
-		}
 
 		/// <summary>
 		/// Finds the dirty attributes (means the changed attributes)
 		/// </summary>
 		/// <param name="previousStateData">The previous state</param>
 		/// <param name="currentStateData">The current state</param>
-		/// <returns>Collection of attributes</returns>
+		/// <returns>The collection of dirty attributes (means the collection of changed attributes)</returns>
 		public HashSet<string> FindDirty(Dictionary<string, object> previousStateData, Dictionary<string, object> currentStateData)
 		{
 			if (currentStateData == null || currentStateData.Count < 0)

@@ -465,10 +465,7 @@ namespace net.vieapps.Components.Repository
 						else if (attribute.IsStoredAsJson())
 							try
 							{
-								var json = (value as string).StartsWith("[")
-									? JArray.Parse(value as string) as JToken
-									: JObject.Parse(value as string) as JToken;
-								value = new JsonSerializer().Deserialize(new JTokenReader(json), attribute.Type);
+								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(value as string)), attribute.Type);
 							}
 							catch
 							{
@@ -487,7 +484,7 @@ namespace net.vieapps.Components.Repository
 					var value = dataReader[index];
 					if (value != null && attribute.Type.IsDateTimeType())
 						value = DateTime.Parse(value as string);
-					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value.CastAs(attribute.Type);
+					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value?.CastAs(attribute.Type);
 				}
 			}
 
@@ -518,10 +515,7 @@ namespace net.vieapps.Components.Repository
 						else if (attribute.IsStoredAsJson())
 							try
 							{
-								var json = (value as string).StartsWith("[")
-									? JArray.Parse(value as string) as JToken
-									: JObject.Parse(value as string) as JToken;
-								value = new JsonSerializer().Deserialize(new JTokenReader(json), attribute.Type);
+								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(value as string)), attribute.Type);
 							}
 							catch
 							{
@@ -540,7 +534,7 @@ namespace net.vieapps.Components.Repository
 					var value = dataRow[name];
 					if (value != null && attribute.Type.IsDateTimeType())
 						value = DateTime.Parse(value as string);
-					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value.CastAs(attribute.Type);
+					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value?.CastAs(attribute.Type);
 				}
 			}
 
@@ -563,7 +557,7 @@ namespace net.vieapps.Components.Repository
 					continue;
 
 				columns.Add(string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column);
-				values.Add("@" + attribute.Name);
+				values.Add($"@{attribute.Name}");
 				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
@@ -575,7 +569,7 @@ namespace net.vieapps.Components.Repository
 		static Tuple<string, List<DbParameter>> PrepareCreateExtent<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
 		{
 			var columns = "ID,SystemID,RepositoryID,EntityID".ToList();
-			var values = columns.Select(c => "@" + c).ToList();
+			var values = columns.Select(c => $"@{c}").ToList();
 			var parameters = new List<DbParameter>()
 			{
 				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)),
@@ -589,7 +583,7 @@ namespace net.vieapps.Components.Repository
 			foreach (var attribute in attributes)
 			{
 				columns.Add(attribute.Column);
-				values.Add("@" + attribute.Name);
+				values.Add($"@{attribute.Name}");
 
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
 					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
@@ -3169,7 +3163,7 @@ namespace net.vieapps.Components.Repository
 		internal static async Task CreateTableIndexesAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			// prepare
-			var prefix = "IDX_" + context.EntityDefinition.TableName;
+			var prefix = $"IDX_{context.EntityDefinition.TableName}";
 			var indexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ prefix, new List<AttributeInfo>() }
@@ -3184,14 +3178,14 @@ namespace net.vieapps.Components.Repository
 					var attr = attributes[0] as SortableAttribute;
 					if (!string.IsNullOrWhiteSpace(attr.UniqueIndexName))
 					{
-						var name = prefix + "_" + attr.UniqueIndexName;
+						var name = $"{prefix}_{attr.UniqueIndexName}";
 						if (!uniqueIndexes.ContainsKey(name))
 							uniqueIndexes.Add(name, new List<AttributeInfo>());
 						uniqueIndexes[name].Add(attribute);
 
 						if (!string.IsNullOrWhiteSpace(attr.IndexName))
 						{
-							name = prefix + "_" + attr.IndexName;
+							name = $"{prefix}_{attr.IndexName}";
 							if (!indexes.ContainsKey(name))
 								indexes.Add(name, new List<AttributeInfo>());
 							indexes[name].Add(attribute);
@@ -3410,26 +3404,26 @@ namespace net.vieapps.Components.Repository
 
 			var max = dbProviderFactoryName.Equals("MySQL") ? 15 : 30;
 			for (var index = 1; index <= max; index++)
-				columns.Add("SmallText" + index.ToString(), new Tuple<Type, int>(typeof(string), 250));
+				columns.Add($"SmallText{index}", new Tuple<Type, int>(typeof(string), 250));
 
 			max = dbProviderFactoryName.Equals("MySQL") ? 3 : 10;
 			for (var index = 1; index <= max; index++)
-				columns.Add("MediumText" + index.ToString(), new Tuple<Type, int>(typeof(string), 4000));
+				columns.Add($"MediumText{index}", new Tuple<Type, int>(typeof(string), 4000));
 
 			max = 5;
 			for (var index = 1; index <= max; index++)
-				columns.Add("LargeText" + index.ToString(), new Tuple<Type, int>(typeof(string), 0));
+				columns.Add($"LargeText{index}", new Tuple<Type, int>(typeof(string), 0));
 
 			max = dbProviderFactoryName.Equals("MySQL") ? 20 : 40;
 			for (var index = 1; index <= max; index++)
-				columns.Add("Number" + index.ToString(), new Tuple<Type, int>(typeof(int), 0));
+				columns.Add($"Number{index}", new Tuple<Type, int>(typeof(int), 0));
 
 			max = 10;
 			for (var index = 1; index <= max; index++)
-				columns.Add("Decimal" + index.ToString(), new Tuple<Type, int>(typeof(decimal), 0));
+				columns.Add($"Decimal{index}", new Tuple<Type, int>(typeof(decimal), 0));
 
 			for (var index = 1; index <= max; index++)
-				columns.Add("DateTime" + index.ToString(), new Tuple<Type, int>(typeof(string), 19));
+				columns.Add($"DateTime{index}", new Tuple<Type, int>(typeof(string), 19));
 
 			var sql = "";
 			switch (dbProviderFactoryName)
@@ -3442,7 +3436,7 @@ namespace net.vieapps.Components.Repository
 							var precision = info.Value.Item2;
 							var asFixedLength = type.Equals(typeof(string)) && precision.Equals(32);
 							var asCLOB = type.Equals(typeof(string)) && precision.Equals(0);
-							return "[" + info.Key + "] "
+							return $"[{info.Key}] "
 								+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
 								+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
 						}).Join(", ")
