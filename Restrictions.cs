@@ -1046,7 +1046,10 @@ namespace net.vieapps.Components.Repository
 
 	// ------------------------------------------
 
-	public static partial class Extensions
+	/// <summary>
+	/// Extension methods for working with repository objects
+	/// </summary>
+	public static partial class RepositoryExtensions
 	{
 
 		#region ThenBy

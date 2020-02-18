@@ -552,7 +552,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Extension methods for working with repository objects
 	/// </summary>
-	public static partial class Extensions
+	public static partial class RepositoryExtensions
 	{
 		/// <summary>
 		/// Gets the state that determines this attribute is be ignored or not

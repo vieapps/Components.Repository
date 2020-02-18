@@ -1764,7 +1764,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = Extensions.PrepareSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Count() > 0
@@ -2249,7 +2249,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = Extensions.PrepareSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// tables (FROM)
 			var tables = $" FROM {definition.TableName} AS Origin"
@@ -2513,7 +2513,7 @@ namespace net.vieapps.Components.Repository
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
-			var statementsInfo = Extensions.PrepareSqlStatements(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessEntityID, false, definition, null, propertiesInfo);
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Count() > 0
@@ -2976,7 +2976,7 @@ namespace net.vieapps.Components.Repository
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
-			var statementsInfo = Extensions.PrepareSqlStatements(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessEntityID, false, definition, null, propertiesInfo);
 
 			// tables (FROM)
 			var tables = $" FROM {definition.TableName} AS Origin"
