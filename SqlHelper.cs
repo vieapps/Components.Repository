@@ -3561,87 +3561,81 @@ namespace net.vieapps.Components.Repository
 	public sealed class DbProvider
 	{
 		/// <summary>
-		/// The invariant name of the provider
-		/// </summary>
-		public string Invariant { get; private set; }
-
-		/// <summary>
-		/// The type of the provider
-		/// </summary>
-		public Type Type { get; private set; }
-
-		/// <summary>
-		/// The full name of the provider
+		/// Gets the invariant name of the provider
 		/// </summary>
 		public string Name { get; private set; }
 
 		/// <summary>
-		/// The description of the provider
+		/// Gets the type of the provider
+		/// </summary>
+		public Type Type { get; private set; }
+
+		/// <summary>
+		/// Gets the description of the provider
 		/// </summary>
 		public string Description { get; private set; }
 
 		/// <summary>
-		/// Gets the collection of all available SQL Provider
+		/// Gets the collection of all available providers
 		/// </summary>
-		public static Dictionary<string, DbProvider> DbProviders { get; private set; } = null;
+		public static Dictionary<string, DbProvider> DbProviders { get; private set; }
 
 		internal static Dictionary<string, DbProvider> ConstructDbProviderFactories(List<XmlNode> nodes, Action<string, Exception> tracker = null)
 		{
 			DbProvider.DbProviders = DbProvider.DbProviders ?? new Dictionary<string, DbProvider>(StringComparer.OrdinalIgnoreCase);
 			nodes?.ForEach(node =>
 			{
-				var invariant = node.Attributes["invariant"]?.Value;
-				var type = !string.IsNullOrWhiteSpace(invariant) && !DbProvider.DbProviders.ContainsKey(invariant)
-					? Type.GetType(node.Attributes["type"]?.Value)
-					: null;
-
-				if (type == null && !string.IsNullOrWhiteSpace(node.Attributes["type"]?.Value) && !DbProvider.DbProviders.ContainsKey(invariant))
+				var providerName = node.Attributes["invariant"]?.Value ?? node.Attributes["name"]?.Value;
+				var providerType = node.Attributes["type"]?.Value;
+				Type type = null;
+				if (!string.IsNullOrWhiteSpace(providerName) && !string.IsNullOrWhiteSpace(providerType) && !DbProvider.DbProviders.ContainsKey(providerName))
 					try
 					{
-						type = Enyim.Caching.AssemblyLoader.GetType(node.Attributes["type"].Value);
+						type = Enyim.Caching.AssemblyLoader.GetType(providerType);
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while loading a SQL Provider [{invariant}] => {ex.Message}", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while constructing a SQL Provider [{providerName}] => {ex.Message}", ex);
 					}
 
 				if (type != null)
 				{
-					var name = node.Attributes["name"]?.Value;
-					DbProvider.DbProviders[invariant] = new DbProvider
+					DbProvider.DbProviders[providerName] = new DbProvider
 					{
-						Invariant = invariant,
+						Name = providerName,
 						Type = type,
-						Name = name,
-						Description = node.Attributes["description"]?.Value
+						Description = node.Attributes["description"]?.Value ?? $"SQL Provider for {providerName}"
 					};
-					tracker?.Invoke($"Construct SQL Provider [{invariant} - {name}]", null);
+					tracker?.Invoke($"Construct a SQL Provider [{providerName} => {providerType}]", null);
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"Construct SQL Provider [{invariant} - {name}]", null);
+						RepositoryMediator.WriteLogs($"Construct a SQL Provider [{providerName} => {providerType}]", null);
 				}
 			});
 			return DbProvider.DbProviders;
 		}
 
 		internal static Dictionary<string, DbProvider> ConstructDbProviderFactories(XmlNode config, Action<string, Exception> tracker = null)
-			=> DbProvider.ConstructDbProviderFactories(config.SelectNodes("./add") is XmlNodeList nodes ? nodes.ToList() : null, tracker);
+			=> config != null
+				? DbProvider.ConstructDbProviderFactories(config.SelectNodes("add") is XmlNodeList nodes ? nodes.ToList() : null, tracker)
+				: throw new ArgumentException("The configuration is invalid", nameof(config));
+
+		internal static Dictionary<string, DbProvider> ConstructDbProviderFactories(AppConfigurationSectionHandler config, Action<string, Exception> tracker = null)
+			=> DbProvider.ConstructDbProviderFactories(config?.Section, tracker);
 
 		/// <summary>
 		/// Get an instance of a DbProvider for a specified provider name
 		/// </summary>
-		/// <param name="invariant">The invariant name of the SQL Provider Factory need to get (ex: System.Data.SqlClient)</param>
+		/// <param name="name">The invariant name of a SQL Provider</param>
 		/// <returns></returns>
-		public static DbProvider GetProvider(string invariant)
+		public static DbProvider GetProvider(string name)
 		{
-			if (string.IsNullOrWhiteSpace(invariant))
-				throw new ArgumentException("The invariant name is invalid", nameof(invariant));
+			if (string.IsNullOrWhiteSpace(name))
+				throw new ArgumentException("The invariant name is invalid", nameof(name));
 
-			if (DbProvider.DbProviders == null && ConfigurationManager.GetSection("dbProviderFactories") is AppConfigurationSectionHandler config)
-				DbProvider.ConstructDbProviderFactories(config.Section);
+			if (DbProvider.DbProviders == null)
+				DbProvider.ConstructDbProviderFactories(ConfigurationManager.GetSection(UtilityService.GetAppSetting("Section:DbProviderFactories", "net.vieapps.dbproviders")) is AppConfigurationSectionHandler config ? config : ConfigurationManager.GetSection("dbProviderFactories") as AppConfigurationSectionHandler);
 
-			return DbProvider.DbProviders != null && !DbProvider.DbProviders.TryGetValue(invariant, out var provider)
-				? provider
-				: null;
+			return DbProvider.DbProviders.TryGetValue(name, out var provider) ? provider : null;
 		}
 
 		/// <summary>
@@ -3652,35 +3646,35 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Get an instance of a DbProviderFactory for a specified provider name
 		/// </summary>
-		/// <param name="invariant">The invariant name of the SQL Provider Factory need to get (ex: System.Data.SqlClient)</param>
+		/// <param name="name">The invariant name of the SQL Provider Factory</param>
 		/// <returns></returns>
-		public static DbProviderFactory GetFactory(string invariant)
+		public static DbProviderFactory GetFactory(string name)
 		{
-			if (string.IsNullOrWhiteSpace(invariant))
-				throw new ArgumentException("The invariant name is invalid", nameof(invariant));
+			if (string.IsNullOrWhiteSpace(name))
+				throw new ArgumentException("The invariant name is invalid", nameof(name));
 
-			if (!DbProvider.DbProviderFactories.TryGetValue(invariant, out var dbProviderFactory))
+			if (!DbProvider.DbProviderFactories.TryGetValue(name, out var dbProviderFactory))
 				lock (DbProvider.DbProviderFactories)
 				{
-					if (!DbProvider.DbProviderFactories.TryGetValue(invariant, out dbProviderFactory))
+					if (!DbProvider.DbProviderFactories.TryGetValue(name, out dbProviderFactory))
 					{
-						var provider = DbProvider.GetProvider(invariant);
+						var provider = DbProvider.GetProvider(name);
 						if (provider == null)
-							throw new NotImplementedException($"The SQL Provider Factory ({invariant}) is not installed");
-						else if (provider.Type == null)
-							throw new InvalidCastException($"The SQL Provider Factory ({invariant}) is invalid");
+							throw new NotImplementedException($"The SQL Provider Factory ({name}) is not found");
+						if (provider.Type == null)
+							throw new InformationInvalidException($"The SQL Provider Factory ({name}) is invalid");
 
 						var field = provider.Type.GetField("Instance", BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public);
 						if (field != null && field.FieldType.IsSubclassOf(typeof(DbProviderFactory)))
 						{
 							var value = field.GetValue(null);
 							if (value != null)
-								DbProvider.DbProviderFactories[invariant] = dbProviderFactory = (DbProviderFactory)value;
+								DbProvider.DbProviderFactories[name] = dbProviderFactory = (DbProviderFactory)value;
 						}
 					}
 				}
 
-			return dbProviderFactory ?? throw new NotImplementedException($"The SQL Provider Factory ({invariant}) is not installed");
+			return dbProviderFactory ?? throw new NotImplementedException($"The SQL Provider Factory ({name}) is not installed");
 		}
 	}
 	#endregion
