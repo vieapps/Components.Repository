@@ -16,6 +16,7 @@ using Newtonsoft.Json.Linq;
 using MongoDB.Bson.Serialization.Attributes;
 
 using net.vieapps.Components.Utility;
+using net.vieapps.Components.Caching;
 #endregion
 
 namespace net.vieapps.Components.Repository
@@ -359,7 +360,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the caching object for processing with caching data of this entity
 		/// </summary>
-		public Caching.Cache Cache { get; internal set; }
+		public ICache Cache { get; internal set; }
 
 		/// <summary>
 		/// Gets the primary data-source
@@ -549,8 +550,8 @@ namespace net.vieapps.Components.Repository
 			if (info.CacheClass != null && !string.IsNullOrWhiteSpace(info.CacheName))
 			{
 				var cache = info.CacheClass.GetStaticObject(info.CacheName);
-				definition.Cache = cache != null && cache is Caching.Cache
-					? cache as Caching.Cache
+				definition.Cache = cache != null && cache is ICache
+					? cache as ICache
 					: null;
 			}
 
@@ -797,7 +798,7 @@ namespace net.vieapps.Components.Repository
 				var cacheProvider = settings["cacheProvider"] != null
 					? (settings["cacheProvider"] as JValue).Value as string
 					: null;
-				definition.Cache = new Caching.Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
+				definition.Cache = new Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
 			}
 
 			definition.AutoSync = settings["autoSync"] != null
