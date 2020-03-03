@@ -51,8 +51,8 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)'!='true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.2002.5" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.3.2002.5" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.2003.2" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.3.2003.2" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)'=='true'">
