@@ -209,13 +209,12 @@ namespace net.vieapps.Components.Repository
 				? selector()
 				: new[] { Assembly.GetCallingAssembly() }.Concat(Assembly.GetCallingAssembly()
 					.GetReferencedAssemblies()
-					.Where(n => !n.Name.IsStartsWith("api-ms") && !n.Name.IsStartsWith("clr") && !n.Name.IsStartsWith("mscor") && !n.Name.IsStartsWith("sos") && !n.Name.IsStartsWith("lib")
-						&& !n.Name.IsStartsWith("System") && !n.Name.IsStartsWith("Microsoft") && !n.Name.IsStartsWith("Windows") && !n.Name.IsEquals("NETStandard")
-						&& !n.Name.IsStartsWith("Newtonsoft") && !n.Name.IsStartsWith("WampSharp") && !n.Name.IsStartsWith("Castle.") && !n.Name.IsStartsWith("StackExchange.")
-						&& !n.Name.IsStartsWith("MongoDB") && !n.Name.IsStartsWith("MySql") && !n.Name.IsStartsWith("Npgsql") && !n.Name.IsStartsWith("VIEApps.Components")
+					.Where(an => !an.Name.IsStartsWith("api-ms") && !an.Name.IsStartsWith("clr") && !an.Name.IsStartsWith("mscor") && !an.Name.IsStartsWith("sos") && !an.Name.IsStartsWith("lib")
+						&& !an.Name.IsStartsWith("System") && !an.Name.IsStartsWith("Microsoft") && !an.Name.IsStartsWith("Windows") && !an.Name.IsEquals("NETStandard")
+						&& !an.Name.IsStartsWith("Newtonsoft") && !an.Name.IsStartsWith("WampSharp") && !an.Name.IsStartsWith("Castle.") && !an.Name.IsStartsWith("StackExchange.")
+						&& !an.Name.IsStartsWith("MongoDB") && !an.Name.IsStartsWith("MySql") && !an.Name.IsStartsWith("Npgsql") && !an.Name.IsStartsWith("VIEApps.Components")
 					)
-					.Select(n => Assembly.Load(n))
-					.ToList()
+					.Select(an => Assembly.Load(an))
 				),
 				tracker
 			);
