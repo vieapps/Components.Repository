@@ -67,6 +67,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public object Value { get; set; }
 
+		/// <summary>
+		/// Gets or sets the extra information
+		/// </summary>
+		public string Extra { get; set; }
+
 		public void Parse(JObject json)
 		{
 			if (json != null)
@@ -74,6 +79,7 @@ namespace net.vieapps.Components.Repository
 				this.Attribute = json.Get<string>("Attribute");
 				this.Operator = (json.Get<string>("Operator") ?? "Equals").TryToEnum(out CompareOperator @operator) ? @operator : CompareOperator.Equals;
 				this.Value = (json["Value"] as JValue)?.Value;
+				this.Extra = json.Get<string>("Extra");
 			}
 		}
 
@@ -82,7 +88,8 @@ namespace net.vieapps.Components.Repository
 			{
 				{ "Attribute", this.Attribute },
 				{ "Operator", this.Operator.ToString() },
-				{ "Value", new JValue(this.Value) }
+				{ "Value", new JValue(this.Value) },
+				{ "Extra", this.Extra }
 			};
 
 		/// <summary>
@@ -141,7 +148,7 @@ namespace net.vieapps.Components.Repository
 				if (this.Attribute == null || this.Value == null)
 					return this.Value;
 
-				else if (standardProperties != null && standardProperties.TryGetValue(this.Attribute, out AttributeInfo standardProperty) && standardProperty != null)
+				else if (standardProperties != null && standardProperties.TryGetValue(this.Attribute, out var standardProperty) && standardProperty != null)
 				{
 					if (standardProperty.GetType().IsDateTimeType())
 					{
@@ -158,7 +165,7 @@ namespace net.vieapps.Components.Repository
 							: this.Value;
 				}
 
-				else if (extendedProperties != null && extendedProperties.TryGetValue(this.Attribute, out ExtendedPropertyDefinition extendedProperty) && extendedProperty != null)
+				else if (extendedProperties != null && extendedProperties.TryGetValue(this.Attribute, out var extendedProperty) && extendedProperty != null)
 					switch (extendedProperty.Mode)
 					{
 						case ExtendedPropertyMode.SmallText:
