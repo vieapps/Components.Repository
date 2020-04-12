@@ -8,14 +8,13 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Xml.Serialization;
 using System.Xml.Linq;
-
+using System.ComponentModel;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
 using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-
 using net.vieapps.Components.Utility;
 using net.vieapps.Components.Security;
 #endregion
@@ -26,12 +25,13 @@ namespace net.vieapps.Components.Repository
 	/// Presents the base of a repository entity in a repository
 	/// </summary>
 	[Serializable]
-	public abstract class RepositoryBase
+	public abstract class RepositoryBase : IPropertyChangedNotifier
 	{
 		/// <summary>
 		/// Initialize a new instance
 		/// </summary>
-		public RepositoryBase() { }
+		public RepositoryBase()
+			=> this.AssignPropertyChangedEventHandler();
 
 		#region Mandatory properties
 		/// <summary>
@@ -216,6 +216,26 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public override string ToString()
 			=> this.ToString(Formatting.None);
+		#endregion
+
+		#region Property changed
+		[field: NonSerialized]
+		public virtual event PropertyChangedEventHandler PropertyChanged;
+
+		[OnDeserialized]
+		void OnDeserialized(StreamingContext context)
+			=> this.AssignPropertyChangedEventHandler();
+
+		public virtual void OnPropertyChanged(object sender, PropertyChangedEventArgs args)
+			=> this.PropertyChanged?.Invoke(sender, args);
+
+		/// <summary>
+		/// Assigns the event handler to process changed of a property
+		/// </summary>
+		protected virtual void AssignPropertyChangedEventHandler()
+			=> this.PropertyChanged += (_, args) => this.ProcessPropertyChanged(args.PropertyName);
+
+		public virtual void ProcessPropertyChanged(string name) { }
 		#endregion
 
 	}
@@ -3107,7 +3127,7 @@ namespace net.vieapps.Components.Repository
 		public virtual bool TryGetProperty(string name, out object value)
 		{
 			value = null;
-			var attributes = this.GetProperties().ToDictionary(attribute => attribute.Name);
+			var attributes = this.GetProperties().ToDictionary(attribute => attribute.Name, StringComparer.OrdinalIgnoreCase);
 			try
 			{
 				if (attributes.ContainsKey(name))
@@ -3734,7 +3754,7 @@ namespace net.vieapps.Components.Repository
 
 		internal static new VersionContent Prepare<T>(T @object, Action<VersionContent> onPreCompleted = null) where T : class
 		{
-			var content =  ObjectService.CreateInstance<VersionContent>();
+			var content = ObjectService.CreateInstance<VersionContent>();
 			content.CopyFrom(TrashContent.Prepare(@object));
 			content.ID = UtilityService.NewUUID;
 			content.ObjectID = @object.GetEntityID();
