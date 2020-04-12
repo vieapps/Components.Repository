@@ -226,8 +226,8 @@ namespace net.vieapps.Components.Repository
 		void OnDeserialized(StreamingContext context)
 			=> this.AssignPropertyChangedEventHandler();
 
-		public virtual void OnPropertyChanged(object sender, PropertyChangedEventArgs args)
-			=> this.PropertyChanged?.Invoke(sender, args);
+		public virtual void OnPropertyChanged(string name, object sender = null)
+			=> this.PropertyChanged?.Invoke(sender ?? this, new PropertyChangedEventArgs(name));
 
 		/// <summary>
 		/// Assigns the event handler to process changed of a property
