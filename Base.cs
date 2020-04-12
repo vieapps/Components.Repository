@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Xml.Serialization;
 using System.Xml.Linq;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -226,7 +227,7 @@ namespace net.vieapps.Components.Repository
 		void OnDeserialized(StreamingContext context)
 			=> this.AssignPropertyChangedEventHandler();
 
-		public virtual void OnPropertyChanged(string name, object sender = null)
+		public virtual void NotifyPropertyChanged([CallerMemberName] string name = "", object sender = null)
 			=> this.PropertyChanged?.Invoke(sender ?? this, new PropertyChangedEventArgs(name));
 
 		/// <summary>
