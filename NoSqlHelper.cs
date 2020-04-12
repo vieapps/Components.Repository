@@ -851,8 +851,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options for updating</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-	public static Task<ReplaceOneResult> ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, ReplaceOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> context.GetCollection<T>(dataSource).ReplaceAsync(context.NoSqlSession, @object, options, cancellationToken);
+		public static Task<ReplaceOneResult> ReplaceAsync<T>(this RepositoryContext context, DataSource dataSource, T @object, ReplaceOptions options = null, CancellationToken cancellationToken = default) where T : class
+				=> context.GetCollection<T>(dataSource).ReplaceAsync(context.NoSqlSession, @object, options, cancellationToken);
 		#endregion
 
 		#region Update
@@ -898,8 +898,8 @@ namespace net.vieapps.Components.Repository
 			// get collection of all attributes
 			var objAttributes = @object.GetAttributes();
 
-			// check generic of primitive (workaround)
-			var gotGenericPrimitives = false;
+			// check to use replace (when got generic of primitive or class type member - workaround)
+			var useReplace = false;
 			foreach (var name in attributes)
 			{
 				var attribute = !string.IsNullOrWhiteSpace(name)
@@ -908,14 +908,14 @@ namespace net.vieapps.Components.Repository
 
 				if (attribute != null)
 				{
-					gotGenericPrimitives = (attribute.Type.IsGenericListOrHashSet() && attribute.Type.GenericTypeArguments[0].IsClassType()) || (attribute.Type.IsArray && attribute.Type.GetElementType().IsClassType());
-					if (gotGenericPrimitives)
+					useReplace = attribute.Type.IsClassType() || (attribute.Type.IsGenericListOrHashSet() && attribute.Type.GenericTypeArguments[0].IsClassType()) || (attribute.Type.IsArray && attribute.Type.GetElementType().IsClassType());
+					if (useReplace)
 						break;
 				}
 			}
 
-			// replace whole document when got a generic of primitive (workaround)
-			if (gotGenericPrimitives)
+			// replace whole document (when got generic of primitive or class type member - workaround)
+			if (useReplace)
 			{
 				collection.ReplaceOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, new ReplaceOptions { IsUpsert = options != null ? options.IsUpsert : true });
 
@@ -923,7 +923,7 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs(new[]
 					{
-						$"NoSQL: updated attributes got a generic primitive, then switch to use Replace instead of Update",
+						$"NoSQL: updated attributes got a generic primitive or a class type, then switch to use Replace instead of Update",
 						$"- Execution times: {stopwatch.GetElapsedTimes()}",
 						$"- Updated attributes: [{attributes.ToString(", ")}]",
 						$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
@@ -1061,8 +1061,8 @@ namespace net.vieapps.Components.Repository
 			// get collection of all attributes
 			var objAttributes = @object.GetAttributes();
 
-			// check generic of primitive (workaround)
-			var gotGenericPrimitives = false;
+			// check to use replace (when got generic of primitive or class type member - workaround)
+			var useReplace = false;
 			foreach (var name in attributes)
 			{
 				var attribute = !string.IsNullOrWhiteSpace(name)
@@ -1071,14 +1071,14 @@ namespace net.vieapps.Components.Repository
 
 				if (attribute != null)
 				{
-					gotGenericPrimitives = (attribute.Type.IsGenericListOrHashSet() && attribute.Type.GenericTypeArguments[0].IsClassType()) || (attribute.Type.IsArray && attribute.Type.GetElementType().IsClassType());
-					if (gotGenericPrimitives)
+					useReplace = attribute.Type.IsClassType() || (attribute.Type.IsGenericListOrHashSet() && attribute.Type.GenericTypeArguments[0].IsClassType()) || (attribute.Type.IsArray && attribute.Type.GetElementType().IsClassType());
+					if (useReplace)
 						break;
 				}
 			}
 
-			// replace whole document when got a generic of primitive (workaround)
-			if (gotGenericPrimitives)
+			// replace whole document (when got generic of primitive or class type member - workaround)
+			if (useReplace)
 			{
 				await collection.ReplaceOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, new ReplaceOptions { IsUpsert = options != null ? options.IsUpsert : true }, cancellationToken).ConfigureAwait(false);
 
@@ -1086,7 +1086,7 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs(new[]
 					{
-						$"NoSQL: updated attributes got a generic primitive, then switch to use Replace instead of Update",
+						$"NoSQL: updated attributes got a generic primitive or a class type, then switch to use Replace instead of Update",
 						$"- Execution times: {stopwatch.GetElapsedTimes()}",
 						$"- Updated attributes: [{attributes.ToString(", ")}]",
 						$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
