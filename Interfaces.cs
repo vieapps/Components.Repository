@@ -22,10 +22,15 @@ using net.vieapps.Components.Security;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Presents a business repository (means a business module at the run-time)
+	/// Presents a run-time repository (means a business module at the run-time)
 	/// </summary>
-	public interface IRepository
+	public interface IRuntimeRepository
 	{
+		/// <summary>
+		/// Gets the identity
+		/// </summary>
+		string ID { get; }
+
 		/// <summary>
 		/// Gets the title
 		/// </summary>
@@ -37,33 +42,33 @@ namespace net.vieapps.Components.Repository
 		string Description { get; }
 
 		/// <summary>
-		/// Gets the identity
-		/// </summary>
-		string ID { get; }
-
-		/// <summary>
-		/// Gets the identity of a business system that the object is belong to
+		/// Gets the identity of a system that the run-time respository is belong to
 		/// </summary>
 		string SystemID { get; }
-
-		/// <summary>
-		/// Gets the name of the service that associates with this repository
-		/// </summary>
-		string ServiceName { get; }
 
 		/// <summary>
 		/// Gets the definition of the repository (means module definition)
 		/// </summary>
-		RepositoryDefinition Definition { get; }
+		RepositoryDefinition RepositoryDefinition { get; }
+
+		/// <summary>
+		/// Gets the collection of run-time entities (means the collection of business content-types)
+		/// </summary>
+		List<IRuntimeRepositoryEntity> RuntimeRepositoryEntities { get; }
 	}
 
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents a business entity of a business repository (means a business content-type at the run-time)
+	/// Presents a run-time repository entity (means a business content-type at the run-time)
 	/// </summary>
-	public interface IRepositoryEntity
+	public interface IRuntimeRepositoryEntity
 	{
+		/// <summary>
+		/// Gets the identity
+		/// </summary>
+		string ID { get; }
+
 		/// <summary>
 		/// Gets the title
 		/// </summary>
@@ -75,67 +80,52 @@ namespace net.vieapps.Components.Repository
 		string Description { get; }
 
 		/// <summary>
-		/// Gets the identity
-		/// </summary>
-		string ID { get; }
-
-		/// <summary>
-		/// Gets the identity of a business system that the object is belong to
-		/// </summary>
-		string SystemID { get; }
-
-		/// <summary>
-		/// Gets the identity of a business repository that the object is belong to
-		/// </summary>
-		string RepositoryID { get; }
-
-		/// <summary>
-		/// Gets the name of the service that associates with this repository entity
-		/// </summary>
-		string ServiceName { get; }
-
-		/// <summary>
-		/// Gets the name of the service's object that associates with this repository entity
-		/// </summary>
-		string ObjectName { get; }
-
-		/// <summary>
-		/// Gets the state to create new version when an entity object is updated
+		/// Gets the state to create new version when a run-time entity object was updated
 		/// </summary>
 		bool CreateNewVersionWhenUpdated { get; }
 
 		/// <summary>
-		/// Gets the definition of custom properties
+		/// Gets the collection of extended property definition (means custom properties)
 		/// </summary>
 		List<ExtendedPropertyDefinition> ExtendedPropertyDefinitions { get; }
 
 		/// <summary>
-		/// Gets the definition for working with custom properties on UI
+		/// Gets the identity of a system that the run-time entity is belong to
 		/// </summary>
-		ExtendedUIDefinition ExtendedUIDefinition { get; }
+		string SystemID { get; }
 
 		/// <summary>
-		/// Gets the definition of the entity (means content-type definition)
+		/// Gets the identity of a run-time repository that the run-time entity is belong to
 		/// </summary>
-		EntityDefinition Definition { get; }
+		string RepositoryID { get; }
+
+		/// <summary>
+		/// Gets the entity definition (means content-type definition)
+		/// </summary>
+		EntityDefinition EntityDefinition { get; }
+
+		/// <summary>
+		/// Gets the run-time repository (means module definition)
+		/// </summary>
+		IRuntimeRepository RuntimeRepository { get; }
 	}
 
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents a business entity (means a business object at the run-time)
+	/// Presents a business entity (means a business object of a business content-type at the run-time)
 	/// </summary>
 	public interface IBusinessEntity
 	{
 		/// <summary>
-		/// Gets the title
-		/// </summary>
-		string Title { get; }
-
-		/// <summary>
 		/// Gets the identity
 		/// </summary>
 		string ID { get; }
+
+		/// <summary>
+		/// Gets the title
+		/// </summary>
+		string Title { get; }
 
 		/// <summary>
 		/// Gets the identity of a system (at run-time) that the object is belong to
@@ -151,16 +141,6 @@ namespace net.vieapps.Components.Repository
 		/// Gets the identity of a business entity (at run-time) that the object is belong to
 		/// </summary>
 		string EntityID { get; }
-
-		/// <summary>
-		/// Gets the name of the service that associates with this business entity
-		/// </summary>
-		string ServiceName { get; }
-
-		/// <summary>
-		/// Gets the name of the service's object that associates with this business entity
-		/// </summary>
-		string ObjectName { get; }
 
 		/// <summary>
 		/// Gets or sets the collection of extended properties

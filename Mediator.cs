@@ -69,6 +69,15 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
+		/// Gets the repository definition that matched with the type
+		/// </summary>
+		/// <param name="typeName">The assembly-qualified name of the type to get</param>
+		/// <param name="verify">true to verify</param>
+		/// <returns></returns>
+		public static RepositoryDefinition GetRepositoryDefinition(string typeName, bool verify = false)
+			=> RepositoryMediator.GetRepositoryDefinition(Type.GetType(typeName), verify);
+
+		/// <summary>
 		/// Gets the repository definition that matched with the type name
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -93,6 +102,15 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
+		/// Gets the repository entity definition that matched with the type
+		/// </summary>
+		/// <param name="typeName">The assembly-qualified name of the type to get</param>
+		/// <param name="verify">true to verify</param>
+		/// <returns></returns>
+		public static EntityDefinition GetEntityDefinition(string typeName, bool verify = false)
+			=> RepositoryMediator.GetEntityDefinition(Type.GetType(typeName), verify);
+
+		/// <summary>
 		/// Gets the repository entity definition that matched with the type of a class
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
@@ -108,12 +126,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="systemID"></param>
 		/// <returns></returns>
-		public static List<IRepository> GetRuntimeRepositories(string systemID)
+		public static List<IRuntimeRepository> GetRuntimeRepositories(string systemID)
 		{
 			if (string.IsNullOrWhiteSpace(systemID))
 				return null;
 
-			var repositories = new List<IRepository>();
+			var repositories = new List<IRuntimeRepository>();
 			RepositoryMediator.RepositoryDefinitions
 				.Where(kvp => kvp.Value.RuntimeRepositories != null && kvp.Value.RuntimeRepositories.Count > 0)
 				.ForEach(kvp => repositories = repositories.Concat(kvp.Value.RuntimeRepositories.Where(data => data.Value.SystemID.IsEquals(systemID)).Select(data => data.Value)).ToList());
@@ -126,7 +144,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="repositoryID"></param>
 		/// <returns></returns>
-		public static IRepository GetRuntimeRepository(string repositoryID)
+		public static IRuntimeRepository GetRuntimeRepository(string repositoryID)
 		{
 			if (string.IsNullOrWhiteSpace(repositoryID))
 				return null;
@@ -146,7 +164,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="entityID"></param>
 		/// <returns></returns>
-		public static IRepositoryEntity GetRuntimeRepositoryEntity(string entityID)
+		public static IRuntimeRepositoryEntity GetRuntimeRepositoryEntity(string entityID)
 		{
 			if (string.IsNullOrWhiteSpace(entityID))
 				return null;
@@ -478,7 +496,7 @@ namespace net.vieapps.Components.Repository
 			=> dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString;
 		#endregion
 
-		#region Validate
+		#region Validate & Update object with state data
 		internal static bool Validate(EntityDefinition definition, Dictionary<string, object> stateData)
 		{
 			var changed = false;
@@ -494,7 +512,7 @@ namespace net.vieapps.Components.Repository
 				if (value == null)
 				{
 					if (attribute.Name.Equals(definition.PrimaryKey))
-						throw new InformationRequiredException("The value of the primary-key is required");
+						throw new InformationRequiredException("The value of the primary key is required");
 					else if (attribute.NotNull)
 						throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow null)");
 				}
@@ -549,6 +567,20 @@ namespace net.vieapps.Components.Repository
 
 			return changed;
 		}
+
+		static void UpdateObject<T>(this T @object, Dictionary<string, object> stateData) where T : class
+			=> stateData.ForEach(kvp =>
+			{
+				if (kvp.Key.StartsWith("ExtendedProperties."))
+				{
+					var name = kvp.Key.Replace("ExtendedProperties.", "");
+					(@object as IBusinessEntity).ExtendedProperties[name] = kvp.Value;
+					if (@object is IPropertyChangedNotifier)
+						(@object as IPropertyChangedNotifier).NotifyPropertyChanged(name);
+				}
+				else
+					@object.SetAttributeValue(kvp.Key, kvp.Value);
+			});
 		#endregion
 
 		#region Create
@@ -568,16 +600,7 @@ namespace net.vieapps.Components.Repository
 				var currentState = context.SetCurrentState(@object);
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					// re-update object
-					currentState.ForEach(kvp =>
-					{
-						if (kvp.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
-						else
-							@object.SetAttributeValue(kvp.Key, kvp.Value);
-					});
-
-					// update state
+					@object.UpdateObject(currentState);
 					context.SetCurrentState(@object, currentState);
 				}
 
@@ -662,16 +685,7 @@ namespace net.vieapps.Components.Repository
 				var currentState = context.SetCurrentState(@object);
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					// re-update object
-					currentState.ForEach(kvp =>
-					{
-						if (kvp.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
-						else
-							@object.SetAttributeValue(kvp.Key, kvp.Value);
-					});
-
-					// update state
+					@object.UpdateObject(currentState);
 					context.SetCurrentState(@object, currentState);
 				}
 
@@ -1326,7 +1340,7 @@ namespace net.vieapps.Components.Repository
 				? RepositoryMediator.GetRuntimeRepositoryEntity(definitionID)
 				: null;
 			return entity != null
-				? RepositoryMediator.Get(entity.Definition, objectID, processSecondaryWhenNotFound)
+				? RepositoryMediator.Get(entity.EntityDefinition, objectID, processSecondaryWhenNotFound)
 				: null;
 		}
 
@@ -1447,7 +1461,7 @@ namespace net.vieapps.Components.Repository
 				? RepositoryMediator.GetRuntimeRepositoryEntity(definitionID)
 				: null;
 			return entity != null
-				? RepositoryMediator.GetAsync(entity.Definition, objectID, cancellationToken, processSecondaryWhenNotFound)
+				? RepositoryMediator.GetAsync(entity.EntityDefinition, objectID, cancellationToken, processSecondaryWhenNotFound)
 				: Task.FromResult<object>(null);
 		}
 		#endregion
@@ -1484,16 +1498,7 @@ namespace net.vieapps.Components.Repository
 				// validate & re-update object
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					// re-update object
-					currentState.ForEach(kvp =>
-					{
-						if (kvp.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
-						else
-							@object.SetAttributeValue(kvp.Key, kvp.Value);
-					});
-
-					// update state
+					@object.UpdateObject(currentState);
 					context.SetCurrentState(@object, currentState);
 				}
 
@@ -1618,16 +1623,7 @@ namespace net.vieapps.Components.Repository
 				// validate & re-update object
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					// re-update object
-					currentState.ForEach(kvp =>
-					{
-						if (kvp.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
-						else
-							@object.SetAttributeValue(kvp.Key, kvp.Value);
-					});
-
-					// update state
+					@object.UpdateObject(currentState);
 					context.SetCurrentState(@object, currentState);
 				}
 
@@ -1762,16 +1758,7 @@ namespace net.vieapps.Components.Repository
 				// validate & re-update object
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					// re-update object
-					currentState.ForEach(kvp =>
-					{
-						if (kvp.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
-						else
-							@object.SetAttributeValue(kvp.Key, kvp.Value);
-					});
-
-					// update state
+					@object.UpdateObject(currentState);
 					context.SetCurrentState(@object, currentState);
 				}
 
@@ -1893,16 +1880,7 @@ namespace net.vieapps.Components.Repository
 				// validate & re-update object
 				if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
 				{
-					// re-update object
-					currentState.ForEach(kvp =>
-					{
-						if (kvp.Key.StartsWith("ExtendedProperties."))
-							(@object as IBusinessEntity).ExtendedProperties[kvp.Key.Replace("ExtendedProperties.", "")] = kvp.Value;
-						else
-							@object.SetAttributeValue(kvp.Key, kvp.Value);
-					});
-
-					// update state
+					@object.UpdateObject(currentState);
 					context.SetCurrentState(@object, currentState);
 				}
 
@@ -3841,7 +3819,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Rollback version
+		#region Rollback from version content
 		/// <summary>
 		/// Rollbacks an object from a version content
 		/// </summary>
@@ -3874,7 +3852,19 @@ namespace net.vieapps.Components.Repository
 				// create new version of current object
 				if (@object is RepositoryBase)
 					(@object as RepositoryBase).SearchScore = null;
-				RepositoryMediator.CreateVersion(context, @object, userID);
+				RepositoryMediator.CreateVersion(context, @object, !string.IsNullOrWhiteSpace(userID) && userID.IsValidUUID() ? userID : null);
+
+				// audits
+				if (version.Object is IBusinessEntity && !string.IsNullOrWhiteSpace(userID) && userID.IsValidUUID())
+					try
+					{
+						version.Object.SetAttributeValue("_LastModified", DateTime.Now);
+						version.Object.SetAttributeValue("_LastModifiedID", userID);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"ROLLBACK: Cannot update time and identity of user who performs the rollback action [{(version.Object as T).GetCacheKey(false)}] =>{ex.Message}", ex);
+					}
 
 				// rollback (update) with original object
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
@@ -3883,9 +3873,8 @@ namespace net.vieapps.Components.Repository
 					context.Replace(dataSource, version.Object as T);
 
 				// update into cache storage
-				if (context.EntityDefinition.Cache != null)
-					if (context.EntityDefinition.Cache.Set(version.Object as T))
-						RepositoryMediator.WriteLogs($"ROLLBACK: Add the object into the cache storage successful [{(version.Object as T).GetCacheKey(false)}]");
+				if (context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Set(version.Object as T) && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"ROLLBACK: Add the object into the cache storage successful [{(version.Object as T).GetCacheKey(false)}]");
 
 				// call post-handlers
 				context.CallPostUpdateHandlers(version.Object as T, changed, true);
@@ -3993,7 +3982,19 @@ namespace net.vieapps.Components.Repository
 				// create new version of current object
 				if (@object is RepositoryBase)
 					(@object as RepositoryBase).SearchScore = null;
-				await RepositoryMediator.CreateVersionAsync(context, @object, userID, cancellationToken).ConfigureAwait(false);
+				await RepositoryMediator.CreateVersionAsync(context, @object, !string.IsNullOrWhiteSpace(userID) && userID.IsValidUUID() ? userID : null, cancellationToken).ConfigureAwait(false);
+
+				// audits
+				if (version.Object is IBusinessEntity && !string.IsNullOrWhiteSpace(userID) && userID.IsValidUUID())
+					try
+					{
+						version.Object.SetAttributeValue("_LastModified", DateTime.Now);
+						version.Object.SetAttributeValue("_LastModifiedID", userID);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"ROLLBACK: Cannot update time and identity of user who performs the rollback action [{(version.Object as T).GetCacheKey(false)}] =>{ex.Message}", ex);
+					}
 
 				// rollback (update) with original object
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
@@ -4002,9 +4003,8 @@ namespace net.vieapps.Components.Repository
 					await context.ReplaceAsync(dataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
 
 				// update into cache storage
-				if (context.EntityDefinition.Cache != null)
-					if (await context.EntityDefinition.Cache.SetAsync(version.Object as T, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"ROLLBACK: Add the object into the cache storage successful [{(version.Object as T).GetCacheKey(false)}]");
+				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(version.Object as T, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"ROLLBACK: Add the object into the cache storage successful [{(version.Object as T).GetCacheKey(false)}]");
 
 				// call post-handlers
 				await context.CallPostUpdateHandlersAsync(version.Object as T, changed, true, cancellationToken).ConfigureAwait(false);
@@ -4798,7 +4798,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Restore trash
+		#region Restore from trash content
 		/// <summary>
 		/// Restores an object from a trash content
 		/// </summary>
@@ -4829,6 +4829,18 @@ namespace net.vieapps.Components.Repository
 				if (context.CallPreCreateHandlers(trashContent.Object, true))
 					return null;
 
+				// audits
+				if (trashContent.Object is IBusinessEntity && !string.IsNullOrWhiteSpace(userID) && userID.IsValidUUID())
+					try
+					{
+						trashContent.Object.SetAttributeValue("_LastModified", DateTime.Now);
+						trashContent.Object.SetAttributeValue("_LastModifiedID", userID);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"RESTORE: Cannot update time and identity of user who performs the restore action [{(trashContent.Object as T).GetCacheKey(false)}] =>{ex.Message}", ex);
+					}
+
 				// restore (create) with original object
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					context.Create(dataSource, trashContent.Object as T, null);
@@ -4836,9 +4848,8 @@ namespace net.vieapps.Components.Repository
 					context.Create(dataSource, trashContent.Object as T);
 
 				// update into cache storage
-				if (context.EntityDefinition.Cache != null)
-					if (context.EntityDefinition.Cache.Set(trashContent.Object as T) && RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"RESTORE: Add the object into the cache storage successful [{(trashContent.Object as T).GetCacheKey(false)}]");
+				if (context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Set(trashContent.Object as T) && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"RESTORE: Add the object into the cache storage successful [{(trashContent.Object as T).GetCacheKey(false)}]");
 
 				// call post-handlers
 				context.CallPostCreateHandlers(trashContent.Object as T, true);
@@ -4898,7 +4909,7 @@ namespace net.vieapps.Components.Repository
 			var trashs = TrashContent.Find(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<VersionContent>.Equals("ID", trashContentID), null, 0, 1);
 			return trashs != null && trashs.Count > 0
 				? RepositoryMediator.Restore<T>(context, trashs.First(), userID)
-				:  throw new InformationInvalidException("The identity of trash content is invalid");
+				: throw new InformationInvalidException("The identity of trash content is invalid");
 		}
 
 		/// <summary>
@@ -4947,6 +4958,18 @@ namespace net.vieapps.Components.Repository
 				if (await context.CallPreCreateHandlersAsync(trashContent.Object, true, cancellationToken).ConfigureAwait(false))
 					return null;
 
+				// audits
+				if (trashContent.Object is IBusinessEntity && !string.IsNullOrWhiteSpace(userID) && userID.IsValidUUID())
+					try
+					{
+						trashContent.Object.SetAttributeValue("_LastModified", DateTime.Now);
+						trashContent.Object.SetAttributeValue("_LastModifiedID", userID);
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"RESTORE: Cannot update time and identity of user who performs the restore action [{(trashContent.Object as T).GetCacheKey(false)}] =>{ex.Message}", ex);
+					}
+
 				// restore (create) with original object
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 					await context.CreateAsync(dataSource, trashContent.Object as T, null, cancellationToken).ConfigureAwait(false);
@@ -4954,9 +4977,8 @@ namespace net.vieapps.Components.Repository
 					await context.CreateAsync(dataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
 
 				// update into cache storage
-				if (context.EntityDefinition.Cache != null)
-					if (await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"RESTORE: Add the object into the cache storage successful [{(trashContent.Object as T).GetCacheKey(false)}]");
+				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"RESTORE: Add the object into the cache storage successful [{(trashContent.Object as T).GetCacheKey(false)}]");
 
 				// call post-handlers
 				await context.CallPostCreateHandlersAsync(trashContent.Object as T, true, cancellationToken).ConfigureAwait(false);
@@ -5834,7 +5856,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while running the pre-create handler \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-create handler \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 				}
 			return false;
 		}
@@ -5851,11 +5873,11 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-create handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-create handler (async) \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while running the pre-create handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-create handler (async) \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 				}
 			return false;
 		}
@@ -5871,7 +5893,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while running the post-create handler \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-create handler \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
 				}))
 				.ToList();
@@ -5887,11 +5909,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (OperationCanceledException)
 					{
-						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-create handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-create handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while running the post-create handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-create handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
 				}, cancellationToken, false).ConfigureAwait(false);
 		#endregion
@@ -5909,7 +5931,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while running the pre-get handler \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-get handler \"{handlers[index]}\" [{typeof(T)}#{id}]", ex);
 				}
 			return false;
 		}
@@ -5926,11 +5948,11 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-get handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]");
+					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-get handler (async) \"{handlers[index]}\" [{typeof(T)}#{id}]");
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while running the pre-get handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{id}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-get handler (async) \"{handlers[index]}\" [{typeof(T)}#{id}]", ex);
 				}
 			return false;
 		}
@@ -5946,7 +5968,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while running the post-get handler \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-get handler \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
 				}))
 				.ToList();
@@ -5962,11 +5984,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (OperationCanceledException)
 					{
-						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-get handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-get handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while running the post-get handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-get handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
 				}, cancellationToken, false).ConfigureAwait(false);
 		#endregion
@@ -5984,7 +6006,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while running the pre-update handler \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-update handler \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 				}
 			return false;
 		}
@@ -6001,11 +6023,11 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-update handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-update handler (async) \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while running the pre-update handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-update handler (async) \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 				}
 			return false;
 		}
@@ -6021,7 +6043,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while running the post-update handler \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-update handler \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
 				}))
 				.ToList();
@@ -6037,11 +6059,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (OperationCanceledException)
 					{
-						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-update handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-update handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while running the post-update handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-update handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
 				}, cancellationToken, false).ConfigureAwait(false);
 		#endregion
@@ -6059,7 +6081,7 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while running the pre-delete handler \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-delete handler \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 				}
 			return false;
 		}
@@ -6076,11 +6098,11 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (OperationCanceledException)
 				{
-					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-delete handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+					RepositoryMediator.WriteLogs($"Operation was cancelled while running the pre-delete handler (async) \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while running the pre-delete handler (async) \"{handlers[index].ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while running the pre-delete handler (async) \"{handlers[index]}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 				}
 			return false;
 		}
@@ -6096,7 +6118,7 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while running the post-delete handler \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-delete handler \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
 				}))
 				.ToList();
@@ -6112,11 +6134,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (OperationCanceledException)
 					{
-						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-delete handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]");
+						RepositoryMediator.WriteLogs($"Operation was cancelled while running the post-delete handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]");
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while running the post-delete handler (async) \"{type.ToString()}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while running the post-delete handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
 				}, cancellationToken, false).ConfigureAwait(false);
 		#endregion
@@ -6198,7 +6220,7 @@ namespace net.vieapps.Components.Repository
 			=> objects.ToXml(null, false, onItemPreCompleted);
 		#endregion
 
-		#region Generate form controls
+		#region Generate form/view controls
 		internal static Dictionary<Type, string> FormControlDataTypes { get; } = new Dictionary<Type, string>()
 		{
 			{ typeof(string), "text" },
@@ -6225,139 +6247,84 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				return RepositoryMediator.GetEntityDefinition(type).Attributes;
+				return RepositoryMediator.GetEntityDefinition(type)?.FormAttributes ?? ObjectService.GetProperties(type).Select(attribute => new AttributeInfo(attribute)).ToList();
 			}
-			catch
+			catch (Exception ex)
 			{
+				RepositoryMediator.WriteLogs($"Error occurred while preparing attributes to generate form controls => {ex.Message}", ex, LogLevel.Error);
 				return ObjectService.GetProperties(type).Select(attribute => new AttributeInfo(attribute)).ToList();
 			}
 		}
 
-		internal static JToken GenerateFormControl(this AttributeInfo attribute, int index = 0)
+		internal static JObject GenerateControlOptions(this AttributeInfo attribute, string label, string description, string placeHolder, bool asViewControl = false)
 		{
-			var info = attribute.Info.GetCustomAttributes(typeof(FormControlAttribute), true).FirstOrDefault() as FormControlAttribute;
-			if (info != null ? info.Excluded : attribute.IsIgnored())
-				return null;
+			var info = attribute.GetCustomAttribute<FormControlAttribute>();
+			var hidden = info != null ? info.Hidden : attribute.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault() != null;
 
-			JObject control;
-			var hidden = info != null
-				? info.Hidden
-				: attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() != null;
-			var order = info != null && info.Order > -1
-				? info.Order
-				: index;
-			var label = (info?.Label ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
+			var dataType = asViewControl
+				? attribute.IsLargeString() ? "paragraph" : "label"
+				:  "Lookup".IsEquals(info?.ControlType) && !string.IsNullOrWhiteSpace(info?.LookupType)
+					? info.LookupType
+					: !string.IsNullOrWhiteSpace(info?.DataType)
+						? info.DataType
+						: attribute.IsEnum() || attribute.IsEnumString()
+							? "text"
+							: RepositoryMediator.FormControlDataTypes.TryGetValue(attribute.Type, out string predefinedDataType)
+								? predefinedDataType
+								: null;
 
-			if (attribute.Type.IsClassType())
-			{
-				var subControls = new JArray();
-				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subattribute, subindex) =>
-				{
-					var subControl = subattribute.GenerateFormControl(subindex);
-					if (subControl != null)
-						subControls.Add(subControl);
-				});
-
-				control = new JObject
-				{
-					{ "Name", attribute.Name },
-					{ "Order", order },
-					{ "Segment", info?.Segment },
-					{ "Options", new JObject
-						{
-							{ "Label", label }
-						}
-					},
-					{ "SubControls", new JObject
-						{
-							{ "AsArray", info != null ? info.AsArray : false },
-							{ "Controls", subControls }
-						}
-					}
-				};
-				if (hidden)
-					control["Hidden"] = hidden;
-
-				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"Control of a class-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
-
-				return control;
-			}
-
-			var controlType = !string.IsNullOrWhiteSpace(info?.ControlType)
-				? info.ControlType
-				: attribute.IsCLOB != null && attribute.IsCLOB.Value
-					? "TextEditor"
-					: attribute.Type.IsEnum || attribute.IsEnumString()
-						? "Select"
-						: attribute.Type.IsPrimitiveType()
-							? attribute.Type == typeof(DateTime) || attribute.Type == typeof(DateTimeOffset)
-								? "DatePicker"
-								: attribute.Type == typeof(bool)
-									? "YesNo"
-									: "TextBox"
-							: "";
-
-			var options = new JObject
-			{
-				{ "Label", label }
-			};
-
-			var dataType = "Lookup".IsEquals(info?.ControlType) && !string.IsNullOrWhiteSpace(info?.LookupType)
-				? info.LookupType
-				: !string.IsNullOrWhiteSpace(info?.DataType)
-					? info.DataType
-					: attribute.Type.IsEnum || attribute.IsEnumString()
-						? "text"
-						: RepositoryMediator.FormControlDataTypes.TryGetValue(attribute.Type, out string predefinedDataType)
-							? predefinedDataType
-							: null;
+			var options = new JObject();
 			if (!string.IsNullOrWhiteSpace(dataType))
 				options["Type"] = dataType;
 
-			if (info?.PlaceHolder != null)
-				options["PlaceHolder"] = info.PlaceHolder.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
-			if (info?.Description != null)
-				options["Description"] = info.Description.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attribute.Name);
+			if (!hidden)
+			{
+				options["Label"] = label;
+				if (description != null)
+					options["Description"] = description;
+				if (placeHolder != null)
+					options["PlaceHolder"] = placeHolder;
+				if (info != null && info.Disabled)
+					options["Disabled"] = true;
+				if (info != null && info.ReadOnly)
+					options["ReadOnly"] = true;
+				if (info != null && info.AutoFocus)
+					options["AutoFocus"] = true;
+			}
+
 			if (info?.ValidatePattern != null)
 				options["ValidatePattern"] = info.ValidatePattern;
-			if (info != null && info.Disabled)
-				options["Disabled"] = true;
-			if (info != null && info.ReadOnly)
-				options["ReadOnly"] = true;
-			if (info != null && info.AutoFocus)
-				options["AutoFocus"] = true;
 
 			var minValue = info?.MinValue ?? attribute?.MinValue;
 			if (minValue != null)
 				try
 				{
-					if (attribute.Type.IsIntegralType())
+					if (attribute.IsIntegralType())
 						options["MinValue"] = minValue.CastAs<int>();
-					else if (attribute.Type.IsFloatingPointType())
+					else if (attribute.IsFloatingPointType())
 						options["MinValue"] = minValue.CastAs<double>();
 					else
 						options["MinValue"] = minValue;
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while prepare options [{attribute.Name}] => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while prepare options [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
 				}
 
 			var maxValue = info?.MaxValue ?? attribute?.MaxValue;
 			if (maxValue != null)
 				try
 				{
-					if (attribute.Type.IsIntegralType())
+					if (attribute.IsIntegralType())
 						options["MaxValue"] = maxValue.CastAs<int>();
-					else if (attribute.Type.IsFloatingPointType())
+					else if (attribute.IsFloatingPointType())
 						options["MaxValue"] = maxValue.CastAs<double>();
 					else
 						options["MaxValue"] = maxValue;
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while prepare options [{attribute.Name}] => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while prepare options [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
 				}
 
 			var minLength = info != null && info.MinLength > 0
@@ -6372,6 +6339,22 @@ namespace net.vieapps.Components.Repository
 			if (maxLength != null && Int32.TryParse(maxLength, out int maxLen))
 				options["MaxLength"] = maxLen;
 
+			var controlType = !string.IsNullOrWhiteSpace(info?.ControlType)
+				? info.ControlType
+				: attribute.IsLargeString()
+					? "TextEditor"
+					: attribute.IsEnum() || attribute.IsEnumString()
+						? "Select"
+						: attribute.IsStoredAsMapping()
+							? "Lookup"
+							: attribute.IsPrimitiveType()
+								? attribute.IsDateTimeType()
+									? "DatePicker"
+									: attribute.Type == typeof(bool)
+										? "YesNo"
+										: "TextBox"
+								: "";
+
 			var datepickerOptions = "DatePicker".IsEquals(controlType) && info != null && info.DatePickerWithTimes
 				? new JObject
 				{
@@ -6382,40 +6365,150 @@ namespace net.vieapps.Components.Repository
 				options["DatePickerOptions"] = datepickerOptions;
 
 			JObject selectOptions = null;
-			if ("Select".IsEquals(controlType) || attribute.Type.IsEnum || attribute.IsEnumString())
+			if ("Select".IsEquals(controlType) || attribute.IsEnum() || attribute.IsEnumString())
 			{
+				var selectValues = info?.SelectValues;
+				if (selectValues == null && (attribute.IsEnum() || attribute.IsEnumString()))
+					try
+					{
+						var underlyingType = Nullable.GetUnderlyingType(attribute.Type);
+						selectValues = underlyingType != null
+							? attribute.IsEnumString()
+								? Enum.GetNames(underlyingType).Join(",")
+								: Enum.GetValues(underlyingType).ToEnumerable().Select(e => e.ToString()).Join(",")
+							: attribute.IsEnumString()
+								? Enum.GetNames(attribute.Type).Join(",")
+								: Enum.GetValues(attribute.Type).ToEnumerable().Select(e => e.ToString()).Join(",");
+					}
+					catch (Exception ex)
+					{
+						RepositoryMediator.WriteLogs($"Error occurred while generating enums [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
+					}
+
 				selectOptions = new JObject
 				{
-					{ "Values", info?.SelectValues ?? (attribute.Type.IsEnum || attribute.IsEnumString() ? Enum.GetValues(attribute.Type).ToEnumerable().Select(o => o.ToString()).Join(",") : null) },
+					{ "Values", selectValues },
 					{ "Multiple", info != null && info.Multiple },
 					{ "SelectAsBoxes", info != null && info.SelectAsBoxes }
 				};
-				if (info?.SelectValuesRemoteURI != null)
-					selectOptions["RemoteURI"] = info?.SelectValuesRemoteURI;
-				if (info?.SelectInterface != null)
-					selectOptions["Interface"] = info?.SelectInterface;
+
+				if (!string.IsNullOrWhiteSpace(info?.SelectValuesRemoteURI))
+					selectOptions["RemoteURI"] = info.SelectValuesRemoteURI;
+
+				if (!string.IsNullOrWhiteSpace(info?.SelectInterface))
+					selectOptions["Interface"] = info.SelectInterface;
 			}
 			if (selectOptions != null)
 				options["SelectOptions"] = selectOptions;
 
-			var required = attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() != null
-				? false
-				: attribute.NotNull || (attribute.NotEmpty != null && attribute.NotEmpty.Value) || (info != null && info.Required);
+			return options;
+		}
+
+		internal static JToken GenerateFormControl(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null)
+		{
+			var info = attribute.GetCustomAttribute< FormControlAttribute>();
+
+			if (info != null ? info.Excluded || !info.AsViewControl : attribute.IsIgnored())
+			{
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"By-pass the form control [{attribute.Name}] => {(info != null ? "Excluded" : "Ignored")}");
+				return null;
+			}
+
+			JObject control;
+
+			var isPrimaryKey = attribute.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault() != null;
+			var hidden = info != null ? info.Hidden : isPrimaryKey;
+			var order = info != null && info.Order > -1 ? info.Order : index;
+
+			var attributeName = $"{(string.IsNullOrWhiteSpace(parentName) ? "" : $"{parentName}.")}{attribute.Name}";
+			var label = hidden
+				? null
+				: (info?.Label ?? parentLabel ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+			var description = hidden
+				? null
+				: (info?.Description ?? parentDescription)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+			var placeHolder = hidden
+				? null
+				: (info?.PlaceHolder ?? parentPlaceHolder)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+
+			if (attribute.IsClassType() && !attribute.IsStoredAsMapping())
+			{
+				var subControls = new JArray();
+				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subAttribute, subIndex) =>
+				{
+					var subControl = subAttribute.GenerateFormControl(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
+					if (subControl != null)
+						subControls.Add(subControl);
+				});
+
+				control = new JObject
+				{
+					{ "Name", attribute.Name },
+					{ "Order", order },
+					{ "Type", info?.ControlType },
+					{ "Options", hidden
+						? new JObject()
+						: new JObject
+						{
+							{ "Label", label },
+							{ "Description", description }
+						}
+					},
+					{ "SubControls", new JObject
+						{
+							{ "AsArray", info != null ? info.AsArray : false },
+							{ "Controls", subControls }
+						}
+					}
+				};
+
+				if (hidden)
+					control["Hidden"] = hidden;
+				else if (!string.IsNullOrWhiteSpace(info?.Segment))
+					control["Segment"] = info.Segment;
+
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"A form control of a class-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
+
+				return control;
+			}
 
 			control = new JObject
 			{
 				{ "Name", attribute.Name },
 				{ "Order", order },
-				{ "Segment", info?.Segment },
-				{ "Options", options }
+				{ "Options", attribute.GenerateControlOptions(label, description, placeHolder) }
 			};
 
+			var controlType = !string.IsNullOrWhiteSpace(info?.ControlType)
+				? info.ControlType
+				: attribute.IsLargeString()
+					? "TextEditor"
+					: attribute.IsEnum() || attribute.IsEnumString()
+						? "Select"
+						: attribute.IsStoredAsMapping()
+							? "Lookup"
+							: attribute.IsPrimitiveType()
+								? attribute.IsDateTimeType()
+									? "DatePicker"
+									: attribute.Type == typeof(bool)
+										? "YesNo"
+										: "TextBox"
+								: "";
 			if (!string.IsNullOrWhiteSpace(controlType))
 				control["Type"] = controlType;
-			if (required)
-				control["Required"] = required;
+
+			var required = isPrimaryKey
+				? false
+				: attribute.NotNull || (attribute.NotEmpty != null && attribute.NotEmpty.Value) || (info != null && info.Required);
+
 			if (hidden)
 				control["Hidden"] = hidden;
+			else if (required)
+				control["Required"] = required;
+			if (!string.IsNullOrWhiteSpace(info?.Segment))
+				control["Segment"] = info.Segment;
 
 			if (info != null && info.AsArray)
 			{
@@ -6423,10 +6516,12 @@ namespace net.vieapps.Components.Repository
 				{
 					{ "Name", attribute.Name },
 					{ "Order", order },
-					{ "Segment", info?.Segment },
-					{ "Options", new JObject
+					{ "Options", hidden
+						? new JObject()
+						: new JObject
 						{
-							{ "Label", label }
+							{ "Label", label },
+							{ "Description", description }
 						}
 					},
 					{ "SubControls", new JObject
@@ -6436,12 +6531,124 @@ namespace net.vieapps.Components.Repository
 						}
 					}
 				};
+
 				if (hidden)
 					control["Hidden"] = hidden;
+				if (!string.IsNullOrWhiteSpace(info?.Segment))
+					control["Segment"] = info.Segment;
 			}
 
 			if (RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs($"Control of a primitive-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
+				RepositoryMediator.WriteLogs($"A form control of a primitive-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
+
+			return control;
+		}
+
+		internal static JToken GenerateViewControl(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null)
+		{
+			var info = attribute.GetCustomAttribute<FormControlAttribute>();
+
+			if (info != null ? info.Excluded : attribute.IsIgnored())
+			{
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"By-pass the view control [{attribute.Name}] => {(info != null ? "Excluded" : "Ignored")}");
+				return null;
+			}
+
+			JObject control;
+
+			var isPrimaryKey = attribute.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault() != null;
+			var hidden = info != null ? info.Hidden : isPrimaryKey;
+			if (hidden)
+				return null;
+
+			var attributeName = $"{(string.IsNullOrWhiteSpace(parentName) ? "" : $"{parentName}.")}{attribute.Name}";
+			var label = hidden
+				? null
+				: (info?.Label ?? parentLabel ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+			var description = hidden
+				? null
+				: (info?.Description ?? parentDescription)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+			var placeHolder = hidden
+				? null
+				: (info?.PlaceHolder ?? parentPlaceHolder)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+
+			var order = info != null && info.Order > -1 ? info.Order : index;
+
+			if (attribute.IsClassType() && !attribute.IsStoredAsMapping())
+			{
+				var subControls = new JArray();
+				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subAttribute, subIndex) =>
+				{
+					var subControl = subAttribute.GenerateViewControl(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
+					if (subControl != null)
+						subControls.Add(subControl);
+				});
+
+				control = new JObject
+				{
+					{ "Name", attribute.Name },
+					{ "Order", order },
+					{ "Type", "Text" },
+					{ "Options", new JObject
+						{
+							{ "Label", label },
+							{ "Description", description }
+						}
+					},
+					{ "SubControls", new JObject
+						{
+							{ "AsArray", info != null ? info.AsArray : false },
+							{ "Controls", subControls }
+						}
+					}
+				};
+
+				if (!string.IsNullOrWhiteSpace(info?.Segment))
+					control["Segment"] = info.Segment;
+
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"A view control of a class-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
+
+				return control;
+			}
+
+			control = new JObject
+			{
+				{ "Name", attribute.Name },
+				{ "Order", order },
+				{ "Type", "Text" },
+				{ "Options", attribute.GenerateControlOptions(label, description, placeHolder, true) }
+			};
+			if (!string.IsNullOrWhiteSpace(info?.Segment))
+				control["Segment"] = info.Segment;
+
+			if (info != null && info.AsArray)
+			{
+				control = new JObject
+				{
+					{ "Name", attribute.Name },
+					{ "Order", order },
+					{ "Type", "Text" },
+					{ "Options", new JObject
+						{
+							{ "Label", label },
+							{ "Description", description }
+						}
+					},
+					{ "SubControls", new JObject
+						{
+							{ "AsArray", true },
+							{ "Controls", new JArray { control } }
+						}
+					}
+				};
+				if (!string.IsNullOrWhiteSpace(info?.Segment))
+					control["Segment"] = info.Segment;
+			}
+
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs($"A view control of a primitive-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
 
 			return control;
 		}
@@ -6477,7 +6684,44 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					RepositoryMediator.WriteLogs($"Error occurred while generating form control [{attribute.Name}] => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while generating form control [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
+				}
+			});
+			return controls;
+		}
+
+		/// <summary>
+		/// Generates the view controls from this object attribute
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <param name="index"></param>
+		/// <returns></returns>
+		public static JToken GenerateViewControl(this ObjectService.AttributeInfo attribute, int index = 0)
+			=> new AttributeInfo(attribute).GenerateViewControl(index);
+
+		/// <summary>
+		/// Generates the view controls of this type
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		public static JToken GenerateViewControls<T>() where T : class
+		{
+			var controls = new JArray();
+			var attributes = RepositoryMediator.GetFormAttributes(typeof(T));
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs($"Start to generate view controls ({typeof(T).GetTypeName(true)}) => {attributes.Select(attribute => attribute.Name).Join(", ")}]");
+
+			attributes.ForEach((attribute, index) =>
+			{
+				try
+				{
+					var control = attribute.GenerateViewControl(index);
+					if (control != null)
+						controls.Add(control);
+				}
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs($"Error occurred while generating view control [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
 				}
 			});
 			return controls;
@@ -6788,7 +7032,7 @@ namespace net.vieapps.Components.Repository
 			definition = definition ?? RepositoryMediator.GetEntityDefinition(typeof(T));
 
 			var standardProperties = definition != null
-				? definition.Attributes.ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
+				? definition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
 				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name, attribute => new AttributeInfo(attribute));
 
 			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessEntityID, definition)
@@ -6866,6 +7110,31 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			return attributes != null && attributes.Count > 0;
+		}
+
+		/// <summary>
+		/// Gets the state that determines this object is got 'as mapping' properties or not
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object"></param>
+		/// <param name="checkValue"></param>
+		/// <returns></returns>
+		public static bool IsGotAsMappingProperties<T>(this T @object, bool checkValue = false) where T : class
+		{
+			if (@object == null)
+				return false;
+
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			var attribute = definition.Attributes.FirstOrDefault(attr => attr.IsStoredAsMapping());
+			if (attribute == null)
+				return false;
+
+			if (checkValue)
+			{
+				var value = @object.GetAttributeValue(attribute);
+				return value != null && value.IsGenericListOrHashSet();
+			}
+			return true;
 		}
 		#endregion
 

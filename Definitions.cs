@@ -41,51 +41,24 @@ namespace net.vieapps.Components.Repository
 		public string PrimaryDataSourceName { get; internal set; }
 
 		/// <summary>
-		/// Gets the name of the secondary data source
-		/// </summary>
-		public string SecondaryDataSourceName { get; internal set; }
-
-		/// <summary>
-		/// Gets the names of the all data-sources that available for sync
-		/// </summary>
-		public string SyncDataSourceNames { get; internal set; }
-
-		/// <summary>
-		/// Gets the name of the data source for storing information of versioning contents
-		/// </summary>
-		public string VersionDataSourceName { get; internal set; }
-
-		/// <summary>
-		/// Gets the name of the data source for storing information of trash contents
-		/// </summary>
-		public string TrashDataSourceName { get; internal set; }
-
-		/// <summary>
-		/// Gets that state that specified this repository is an alias of other repository
-		/// </summary>
-		public bool IsAlias { get; internal set; } = false;
-
-		/// <summary>
-		/// Gets that state that specified data of this repository is sync automatically between data sources
-		/// </summary>
-		public bool AutoSync { get; internal set; } = false;
-
-		/// <summary>
-		/// Gets the extra-settings of the repository
-		/// </summary>
-		public Dictionary<string, object> ExtraSettings { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-		#endregion
-
-		#region Properties [Helpers]
-		/// <summary>
 		/// Gets the primary data-source
 		/// </summary>
 		public DataSource PrimaryDataSource => RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
 
 		/// <summary>
+		/// Gets the name of the secondary data source
+		/// </summary>
+		public string SecondaryDataSourceName { get; internal set; }
+
+		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
 		public DataSource SecondaryDataSource => RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
+
+		/// <summary>
+		/// Gets the names of the all data-sources that available for sync
+		/// </summary>
+		public string SyncDataSourceNames { get; internal set; }
 
 		/// <summary>
 		/// Gets the secondary data-source
@@ -100,14 +73,39 @@ namespace net.vieapps.Components.Repository
 					.ToList();
 
 		/// <summary>
+		/// Gets the name of the data source for storing information of versioning contents
+		/// </summary>
+		public string VersionDataSourceName { get; internal set; }
+
+		/// <summary>
 		/// Gets the data-source that use to store versioning contents
 		/// </summary>
 		public DataSource VersionDataSource => RepositoryMediator.GetDataSource(this.VersionDataSourceName);
 
 		/// <summary>
+		/// Gets the name of the data source for storing information of trash contents
+		/// </summary>
+		public string TrashDataSourceName { get; internal set; }
+
+		/// <summary>
 		/// Gets the data-source that use to store trash contents
 		/// </summary>
 		public DataSource TrashDataSource => RepositoryMediator.GetDataSource(this.TrashDataSourceName);
+
+		/// <summary>
+		/// Gets that state that specified this repository is an alias of other repository
+		/// </summary>
+		public bool IsAlias { get; internal set; } = false;
+
+		/// <summary>
+		/// Gets that state that specified data of this repository is sync automatically between data sources
+		/// </summary>
+		public bool AutoSync { get; internal set; } = false;
+
+		/// <summary>
+		/// Gets the extra data of the repository
+		/// </summary>
+		public Dictionary<string, object> Extras { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Gets the definitions of all entities
@@ -121,14 +119,14 @@ namespace net.vieapps.Components.Repository
 
 		#region Properties [Module Definition]
 		/// <summary>
+		/// Gets the name of the service that associates with the repository (when this object is defined as a module definition)
+		/// </summary>
+		public string ServiceName { get; internal set; }
+
+		/// <summary>
 		/// Gets the identity (when this object is defined as a module definition)
 		/// </summary>
 		public string ID { get; internal set; }
-
-		/// <summary>
-		/// Gets or sets the name of the directory that contains all files for working with user interfaces (when this object is defined as a module definition - will be placed in directory named '/themes/modules/', the value of 'ServiceName' will be used if no value was provided)
-		/// </summary>
-		public string Directory { get; internal set; }
 
 		/// <summary>
 		/// Gets the title (when this object is defined as a module definition)
@@ -146,6 +144,11 @@ namespace net.vieapps.Components.Repository
 		public string Icon { get; set; }
 
 		/// <summary>
+		/// Gets or sets the name of the directory that contains all files for working with user interfaces (when this object is defined as a module definition - will be placed in directory named '/themes/modules/', the value of 'ServiceName' will be used if no value was provided)
+		/// </summary>
+		public string Directory { get; internal set; }
+
+		/// <summary>
 		/// Gets the name of the SQL table for storing extended properties, default is 'T_Data_Extended_Properties' (when this object is defined as a module definition)
 		/// </summary>
 		public string ExtendedPropertiesTableName { get; internal set; }
@@ -153,7 +156,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of run-time business repositories (means business modules at run-time)
 		/// </summary>
-		public Dictionary<string, IRepository> RuntimeRepositories { get; internal set; } = new Dictionary<string, IRepository>(StringComparer.OrdinalIgnoreCase);
+		public Dictionary<string, IRuntimeRepository> RuntimeRepositories { get; internal set; } = new Dictionary<string, IRuntimeRepository>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register & Update settings
@@ -164,12 +167,15 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// get info
-			var info = type.GetCustomAttributes(typeof(RepositoryAttribute), false).FirstOrDefault() as RepositoryAttribute;
+			var info = type.GetCustomAttribute<RepositoryAttribute>(false);
+			if (info == null)
+				return;
 
 			// initialize
 			var definition = new RepositoryDefinition
 			{
 				Type = type,
+				ServiceName = !string.IsNullOrWhiteSpace(info.ServiceName) ? info.ServiceName : "",
 				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
 				Directory = !string.IsNullOrWhiteSpace(info.Directory) ? info.Directory : null,
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
@@ -224,7 +230,7 @@ namespace net.vieapps.Components.Repository
 				RepositoryMediator.RepositoryDefinitions.Add(type, RepositoryMediator.RepositoryDefinitions[aliasOf].Clone(cloneDef =>
 				{
 					cloneDef.IsAlias = true;
-					cloneDef.ExtraSettings = targetDef.ExtraSettings.Clone();
+					cloneDef.Extras = targetDef.Extras.Clone();
 				}));
 			}
 
@@ -306,9 +312,21 @@ namespace net.vieapps.Components.Repository
 		public string PrimaryDataSourceName { get; internal set; }
 
 		/// <summary>
+		/// Gets the primary data-source
+		/// </summary>
+		public DataSource PrimaryDataSource
+			=> RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
+
+		/// <summary>
 		/// Gets the name of the secondary data source
 		/// </summary>
 		public string SecondaryDataSourceName { get; internal set; }
+
+		/// <summary>
+		/// Gets the secondary data-source
+		/// </summary>
+		public DataSource SecondaryDataSource
+			=> RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
 
 		/// <summary>
 		/// Gets the names of the all data-sources that available for sync
@@ -316,14 +334,38 @@ namespace net.vieapps.Components.Repository
 		public string SyncDataSourceNames { get; internal set; }
 
 		/// <summary>
+		/// Gets the other data sources that are available for synchronizing
+		/// </summary>
+		public List<DataSource> SyncDataSources
+			=> !string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
+				? this.SyncDataSourceNames.ToList()
+					.Distinct(StringComparer.OrdinalIgnoreCase)
+					.Select(name => RepositoryMediator.GetDataSource(name))
+					.Where(dataSource => dataSource != null)
+					.ToList()
+				: null;
+
+		/// <summary>
 		/// Gets the name of the data source for storing information of versioning contents
 		/// </summary>
 		public string VersionDataSourceName { get; internal set; }
 
 		/// <summary>
+		/// Gets the data-source that use to store versioning contents
+		/// </summary>
+		public DataSource VersionDataSource
+			=> RepositoryMediator.GetDataSource(this.VersionDataSourceName);
+
+		/// <summary>
 		/// Gets the name of the data source for storing information of trash contents
 		/// </summary>
 		public string TrashDataSourceName { get; internal set; }
+
+		/// <summary>
+		/// Gets the data-source that use to store trash contents
+		/// </summary>
+		public DataSource TrashDataSource
+			=> RepositoryMediator.GetDataSource(this.TrashDataSourceName);
 
 		/// <summary>
 		/// Gets or sets the name of the table in SQL database
@@ -351,57 +393,19 @@ namespace net.vieapps.Components.Repository
 		public bool AutoSync { get; internal set; } = false;
 
 		/// <summary>
-		/// Gets extra settings of of the entity definition
+		/// Gets extra extra of of the entity definition
 		/// </summary>
-		public Dictionary<string, object> ExtraSettings { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-		#endregion
-
-		#region Properties [Helpers]
-		/// <summary>
-		/// Gets the caching object for processing with caching data of this entity
-		/// </summary>
-		public ICache Cache { get; internal set; }
+		public Dictionary<string, object> Extras { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
-		/// Gets the primary data-source
+		/// Gets the collection of all available attributes (properties and fields)
 		/// </summary>
-		public DataSource PrimaryDataSource
-			=> RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
+		public List<AttributeInfo> Attributes { get; } = new List<AttributeInfo>();
 
 		/// <summary>
-		/// Gets the secondary data-source
+		/// Gets the collection of all available attributes (properties and fields) for working with forms
 		/// </summary>
-		public DataSource SecondaryDataSource
-			=> RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
-
-		/// <summary>
-		/// Gets the other data sources that are available for synchronizing
-		/// </summary>
-		public List<DataSource> SyncDataSources
-			=> !string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
-				? this.SyncDataSourceNames.ToList()
-					.Distinct(StringComparer.OrdinalIgnoreCase)
-					.Select(name => RepositoryMediator.GetDataSource(name))
-					.Where(dataSource => dataSource != null)
-					.ToList()
-				: null;
-
-		/// <summary>
-		/// Gets the data-source that use to store versioning contents
-		/// </summary>
-		public DataSource VersionDataSource
-			=> RepositoryMediator.GetDataSource(this.VersionDataSourceName);
-
-		/// <summary>
-		/// Gets the data-source that use to store trash contents
-		/// </summary>
-		public DataSource TrashDataSource
-			=> RepositoryMediator.GetDataSource(this.TrashDataSourceName);
-
-		/// <summary>
-		/// Gets the collection of all attributes (properties and fields)
-		/// </summary>
-		public List<AttributeInfo> Attributes { get; internal set; } = new List<AttributeInfo>();
+		public List<AttributeInfo> FormAttributes { get; } = new List<AttributeInfo>();
 
 		internal string PrimaryKey { get; set; }
 
@@ -416,6 +420,11 @@ namespace net.vieapps.Components.Repository
 		public List<string> SortableAttributes { get; internal set; } = new List<string> { "ID" };
 
 		/// <summary>
+		/// Gets the caching object for processing with caching data of this entity
+		/// </summary>
+		public ICache Cache { get; internal set; }
+
+		/// <summary>
 		/// Gets the type of the class that presents the repository of this repository entity
 		/// </summary>
 		public Type RepositoryType { get; internal set; }
@@ -427,6 +436,11 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Properties [Content-Type Definition]
+		/// <summary>
+		/// Gets the name of the service's object that associates with the entity (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ObjectName { get; internal set; }
+
 		/// <summary>
 		/// Gets the identity (when this object is defined as a content-type definition)
 		/// </summary>
@@ -510,7 +524,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of run-time business entities (means business conten-types at run-time)
 		/// </summary>
-		public Dictionary<string, IRepositoryEntity> RuntimeEntities { get; internal set; } = new Dictionary<string, IRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
+		public Dictionary<string, IRuntimeRepositoryEntity> RuntimeEntities { get; internal set; } = new Dictionary<string, IRuntimeRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register & Update settings
@@ -521,11 +535,13 @@ namespace net.vieapps.Components.Repository
 				return;
 
 			// get info
-			var info = type.GetCustomAttributes(typeof(EntityAttribute), false).FirstOrDefault() as EntityAttribute;
+			var info = type.GetCustomAttribute<EntityAttribute>(false);
+			if (info == null)
+				return;
 
 			// verify name of table/collection
 			if (string.IsNullOrWhiteSpace(info.TableName) && string.IsNullOrWhiteSpace(info.CollectionName))
-				throw new ArgumentException("The type [" + type.ToString() + "] must have name of SQL table or NoSQL collection");
+				throw new ArgumentException($"The type [{type}] must have name of SQL table or NoSQL collection");
 
 			// initialize
 			var definition = new EntityDefinition
@@ -534,6 +550,7 @@ namespace net.vieapps.Components.Repository
 				TableName = info.TableName,
 				CollectionName = info.CollectionName,
 				Searchable = info.Searchable,
+				ObjectName = !string.IsNullOrWhiteSpace(info.ObjectName) ? info.ObjectName : type.GetTypeName(true),
 				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
 				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
 				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
@@ -569,13 +586,17 @@ namespace net.vieapps.Components.Repository
 			// public properties
 			var numberOfPrimaryKeys = 0;
 			var properties = ObjectService.GetProperties(type);
-			properties.Where(attr => !attr.IsIgnored()).ForEach(attr =>
+			foreach(var property in properties)
 			{
+				// by-pass if ignore and not defined as a form control
+				if (property.IsIgnored() && !property.IsFormControl())
+					continue;
+
 				// create
-				var attribute = new AttributeInfo(attr);
+				var attribute = new AttributeInfo(property);
 
 				// primary key
-				if (attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).FirstOrDefault() is PrimaryKeyAttribute keyInfo)
+				if (!property.IsIgnored() && attribute.GetCustomAttribute<PrimaryKeyAttribute>() is PrimaryKeyAttribute keyInfo)
 				{
 					attribute.Column = keyInfo.Column;
 					attribute.NotNull = true;
@@ -584,11 +605,11 @@ namespace net.vieapps.Components.Repository
 						attribute.MaxLength = keyInfo.MaxLength;
 
 					definition.PrimaryKey = attribute.Name;
-					numberOfPrimaryKeys += attribute.Info.GetCustomAttributes(typeof(PrimaryKeyAttribute), true).Length;
+					numberOfPrimaryKeys += attribute.GetCustomAttributes<PrimaryKeyAttribute>().Count;
 				}
 
 				// property
-				if (attribute.Info.GetCustomAttributes(typeof(PropertyAttribute), true).FirstOrDefault() is PropertyAttribute propertyInfo)
+				if (attribute.GetCustomAttribute<PropertyAttribute>() is PropertyAttribute propertyInfo)
 				{
 					attribute.Column = propertyInfo.Column;
 					attribute.NotNull = propertyInfo.NotNull;
@@ -614,13 +635,15 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-				// sortable
-				if (attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true).Length > 0)
-					definition.SortableAttributes.Add(attribute.Name);
-
-				// update
-				definition.Attributes.Add(attribute);
-			});
+				// update definitions
+				definition.FormAttributes.Add(attribute);
+				if (!property.IsIgnored())
+				{
+					definition.Attributes.Add(attribute);
+					if (attribute.GetCustomAttributes<SortableAttribute>().Count > 0)
+						definition.SortableAttributes.Add(attribute.Name);
+				}
+			};
 
 			// check primary key
 			if (numberOfPrimaryKeys == 0)
@@ -629,13 +652,13 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentException("The type [" + type.ToString() + "] has multiple primary-keys");
 
 			// fields
-			ObjectService.GetFields(type).Where(attr => !attr.IsIgnored()).ForEach(attr =>
+			ObjectService.GetFields(type).Where(field => !field.IsIgnored()).ForEach(field =>
 			{
 				// create
-				var attribute = new AttributeInfo(attr);
+				var attribute = new AttributeInfo(field);
 
 				// update info
-				if (attribute.Info.GetCustomAttributes(typeof(FieldAttribute), true).FirstOrDefault() is FieldAttribute fieldInfo)
+				if (attribute.GetCustomAttribute<FieldAttribute>() is FieldAttribute fieldInfo)
 				{
 					attribute.Column = fieldInfo.Column;
 					attribute.NotNull = fieldInfo.NotNull;
@@ -659,6 +682,9 @@ namespace net.vieapps.Components.Repository
 						if (!string.IsNullOrWhiteSpace(fieldInfo.MaxValue))
 							attribute.MaxValue = fieldInfo.MaxValue;
 					}
+
+					// update definitions
+					definition.FormAttributes.Add(attribute);
 					definition.Attributes.Add(attribute);
 				}
 			});
@@ -821,7 +847,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="type">The type that presents information of a repository entity definition</param>
 		/// <param name="cache">The cache storage</param>
-		public void SetCacheStorage(Type type, Caching.Cache cache)
+		public void SetCacheStorage(Type type, Cache cache)
 		{
 			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type))
 				RepositoryMediator.EntityDefinitions[type].Cache = cache;
@@ -838,11 +864,9 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Name}")]
 	public class AttributeInfo : ObjectService.AttributeInfo
 	{
-		public AttributeInfo()
-			: this(null) { }
+		public AttributeInfo() : this(null) { }
 
-		public AttributeInfo(ObjectService.AttributeInfo derived)
-			: base(derived?.Name, derived?.Info) { }
+		public AttributeInfo(ObjectService.AttributeInfo derived) : base(derived?.Name, derived?.Info) { }
 
 		public string Column { get; internal set; }
 
@@ -912,15 +936,15 @@ namespace net.vieapps.Components.Repository
 				{
 					case ExtendedPropertyMode.YesNo:
 					case ExtendedPropertyMode.Number:
-						return typeof(Int32);
+						return typeof(int);
 
 					case ExtendedPropertyMode.Decimal:
-						return typeof(Decimal);
+						return typeof(decimal);
 
 					case ExtendedPropertyMode.DateTime:
 						return typeof(DateTime);
 				}
-				return typeof(String);
+				return typeof(string);
 			}
 		}
 
@@ -936,16 +960,15 @@ namespace net.vieapps.Components.Repository
 				{
 					case ExtendedPropertyMode.YesNo:
 					case ExtendedPropertyMode.Number:
-						return typeof(Int32).GetDbType();
-
+						return typeof(int).GetDbType();
 
 					case ExtendedPropertyMode.Decimal:
-						return typeof(Decimal).GetDbType();
+						return typeof(decimal).GetDbType();
 
 					case ExtendedPropertyMode.DateTime:
 						return DbType.AnsiString;
 				}
-				return typeof(String).GetDbType();
+				return typeof(string).GetDbType();
 			}
 		}
 		#endregion
