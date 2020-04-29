@@ -379,18 +379,28 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this property will be stored as a master-slaves in an external SQL table (named with name of master table and suffix '_Mappings')
+	/// Specifies this property will be stored as a single mapping (master/slaves) in an external SQL table
 	/// </summary>
 	/// <remarks>The property must be generic list or hash-set</remarks>
 	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-	public class AsMappingAttribute : Attribute
+	public class AsSingleMappingAttribute : Attribute
 	{
-		public AsMappingAttribute() { }
+		public AsSingleMappingAttribute() { }
 
 		/// <summary>
-		/// Gets or Sets the name of the SQL table 
+		/// Gets or Sets the name of the SQL table - if not provided, the name will be combination of master table, property name and suffix '_Mappings'
 		/// </summary>
 		public string TableName { get; set; }
+
+		/// <summary>
+		/// Gets or Sets the name of the link column (master) - if not provided, the name will be combination of entity name and suffix 'ID')
+		/// </summary>
+		public string LinkColumn { get; set; }
+
+		/// <summary>
+		/// Gets or Sets the name of the map column (slave) - if not provided, the name will be combination of property name and suffix 'ID')
+		/// </summary>
+		public string MapColumn { get; set; }
 	}
 
 	// ------------------------------------------
@@ -620,12 +630,12 @@ namespace net.vieapps.Components.Repository
 			=> attribute.IsClassType() && attribute.GetCustomAttribute<AsJsonAttribute>() != null;
 
 		/// <summary>
-		/// Gets the state that determines this object attribute is be stored as a master-slaves in an external SQL table or not
+		/// Gets the state that determines this object property will be stored as a simple master-slaves mapping in an external SQL table
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
-		public static bool IsStoredAsMapping(this ObjectService.AttributeInfo attribute)
-			=> attribute.Type.IsGenericListOrHashSet() && attribute.GetCustomAttribute<AsMappingAttribute>() != null;
+		public static bool IsStoredAsSimpleMapping(this ObjectService.AttributeInfo attribute)
+			=> attribute.Type.IsGenericListOrHashSet() && attribute.GetCustomAttribute<AsSingleMappingAttribute>() != null;
 
 		/// <summary>
 		/// Gets the state that determines this attribute is enum-string or not

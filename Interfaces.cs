@@ -22,9 +22,9 @@ using net.vieapps.Components.Security;
 namespace net.vieapps.Components.Repository
 {
 	/// <summary>
-	/// Presents a run-time repository (means a business module at the run-time)
+	/// Presents a business repository (means a business module at the run-time)
 	/// </summary>
-	public interface IRuntimeRepository
+	public interface IBusinessRepository
 	{
 		/// <summary>
 		/// Gets the identity
@@ -42,27 +42,27 @@ namespace net.vieapps.Components.Repository
 		string Description { get; }
 
 		/// <summary>
-		/// Gets the identity of a system that the run-time respository is belong to
+		/// Gets the identity of a system that the business repository is belong to
 		/// </summary>
 		string SystemID { get; }
 
 		/// <summary>
-		/// Gets the definition of the repository (means module definition)
+		/// Gets the definition of the business repository (means the module definition)
 		/// </summary>
 		RepositoryDefinition RepositoryDefinition { get; }
 
 		/// <summary>
-		/// Gets the collection of run-time entities (means the collection of business content-types)
+		/// Gets the collection of business repository entities (means the collection of business content-types)
 		/// </summary>
-		List<IRuntimeRepositoryEntity> RuntimeRepositoryEntities { get; }
+		List<IBusinessRepositoryEntity> BusinessRepositoryEntities { get; }
 	}
 
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents a run-time repository entity (means a business content-type at the run-time)
+	/// Presents a business repository entity (means a business content-type at the run-time)
 	/// </summary>
-	public interface IRuntimeRepositoryEntity
+	public interface IBusinessRepositoryEntity
 	{
 		/// <summary>
 		/// Gets the identity
@@ -100,14 +100,14 @@ namespace net.vieapps.Components.Repository
 		string RepositoryID { get; }
 
 		/// <summary>
-		/// Gets the entity definition (means content-type definition)
+		/// Gets the entity definition of the business repository entity (means content-type definition)
 		/// </summary>
 		EntityDefinition EntityDefinition { get; }
 
 		/// <summary>
-		/// Gets the run-time repository (means module definition)
+		/// Gets the business repository that the business repository entity is belong to (means the business module)
 		/// </summary>
-		IRuntimeRepository RuntimeRepository { get; }
+		IBusinessRepository BusinessRepository { get; }
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -133,14 +133,14 @@ namespace net.vieapps.Components.Repository
 		string SystemID { get; }
 
 		/// <summary>
-		/// Gets the identity of a business repository (at run-time) that the object is belong to
+		/// Gets the identity of the repository that the object is belong to (means the business module)
 		/// </summary>
 		string RepositoryID { get; }
 
 		/// <summary>
-		/// Gets the identity of a business entity (at run-time) that the object is belong to
+		/// Gets the identity of a business repository entity that the object is belong to (means the business content-type)
 		/// </summary>
-		string EntityID { get; }
+		string RepositoryEntityID { get; }
 
 		/// <summary>
 		/// Gets or sets the collection of extended properties

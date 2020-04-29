@@ -315,9 +315,9 @@ namespace net.vieapps.Components.Repository
 			return Builders<T>.Filter.Text(searchTerms, new TextSearchOptions { CaseSensitive = false });
 		}
 
-		static FilterDefinition<T> CreateFilterDefinition<T>(this IFilterBy<T> filter, string businessEntityID = null) where T : class
+		static FilterDefinition<T> CreateFilterDefinition<T>(this IFilterBy<T> filter, string businessRepositoryEntityID = null) where T : class
 		{
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 			var filterDefinition = filter != null
@@ -325,18 +325,18 @@ namespace net.vieapps.Components.Repository
 					? (filter as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties)
 					: (filter as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties)
 				: null;
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && extendedProperties != null)
+			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID) && extendedProperties != null)
 				filterDefinition = filterDefinition == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterDefinition & Builders<T>.Filter.Eq("EntityID", businessEntityID);
+					? Builders<T>.Filter.Eq("EntityID", businessRepositoryEntityID)
+					: filterDefinition & Builders<T>.Filter.Eq("EntityID", businessRepositoryEntityID);
 			return filterDefinition;
 		}
 
-		static SortDefinition<T> CreateSortDefinition<T>(this SortBy<T> sort, string businessEntityID = null) where T : class
+		static SortDefinition<T> CreateSortDefinition<T>(this SortBy<T> sort, string businessRepositoryEntityID = null) where T : class
 		{
 			if (sort == null)
 				return null;
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 			return sort.GetNoSqlStatement(null, standardProperties, extendedProperties);
@@ -627,11 +627,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter-by expression for filtering</param>
 		/// <param name="sort">The order-by expression for ordering</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static T Get<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).Get(context.NoSqlSession, NoSqlHelper.CreateFilterDefinition<T>(filter, businessEntityID), NoSqlHelper.CreateSortDefinition<T>(sort, businessEntityID), options);
+		public static T Get<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
+			=> context.GetCollection<T>(dataSource).Get(context.NoSqlSession, NoSqlHelper.CreateFilterDefinition<T>(filter, businessRepositoryEntityID), NoSqlHelper.CreateSortDefinition<T>(sort, businessRepositoryEntityID), options);
 
 		/// <summary>
 		/// Gets document of an object
@@ -668,12 +668,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter-by expression for filtering</param>
 		/// <param name="sort">The order-by expression for ordering</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> context.GetCollection<T>(dataSource).GetAsync(context.NoSqlSession, NoSqlHelper.CreateFilterDefinition<T>(filter, businessEntityID), NoSqlHelper.CreateSortDefinition<T>(sort, businessEntityID), options, cancellationToken);
+		public static Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).GetAsync(context.NoSqlSession, NoSqlHelper.CreateFilterDefinition<T>(filter, businessRepositoryEntityID), NoSqlHelper.CreateSortDefinition<T>(sort, businessRepositoryEntityID), options, cancellationToken);
 		#endregion
 
 		#region Get (by definition and identity)
@@ -1367,13 +1367,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter for deleting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options for deleting</param>
 		/// <returns></returns>
-		public static DeleteResult DeleteMany<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, DeleteOptions options = null) where T : class
+		public static DeleteResult DeleteMany<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessRepositoryEntityID = null, DeleteOptions options = null) where T : class
 		{
 			var collection = context.GetCollection<T>(dataSource);
-			return collection.DeleteMany(context.NoSqlSession ?? collection.StartSession(), NoSqlHelper.CreateFilterDefinition<T>(filter, businessEntityID) ?? Builders<T>.Filter.Empty, options);
+			return collection.DeleteMany(context.NoSqlSession ?? collection.StartSession(), NoSqlHelper.CreateFilterDefinition<T>(filter, businessRepositoryEntityID) ?? Builders<T>.Filter.Empty, options);
 		}
 
 		/// <summary>
@@ -1383,14 +1383,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter for deleting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<DeleteResult> DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<DeleteResult> DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessRepositoryEntityID = null, DeleteOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var collection = context.GetCollection<T>(dataSource);
-			return await collection.DeleteManyAsync(context.NoSqlSession ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), NoSqlHelper.CreateFilterDefinition<T>(filter, businessEntityID) ?? Builders<T>.Filter.Empty, options, cancellationToken).ConfigureAwait(false);
+			return await collection.DeleteManyAsync(context.NoSqlSession ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), NoSqlHelper.CreateFilterDefinition<T>(filter, businessRepositoryEntityID) ?? Builders<T>.Filter.Empty, options, cancellationToken).ConfigureAwait(false);
 		}
 		#endregion
 
@@ -1442,13 +1442,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<BsonDocument> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
+		public static List<BsonDocument> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).Select(context.NoSqlSession, attributes, info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
@@ -1501,14 +1501,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<BsonDocument>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static Task<List<BsonDocument>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectAsync(context.NoSqlSession, attributes, info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
@@ -1555,13 +1555,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
+		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectIdentities(context.NoSqlSession, info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
@@ -1606,14 +1606,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).SelectIdentitiesAsync(context.NoSqlSession, info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
@@ -1663,13 +1663,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
+		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null) where T : class
 		{
-			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).Find(context.NoSqlSession, info.Item1, info.Item2, pageSize, pageNumber, options);
 		}
 
@@ -1719,14 +1719,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The options</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			return context.GetCollection<T>(dataSource).FindAsync(context.NoSqlSession, info.Item1, info.Item2, pageSize, pageNumber, options, cancellationToken);
 		}
 		#endregion
@@ -1740,14 +1740,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="identities">The collection of identities for finding</param>
 		/// <param name="sort">The order-by expression for ordering</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null) where T : class
+		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
 		{
 			if (identities == null || identities.Count < 1)
 				return new List<T>();
-			var info = RepositoryExtensions.PrepareNoSqlStatements(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessEntityID, false);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessRepositoryEntityID, false);
 			return context.GetCollection<T>(dataSource).Find(context.NoSqlSession, info.Item1, info.Item2, 0, 1, options);
 		}
 
@@ -1759,15 +1759,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="identities">The collection of identities for finding</param>
 		/// <param name="sort">The order-by expression for ordering</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			if (identities == null || identities.Count < 1)
 				return Task.FromResult(new List<T>());
-			var info = RepositoryExtensions.PrepareNoSqlStatements(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessEntityID, false);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessRepositoryEntityID, false);
 			return context.GetCollection<T>(dataSource).FindAsync(context.NoSqlSession, info.Item1, info.Item2, 0, 1, options, cancellationToken);
 		}
 		#endregion
@@ -1780,13 +1780,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null) where T : class
+		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null) where T : class
 		{
-			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			var collection = context.GetCollection<T>(dataSource);
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{(info.Item1 ?? Builders<T>.Filter.Empty).Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
@@ -1800,14 +1800,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents);
+			var info = RepositoryExtensions.PrepareNoSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			var collection = context.GetCollection<T>(dataSource);
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{(info.Item1 ?? Builders<T>.Filter.Empty).Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
@@ -1861,11 +1861,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="query"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
-			=> collection.Search(scoreProperty, query, NoSqlHelper.CreateFilterDefinition<T>(null, businessEntityID), pageSize, pageNumber, options);
+		public static List<T> Search<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
+			=> collection.Search(scoreProperty, query, NoSqlHelper.CreateFilterDefinition<T>(null, businessRepositoryEntityID), pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1891,11 +1891,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).Search(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options);
+		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
+			=> context.GetCollection<T>(dataSource).Search(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1943,12 +1943,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="query"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> collection.SearchAsync(scoreProperty, query, NoSqlHelper.CreateFilterDefinition<T>(null, businessEntityID), pageSize, pageNumber, options, cancellationToken);
+		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> collection.SearchAsync(scoreProperty, query, NoSqlHelper.CreateFilterDefinition<T>(null, businessRepositoryEntityID), pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1975,12 +1975,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> context.GetCollection<T>(dataSource).SearchAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options, cancellationToken);
+		public static Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).SearchAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), pageSize, pageNumber, options, cancellationToken);
 		#endregion
 
 		#region Search (identities)
@@ -2028,11 +2028,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).SearchIdentities(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options);
+		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
+			=> context.GetCollection<T>(dataSource).SearchIdentities(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
@@ -2081,12 +2081,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> context.GetCollection<T>(dataSource).SearchIdentitiesAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), pageSize, pageNumber, options, cancellationToken);
+		public static Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).SearchIdentitiesAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), pageSize, pageNumber, options, cancellationToken);
 		#endregion
 
 		#region Count (searching)
@@ -2128,11 +2128,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="query">The text query for counting</param>
 		/// <param name="filter">The additional filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter = null, string businessEntityID = null, CountOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).Count(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), options);
+		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter = null, string businessRepositoryEntityID = null, CountOptions options = null) where T : class
+			=> context.GetCollection<T>(dataSource).Count(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), options);
 
 		/// <summary>
 		/// Counts the number of all the matched documents
@@ -2174,12 +2174,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="query">The text query for counting</param>
 		/// <param name="filter">The additional filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter = null, string businessEntityID = null, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> context.GetCollection<T>(dataSource).CountAsync(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessEntityID), options, cancellationToken);
+		public static Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter = null, string businessRepositoryEntityID = null, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).CountAsync(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), options, cancellationToken);
 		#endregion
 
 		#region Schemas & Indexes

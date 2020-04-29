@@ -154,9 +154,9 @@ namespace net.vieapps.Components.Repository
 		public string ExtendedPropertiesTableName { get; internal set; }
 
 		/// <summary>
-		/// Gets the collection of run-time business repositories (means business modules at run-time)
+		/// Gets the collection of business repositories (means business modules at run-time)
 		/// </summary>
-		public Dictionary<string, IRuntimeRepository> RuntimeRepositories { get; internal set; } = new Dictionary<string, IRuntimeRepository>(StringComparer.OrdinalIgnoreCase);
+		public Dictionary<string, IBusinessRepository> BusinessRepositories { get; internal set; } = new Dictionary<string, IBusinessRepository>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register & Update settings
@@ -522,9 +522,9 @@ namespace net.vieapps.Components.Repository
 		public Type NavigatorType { get; internal set; }
 
 		/// <summary>
-		/// Gets the collection of run-time business entities (means business conten-types at run-time)
+		/// Gets the collection of business repository entities (means business conten-types at run-time)
 		/// </summary>
-		public Dictionary<string, IRuntimeRepositoryEntity> RuntimeEntities { get; internal set; } = new Dictionary<string, IRuntimeRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
+		public Dictionary<string, IBusinessRepositoryEntity> BusinessRepositoryEntities { get; internal set; } = new Dictionary<string, IBusinessRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register & Update settings

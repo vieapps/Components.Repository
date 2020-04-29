@@ -1080,10 +1080,10 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Statements of SQL
-		internal static Tuple<Tuple<string, Dictionary<string, object>>, string> PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		internal static Tuple<Tuple<string, Dictionary<string, object>>, string> PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition<T>();
-			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
 			parentIDs = parentIDs ?? (definition != null && autoAssociateWithMultipleParents && filter != null ? filter.GetAssociatedParentIDs(definition) : null);
 
 			var standardProperties = propertiesInfo.Item1;
@@ -1095,13 +1095,13 @@ namespace net.vieapps.Components.Repository
 					: (filter as FilterBy<T>).GetSqlStatement(null, standardProperties, extendedProperties, definition, parentIDs)
 				: null;
 
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && extendedProperties != null)
+			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID) && extendedProperties != null)
 				filterBy = new Tuple<string, Dictionary<string, object>>
 				(
 					"Origin.EntityID=@EntityID" + (filterBy != null ? " AND " + filterBy.Item1 : ""),
 					new Dictionary<string, object>(filterBy != null ? filterBy.Item2 : new Dictionary<string, object>())
 					{
-						{ "@EntityID", businessEntityID }
+						{ "@EntityID", businessRepositoryEntityID }
 					}
 				);
 
@@ -1112,10 +1112,10 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Statements of No SQL
-		internal static Tuple<FilterDefinition<T>, SortDefinition<T>> PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		internal static Tuple<FilterDefinition<T>, SortDefinition<T>> PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
 		{
 			definition = definition ?? (autoAssociateWithMultipleParents ? RepositoryMediator.GetEntityDefinition<T>() : null);
-			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
 			parentIDs = parentIDs ?? (definition != null && autoAssociateWithMultipleParents && filter != null ? filter.GetAssociatedParentIDs(definition) : null);
 
 			var standardProperties = propertiesInfo.Item1;
@@ -1127,10 +1127,10 @@ namespace net.vieapps.Components.Repository
 					: (filter as FilterBy<T>).GetNoSqlStatement(standardProperties, extendedProperties, definition, parentIDs)
 				: null;
 
-			if (!string.IsNullOrWhiteSpace(businessEntityID) && extendedProperties != null)
+			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID) && extendedProperties != null)
 				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessEntityID);
+					? Builders<T>.Filter.Eq("EntityID", businessRepositoryEntityID)
+					: filterBy & Builders<T>.Filter.Eq("EntityID", businessRepositoryEntityID);
 
 			var sortBy = sort?.GetNoSqlStatement(null, standardProperties, extendedProperties);
 

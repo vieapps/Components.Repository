@@ -546,46 +546,99 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Update master/slave mappings
-		static List<Tuple<string, List<DbParameter>>> PrepareUpdateMapping<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
+		#region Mappings (multiple parent associates or single master/slaves)
+		static bool IsGotMultipleParentAssociates(this EntityDefinition definition)
+			=> definition.ParentType != null
+				&& !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty)
+				&& definition.MultipleParentAssociates 
+				&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesProperty)
+				&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable)
+				&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn)
+				&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn);
+
+		static bool IsGotMultipleParentAssociates<T>(this T @object) where T : class
+			=> @object != null && RepositoryMediator.GetEntityDefinition<T>().IsGotMultipleParentAssociates();
+
+		static bool IsGotSingleMappingProperties(this EntityDefinition definition)
+			=> definition.Attributes.Count(attribute => attribute.IsStoredAsSimpleMapping()) > 0;
+
+		static bool IsGotSingleMappingProperties<T>(this T @object) where T : class
+			=> @object != null && RepositoryMediator.GetEntityDefinition<T>().IsGotSingleMappingProperties();
+
+		static string GetSingleMappingTableName(this AttributeInfo attribute, EntityDefinition definition, AsSingleMappingAttribute mappingInfo = null)
 		{
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			var columns = "ID,MasterID,SlaveID".ToList();
-			var masterID = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
-			var statements = new List<Tuple<string, List<DbParameter>>>();
+			mappingInfo = mappingInfo ?? attribute.GetCustomAttribute<AsSingleMappingAttribute>();
+			var name = mappingInfo?.TableName;
+			return string.IsNullOrWhiteSpace(name) ? $"{definition.TableName}_{attribute.Name}_Mappings" : name;
+		}
 
-			definition.Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEach(attribute =>
+		static string GetSingleMappingLinkColumn(this AttributeInfo attribute, EntityDefinition definition, AsSingleMappingAttribute mappingInfo = null)
+		{
+			mappingInfo = mappingInfo ?? attribute.GetCustomAttribute<AsSingleMappingAttribute>();
+			var name = mappingInfo?.LinkColumn;
+			return string.IsNullOrWhiteSpace(name) ? $"{definition.Type.GetTypeName(true)}ID" : name;
+		}
+
+		static string GetSingleMappingMapColumn(this AttributeInfo attribute, AsSingleMappingAttribute mappingInfo = null)
+		{
+			mappingInfo = mappingInfo ?? attribute.GetCustomAttribute<AsSingleMappingAttribute>();
+			var name = mappingInfo?.MapColumn;
+			return string.IsNullOrWhiteSpace(name) ? $"{attribute.Name.Replace(StringComparison.OrdinalIgnoreCase, "IDs", "").Replace(StringComparison.OrdinalIgnoreCase, "ID", "")}ID" : name;
+		}
+
+		static List<Tuple<string, List<DbParameter>>> PrepareUpdateMappings(this DbProviderFactory dbProviderFactory, string tableName, string linkColumn, string mapColumn, string linkValue, IEnumerable<string> mapValues)
+		{
+			var statements = new List<Tuple<string, List<DbParameter>>>
 			{
-				var attributeInfo = attribute.Info.GetCustomAttributes(typeof(AsMappingAttribute), true).First() as AsMappingAttribute;
-				var tableName = string.IsNullOrWhiteSpace(attributeInfo.TableName) ? $"{definition.TableName}_Mappings" : attributeInfo.TableName;
-
-				statements.Add(new Tuple<string, List<DbParameter>>(
-					$"DELETE FROM {tableName} WHERE MasterID=@MasterID",
+				new Tuple<string, List<DbParameter>>(
+					$"DELETE FROM {tableName} WHERE {linkColumn}=@{linkColumn}",
 					new List<DbParameter>
 					{
-						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@MasterID", masterID))
+						dbProviderFactory.CreateParameter(new KeyValuePair<string, object>($"@{linkColumn}", linkValue))
 					}
-				));
-
-				var slaveValues = @object.GetAttributeValue(attribute);
-				if (slaveValues != null && slaveValues.IsGenericListOrHashSet())
+				)
+			};
+			mapValues.ForEach(mapValue => statements.Add(new Tuple<string, List<DbParameter>>(
+				$"INSERT INTO {tableName} ({linkColumn},{mapColumn}) VALUES (@{linkColumn},@{mapColumn})",
+				new List<DbParameter>
 				{
-					var slaveIDs = new List<string>();
-					var slaveObjects = (slaveValues.IsGenericList() ? slaveValues as List<object> : (slaveValues as HashSet<object>).ToList()).ToList(typeof(string));
-					var slaveEnumerator = slaveObjects.GetEnumerator();
-					while (slaveEnumerator.MoveNext())
-						slaveIDs.Add(slaveEnumerator.Current.ToString());
+					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>($"@{linkColumn}", linkValue)),
+					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>($"@{mapColumn}", mapValue))
+				}
+			)));
+			return statements;
+		}
 
-					slaveIDs.Where(value => !string.IsNullOrWhiteSpace(value) && value.IsValidUUID()).ForEach(slaveID => statements.Add(new Tuple<string, List<DbParameter>>(
-						$"INSERT INTO {tableName} ({columns.Join(", ")}) VALUES ({columns.Select(column => $"@{column}").Join(", ")})",
-						new List<DbParameter>
-						{
-							dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", $"{slaveID}@{masterID}".GenerateUUID())),
-							dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@MasterID", masterID)),
-							dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@SlaveID", slaveID))
-						}
-					)));
-				};
+		static List<Tuple<string, List<DbParameter>>> PrepareUpdateMappings<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
+		{
+			var statements = new List<Tuple<string, List<DbParameter>>>();
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
+
+			if (definition.IsGotMultipleParentAssociates())
+			{
+				var mapValues = new List<string>();
+				var values = @object.GetAttributeValue(definition.MultipleParentAssociatesProperty);
+				if (values != null && values.IsGenericListOrHashSet())
+				{
+					var enumerator = (values.IsGenericList() ? values as List<object> : (values as HashSet<object>).ToList()).ToList(typeof(string)).GetEnumerator();
+					while (enumerator.MoveNext())
+						mapValues.Add(enumerator.Current?.ToString());
+				}
+				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(definition.MultipleParentAssociatesTable, definition.MultipleParentAssociatesLinkColumn, definition.MultipleParentAssociatesMapColumn, linkValue, mapValues)).ToList();
+			}
+
+			definition.Attributes.Where(attribute => attribute.IsStoredAsSimpleMapping()).ForEach(attribute =>
+			{
+				var mapValues = new List<string>();
+				var values = @object.GetAttributeValue(attribute);
+				if (values != null && values.IsGenericListOrHashSet())
+				{
+					var enumerator = (values.IsGenericList() ? values as List<object> : (values as HashSet<object>).ToList()).ToList(typeof(string)).GetEnumerator();
+					while (enumerator.MoveNext())
+						mapValues.Add(enumerator.Current?.ToString());
+				}
+				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(attribute.GetSingleMappingTableName(definition), attribute.GetSingleMappingLinkColumn(definition), attribute.GetSingleMappingMapColumn(), linkValue, mapValues)).ToList();
 			});
 
 			return statements;
@@ -595,9 +648,8 @@ namespace net.vieapps.Components.Repository
 		{
 			var info = "";
 			var statements = performCreateNew
-				? @object.PrepareUpdateMapping(dbProviderFactory)
-				: @object.PrepareUpdateMapping(dbProviderFactory).Where(statement => statement.Item1.IsStartsWith("DELETE")).ToList();
-
+				? @object.PrepareUpdateMappings(dbProviderFactory)
+				: @object.PrepareUpdateMappings(dbProviderFactory).Where(statement => statement.Item1.IsStartsWith("DELETE")).ToList();
 			statements.ForEach(statement =>
 			{
 				var command = connection.CreateCommand(statement);
@@ -605,7 +657,6 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.IsDebugEnabled)
 					info += (info != "" ? "\r\n" : "") + command.GetInfo();
 			});
-
 			return info;
 		}
 
@@ -613,9 +664,8 @@ namespace net.vieapps.Components.Repository
 		{
 			var info = "";
 			var statements = performCreateNew
-				? @object.PrepareUpdateMapping(dbProviderFactory)
-				: @object.PrepareUpdateMapping(dbProviderFactory).Where(statement => statement.Item1.IsStartsWith("DELETE")).ToList();
-
+				? @object.PrepareUpdateMappings(dbProviderFactory)
+				: @object.PrepareUpdateMappings(dbProviderFactory).Where(statement => statement.Item1.IsStartsWith("DELETE")).ToList();
 			await statements.ForEachAsync(async (statement, token) =>
 			{
 				var command = connection.CreateCommand(statement);
@@ -623,47 +673,76 @@ namespace net.vieapps.Components.Repository
 				if (RepositoryMediator.IsDebugEnabled)
 					info += (info != "" ? "\r\n" : "") + command.GetInfo();
 			}, cancellationToken, true, false).ConfigureAwait(false);
-
 			return info;
 		}
-		#endregion
 
-		#region Get master/slave mappings
-		static Tuple<string, List<DbParameter>> PrepareGetMapping<T>(this T @object, DbProviderFactory dbProviderFactory, AttributeInfo attribute) where T : class
-		{
-			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			var attributeInfo = attribute.Info.GetCustomAttributes(typeof(AsMappingAttribute), true).First() as AsMappingAttribute;
-			return new Tuple<string, List<DbParameter>>(
-				$"SELECT SlaveID FROM {(string.IsNullOrWhiteSpace(attributeInfo.TableName) ? $"{definition.TableName}_Mappings" : attributeInfo.TableName)} WHERE MasterID=@MasterID",
+		static Tuple<string, List<DbParameter>> PrepareGetMappings(this DbProviderFactory dbProviderFactory, string tableName, string linkColumn, string mapColumn, string linkValue)
+			=> new Tuple<string, List<DbParameter>>(
+				$"SELECT {mapColumn} FROM {tableName} WHERE {linkColumn}=@{linkColumn}",
 				new List<DbParameter>
 				{
-					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@MasterID", @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID()))
+					dbProviderFactory.CreateParameter(new KeyValuePair<string, object>($"@{linkColumn}", linkValue))
 				}
 			);
-		}
 
-		static List<string> GetMappings<T>(this T @object, DbConnection connection, DbProviderFactory dbProviderFactory, AttributeInfo attribute) where T : class
+		static List<string> GetMappings(this DbProviderFactory dbProviderFactory, DbConnection connection, string tableName, string linkColumn, string mapColumn, string linkValue)
 		{
-			var ids = new List<string>();
-			var command = connection.CreateCommand(@object.PrepareGetMapping(dbProviderFactory, attribute));
+			var mapValues = new List<string>();
+			var command = connection.CreateCommand(dbProviderFactory.PrepareGetMappings(tableName, linkColumn, mapColumn, linkValue));
 			using (var dataReader = command.ExecuteReader())
 			{
 				while (dataReader.Read())
-					ids.Add(dataReader[0].ToString());
+					mapValues.Add(dataReader[0].ToString());
 			}
-			return ids;
+			return mapValues;
 		}
 
-		static async Task<List<string>> GetMappingsAsync<T>(this T @object, DbConnection connection, DbProviderFactory dbProviderFactory, AttributeInfo attribute, CancellationToken cancellationToken = default) where T : class
+		static void GetMappings<T>(this T @object, DbConnection connection, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var ids = new List<string>();
-			var command = connection.CreateCommand(@object.PrepareGetMapping(dbProviderFactory, attribute));
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
+
+			if (definition.IsGotMultipleParentAssociates())
+			{
+				var mapValues = dbProviderFactory.GetMappings(connection, definition.MultipleParentAssociatesTable, definition.MultipleParentAssociatesLinkColumn, definition.MultipleParentAssociatesMapColumn, linkValue);
+				@object.SetAttributeValue(definition.MultipleParentAssociatesProperty, mapValues);
+			}
+
+			definition.Attributes.Where(attribute => attribute.IsStoredAsSimpleMapping()).ForEach(attribute =>
+			{
+				var mapValues = dbProviderFactory.GetMappings(connection, attribute.GetSingleMappingTableName(definition), attribute.GetSingleMappingLinkColumn(definition), attribute.GetSingleMappingMapColumn(), linkValue);
+				@object.SetAttributeValue(attribute, mapValues);
+			});
+		}
+
+		static async Task<List<string>> GetMappingsAsync(this DbProviderFactory dbProviderFactory, DbConnection connection, string tableName, string linkColumn, string mapColumn, string linkValue, CancellationToken cancellationToken = default)
+		{
+			var mapValues = new List<string>();
+			var command = connection.CreateCommand(dbProviderFactory.PrepareGetMappings(tableName, linkColumn, mapColumn, linkValue));
 			using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 			{
 				while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-					ids.Add(dataReader[0].ToString());
+					mapValues.Add(dataReader[0].ToString());
 			}
-			return ids;
+			return mapValues;
+		}
+
+		static async Task GetMappingsAsync<T>(this T @object, DbConnection connection, DbProviderFactory dbProviderFactory, CancellationToken cancellationToken = default) where T : class
+		{
+			var definition = RepositoryMediator.GetEntityDefinition<T>();
+			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
+
+			if (definition.IsGotMultipleParentAssociates())
+			{
+				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, definition.MultipleParentAssociatesTable, definition.MultipleParentAssociatesLinkColumn, definition.MultipleParentAssociatesMapColumn, linkValue, cancellationToken).ConfigureAwait(false);
+				@object.SetAttributeValue(definition.MultipleParentAssociatesProperty, mapValues);
+			}
+
+			await definition.Attributes.Where(attribute => attribute.IsStoredAsSimpleMapping()).ForEachAsync(async (attribute, token) =>
+			{
+				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, attribute.GetSingleMappingTableName(definition), attribute.GetSingleMappingLinkColumn(definition), attribute.GetSingleMappingMapColumn(), linkValue, token).ConfigureAwait(false);
+				@object.SetAttributeValue(attribute, mapValues);
+			}, cancellationToken, true, false).ConfigureAwait(false); 
 		}
 		#endregion
 
@@ -675,7 +754,7 @@ namespace net.vieapps.Components.Repository
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			foreach (var attribute in definition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).ToList())
+			foreach (var attribute in definition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty)).ToList())
 			{
 				var value = @object.GetAttributeValue(attribute.Name);
 				if (value == null && attribute.IsIgnoredIfNull())
@@ -693,18 +772,18 @@ namespace net.vieapps.Components.Repository
 
 		static Tuple<string, List<DbParameter>> PrepareCreateExtent<T>(this T @object, DbProviderFactory dbProviderFactory) where T : class
 		{
-			var columns = "ID,SystemID,RepositoryID,EntityID".ToList();
+			var columns = "ID,SystemID,RepositoryID,RepositoryEntityID".ToList();
 			var values = columns.Select(c => $"@{c}").ToList();
 			var parameters = new List<DbParameter>
 			{
 				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@ID", (@object as IBusinessEntity).ID)),
 				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@SystemID", (@object as IBusinessEntity).SystemID)),
 				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@RepositoryID", (@object as IBusinessEntity).RepositoryID)),
-				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@EntityID", (@object as IBusinessEntity).EntityID))
+				dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@RepositoryEntityID", (@object as IBusinessEntity).RepositoryEntityID))
 			};
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			var attributes = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
+			var attributes = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions;
 			foreach (var attribute in attributes)
 			{
 				columns.Add(attribute.Column);
@@ -752,8 +831,7 @@ namespace net.vieapps.Components.Repository
 							info += "\r\n" + command.GetInfo();
 					}
 
-					if (@object.IsGotAsMappingProperties(true))
-						info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
+					info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
@@ -820,8 +898,7 @@ namespace net.vieapps.Components.Repository
 							info += "\r\n" + command.GetInfo();
 					}
 
-					if (@object.IsGotAsMappingProperties(true))
-						info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false);
+					info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false);
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
@@ -864,7 +941,7 @@ namespace net.vieapps.Components.Repository
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
 			var fields = definition.Attributes
-				.Where(attribute => !attribute.IsStoredAsMapping())
+				.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty))
 				.Where(attribute => !attribute.IsIgnoredIfNull() || (attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null))
 				.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column + " AS " + attribute.Name))
 				.ToList();
@@ -922,7 +999,7 @@ namespace net.vieapps.Components.Repository
 
 					if (@object != null && @object.IsGotExtendedProperties())
 					{
-						var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
+						var extendedProperties = context.EntityDefinition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions;
 						command = connection.CreateCommand(@object.PrepareGetExtent(id, dbProviderFactory, extendedProperties));
 						using (var dataReader = command.ExecuteReader())
 						{
@@ -932,11 +1009,7 @@ namespace net.vieapps.Components.Repository
 						if (RepositoryMediator.IsDebugEnabled)
 							info += "\r\n" + command.GetInfo();
 
-						if (@object.IsGotAsMappingProperties())
-							RepositoryMediator.GetEntityDefinition<T>().Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEach(attribute => {
-								var attributeValue = @object.GetMappings(connection, dbProviderFactory, attribute);
-								@object.SetAttributeValue(attribute.Name, attribute.IsGenericHashSet() ? attributeValue.ToHashSet() : attributeValue as object);
-							});
+						@object.GetMappings(connection, dbProviderFactory);
 					}
 
 					stopwatch.Stop();
@@ -991,7 +1064,7 @@ namespace net.vieapps.Components.Repository
 
 					if (@object != null && @object.IsGotExtendedProperties())
 					{
-						var extendedProperties = context.EntityDefinition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
+						var extendedProperties = context.EntityDefinition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions;
 						command = connection.CreateCommand(@object.PrepareGetExtent(id, dbProviderFactory, extendedProperties));
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 						{
@@ -1001,12 +1074,7 @@ namespace net.vieapps.Components.Repository
 						if (RepositoryMediator.IsDebugEnabled)
 							info += "\r\n" + command.GetInfo();
 
-						if (@object.IsGotAsMappingProperties())
-							await RepositoryMediator.GetEntityDefinition<T>().Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEachAsync(async (attribute, token) =>
-							{
-								var attributeValue = await @object.GetMappingsAsync(connection, dbProviderFactory, attribute, token).ConfigureAwait(false);
-								@object.SetAttributeValue(attribute.Name, attribute.IsGenericHashSet() ? attributeValue.ToHashSet() : attributeValue as object);
-							}, cancellationToken).ConfigureAwait(false);
+						await @object.GetMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false);
 					}
 
 					stopwatch.Stop();
@@ -1037,11 +1105,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter-by expression for filtering</param>
 		/// <param name="sort">The order-by expression for ordering</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static T Get<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null) where T : class
+		public static T Get<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessRepositoryEntityID = null) where T : class
 		{
-			var objects = context.Find(dataSource, filter, sort, 1, 1, businessEntityID, false);
+			var objects = context.Find(dataSource, filter, sort, 1, 1, businessRepositoryEntityID, false);
 			return objects != null && objects.Count > 0
 				? objects[0]
 				: null;
@@ -1055,12 +1123,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter-by expression for filtering</param>
 		/// <param name="sort">The order-by expression for ordering</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<T> GetAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort = null, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var objects = await context.FindAsync(dataSource, filter, sort, 1, 1, businessEntityID, false, cancellationToken).ConfigureAwait(false);
+			var objects = await context.FindAsync(dataSource, filter, sort, 1, 1, businessRepositoryEntityID, false, cancellationToken).ConfigureAwait(false);
 			return objects != null && objects.Count > 0
 				? objects[0]
 				: null;
@@ -1104,7 +1172,7 @@ namespace net.vieapps.Components.Repository
 
 				if (@object != null && @object.IsGotExtendedProperties())
 				{
-					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
+					var extendedProperties = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
 					fields = extendedProperties.Select(attribute => $"Origin.{attribute.Value.Column} AS {attribute.Value.Name}");
 					command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 					using (var dataReader = command.ExecuteReader())
@@ -1176,7 +1244,7 @@ namespace net.vieapps.Components.Repository
 
 				if (@object != null && @object.IsGotExtendedProperties())
 				{
-					var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
+					var extendedProperties = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
 					fields = extendedProperties.Select(attribute => $"Origin.{attribute.Value.Column} AS {attribute.Value.Name}");
 					command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
@@ -1220,7 +1288,7 @@ namespace net.vieapps.Components.Repository
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			foreach (var attribute in definition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).ToList())
+			foreach (var attribute in definition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty)).ToList())
 			{
 				var value = @object.GetAttributeValue(attribute.Name);
 				if (attribute.Name.IsEquals(definition.PrimaryKey) || (value == null && attribute.IsIgnoredIfNull()))
@@ -1242,7 +1310,7 @@ namespace net.vieapps.Components.Repository
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			var attributes = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions;
+			var attributes = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions;
 			foreach (var attribute in attributes)
 			{
 				columns.Add(attribute.Column + "=@" + attribute.Name);
@@ -1289,8 +1357,7 @@ namespace net.vieapps.Components.Repository
 					if (RepositoryMediator.IsDebugEnabled)
 						info += "\r\n" + command.GetInfo();
 
-					if (@object.IsGotAsMappingProperties())
-						info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
+					info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
@@ -1341,8 +1408,7 @@ namespace net.vieapps.Components.Repository
 					if (RepositoryMediator.IsDebugEnabled)
 						info += "\r\n" + command.GetInfo();
 
-					if (@object.IsGotAsMappingProperties())
-						info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false);
+					info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false);
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
@@ -1368,7 +1434,7 @@ namespace net.vieapps.Components.Repository
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			var standardProperties = definition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).ToDictionary(attribute => attribute.Name.ToLower());
+			var standardProperties = definition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty)).ToDictionary(attribute => attribute.Name.ToLower());
 			foreach (var attribute in attributes)
 			{
 				if (!standardProperties.ContainsKey(attribute.ToLower()))
@@ -1396,7 +1462,7 @@ namespace net.vieapps.Components.Repository
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			var extendedProperties = definition.RuntimeEntities[(@object as IBusinessEntity).EntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name.ToLower());
+			var extendedProperties = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name.ToLower());
 			foreach (var attribute in attributes)
 			{
 				if (!extendedProperties.ContainsKey(attribute.ToLower()))
@@ -1452,8 +1518,7 @@ namespace net.vieapps.Components.Repository
 					}
 					info += command == null || !RepositoryMediator.IsDebugEnabled ? "" : "\r\n" + command.GetInfo();
 
-					if (@object.IsGotAsMappingProperties())
-						info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
+					info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
@@ -1508,8 +1573,7 @@ namespace net.vieapps.Components.Repository
 					}
 					info += command == null || !RepositoryMediator.IsDebugEnabled ? "" : "\r\n" + command.GetInfo();
 
-					if (@object.IsGotAsMappingProperties())
-						info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false);
+					info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false);
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
@@ -1569,8 +1633,7 @@ namespace net.vieapps.Components.Repository
 							info += "\r\n" + command.GetInfo();
 					}
 
-					if (@object.IsGotAsMappingProperties())
-						info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory, false);
+					info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory, false);
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
@@ -1630,8 +1693,7 @@ namespace net.vieapps.Components.Repository
 							info += "\r\n" + command.GetInfo();
 					}
 
-					if (@object.IsGotAsMappingProperties())
-						info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken, false).ConfigureAwait(false);
+					info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken, false).ConfigureAwait(false);
 
 					stopwatch.Stop();
 					if (RepositoryMediator.IsDebugEnabled)
@@ -1778,8 +1840,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter for deleting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
-		public static void DeleteMany<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null) where T : class
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
+		public static void DeleteMany<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessRepositoryEntityID = null) where T : class
 		{
 			if (filter == null)
 				return;
@@ -1838,9 +1900,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="filter">The filter for deleting</param>
 		/// <param name="cancellationToken">The cancellation token</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static async Task DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task DeleteManyAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			if (filter == null)
 				return;
@@ -1893,12 +1955,12 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Select
-		static Tuple<string, List<DbParameter>> PrepareSelect<T>(this DbProviderFactory dbProviderFactory, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
+		static Tuple<string, List<DbParameter>> PrepareSelect<T>(this DbProviderFactory dbProviderFactory, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition, true);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
@@ -1907,7 +1969,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, sort, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Count() > 0
@@ -2057,10 +2119,10 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns></returns>
-		public static List<DataRow> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
+		public static List<DataRow> Select<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
@@ -2069,7 +2131,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				DataTable dataTable = null;
-				var statement = dbProviderFactory.PrepareSelect(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
+				var statement = dbProviderFactory.PrepareSelect(attributes, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -2131,11 +2193,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
+		public static async Task<List<DataRow>> SelectAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<string> attributes, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
@@ -2144,7 +2206,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				DataTable dataTable = null;
-				var statement = dbProviderFactory.PrepareSelect(attributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents);
+				var statement = dbProviderFactory.PrepareSelect(attributes, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -2207,11 +2269,11 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns></returns>
-		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
-			=> SqlHelper.Select(context, dataSource, new[] { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+		public static List<string> SelectIdentities<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
+			=> SqlHelper.Select(context, dataSource, new[] { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
 				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
 
@@ -2225,12 +2287,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
-			=> (await SqlHelper.SelectAsync(context, dataSource, new[] { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
+		public static async Task<List<string>> SelectIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
+			=> (await SqlHelper.SelectAsync(context, dataSource, new[] { context.EntityDefinition.PrimaryKey }, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 				.Select(data => data[context.EntityDefinition.PrimaryKey].CastAs<string>())
 				.ToList();
 		#endregion
@@ -2246,14 +2308,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
+		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
-			var standardProperties = context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).ToDictionary(attribute => attribute.Name);
-			var extendedProperties = !string.IsNullOrWhiteSpace(businessEntityID) && context.EntityDefinition.RuntimeEntities.ContainsKey(businessEntityID)
-				? context.EntityDefinition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
+			var standardProperties = context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(context.EntityDefinition.MultipleParentAssociatesProperty)).ToDictionary(attribute => attribute.Name);
+			var extendedProperties = !string.IsNullOrWhiteSpace(businessRepositoryEntityID) && context.EntityDefinition.BusinessRepositoryEntities.ContainsKey(businessRepositoryEntityID)
+				? context.EntityDefinition.BusinessRepositoryEntities[businessRepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
 				: null;
 
 			var results = new List<T>();
@@ -2267,7 +2329,7 @@ namespace net.vieapps.Components.Repository
 					.Distinct()
 					.ToList();
 
-				var objects = context.Select(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+				var objects = context.Select(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToDictionary(@object => @object.GetEntityID(context.EntityDefinition.PrimaryKey));
 
@@ -2275,7 +2337,7 @@ namespace net.vieapps.Components.Repository
 				if (otherAttributes.Count > 0)
 				{
 					otherAttributes.Add(context.EntityDefinition.PrimaryKey);
-					context.Select(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false)
+					context.Select(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessRepositoryEntityID, false)
 						.ForEach(data =>
 						{
 							var id = data[context.EntityDefinition.PrimaryKey].CastAs<string>();
@@ -2286,23 +2348,16 @@ namespace net.vieapps.Components.Repository
 				results = objects.Select(item => item.Value).ToList();
 			}
 			else
-				results = context.Select(dataSource, null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents)
+				results = context.Select(dataSource, null, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
 			
-			if (results.Count > 0 && results.First().IsGotAsMappingProperties())
+			if (results.Count > 0 && (results.First().IsGotSingleMappingProperties() || results.First().IsGotMultipleParentAssociates()))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
-					RepositoryMediator.GetEntityDefinition<T>().Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEach(attribute =>
-					{
-						results.ForEach(@object =>
-						{
-							var attributeValue = @object.GetMappings(connection, dbProviderFactory, attribute);
-							@object.SetAttributeValue(attribute.Name, attribute.IsGenericHashSet() ? attributeValue.ToHashSet() : attributeValue as object);
-						});
-					});
+					results.ForEach(@object => @object.GetMappings(connection, dbProviderFactory));
 				}
 			}
 
@@ -2319,15 +2374,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="sort">The order-by expression for ordering</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
+		public static async Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
 		{
-			var standardProperties = context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).ToDictionary(attribute => attribute.Name);
-			var extendedProperties = !string.IsNullOrWhiteSpace(businessEntityID) && context.EntityDefinition.RuntimeEntities.ContainsKey(businessEntityID)
-				? context.EntityDefinition.RuntimeEntities[businessEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
+			var standardProperties = context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(context.EntityDefinition.MultipleParentAssociatesProperty)).ToDictionary(attribute => attribute.Name);
+			var extendedProperties = !string.IsNullOrWhiteSpace(businessRepositoryEntityID) && context.EntityDefinition.BusinessRepositoryEntities.ContainsKey(businessRepositoryEntityID)
+				? context.EntityDefinition.BusinessRepositoryEntities[businessRepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
 				: null;
 
 			var results = new List<T>();
@@ -2341,7 +2396,7 @@ namespace net.vieapps.Components.Repository
 					.Distinct()
 					.ToList();
 
-				var objects = (await context.SelectAsync(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
+				var objects = (await context.SelectAsync(dataSource, distinctAttributes, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToDictionary(@object => @object.GetEntityID(context.EntityDefinition.PrimaryKey));
 
@@ -2349,7 +2404,7 @@ namespace net.vieapps.Components.Repository
 				if (otherAttributes.Count > 0)
 				{
 					otherAttributes.Add(context.EntityDefinition.PrimaryKey);
-					(await context.SelectAsync(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessEntityID, false, cancellationToken).ConfigureAwait(false))
+					(await context.SelectAsync(dataSource, otherAttributes, Filters<T>.Or(objects.Select(item => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, item.Key))), null, 0, 1, businessRepositoryEntityID, false, cancellationToken).ConfigureAwait(false))
 						.ForEach(data =>
 						{
 							var id = data[context.EntityDefinition.PrimaryKey].CastAs<string>();
@@ -2360,20 +2415,19 @@ namespace net.vieapps.Components.Repository
 				results = objects.Select(item => item.Value).ToList();
 			}
 			else
-				results = (await context.SelectAsync(dataSource, null, filter, sort, pageSize, pageNumber, businessEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
+				results = (await context.SelectAsync(dataSource, null, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false))
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
 
-			if (results.Count > 0 && results.First().IsGotAsMappingProperties())
+			if (results.Count > 0 && (results.First().IsGotSingleMappingProperties() || results.First().IsGotMultipleParentAssociates()))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
-					await RepositoryMediator.GetEntityDefinition<T>().Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEachAsync(async (attribute, token) => await results.ForEachAsync(async (@object, ctoken) =>
+					await results.ForEachAsync(async (@object, token) =>
 					{
-						var attributeValue = await @object.GetMappingsAsync(connection, dbProviderFactory, attribute, ctoken).ConfigureAwait(false);
-						@object.SetAttributeValue(attribute.Name, attribute.IsGenericHashSet() ? attributeValue.ToHashSet() : attributeValue as object);
-					}, token).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+						await @object.GetMappingsAsync(connection, dbProviderFactory, token).ConfigureAwait(false);
+					}, cancellationToken).ConfigureAwait(false);
 				}
 			}
 
@@ -2390,12 +2444,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="identities">The collection of identities for finding</param>
 		/// <param name="sort">The order-by expression for ordering</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null) where T : class
+		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessRepositoryEntityID = null) where T : class
 			=> identities == null || identities.Count < 1
 				? new List<T>()
-				: context.Find(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessEntityID, false);
+				: context.Find(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessRepositoryEntityID, false);
 
 		/// <summary>
 		/// Finds the records and construct the collection of objects that specified by identity
@@ -2405,29 +2459,29 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source</param>
 		/// <param name="identities">The collection of identities for finding</param>
 		/// <param name="sort">The order-by expression for ordering</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, List<string> identities, SortBy<T> sort = null, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 			=> identities == null || identities.Count < 1
 				? Task.FromResult(new List<T>())
-				: context.FindAsync(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessEntityID, false, cancellationToken);
+				: context.FindAsync(dataSource, Filters<T>.Or(identities.Select(id => Filters<T>.Equals(context.EntityDefinition.PrimaryKey, id))), sort, 0, 1, businessRepositoryEntityID, false, cancellationToken);
 		#endregion
 
 		#region Count
-		static Tuple<string, List<DbParameter>> PrepareCount<T>(this DbProviderFactory dbProviderFactory, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
+		static Tuple<string, List<DbParameter>> PrepareCount<T>(this DbProviderFactory dbProviderFactory, IFilterBy<T> filter, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
 
 			var parentIDs = definition != null && autoAssociateWithMultipleParents && filter != null
 				? filter.GetAssociatedParentIDs(definition)
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// tables (FROM)
 			var tables = $" FROM {definition.TableName} AS Origin"
@@ -2458,17 +2512,17 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <returns></returns>
-		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
+		public static long Count<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(filter, businessEntityID, autoAssociateWithMultipleParents));
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(filter, businessRepositoryEntityID, autoAssociateWithMultipleParents));
 				try
 				{
 					var total = command.ExecuteScalar().CastAs<long>();
@@ -2498,18 +2552,18 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
+		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(filter, businessEntityID, autoAssociateWithMultipleParents));
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(filter, businessRepositoryEntityID, autoAssociateWithMultipleParents));
 				try
 				{
 					var total = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
@@ -2682,16 +2736,16 @@ namespace net.vieapps.Components.Repository
 			return searchTerms;
 		}
 
-		static Tuple<string, List<DbParameter>> PrepareSearch<T>(this DbProviderFactory dbProviderFactory, IEnumerable<string> attributes, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, string searchInColumns = "*") where T : class
+		static Tuple<string, List<DbParameter>> PrepareSearch<T>(this DbProviderFactory dbProviderFactory, IEnumerable<string> attributes, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, string searchInColumns = "*") where T : class
 		{
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition, true);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
-			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, false, definition, null, propertiesInfo);
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Count() > 0
@@ -2826,21 +2880,21 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
+		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var statement = dbProviderFactory.PrepareSearch(null, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch(null, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
 				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
@@ -2894,15 +2948,8 @@ namespace net.vieapps.Components.Repository
 					.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
 					.ToList();
 
-				if (results.Count > 0 && results.First().IsGotAsMappingProperties())
-					RepositoryMediator.GetEntityDefinition<T>().Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEach(attribute =>
-					{
-						results.ForEach(@object =>
-						{
-							var attributeValue = @object.GetMappings(connection, dbProviderFactory, attribute);
-							@object.SetAttributeValue(attribute.Name, attribute.IsGenericHashSet() ? attributeValue.ToHashSet() : attributeValue as object);
-						});
-					});
+				if (results.Count > 0 && (results.First().IsGotSingleMappingProperties() || results.First().IsGotMultipleParentAssociates()))
+					results.ForEach(@object => @object.GetMappings(connection, dbProviderFactory));
 
 				return results;
 			}
@@ -2918,22 +2965,22 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var statement = dbProviderFactory.PrepareSearch(null, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch(null, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
 				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
@@ -2987,12 +3034,11 @@ namespace net.vieapps.Components.Repository
 					.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
 					.ToList();
 
-				if (results.Count > 0 && results.First().IsGotAsMappingProperties())
-					await RepositoryMediator.GetEntityDefinition<T>().Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEachAsync(async (attribute, token) => await results.ForEachAsync(async (@object, ctoken) =>
+				if (results.Count > 0 && (results.First().IsGotSingleMappingProperties() || results.First().IsGotMultipleParentAssociates()))
+					await results.ForEachAsync(async (@object, token) =>
 					{
-						var attributeValue = await @object.GetMappingsAsync(connection, dbProviderFactory, attribute, ctoken).ConfigureAwait(false);
-						@object.SetAttributeValue(attribute.Name, attribute.IsGenericHashSet() ? attributeValue.ToHashSet() : attributeValue as object);
-					}, token).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+						await @object.GetMappingsAsync(connection, dbProviderFactory, token).ConfigureAwait(false);
+					}, cancellationToken).ConfigureAwait(false);
 
 				return results;
 			}
@@ -3010,13 +3056,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null) where T : class
+		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
@@ -3025,7 +3071,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var identities = new List<string>();
-				var statement = dbProviderFactory.PrepareSearch(new List<string> { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch(new List<string> { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -3091,14 +3137,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="filter">The additional filter</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var info = "";
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, context.EntityDefinition);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
@@ -3107,7 +3153,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var identities = new List<string>();
-				var statement = dbProviderFactory.PrepareSearch(new List<string> { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessEntityID);
+				var statement = dbProviderFactory.PrepareSearch(new List<string> { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -3166,16 +3212,16 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Count (searching)
-		static Tuple<string, List<DbParameter>> PrepareCount<T>(this DbProviderFactory dbProviderFactory, string query, IFilterBy<T> filter, string businessEntityID = null, string searchInColumns = "*") where T : class
+		static Tuple<string, List<DbParameter>> PrepareCount<T>(this DbProviderFactory dbProviderFactory, string query, IFilterBy<T> filter, string businessRepositoryEntityID = null, string searchInColumns = "*") where T : class
 		{
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessEntityID, definition, true);
+			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
 			var standardProperties = propertiesInfo.Item1;
 			var extendedProperties = propertiesInfo.Item2;
 
-			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessEntityID, false, definition, null, propertiesInfo);
+			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, false, definition, null, propertiesInfo);
 
 			// tables (FROM)
 			var tables = $" FROM {definition.TableName} AS Origin"
@@ -3238,16 +3284,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="query">The text query for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null) where T : class
+		public static long Count<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessRepositoryEntityID = null) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(query, filter, businessEntityID));
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(query, filter, businessRepositoryEntityID));
 				try
 				{
 					var total = command.ExecuteScalar().CastAs<long>();
@@ -3278,17 +3324,17 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The data source for counting</param>
 		/// <param name="query">The text query for counting</param>
 		/// <param name="filter">The filter-by expression for counting</param>
-		/// <param name="businessEntityID">The identity of a business entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<long> CountAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(query, filter, businessEntityID));
+				var command = connection.CreateCommand(dbProviderFactory.PrepareCount(query, filter, businessRepositoryEntityID));
 				try
 				{
 					var total = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
@@ -3323,7 +3369,7 @@ namespace net.vieapps.Components.Repository
 			{
 				case "SQLServer":
 					sql = $"CREATE TABLE [{context.EntityDefinition.TableName}] ("
-						+ context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
+						+ context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping()).Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
 						+ $", CONSTRAINT [PK_{context.EntityDefinition.TableName}] PRIMARY KEY CLUSTERED ([{context.EntityDefinition.PrimaryKey}] ASC) "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY]";
 					break;
@@ -3331,41 +3377,10 @@ namespace net.vieapps.Components.Repository
 				case "MySQL":
 				case "PostgreSQL":
 					sql = $"CREATE TABLE {context.EntityDefinition.TableName} ("
-						+ context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
+						+ context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping()).Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
 						+ $", PRIMARY KEY ({context.EntityDefinition.PrimaryKey}))";
 					break;
 			}
-
-			// mapping tables
-			var sqlMappings = "";
-			context.EntityDefinition.Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEach(attribute =>
-			{
-				var attributeInfo = attribute.Info.GetCustomAttributes(typeof(AsMappingAttribute), true).First() as AsMappingAttribute;
-				var tableName = string.IsNullOrWhiteSpace(attributeInfo.TableName) ? $"{context.EntityDefinition.TableName}_Mappings" : attributeInfo.TableName;
-
-				switch (dbProviderFactoryName)
-				{
-					case "SQLServer":
-						sqlMappings += (sqlMappings != "" ? ";" : "")
-							+ $"CREATE TABLE [{tableName}] ("
-							+ $"[ID] {typeof(string).GetDbTypeString(dbProviderFactoryName, 32, true, false)} NOT NULL, "
-							+ $"[MasterID] {typeof(string).GetDbTypeString(dbProviderFactoryName, 32, true, false)} NOT NULL, "
-							+ $"[SlaveID] {typeof(string).GetDbTypeString(dbProviderFactoryName, 32, true, false)} NOT NULL, "
-							+ $"CONSTRAINT [PK_{context.EntityDefinition.TableName}_Mappings] PRIMARY KEY CLUSTERED ([ID] ASC) "
-							+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY]";
-						break;
-
-					case "MySQL":
-					case "PostgreSQL":
-						sqlMappings += (sqlMappings != "" ? ";" : "")
-							+ $"CREATE TABLE {tableName} ("
-							+ $"ID {typeof(string).GetDbTypeString(dbProviderFactoryName, 32, true, false)} NOT NULL, "
-							+ $"MasterID {typeof(string).GetDbTypeString(dbProviderFactoryName, 32, true, false)} NOT NULL, "
-							+ $"SlaveID {typeof(string).GetDbTypeString(dbProviderFactoryName, 32, true, false)} NOT NULL, "
-							+ $", PRIMARY KEY (ID))";
-						break;
-				}
-			});
 
 			// create tables
 			if (!sql.Equals(""))
@@ -3383,20 +3398,6 @@ namespace net.vieapps.Components.Repository
 								$"STARTER: Create SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
 								$"SQL Command: {sql}"
 							});
-
-						if (!sqlMappings.Equals(""))
-						{
-							command = connection.CreateCommand(sqlMappings);
-							await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-							tracker?.Invoke($"Create SQL mapping table successful [{context.EntityDefinition.TableName}_Mappings] @ {dataSource.Name}", null);
-
-							if (RepositoryMediator.IsDebugEnabled)
-								RepositoryMediator.WriteLogs(new[]
-								{
-									$"STARTER: Create SQL mapping table successful [{context.EntityDefinition.TableName}_Mappings] @ {dataSource.Name}",
-									$"SQL Command: {sqlMappings}"
-								});
-						}
 					}
 					catch (Exception ex)
 					{
@@ -3415,22 +3416,21 @@ namespace net.vieapps.Components.Repository
 			};
 			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase);
 
-			context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsMapping()).ForEach(attribute =>
+			context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping()).ForEach(attribute =>
 			{
-				var attributes = attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true);
-				if (attributes.Length > 0)
+				var sortableAttribute = attribute.GetCustomAttribute<SortableAttribute>(true);
+				if (sortableAttribute != null)
 				{
-					var attr = attributes[0] as SortableAttribute;
-					if (!string.IsNullOrWhiteSpace(attr.UniqueIndexName))
+					if (!string.IsNullOrWhiteSpace(sortableAttribute.UniqueIndexName))
 					{
-						var name = $"{prefix}_{attr.UniqueIndexName}";
+						var name = $"{prefix}_{sortableAttribute.UniqueIndexName}";
 						if (!uniqueIndexes.ContainsKey(name))
 							uniqueIndexes.Add(name, new List<AttributeInfo>());
 						uniqueIndexes[name].Add(attribute);
 
-						if (!string.IsNullOrWhiteSpace(attr.IndexName))
+						if (!string.IsNullOrWhiteSpace(sortableAttribute.IndexName))
 						{
-							name = $"{prefix}_{attr.IndexName}";
+							name = $"{prefix}_{sortableAttribute.IndexName}";
 							if (!indexes.ContainsKey(name))
 								indexes.Add(name, new List<AttributeInfo>());
 							indexes[name].Add(attribute);
@@ -3438,7 +3438,7 @@ namespace net.vieapps.Components.Repository
 					}
 					else
 					{
-						var name = prefix + (string.IsNullOrWhiteSpace(attr.IndexName) ? "" : "_" + attr.IndexName);
+						var name = prefix + (string.IsNullOrWhiteSpace(sortableAttribute.IndexName) ? "" : "_" + sortableAttribute.IndexName);
 						if (!indexes.ContainsKey(name))
 							indexes.Add(name, new List<AttributeInfo>());
 						indexes[name].Add(attribute);
@@ -3486,29 +3486,6 @@ namespace net.vieapps.Components.Repository
 					});
 					break;
 			}
-			// index of mapping tables
-			var sqlMappings = "";
-			context.EntityDefinition.Attributes.Where(attribute => attribute.IsStoredAsMapping()).ForEach(attribute =>
-			{
-				var attributeInfo = attribute.Info.GetCustomAttributes(typeof(AsMappingAttribute), true).First() as AsMappingAttribute;
-				var tableName = string.IsNullOrWhiteSpace(attributeInfo.TableName) ? $"{context.EntityDefinition.TableName}_Mappings" : attributeInfo.TableName;
-
-				switch (dbProviderFactoryName)
-				{
-					case "SQLServer":
-						sqlMappings += (sqlMappings != "" ? ";" : "")
-							+ $"CREATE UNIQUE NONCLUSTERED INDEX [IDX_{tableName}] ON [{tableName}] ("
-							+ $"[MasterID] ASC, [SlaveID] ASC"
-							+ ") WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY]";
-						break;
-
-					case "MySQL":
-					case "PostgreSQL":
-						sqlMappings += (sqlMappings != "" ? ";" : "")
-							+ $"CREATE UNIQUE INDEX IDX_{tableName} ON {tableName} (MasterID ASC, SlaveID ASC)";
-						break;
-				}
-			});
 
 			// create index
 			if (!sql.Equals(""))
@@ -3526,20 +3503,6 @@ namespace net.vieapps.Components.Repository
 								$"STARTER: Create indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
 								$"SQL Command: {sql}"
 							});
-
-						if (!sqlMappings.Equals(""))
-						{
-							command = connection.CreateCommand(sqlMappings);
-							await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-							tracker?.Invoke($"Create indexes of SQL mapping table successful [{context.EntityDefinition.TableName}_Mappings] @ {dataSource.Name}", null);
-
-							if (RepositoryMediator.IsDebugEnabled)
-								RepositoryMediator.WriteLogs(new[]
-								{
-									$"STARTER: Create indexes of SQL mapping table successful [{context.EntityDefinition.TableName}_Mappings] @ {dataSource.Name}",
-									$"SQL Command: {sqlMappings}"
-								});
-						}
 					}
 					catch (Exception ex)
 					{
@@ -3621,28 +3584,26 @@ namespace net.vieapps.Components.Repository
 				}
 		}
 
-		internal static async Task CreateParentMapingTableAsync(this RepositoryContext context, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
+		static async Task CreateMapingTableAsync(this RepositoryContext context, DataSource dataSource, string tableName, string linkColumn, string mapColumn, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
-			// prepare
-			var columns = context.EntityDefinition.Attributes
-				.Where(attribute => attribute.Name.Equals(context.EntityDefinition.ParentAssociatedProperty) || attribute.Name.Equals(context.EntityDefinition.PrimaryKey))
-				.ToDictionary(attribute => attribute.Name.Equals(context.EntityDefinition.PrimaryKey) ? context.EntityDefinition.MultipleParentAssociatesLinkColumn : context.EntityDefinition.MultipleParentAssociatesMapColumn);
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var sql = "";
 			switch (dbProviderFactory.GetName())
 			{
 				case "SQLServer":
-					sql = $"CREATE TABLE [{context.EntityDefinition.MultipleParentAssociatesTable}] ("
-						+ columns.Select(info => "[" + info.Key + "] " + info.Value.GetDbTypeString(dbProviderFactory) + " NOT  NULL").Join(", ")
-						+ $", CONSTRAINT [PK_{context.EntityDefinition.MultipleParentAssociatesTable}] PRIMARY KEY CLUSTERED ({columns.Select(info => $"[{info.Key}] ASC").Join(", ")})"
-						+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
+					sql = $"CREATE TABLE [{tableName}] ("
+						+ $"[{linkColumn}] {typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)} NOT  NULL, "
+						+ $"[{mapColumn}] {typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)} NOT  NULL, "
+						+ $"CONSTRAINT [PK_{context.EntityDefinition.MultipleParentAssociatesTable}] PRIMARY KEY CLUSTERED ([{linkColumn}] ASC, [{mapColumn}] ASC "
+						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
 					break;
 
 				case "MySQL":
 				case "PostgreSQL":
-					sql = $"CREATE TABLE {context.EntityDefinition.MultipleParentAssociatesTable} ("
-						+ columns.Select(info => $"{info.Key} {info.Value.GetDbTypeString(dbProviderFactory)} NOT  NULL").Join(", ")
-						+ $", PRIMARY KEY ({columns.Select(info => $"{info.Key} ASC").Join(", ")})"
+					sql = $"CREATE TABLE {tableName} ("
+						+ $"{linkColumn} {typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)} NOT  NULL, "
+						+ $"{mapColumn} {typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)} NOT  NULL, "
+						+ $"PRIMARY KEY ({linkColumn} ASC, {mapColumn} ASC)"
 						+ ")";
 					break;
 			}
@@ -3655,18 +3616,18 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table of parent associated mapping successful [{context.EntityDefinition.MultipleParentAssociatesTable}] @ {dataSource.Name}", null);
+						tracker?.Invoke($"Create SQL mapping table successful [{tableName}] @ {dataSource.Name}", null);
 
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs(new[]
 							{
-								$"STARTER: Create SQL table of parent associated mapping successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
+								$"STARTER: Create SQL mapping table successful [{tableName}] @ {dataSource.Name}",
 								$"SQL Command: {sql}"
 							});
 					}
 					catch (Exception ex)
 					{
-						throw new RepositoryOperationException("Error occurred while creating new SQL table of parent associated mapping", sql, ex);
+						throw new RepositoryOperationException("Error occurred while creating new SQL mapping table", sql, ex);
 					}
 				}
 		}
@@ -3682,7 +3643,7 @@ namespace net.vieapps.Components.Repository
 				{ "ID", new Tuple<Type, int>(typeof(string), 32) },
 				{ "SystemID", new Tuple<Type, int>(typeof(string), 32) },
 				{ "RepositoryID", new Tuple<Type, int>(typeof(string), 32) },
-				{ "EntityID", new Tuple<Type, int>(typeof(string), 32) },
+				{ "RepositoryEntityID", new Tuple<Type, int>(typeof(string), 32) },
 			};
 
 			var max = dbProviderFactoryName.Equals("MySQL") ? 15 : 30;
@@ -3824,10 +3785,14 @@ namespace net.vieapps.Components.Repository
 					if (definition.Searchable)
 						await context.CreateTableFulltextIndexAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 
-					if (definition.ParentType != null && !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty)
-					&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable)
-					&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn))
-						await context.CreateParentMapingTableAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
+					if (definition.IsGotMultipleParentAssociates())
+						await context.CreateMapingTableAsync(dataSource, definition.MultipleParentAssociatesTable, definition.MultipleParentAssociatesLinkColumn, definition.MultipleParentAssociatesMapColumn, tracker, cancellationToken).ConfigureAwait(false);
+
+					if (definition.IsGotSingleMappingProperties())
+						await definition.Attributes.Where(attribute => attribute.IsStoredAsSimpleMapping()).ForEachAsync(async (attribute, token) =>
+						{
+							await context.CreateMapingTableAsync(dataSource, attribute.GetSingleMappingTableName(definition), attribute.GetSingleMappingLinkColumn(definition), attribute.GetSingleMappingMapColumn(), tracker, token).ConfigureAwait(false);
+						}, cancellationToken, true, false).ConfigureAwait(false);
 
 					if (definition.Extendable && definition.RepositoryDefinition != null)
 						await context.CreateExtentTableAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
