@@ -209,13 +209,13 @@ namespace net.vieapps.Components.Repository
 			{
 				parentIDs.ForEach((id, index) =>
 				{
-					var surf = (!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString();
+					var suffix = (!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString();
 					statement += (statement.Equals("") ? "" : " OR ")
-						+ $"Origin.{this.Attribute}=@{this.Attribute}{surf}"
-						+ $" OR Link.{definition.MultipleParentAssociatesMapColumn}=@{this.Attribute}{surf}_L";
+						+ $"Origin.{this.Attribute}=@{this.Attribute}{suffix}"
+						+ $" OR Link.{definition.MultipleParentAssociatesMapColumn}=@{this.Attribute}{suffix}_L";
 
-					parameters.Add($"@{this.Attribute}{surf}", id);
-					parameters.Add($"@{this.Attribute}{surf}_L", id);
+					parameters.Add($"@{this.Attribute}{suffix}", id);
+					parameters.Add($"@{this.Attribute}{suffix}_L", id);
 				});
 				statement = $"({statement})";
 			}
