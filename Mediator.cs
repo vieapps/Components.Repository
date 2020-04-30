@@ -124,60 +124,42 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of business repositories (means business modules at run-time)
 		/// </summary>
-		/// <param name="systemID">The identity of a system (means an organization)</param>
+		/// <param name="systemID">The identity of a system (means an organization) that the business repositories are belong to</param>
 		/// <returns></returns>
 		public static List<IBusinessRepository> GetBusinessRepositories(string systemID)
-		{
-			if (string.IsNullOrWhiteSpace(systemID))
-				return null;
-
-			var repositories = new List<IBusinessRepository>();
-			RepositoryMediator.RepositoryDefinitions
-				.Where(kvp => kvp.Value.BusinessRepositories != null && kvp.Value.BusinessRepositories.Count > 0)
-				.ForEach(kvp => repositories = repositories.Concat(kvp.Value.BusinessRepositories.Where(data => data.Value.SystemID.IsEquals(systemID)).Select(data => data.Value)).ToList());
-
-			return repositories;
-		}
+			=> !string.IsNullOrWhiteSpace(systemID)
+				? RepositoryMediator.RepositoryDefinitions.Select(d => d.Value.BusinessRepositories.Select(r => r.Value)).SelectMany(r => r).Where(r => r.SystemID.Equals(systemID)).ToList()
+				: new List<IBusinessRepository>();
 
 		/// <summary>
 		/// Gets a buiness repository (means a business module at run-time)
 		/// </summary>
-		/// <param name="businessRepositoryID">The identity of a specified business repository</param>
+		/// <param name="businessRepositoryID">The identity of a specified business repository (means a business module at run-time)</param>
 		/// <returns></returns>
 		public static IBusinessRepository GetBusinessRepository(string businessRepositoryID)
-		{
-			if (string.IsNullOrWhiteSpace(businessRepositoryID))
-				return null;
-
-			var repositories = RepositoryMediator.RepositoryDefinitions
-				.Where(kvp => kvp.Value.BusinessRepositories.ContainsKey(businessRepositoryID))
-				.Select(kvp => kvp.Value.BusinessRepositories)
-				.FirstOrDefault();
-
-			return repositories != null && repositories.TryGetValue(businessRepositoryID, out var repository)
-				? repository
+			=> !string.IsNullOrWhiteSpace(businessRepositoryID)
+				? RepositoryMediator.RepositoryDefinitions.Select(d => d.Value.BusinessRepositories.Select(r => r.Value)).SelectMany(r => r).FirstOrDefault(r => r.ID.Equals(businessRepositoryID))
 				: null;
-		}
+
+		/// <summary>
+		/// Gets the collection of business repository entities (means business content-types at run-time)
+		/// </summary>
+		/// <param name="businessRepositoryID">The identity of a business repository (means a business module at run-time) that the business repository entities are belong to</param>
+		/// <returns></returns>
+		public static List<IBusinessRepositoryEntity> GetBusinessRepositoryEntites(string businessRepositoryID)
+			=> !string.IsNullOrWhiteSpace(businessRepositoryID)
+				? RepositoryMediator.EntityDefinitions.Select(d => d.Value.BusinessRepositoryEntities.Select(e => e.Value)).SelectMany(e => e).Where(e => e.RepositoryID.Equals(businessRepositoryID)).ToList()
+				: new List<IBusinessRepositoryEntity>();
 
 		/// <summary>
 		/// Gets a business repository entity (means a business content-type at run-time)
 		/// </summary>
-		/// <param name="businessRepositoryEntity"></param>
+		/// <param name="businessRepositoryEntityID">The identity of a specified business repository entity (means a business content-type at run-time)</param>
 		/// <returns></returns>
-		public static IBusinessRepositoryEntity GetBusinessRepositoryEntity(string businessRepositoryEntity)
-		{
-			if (string.IsNullOrWhiteSpace(businessRepositoryEntity))
-				return null;
-
-			var entities = RepositoryMediator.EntityDefinitions
-				.Where(kvp => kvp.Value.BusinessRepositoryEntities.ContainsKey(businessRepositoryEntity))
-				.Select(kvp => kvp.Value.BusinessRepositoryEntities)
-				.FirstOrDefault();
-
-			return entities != null && entities.TryGetValue(businessRepositoryEntity, out var entity)
-				? entity
+		public static IBusinessRepositoryEntity GetBusinessRepositoryEntity(string businessRepositoryEntityID)
+			=> !string.IsNullOrWhiteSpace(businessRepositoryEntityID)
+				? RepositoryMediator.EntityDefinitions.Select(d => d.Value.BusinessRepositoryEntities.Select(e => e.Value)).SelectMany(e => e).FirstOrDefault(e => e.ID.Equals(businessRepositoryEntityID))
 				: null;
-		}
 		#endregion
 
 		#region Data Source
