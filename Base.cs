@@ -46,7 +46,9 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the title
 		/// </summary>
 		[IgnoreIfNull, BsonIgnoreIfNull]
-		[Property(MaxLength = 250), Sortable(IndexName = "Title"), Searchable]
+		[Property(MaxLength = 250, NotNull = true, NotEmpty = true)]
+		[Sortable(IndexName = "Title")]
+		[Searchable]
 		public virtual string Title { get; set; }
 
 		/// <summary>
@@ -73,7 +75,8 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the identity of the system that the object is belong to (means the system/organization at run-time )
 		/// </summary>
 		[IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		[Property(MaxLength = 32), Sortable(IndexName = "System")]
+		[Property(MaxLength = 32)]
+		[Sortable(IndexName = "System")]
 		[FormControl(Hidden = true)]
 		public virtual string SystemID { get; set; }
 
@@ -81,7 +84,8 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the identity of the repository that the object is belong to (means the business module at run-time)
 		/// </summary>
 		[IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		[Property(MaxLength = 32), Sortable(IndexName = "System")]
+		[Property(MaxLength = 32)]
+		[Sortable(IndexName = "System")]
 		[FormControl(Hidden = true)]
 		public virtual string RepositoryID { get; set; }
 
@@ -89,7 +93,8 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the identity of the business repository entity that the object is belong to (means the business content-type at run-time)
 		/// </summary>
 		[IgnoreIfNull, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		[Property(MaxLength = 32), Sortable(IndexName = "System")]
+		[Property(MaxLength = 32)]
+		[Sortable(IndexName = "System")]
 		[FormControl(Hidden = true)]
 		public virtual string RepositoryEntityID { get; set; }
 
