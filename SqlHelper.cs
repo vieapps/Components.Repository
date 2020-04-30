@@ -561,7 +561,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Mappings (multiple parent associates or single master/slaves)
+		#region Mappings
 		internal static Tuple<string, string, string> GetMappingInfo(this AttributeInfo attribute, EntityDefinition definition)
 		{
 			var mappingInfo = attribute?.GetCustomAttribute<MappingsAttribute>();
