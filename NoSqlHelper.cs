@@ -2227,7 +2227,7 @@ namespace net.vieapps.Components.Repository
 			// mappings
 			definition.Attributes.Where(attribute => !attribute.IsSortable() && (attribute.IsMappings() || attribute.IsParentMapping())).ForEach(attribute =>
 			{
-				var name = $"{prefix}_{attribute.Name}_Mappings";
+				var name = $"{prefix}_{attribute.Name}";
 				if (normalIndexes.TryGetValue(name, out var indexes))
 					indexes.Add(attribute);
 				else
