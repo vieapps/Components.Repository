@@ -10,7 +10,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this class is a repository
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Class)]
 	public class RepositoryAttribute : Attribute
 	{
 		public RepositoryAttribute() { }
@@ -56,7 +56,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this class is an entity of a repository
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Class)]
 	public class EntityAttribute : Attribute
 	{
 		public EntityAttribute() { }
@@ -127,75 +127,71 @@ namespace net.vieapps.Components.Repository
 		public bool Indexable { get; set; } = true;
 
 		/// <summary>
-		/// Gets or Sets the type of parent entity definition (when this object is defined as a content-type definition)
-		/// </summary>
-		public Type ParentType { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the name of the property that use to associate with parent object (when this object is defined as a content-type definition)
-		/// </summary>
-		public string ParentAssociatedProperty { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the state that specifies this entity had multiple associates with parent object, default is false (when this object is defined as a content-type definition)
-		/// </summary>
-		public bool MultipleParentAssociates { get; set; } = false;
-
-		/// <summary>
-		/// Gets or Sets the name of the property that use to store the information of multiple associates with parent, mus be List or HashSet (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesProperty { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the name of the SQL table that use to store the information of multiple associates with parent (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesTable { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the name of the column of SQL table that use to map the associate with parent (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesMapColumn { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the name of the column of SQL table that use to link the associate with this entity (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesLinkColumn { get; set; }
-
-		/// <summary>
 		/// Gets or Sets the state to create new version when an entity object is updated
 		/// </summary>
 		public bool CreateNewVersionWhenUpdated { get; set; } = true;
-
-		/// <summary>
-		/// Gets or Sets the name of the property to use as alias (means short-name when this object is defined as a content-type definition)
-		/// </summary>
-		public string AliasProperty { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the type of a class that use to generate navigator menu (when this object is defined as a content-type definition)
-		/// </summary>
-		public Type NavigatorType { get; set; }
 	}
 
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this property is primary key
+	/// Specifies this class is a handler of a repository event (CRUD event)
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-	public class PrimaryKeyAttribute : Attribute
+	[AttributeUsage(AttributeTargets.Class)]
+	public class EventHandlersAttribute : Attribute
 	{
-		public PrimaryKeyAttribute() { }
+		public EventHandlersAttribute() { }
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Specifies this object attribute is map to a column in SQL table with special settings
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+	public class ColumnMapAttribute : Attribute
+	{
+		public ColumnMapAttribute() { }
 
 		/// <summary>
-		/// Gets or Sets the name of the column in SQL table 
+		/// Gets or Sets the name of the column in SQL table
 		/// </summary>
 		public string Column { get; set; }
 
 		/// <summary>
-		/// Gets or Sets maximum length (of the string property)
+		/// Gets or Sets state that nullable value is not allowed (default is false)
 		/// </summary>
-		public int MaxLength { get; set; } = 32;
+		public bool NotNull { get; set; } = false;
+
+		/// <summary>
+		/// Gets or Sets state that specified this string is required (not allow empty or null value - default is false)
+		/// </summary>
+		public bool NotEmpty { get; set; } = false;
+
+		/// <summary>
+		/// Gets or Sets state that specified this string is use CLOB (character of large object - default is false)
+		/// </summary>
+		public bool IsCLOB { get; set; } = false;
+
+		/// <summary>
+		/// Gets or Sets minimum length (for string only)
+		/// </summary>
+		public int MinLength { get; set; } = 0;
+
+		/// <summary>
+		/// Gets or Sets maximum length (for string only)
+		/// </summary>
+		public int MaxLength { get; set; } = 0;
+
+		/// <summary>
+		/// Gets or Sets minimum value
+		/// </summary>
+		public string MinValue { get; set; }
+
+		/// <summary>
+		/// Gets or Sets maximum value
+		/// </summary>
+		public string MaxValue { get; set; }
 	}
 
 	// ------------------------------------------
@@ -203,50 +199,10 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this property is map to a column in SQL table with special settings
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-	public class PropertyAttribute : Attribute
+	[AttributeUsage(AttributeTargets.Property)]
+	public class PropertyAttribute : ColumnMapAttribute
 	{
 		public PropertyAttribute() { }
-
-		/// <summary>
-		/// Gets or Sets the name of the column in SQL table
-		/// </summary>
-		public string Column { get; set; }
-
-		/// <summary>
-		/// Gets or Sets state that specified this property is required (not allow nullable value - default is false)
-		/// </summary>
-		public bool NotNull { get; set; } = false;
-
-		/// <summary>
-		/// Gets or Sets state that specified this string property is required (not allow empty value - default is false)
-		/// </summary>
-		public bool NotEmpty { get; set; } = false;
-
-		/// <summary>
-		/// Gets or Sets state that specified this string property is use CLOB (character of large object) - default is false
-		/// </summary>
-		public bool IsCLOB { get; set; } = false;
-
-		/// <summary>
-		/// Gets or Sets minimum length (of the string property)
-		/// </summary>
-		public int MinLength { get; set; } = 0;
-
-		/// <summary>
-		/// Gets or Sets maximum length (of the string property)
-		/// </summary>
-		public int MaxLength { get; set; } = 0;
-
-		/// <summary>
-		/// Gets or Sets minimum value
-		/// </summary>
-		public string MinValue { get; set; }
-
-		/// <summary>
-		/// Gets or Sets maximum value
-		/// </summary>
-		public string MaxValue { get; set; }
 	}
 
 	// ------------------------------------------
@@ -254,50 +210,26 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this field is map to a column in SQL table
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
-	public class FieldAttribute : Attribute
+	[AttributeUsage(AttributeTargets.Field)]
+	public class FieldAttribute : ColumnMapAttribute
 	{
 		public FieldAttribute() { }
+	}
 
-		/// <summary>
-		/// Gets or Sets the name of the column in SQL table
-		/// </summary>
-		public string Column { get; set; }
+	// ------------------------------------------
 
-		/// <summary>
-		/// Gets or Sets state that specified this field is required (not allow nullable value - default is false)
-		/// </summary>
-		public bool NotNull { get; set; } = false;
-
-		/// <summary>
-		/// Gets or Sets state that specified this string field is required (not allow empty value - default is false)
-		/// </summary>
-		public bool NotEmpty { get; set; } = false;
-
-		/// <summary>
-		/// Gets or Sets state that specified this string field is use CLOB (character of large object) - default is false
-		/// </summary>
-		public bool IsCLOB { get; set; } = false;
-
-		/// <summary>
-		/// Gets or Sets minimum length (of the string field)
-		/// </summary>
-		public int MinLength { get; set; } = 0;
-
-		/// <summary>
-		/// Gets or Sets maximum length (of the string field)
-		/// </summary>
-		public int MaxLength { get; set; } = 0;
-
-		/// <summary>
-		/// Gets or Sets minimum value
-		/// </summary>
-		public string MinValue { get; set; }
-
-		/// <summary>
-		/// Gets or Sets maximum value
-		/// </summary>
-		public string MaxValue { get; set; }
+	/// <summary>
+	/// Specifies this property is primary key
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property)]
+	public class PrimaryKeyAttribute : ColumnMapAttribute
+	{
+		public PrimaryKeyAttribute()
+		{
+			this.MaxLength = 32;
+			this.NotNull = true;
+			this.NotEmpty = true;
+		}
 	}
 
 	// ------------------------------------------
@@ -305,7 +237,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this property is be ignored (means not be stored in the database)
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Property)]
 	public class IgnoreAttribute : Attribute
 	{
 		public IgnoreAttribute() { }
@@ -316,7 +248,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this property is be ignored (means not be stored in the database) if value is null
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Property)]
 	public class IgnoreIfNullAttribute : Attribute
 	{
 		public IgnoreIfNullAttribute() { }
@@ -327,7 +259,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this property is able for sorting (means got pre-defined index or able to create new index)
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Property)]
 	public class SortableAttribute : Attribute
 	{
 		public SortableAttribute() { }
@@ -348,7 +280,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this property is able for searching by full-text search (means got pre-defined full-text index)
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Property)]
 	public class SearchableAttribute : Attribute
 	{
 		public SearchableAttribute() { }
@@ -357,9 +289,92 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
+	/// Specifies this property will be stored as the alias (unique value)
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property)]
+	public class AliasAttribute : Attribute
+	{
+		public AliasAttribute() { }
+
+		/// <summary>
+		/// Gets or Sets the names of other attributes to make the unique index of alias (means combination of repository entity identity, alias and these properties)
+		/// </summary>
+		public string Properties { get; set; }
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Specifies this property will be stored as the identity of a parent entity
+	/// </summary>
+	[AttributeUsage(AttributeTargets.Property)]
+	public class ParentMappingAttribute : Attribute
+	{
+		public ParentMappingAttribute() { }
+
+		/// <summary>
+		/// Gets or Sets the type of parent entity definition
+		/// </summary>
+		public Type Type { get; set; }
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Specifies this property will be stored as a collection of identities (in SQL, will be store as an external table)
+	/// </summary>
+	/// <remarks>The property must be generic list or hash-set of string</remarks>
+	[AttributeUsage(AttributeTargets.Property)]
+	public class MappingsAttribute : Attribute
+	{
+		public MappingsAttribute() { }
+
+		/// <summary>
+		/// Gets or Sets the name of the SQL table to store the collection of identities
+		/// </summary>
+		public string TableName { get; set; }
+
+		/// <summary>
+		/// Gets or Sets the column name of the SQL table to store the link value (master)
+		/// </summary>
+		public string LinkColumn { get; set; }
+
+		/// <summary>
+		/// Gets or Sets the column name of the SQL table to store the map value (slave)
+		/// </summary>
+		public string MapColumn { get; set; }
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Specifies this property will be stored as a collection of parent identities (in SQL, will be store as an external table)
+	/// </summary>
+	/// <remarks>The property must be generic list or hash-set of string</remarks>
+	[AttributeUsage(AttributeTargets.Property)]
+	public class MultipleParentMappingsAttribute : MappingsAttribute
+	{
+		public MultipleParentMappingsAttribute() { }
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
+	/// Specifies this property will be stored as a collection of children identities (in SQL, will be store as an external table)
+	/// </summary>
+	/// <remarks>The property must be generic list or hash-set of string</remarks>
+	[AttributeUsage(AttributeTargets.Property)]
+	public class ChildrenMappingsAttribute : MappingsAttribute
+	{
+		public ChildrenMappingsAttribute() { }
+	}
+
+	// ------------------------------------------
+
+	/// <summary>
 	/// Specifies this date-time property will be stored as a string with format 'yyyy/MM/dd HH:mm:ss' in SQL table
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Property)]
 	public class AsStringAttribute : Attribute
 	{
 		public AsStringAttribute() { }
@@ -370,7 +385,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Specifies this property will be stored as a CLOB string with JSON format in SQL table
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Property)]
 	public class AsJsonAttribute : Attribute
 	{
 		public AsJsonAttribute() { }
@@ -379,47 +394,9 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this property will be stored as a single mapping (master/slaves) in an external SQL table
-	/// </summary>
-	/// <remarks>The property must be generic list or hash-set</remarks>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-	public class AsSingleMappingAttribute : Attribute
-	{
-		public AsSingleMappingAttribute() { }
-
-		/// <summary>
-		/// Gets or Sets the name of the SQL table - if not provided, the name will be combination of master table, property name and suffix '_Mappings'
-		/// </summary>
-		public string TableName { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the name of the link column (master) - if not provided, the name will be combination of entity name and suffix 'ID')
-		/// </summary>
-		public string LinkColumn { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the name of the map column (slave) - if not provided, the name will be combination of property name and suffix 'ID')
-		/// </summary>
-		public string MapColumn { get; set; }
-	}
-
-	// ------------------------------------------
-
-	/// <summary>
-	/// Specifies this class is a handler of a repository event (CRUD event)
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-	public class EventHandlersAttribute : Attribute
-	{
-		public EventHandlersAttribute() { }
-	}
-
-	// ------------------------------------------
-
-	/// <summary>
 	/// Presents a form control
 	/// </summary>
-	[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Property)]
 	public class FormControlAttribute : Attribute
 	{
 		public FormControlAttribute() { }
@@ -565,14 +542,14 @@ namespace net.vieapps.Components.Repository
 		public string LookupType { get; set; }
 
 		/// <summary>
-		/// Gets or Sets the identity of the business repository for looking-up
+		/// Gets or Sets the identity of the business repository (means business module at run-time) for looking-up
 		/// </summary>
 		public string LookupRepositoryID { get; set; }
 
 		/// <summary>
-		/// Gets or Sets the identity of the business entity for looking-up
+		/// Gets or Sets the identity of the business repository entity (means business content-type at run-time) for looking-up
 		/// </summary>
-		public string LookupEntityID { get; set; }
+		public string LookupRepositoryEntityID { get; set; }
 
 		/// <summary>
 		/// Gets or Sets the name of business entity's property for displaying while looking-up
@@ -603,7 +580,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsIgnored(this ObjectService.AttributeInfo attribute)
-			=> attribute.GetCustomAttribute<IgnoreAttribute>() != null || attribute.GetCustomAttribute<MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute>() != null;
+			=> attribute?.GetCustomAttribute<IgnoreAttribute>() != null || attribute?.GetCustomAttribute<MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute>() != null;
 
 		/// <summary>
 		/// Gets the state that determines this attribute is be ignored if value is null or not
@@ -611,44 +588,47 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsIgnoredIfNull(this ObjectService.AttributeInfo attribute)
-			=> attribute.GetCustomAttribute<IgnoreIfNullAttribute>() != null;
+			=> attribute?.GetCustomAttribute<IgnoreIfNullAttribute>() != null;
 
 		/// <summary>
-		/// Gets the state that determines this date-time attribute is be stored as string or not
+		/// Gets the state that determines this property is mark as alias
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
-		public static bool IsStoredAsString(this ObjectService.AttributeInfo attribute)
-			=> attribute.IsDateTimeType() && attribute.GetCustomAttribute<AsStringAttribute>() != null;
+		public static bool IsAlias(this ObjectService.AttributeInfo attribute)
+			=> attribute?.GetCustomAttribute<AliasAttribute>() != null;
 
 		/// <summary>
-		/// Gets the state that determines this object attribute is be stored as JSON or not
+		/// Gets the state that determines this property is mapping identity of a parent object
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
-		public static bool IsStoredAsJson(this ObjectService.AttributeInfo attribute)
-			=> attribute.IsClassType() && attribute.GetCustomAttribute<AsJsonAttribute>() != null;
+		public static bool IsParentMapping(this ObjectService.AttributeInfo attribute)
+			=> attribute?.GetCustomAttribute<ParentMappingAttribute>() != null;
 
 		/// <summary>
-		/// Gets the state that determines this object property will be stored as a simple master-slaves mapping in an external SQL table
+		/// Gets the state that determines this property is mapping values and will be stored as an external SQL table
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
-		public static bool IsStoredAsSimpleMapping(this ObjectService.AttributeInfo attribute)
-			=> attribute.Type.IsGenericListOrHashSet() && attribute.GetCustomAttribute<AsSingleMappingAttribute>() != null;
+		public static bool IsMappings(this ObjectService.AttributeInfo attribute)
+			=> attribute?.GetCustomAttribute<MappingsAttribute>() != null;
 
 		/// <summary>
-		/// Gets the state that determines this attribute is enum-string or not
+		/// Gets the state that determines this property is mapping identities of a parent objects
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
-		public static bool IsEnumString(this ObjectService.AttributeInfo attribute)
-		{
-			var jsonAttribute = attribute.IsEnum()
-				? attribute.GetCustomAttribute<JsonConverterAttribute>()
-				: null;
-			return jsonAttribute != null && jsonAttribute.ConverterType.Equals(typeof(Newtonsoft.Json.Converters.StringEnumConverter));
-		}
+		public static bool IsMultipleParentMappings(this ObjectService.AttributeInfo attribute)
+			=> attribute?.GetCustomAttribute<MultipleParentMappingsAttribute>() != null;
+
+		/// <summary>
+		/// Gets the state that determines this property is mapping identities of a children objects
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsChildrenMappings(this ObjectService.AttributeInfo attribute)
+			=> attribute?.GetCustomAttribute<ChildrenMappingsAttribute>() != null;
 
 		/// <summary>
 		/// Gets the state that determines this attribute is sortable or not
@@ -656,15 +636,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsSortable(this ObjectService.AttributeInfo attribute)
-			=> attribute.GetCustomAttribute<SortableAttribute>() != null;
+			=> attribute?.GetCustomAttribute<SortableAttribute>() != null;
 
 		/// <summary>
-		/// Gets the state that determines this attribute is search or not
+		/// Gets the state that determines this attribute is 'pre-defined' full-text index and able to search or not
 		/// </summary>
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsSearchable(this ObjectService.AttributeInfo attribute)
-			=> attribute.IsStringType() && attribute.GetCustomAttribute<SearchableAttribute>() != null;
+			=> attribute != null && attribute.IsStringType() && attribute.GetCustomAttribute<SearchableAttribute>() != null;
 
 		/// <summary>
 		/// Gets the state that determines this attribute is form control or not
@@ -672,7 +652,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsFormControl(this ObjectService.AttributeInfo attribute)
-			=> attribute.GetCustomAttribute<FormControlAttribute>() != null;
+			=> attribute?.GetCustomAttribute<FormControlAttribute>() != null;
 
 		/// <summary>
 		/// Gets the state that determines this attribute is view control or not
@@ -680,7 +660,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsViewControl(this ObjectService.AttributeInfo attribute)
-			=> attribute.IsFormControl()
+			=> attribute != null && attribute.IsFormControl()
 				? attribute.GetCustomAttribute<FormControlAttribute>().AsViewControl
 				: false;
 
@@ -690,6 +670,43 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsLargeString(this AttributeInfo attribute)
-			=> attribute.IsCLOB != null && attribute.IsCLOB.Value;
+			=> attribute != null && attribute.IsCLOB != null && attribute.IsCLOB.Value;
+
+		/// <summary>
+		/// Gets the state that determines this attribute is large string (CLOB) or not
+		/// </summary>
+		/// <param name="definition"></param>
+		/// <returns></returns>
+		public static bool IsLargeString(this ExtendedPropertyDefinition definition)
+			=> definition != null && definition.Type != null && definition.Type.IsStringType() && definition.Mode.Equals(ExtendedPropertyMode.LargeText);
+
+		/// <summary>
+		/// Gets the state that determines this attribute is enum-string or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsEnumString(this ObjectService.AttributeInfo attribute)
+		{
+			var jsonAttribute = attribute != null && attribute.IsEnum()
+				? attribute.GetCustomAttribute<JsonConverterAttribute>()
+				: null;
+			return jsonAttribute != null && jsonAttribute.ConverterType.Equals(typeof(Newtonsoft.Json.Converters.StringEnumConverter));
+		}
+
+		/// <summary>
+		/// Gets the state that determines this date-time attribute is be stored as string or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsStoredAsString(this ObjectService.AttributeInfo attribute)
+			=> attribute != null && attribute.IsDateTimeType() && attribute.GetCustomAttribute<AsStringAttribute>() != null;
+
+		/// <summary>
+		/// Gets the state that determines this object attribute is be stored as JSON or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsStoredAsJson(this ObjectService.AttributeInfo attribute)
+			=> attribute != null && attribute.IsClassType() && attribute.GetCustomAttribute<AsJsonAttribute>() != null;
 	}
 }
