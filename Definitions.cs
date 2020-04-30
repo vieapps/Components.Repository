@@ -284,6 +284,43 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Register/Unregister business repositories
+		/// <summary>
+		/// Registers a business repository (means a business module at run-time)
+		/// </summary>
+		/// <param name="businessRepository"></param>
+		public bool Register(IBusinessRepository businessRepository)
+		{
+			if (businessRepository != null && !string.IsNullOrWhiteSpace(businessRepository.ID))
+			{
+				this.BusinessRepositories[businessRepository.ID] = businessRepository;
+				return true;
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Unregisters a business repository (means a business module at run-time)
+		/// </summary>
+		/// <param name="businessRepositoryID"></param>
+		public bool Unregister(string businessRepositoryID)
+		{
+			if (!string.IsNullOrWhiteSpace(businessRepositoryID))
+			{
+				this.BusinessRepositories.Remove(businessRepositoryID);
+				return true;
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Unregisters a business repository (means a business module at run-time)
+		/// </summary>
+		/// <param name="businessRepository"></param>
+		public bool Unregister(IBusinessRepository businessRepository)
+			=> this.Unregister(businessRepository?.ID);
+		#endregion
+
 	}
 
 	//  --------------------------------------------------------------------------------------------
@@ -461,14 +498,19 @@ namespace net.vieapps.Components.Repository
 		public bool MultipleIntances { get; internal set; } = false;
 
 		/// <summary>
+		/// Gets or sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
+		/// </summary>
+		public bool Indexable { get; internal set; } = false;
+
+		/// <summary>
 		/// Gets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
 		/// </summary>
 		public bool Extendable { get; internal set; } = false;
 
 		/// <summary>
-		/// Gets or sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
+		/// Gets or Sets the name of the standard property to place extended properties before its (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Indexable { get; internal set; } = true;
+		public string ExtendedPropertiesBefore { get; internal set; }
 
 		/// <summary>
 		/// Gets the type of parent entity definition (when this object is defined as a content-type definition)
@@ -572,15 +614,16 @@ namespace net.vieapps.Components.Repository
 				TableName = definitionInfo.TableName,
 				CollectionName = definitionInfo.CollectionName,
 				Searchable = definitionInfo.Searchable,
+				CreateNewVersionWhenUpdated = definitionInfo.CreateNewVersionWhenUpdated,
 				ObjectName = !string.IsNullOrWhiteSpace(definitionInfo.ObjectName) ? definitionInfo.ObjectName : type.GetTypeName(true),
 				ID = !string.IsNullOrWhiteSpace(definitionInfo.ID) ? definitionInfo.ID : "",
 				Title = !string.IsNullOrWhiteSpace(definitionInfo.Title) ? definitionInfo.Title : "",
 				Description = !string.IsNullOrWhiteSpace(definitionInfo.Description) ? definitionInfo.Description : "",
 				Icon = !string.IsNullOrWhiteSpace(definitionInfo.Icon) ? definitionInfo.Icon : null,
 				MultipleIntances = definitionInfo.MultipleIntances,
-				Extendable = definitionInfo.Extendable,
 				Indexable = definitionInfo.Indexable,
-				CreateNewVersionWhenUpdated = definitionInfo.CreateNewVersionWhenUpdated
+				Extendable = definitionInfo.Extendable,
+				ExtendedPropertiesBefore = definitionInfo.Extendable ? definitionInfo.ExtendedPropertiesBefore : null
 			};
 
 			// public properties
@@ -818,6 +861,43 @@ namespace net.vieapps.Components.Repository
 			if (type != null && RepositoryMediator.EntityDefinitions.ContainsKey(type))
 				RepositoryMediator.EntityDefinitions[type].Cache = cache;
 		}
+		#endregion
+
+		#region Register/Unregister business repository entities
+		/// <summary>
+		/// Registers a business repository entity (means a business content-type at run-time)
+		/// </summary>
+		/// <param name="businessRepositoryEntity"></param>
+		public bool Register(IBusinessRepositoryEntity businessRepositoryEntity)
+		{
+			if (businessRepositoryEntity != null && !string.IsNullOrWhiteSpace(businessRepositoryEntity.ID))
+			{
+				this.BusinessRepositoryEntities[businessRepositoryEntity.ID] = businessRepositoryEntity;
+				return true;
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Unregisters a business repository entity (means a business content-type at run-time)
+		/// </summary>
+		/// <param name="businessRepositoryEntityID"></param>
+		public bool Unregister(string businessRepositoryEntityID)
+		{
+			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID))
+			{
+				this.BusinessRepositoryEntities.Remove(businessRepositoryEntityID);
+				return true;
+			}
+			return false;
+		}
+
+		/// <summary>
+		/// Unregisters a business repository entity (means a business content-type at run-time)
+		/// </summary>
+		/// <param name="businessRepositoryEntity"></param>
+		public bool Unregister(IBusinessRepositoryEntity businessRepositoryEntity)
+			=> this.Unregister(businessRepositoryEntity?.ID);
 		#endregion
 
 	}

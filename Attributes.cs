@@ -112,14 +112,14 @@ namespace net.vieapps.Components.Repository
 		public string Icon { get; set; }
 
 		/// <summary>
+		/// Gets or Sets the state to create new version when an entity object is updated
+		/// </summary>
+		public bool CreateNewVersionWhenUpdated { get; set; } = true;
+
+		/// <summary>
 		/// Gets or Sets the state that allow to use multiple instances, default is false (when this object is defined as a content-type definition)
 		/// </summary>
 		public bool MultipleIntances { get; set; } = false;
-
-		/// <summary>
-		/// Gets or Sets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
-		/// </summary>
-		public bool Extendable { get; set; } = false;
 
 		/// <summary>
 		/// Gets or Sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
@@ -127,9 +127,14 @@ namespace net.vieapps.Components.Repository
 		public bool Indexable { get; set; } = true;
 
 		/// <summary>
-		/// Gets or Sets the state to create new version when an entity object is updated
+		/// Gets or Sets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool CreateNewVersionWhenUpdated { get; set; } = true;
+		public bool Extendable { get; set; } = false;
+
+		/// <summary>
+		/// Gets or Sets the name of the standard property to place extended properties before its (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ExtendedPropertiesBefore { get; set; }
 	}
 
 	// ------------------------------------------
@@ -321,7 +326,7 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this property will be stored as a collection of identities (in SQL, will be store as an external table)
+	/// Specifies this property is a collection of identities and will be stored as an external table in SQL
 	/// </summary>
 	/// <remarks>The property must be generic list or hash-set of string</remarks>
 	[AttributeUsage(AttributeTargets.Property)]
@@ -348,7 +353,7 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this property will be stored as a collection of parent identities (in SQL, will be store as an external table)
+	/// Specifies this property is a collection of parent identities and will be stored as an external table in SQL
 	/// </summary>
 	/// <remarks>The property must be generic list or hash-set of string</remarks>
 	[AttributeUsage(AttributeTargets.Property)]
@@ -360,7 +365,7 @@ namespace net.vieapps.Components.Repository
 	// ------------------------------------------
 
 	/// <summary>
-	/// Specifies this property will be stored as a collection of children identities (in SQL, will be store as an external table)
+	/// Specifies this property is a collection of children identities and will be stored as an external table in SQL
 	/// </summary>
 	/// <remarks>The property must be generic list or hash-set of string</remarks>
 	[AttributeUsage(AttributeTargets.Property)]
