@@ -103,18 +103,14 @@ namespace net.vieapps.Components.Repository
 		public bool AutoSync { get; internal set; } = false;
 
 		/// <summary>
-		/// Gets the extra data of the repository
+		/// Gets the extra information of the repository definition
 		/// </summary>
 		public Dictionary<string, object> Extras { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Gets the definitions of all entities
 		/// </summary>
-		public List<EntityDefinition> EntityDefinitions
-			=> RepositoryMediator.EntityDefinitions
-				.Where(item => item.Value.RepositoryType.Equals(this.Type))
-				.Select(item => item.Value)
-				.ToList();
+		public List<EntityDefinition> EntityDefinitions => RepositoryMediator.EntityDefinitions.Where(kvp => kvp.Value.RepositoryDefinitionType.Equals(this.Type)).Select(kvp => kvp.Value).ToList();
 		#endregion
 
 		#region Properties [Module Definition]
@@ -156,7 +152,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of business repositories (means business modules at run-time)
 		/// </summary>
-		public Dictionary<string, IBusinessRepository> BusinessRepositories { get; internal set; } = new Dictionary<string, IBusinessRepository>(StringComparer.OrdinalIgnoreCase);
+		public Dictionary<string, IBusinessRepository> BusinessRepositories { get; } = new Dictionary<string, IBusinessRepository>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register & Update settings
@@ -166,22 +162,22 @@ namespace net.vieapps.Components.Repository
 			if (type == null || RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
 				return;
 
-			// get info
-			var info = type.GetCustomAttribute<RepositoryAttribute>(false);
-			if (info == null)
+			// get info of the definition
+			var definitionInfo = type.GetCustomAttribute<RepositoryAttribute>(false);
+			if (definitionInfo == null)
 				return;
 
 			// initialize
 			var definition = new RepositoryDefinition
 			{
 				Type = type,
-				ServiceName = !string.IsNullOrWhiteSpace(info.ServiceName) ? info.ServiceName : "",
-				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
-				Directory = !string.IsNullOrWhiteSpace(info.Directory) ? info.Directory : null,
-				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
-				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
-				Icon = !string.IsNullOrWhiteSpace(info.Icon) ? info.Icon : null,
-				ExtendedPropertiesTableName = !string.IsNullOrWhiteSpace(info.ExtendedPropertiesTableName) ? info.ExtendedPropertiesTableName : "T_Data_Extended_Properties"
+				ServiceName = !string.IsNullOrWhiteSpace(definitionInfo.ServiceName) ? definitionInfo.ServiceName : "",
+				ID = !string.IsNullOrWhiteSpace(definitionInfo.ID) ? definitionInfo.ID : "",
+				Directory = !string.IsNullOrWhiteSpace(definitionInfo.Directory) ? definitionInfo.Directory : null,
+				Title = !string.IsNullOrWhiteSpace(definitionInfo.Title) ? definitionInfo.Title : "",
+				Description = !string.IsNullOrWhiteSpace(definitionInfo.Description) ? definitionInfo.Description : "",
+				Icon = !string.IsNullOrWhiteSpace(definitionInfo.Icon) ? definitionInfo.Icon : null,
+				ExtendedPropertiesTableName = !string.IsNullOrWhiteSpace(definitionInfo.ExtendedPropertiesTableName) ? definitionInfo.ExtendedPropertiesTableName : "T_Data_Extended_Properties"
 			};
 
 			// update into collection
@@ -226,7 +222,7 @@ namespace net.vieapps.Components.Repository
 			if (isAlias)
 			{
 				if (!RepositoryMediator.RepositoryDefinitions.TryGetValue(aliasOf, out var targetDef))
-					throw new ArgumentException($"The target type named '{aliasOf.GetTypeName()}' is not available");
+					throw new InformationInvalidException($"The target type named '{aliasOf.GetTypeName()}' is not available");
 				RepositoryMediator.RepositoryDefinitions.Add(type, RepositoryMediator.RepositoryDefinitions[aliasOf].Clone(cloneDef =>
 				{
 					cloneDef.IsAlias = true;
@@ -246,7 +242,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrEmpty(data))
 				throw new ArgumentNullException("primaryDataSource", "[primaryDataSource] attribute of settings");
 			else if (!RepositoryMediator.DataSources.ContainsKey(data))
-				throw new ArgumentException($"The data source named '{data}' is not available");
+				throw new InformationInvalidException($"The data source named '{data}' is not available");
 			definition.PrimaryDataSourceName = data;
 
 			data = settings["secondaryDataSource"] != null
@@ -314,8 +310,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the primary data-source
 		/// </summary>
-		public DataSource PrimaryDataSource
-			=> RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
+		public DataSource PrimaryDataSource => RepositoryMediator.GetDataSource(this.PrimaryDataSourceName);
 
 		/// <summary>
 		/// Gets the name of the secondary data source
@@ -325,8 +320,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the secondary data-source
 		/// </summary>
-		public DataSource SecondaryDataSource
-			=> RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
+		public DataSource SecondaryDataSource => RepositoryMediator.GetDataSource(this.SecondaryDataSourceName);
 
 		/// <summary>
 		/// Gets the names of the all data-sources that available for sync
@@ -336,14 +330,13 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the other data sources that are available for synchronizing
 		/// </summary>
-		public List<DataSource> SyncDataSources
-			=> !string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
-				? this.SyncDataSourceNames.ToList()
-					.Distinct(StringComparer.OrdinalIgnoreCase)
-					.Select(name => RepositoryMediator.GetDataSource(name))
-					.Where(dataSource => dataSource != null)
-					.ToList()
-				: null;
+		public List<DataSource> SyncDataSources => !string.IsNullOrWhiteSpace(this.SyncDataSourceNames)
+			? this.SyncDataSourceNames.ToList()
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.Select(name => RepositoryMediator.GetDataSource(name))
+				.Where(dataSource => dataSource != null)
+				.ToList()
+			: null;
 
 		/// <summary>
 		/// Gets the name of the data source for storing information of versioning contents
@@ -353,8 +346,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the data-source that use to store versioning contents
 		/// </summary>
-		public DataSource VersionDataSource
-			=> RepositoryMediator.GetDataSource(this.VersionDataSourceName);
+		public DataSource VersionDataSource => RepositoryMediator.GetDataSource(this.VersionDataSourceName);
 
 		/// <summary>
 		/// Gets the name of the data source for storing information of trash contents
@@ -364,8 +356,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the data-source that use to store trash contents
 		/// </summary>
-		public DataSource TrashDataSource
-			=> RepositoryMediator.GetDataSource(this.TrashDataSourceName);
+		public DataSource TrashDataSource => RepositoryMediator.GetDataSource(this.TrashDataSourceName);
 
 		/// <summary>
 		/// Gets or sets the name of the table in SQL database
@@ -393,7 +384,7 @@ namespace net.vieapps.Components.Repository
 		public bool AutoSync { get; internal set; } = false;
 
 		/// <summary>
-		/// Gets extra extra of of the entity definition
+		/// Gets the extra information of the repository entity definition
 		/// </summary>
 		public Dictionary<string, object> Extras { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
@@ -407,6 +398,9 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public List<AttributeInfo> FormAttributes { get; } = new List<AttributeInfo>();
 
+		/// <summary>
+		/// Gets the name of primary key property
+		/// </summary>
 		internal string PrimaryKey { get; set; }
 
 		/// <summary>
@@ -417,7 +411,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of sortable properties
 		/// </summary>
-		public List<string> SortableAttributes { get; internal set; } = new List<string> { "ID" };
+		public List<string> SortableAttributes { get; } = new List<string> { "ID" };
 
 		/// <summary>
 		/// Gets the caching object for processing with caching data of this entity
@@ -425,14 +419,14 @@ namespace net.vieapps.Components.Repository
 		public ICache Cache { get; internal set; }
 
 		/// <summary>
-		/// Gets the type of the class that presents the repository of this repository entity
+		/// Gets the type of the type that presents the repository definition of this repository entity definition
 		/// </summary>
-		public Type RepositoryType { get; internal set; }
+		public Type RepositoryDefinitionType { get; internal set; }
 
 		/// <summary>
-		/// Gets the repository definition of this defintion
+		/// Gets the repository definition of this repository entity definition
 		/// </summary>
-		public RepositoryDefinition RepositoryDefinition => RepositoryMediator.GetRepositoryDefinition(this.RepositoryType);
+		public RepositoryDefinition RepositoryDefinition => this.RepositoryDefinitionType?.GetRepositoryDefinition();
 		#endregion
 
 		#region Properties [Content-Type Definition]
@@ -479,52 +473,42 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the type of parent entity definition (when this object is defined as a content-type definition)
 		/// </summary>
-		public Type ParentType { get; internal set; }
+		public Type ParentType => this.Attributes.FirstOrDefault(attribute => attribute.IsParentMapping())?.GetCustomAttribute<ParentMappingAttribute>()?.Type;
 
 		/// <summary>
 		/// Gets the name of the property that use to associate with parent object (when this object is defined as a content-type definition)
 		/// </summary>
-		public string ParentAssociatedProperty { get; internal set; }
+		public string ParentAssociatedProperty => this.Attributes.FirstOrDefault(attribute => attribute.IsParentMapping())?.Name;
 
 		/// <summary>
 		/// Gets the state that specifies this entity had multiple associates with parent object, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool MultipleParentAssociates { get; internal set; } = false;
+		public bool MultipleParentAssociates => this.Attributes.Count(attribute => attribute.IsMultipleParentMappings()) > 0;
 
 		/// <summary>
 		/// Gets the name of the property that use to store the information of multiple associates with parent, mus be List or HashSet (when this object is defined as a content-type definition)
 		/// </summary>
-		public string MultipleParentAssociatesProperty { get; internal set; }
+		public string MultipleParentAssociatesProperty => this.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings())?.Name;
 
 		/// <summary>
 		/// Gets the name of the SQL table that use to store the information of multiple associates with parent (when this object is defined as a content-type definition)
 		/// </summary>
-		public string MultipleParentAssociatesTable { get; internal set; }
-
-		/// <summary>
-		/// Gets the name of the column of SQL table that use to map the associate with parent (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesMapColumn { get; internal set; }
+		public string MultipleParentAssociatesTable => this.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings())?.GetMappingInfo(this)?.Item1;
 
 		/// <summary>
 		/// Gets the name of the column of SQL table that use to link the associate with this entity (when this object is defined as a content-type definition)
 		/// </summary>
-		public string MultipleParentAssociatesLinkColumn { get; internal set; }
+		public string MultipleParentAssociatesLinkColumn => this.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings())?.GetMappingInfo(this)?.Item2;
 
 		/// <summary>
-		/// Gets the name of the property to use as alias (means short-name when this object is defined as a content-type definition)
+		/// Gets the name of the column of SQL table that use to map the associate with parent (when this object is defined as a content-type definition)
 		/// </summary>
-		public string AliasProperty { get; internal set; }
-
-		/// <summary>
-		/// Gets the type of a class that use to generate navigator menu (when this object is defined as a content-type definition)
-		/// </summary>
-		public Type NavigatorType { get; internal set; }
+		public string MultipleParentAssociatesMapColumn => this.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings())?.GetMappingInfo(this)?.Item3;
 
 		/// <summary>
 		/// Gets the collection of business repository entities (means business conten-types at run-time)
 		/// </summary>
-		public Dictionary<string, IBusinessRepositoryEntity> BusinessRepositoryEntities { get; internal set; } = new Dictionary<string, IBusinessRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
+		public Dictionary<string, IBusinessRepositoryEntity> BusinessRepositoryEntities { get; } = new Dictionary<string, IBusinessRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register & Update settings
@@ -534,59 +518,74 @@ namespace net.vieapps.Components.Repository
 			if (type == null || RepositoryMediator.EntityDefinitions.ContainsKey(type))
 				return;
 
-			// get info
-			var info = type.GetCustomAttribute<EntityAttribute>(false);
-			if (info == null)
+			// get info of the definition
+			var definitionInfo = type.GetCustomAttribute<EntityAttribute>(false);
+			if (definitionInfo == null)
 				return;
 
-			// verify name of table/collection
-			if (string.IsNullOrWhiteSpace(info.TableName) && string.IsNullOrWhiteSpace(info.CollectionName))
-				throw new ArgumentException($"The type [{type}] must have name of SQL table or NoSQL collection");
+			// verify the name of table/collection
+			if (string.IsNullOrWhiteSpace(definitionInfo.TableName) && string.IsNullOrWhiteSpace(definitionInfo.CollectionName))
+				throw new InformationRequiredException($"The type [{type}] must have name of SQL table or NoSQL collection");
+
+			// verify the mappings
+			var properties = type.GetPublicAttributes();
+
+			foreach (var attribute in properties.Where(attribute => attribute.IsMappings()))
+			{
+				if (!attribute.IsGenericListOrHashSet() || !attribute.GetGenericTypeArguments().First().Equals(typeof(string)))
+					throw new InformationInvalidException($"The attribute [{attribute.Name}] must be list or hash-set of string");
+			}
+
+			var parentMappings = properties.Where(attribute => attribute.IsParentMapping()).ToList();
+			if (parentMappings.Count > 0)
+			{
+				if (parentMappings.Count > 1)
+					throw new InformationInvalidException($"The type [{type}] got multiple mappings with parent");
+				else if (parentMappings.First().Type == null)
+					throw new InformationRequiredException($"The attribute [{parentMappings.First().Name}] must have the type of parent entity definition");
+			}
+			else if (properties.Count(attribute => attribute.IsMultipleParentMappings()) > 0)
+				throw new InformationInvalidException($"The type [{type}] got multiple parent mappings but got no information of the parent");
+
+			// verify alias
+			var aliasProperties = properties.Where(attribute => attribute.IsAlias()).ToList();
+			if (aliasProperties.Count > 0)
+			{
+				if (aliasProperties.Count > 1)
+					throw new InformationInvalidException($"The type [{type}] got multiple alias properties");
+				else if (!typeof(IAliasEntity).IsAssignableFrom(type))
+					throw new InformationRequiredException($"The type [{type}] got alias property but not implement the 'IAliasEntity' interface");
+				var aliasInfo = aliasProperties.First().GetCustomAttribute<AliasAttribute>();
+				if (!string.IsNullOrWhiteSpace(aliasInfo.Properties))
+				{
+					var aliasProps = aliasInfo.Properties.ToHashSet(",", true);
+					var missingProps = aliasProps.Except(properties.Where(attribute => aliasProps.Contains(attribute.Name)).Select(attribute => attribute.Name), StringComparer.OrdinalIgnoreCase).ToList();
+					if (missingProps.Count > 0)
+						throw new InformationInvalidException($"The properties to make the alias combination of the type [{type}] are invalid [missing: {missingProps.Join(", ")}]");
+				}
+			}
 
 			// initialize
 			var definition = new EntityDefinition
 			{
 				Type = type,
-				TableName = info.TableName,
-				CollectionName = info.CollectionName,
-				Searchable = info.Searchable,
-				ObjectName = !string.IsNullOrWhiteSpace(info.ObjectName) ? info.ObjectName : type.GetTypeName(true),
-				ID = !string.IsNullOrWhiteSpace(info.ID) ? info.ID : "",
-				Title = !string.IsNullOrWhiteSpace(info.Title) ? info.Title : "",
-				Description = !string.IsNullOrWhiteSpace(info.Description) ? info.Description : "",
-				Icon = !string.IsNullOrWhiteSpace(info.Icon) ? info.Icon : null,
-				MultipleIntances = info.MultipleIntances,
-				Extendable = info.Extendable,
-				Indexable = info.Indexable,
-				ParentType = info.ParentType,
-				CreateNewVersionWhenUpdated = info.CreateNewVersionWhenUpdated,
-				NavigatorType = info.NavigatorType
+				TableName = definitionInfo.TableName,
+				CollectionName = definitionInfo.CollectionName,
+				Searchable = definitionInfo.Searchable,
+				ObjectName = !string.IsNullOrWhiteSpace(definitionInfo.ObjectName) ? definitionInfo.ObjectName : type.GetTypeName(true),
+				ID = !string.IsNullOrWhiteSpace(definitionInfo.ID) ? definitionInfo.ID : "",
+				Title = !string.IsNullOrWhiteSpace(definitionInfo.Title) ? definitionInfo.Title : "",
+				Description = !string.IsNullOrWhiteSpace(definitionInfo.Description) ? definitionInfo.Description : "",
+				Icon = !string.IsNullOrWhiteSpace(definitionInfo.Icon) ? definitionInfo.Icon : null,
+				MultipleIntances = definitionInfo.MultipleIntances,
+				Extendable = definitionInfo.Extendable,
+				Indexable = definitionInfo.Indexable,
+				CreateNewVersionWhenUpdated = definitionInfo.CreateNewVersionWhenUpdated
 			};
-
-			// cache
-			if (info.CacheClass != null && !string.IsNullOrWhiteSpace(info.CacheName))
-			{
-				var cache = info.CacheClass.GetStaticObject(info.CacheName);
-				definition.Cache = cache != null && cache is ICache
-					? cache as ICache
-					: null;
-			}
-
-			// parent (repository)
-			var parent = type.BaseType;
-			var grandparent = parent.BaseType;
-			while (grandparent.BaseType != null && grandparent.BaseType != typeof(object) && grandparent.BaseType != typeof(RepositoryBase))
-			{
-				parent = parent.BaseType;
-				grandparent = parent.BaseType;
-			}
-			var typename = parent.GetTypeName();
-			definition.RepositoryType = Type.GetType(typename.Left(typename.IndexOf("[")) + typename.Substring(typename.IndexOf("]") + 2));
 
 			// public properties
 			var numberOfPrimaryKeys = 0;
-			var properties = ObjectService.GetProperties(type);
-			foreach(var property in properties)
+			foreach (var property in properties)
 			{
 				// by-pass if ignore and not defined as a form control
 				if (property.IsIgnored() && !property.IsFormControl())
@@ -596,16 +595,16 @@ namespace net.vieapps.Components.Repository
 				var attribute = new AttributeInfo(property);
 
 				// primary key
-				if (!property.IsIgnored() && attribute.GetCustomAttribute<PrimaryKeyAttribute>() is PrimaryKeyAttribute keyInfo)
+				if (!property.IsIgnored() && attribute.GetCustomAttribute<PrimaryKeyAttribute>() is PrimaryKeyAttribute primaryKeyInfo)
 				{
-					attribute.Column = keyInfo.Column;
+					attribute.Column = primaryKeyInfo.Column;
 					attribute.NotNull = true;
 					attribute.NotEmpty = true;
-					if (keyInfo.MaxLength > 0)
-						attribute.MaxLength = keyInfo.MaxLength;
+					if (primaryKeyInfo.MaxLength > 0)
+						attribute.MaxLength = primaryKeyInfo.MaxLength;
 
 					definition.PrimaryKey = attribute.Name;
-					numberOfPrimaryKeys += attribute.GetCustomAttributes<PrimaryKeyAttribute>().Count;
+					numberOfPrimaryKeys += 1;
 				}
 
 				// property
@@ -613,7 +612,7 @@ namespace net.vieapps.Components.Repository
 				{
 					attribute.Column = propertyInfo.Column;
 					attribute.NotNull = propertyInfo.NotNull;
-					if (attribute.Type.IsStringType())
+					if (attribute.IsStringType())
 					{
 						if (propertyInfo.NotEmpty)
 							attribute.NotEmpty = true;
@@ -640,19 +639,19 @@ namespace net.vieapps.Components.Repository
 				if (!property.IsIgnored())
 				{
 					definition.Attributes.Add(attribute);
-					if (attribute.GetCustomAttributes<SortableAttribute>().Count > 0)
+					if (attribute.IsSortable())
 						definition.SortableAttributes.Add(attribute.Name);
 				}
 			};
 
 			// check primary key
 			if (numberOfPrimaryKeys == 0)
-				throw new ArgumentException("The type [" + type.ToString() + "] has no primary-key");
+				throw new InformationRequiredException($"The type [{type}] got no primary-key");
 			else if (numberOfPrimaryKeys > 1)
-				throw new ArgumentException("The type [" + type.ToString() + "] has multiple primary-keys");
+				throw new InformationInvalidException($"The type [{type}] got multiple primary-keys");
 
-			// fields
-			ObjectService.GetFields(type).Where(field => !field.IsIgnored()).ForEach(field =>
+			// private attributes
+			type.GetPrivateAttributes().Where(field => !field.IsIgnored()).ForEach(field =>
 			{
 				// create
 				var attribute = new AttributeInfo(field);
@@ -662,7 +661,7 @@ namespace net.vieapps.Components.Repository
 				{
 					attribute.Column = fieldInfo.Column;
 					attribute.NotNull = fieldInfo.NotNull;
-					if (attribute.Type.IsStringType())
+					if (attribute.IsStringType())
 					{
 						if (fieldInfo.NotEmpty)
 							attribute.NotEmpty = true;
@@ -689,56 +688,23 @@ namespace net.vieapps.Components.Repository
 				}
 			});
 
-			// parent (entity)
-			var parentEntity = definition.ParentType?.CreateInstance();
-			if (parentEntity != null)
+			// cache
+			if (definitionInfo.CacheClass != null && !string.IsNullOrWhiteSpace(definitionInfo.CacheName))
 			{
-				var property = string.IsNullOrWhiteSpace(info.ParentAssociatedProperty)
-					? null
-					: properties.FirstOrDefault(p => p.Name.Equals(info.ParentAssociatedProperty));
-				definition.ParentAssociatedProperty = property != null
-					? info.ParentAssociatedProperty
-					: "";
-
-				if (!string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty))
-				{
-					definition.MultipleParentAssociates = info.MultipleParentAssociates;
-
-					property = string.IsNullOrWhiteSpace(info.MultipleParentAssociatesProperty)
-						? null
-						: properties.FirstOrDefault(p => p.Name.Equals(info.MultipleParentAssociatesProperty));
-					definition.MultipleParentAssociatesProperty = property != null && property.Type.IsGenericListOrHashSet()
-						? info.MultipleParentAssociatesProperty
-						: "";
-
-					definition.MultipleParentAssociatesTable = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesTable)
-						? info.MultipleParentAssociatesTable
-						: "";
-
-					if (!string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable))
-					{
-						definition.MultipleParentAssociatesMapColumn = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesMapColumn)
-							? info.MultipleParentAssociatesMapColumn
-							: "";
-
-						definition.MultipleParentAssociatesLinkColumn = !string.IsNullOrWhiteSpace(info.MultipleParentAssociatesLinkColumn)
-							? info.MultipleParentAssociatesLinkColumn
-							: "";
-					}
-				}
+				var cache = definitionInfo.CacheClass.GetStaticObject(definitionInfo.CacheName);
+				definition.Cache = cache != null && cache is ICache ? cache as ICache : null;
 			}
-			else
-				definition.ParentType = null;
 
-			// alias (short-name)
-			definition.AliasProperty = !string.IsNullOrWhiteSpace(info.AliasProperty) && properties.FirstOrDefault(p => p.Name.Equals(info.AliasProperty)) != null
-				? info.AliasProperty
-				: "";
-
-			// navigator
-			definition.NavigatorType = definition.NavigatorType != null && definition.NavigatorType.CreateInstance() != null
-				? definition.NavigatorType
-				: null;
+			// type of repository definition
+			var parentType = type.BaseType;
+			var grandParentType = parentType.BaseType;
+			while (grandParentType.BaseType != null && grandParentType.BaseType != typeof(object) && grandParentType.BaseType != typeof(RepositoryBase))
+			{
+				parentType = parentType.BaseType;
+				grandParentType = parentType.BaseType;
+			}
+			var parentTypeName = parentType.GetTypeName();
+			definition.RepositoryDefinitionType = Type.GetType(parentTypeName.Left(parentTypeName.IndexOf("[")) + parentTypeName.Substring(parentTypeName.IndexOf("]") + 2));
 
 			// update into collection
 			if (RepositoryMediator.EntityDefinitions.TryAdd(type, definition) && RepositoryMediator.IsDebugEnabled)
@@ -1149,190 +1115,6 @@ namespace net.vieapps.Components.Repository
 		public object GetDefaultValue() => null;
 
 		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-		#endregion
-
-	}
-
-	//  --------------------------------------------------------------------------------------------
-
-	/// <summary>
-	/// Presents an UI definition for working with extended properties of a repository entity in a respository 
-	/// </summary>
-	[Serializable]
-	public sealed class ExtendedUIDefinition
-	{
-		public ExtendedUIDefinition(JObject json = null)
-			=> this.CopyFrom(json ?? new JObject());
-
-		public List<ExtendedUIControlDefinition> Controls { get; set; } = new List<ExtendedUIControlDefinition>();
-
-		public string ListXslt { get; set; } = "";
-
-		public string ViewXslt { get; set; } = "";
-
-		public override string ToString()
-			=> this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-	}
-
-	//  --------------------------------------------------------------------------------------------
-
-	/// <summary>
-	/// Presents an UI definition for working with an extended property of a repository entity in a respository 
-	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Name}")]
-	public sealed class ExtendedUIControlDefinition
-	{
-		public ExtendedUIControlDefinition(JObject json = null)
-			=> this.CopyFrom(json ?? new JObject());
-
-		public override string ToString()
-			=> this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
-
-		#region Properties
-		/// <summary>
-		/// Gets or sets the name
-		/// </summary>
-		public string Name { get; set; } = "";
-
-		/// <summary>
-		/// Gets or sets the excluded state
-		/// </summary>
-		public bool Excluded { get; set; } = false;
-
-		/// <summary>
-		/// Gets or sets the hidden state
-		/// </summary>
-		public bool Hidden { get; set; } = false;
-
-		/// <summary>
-		/// Gets or sets the state that mark this property is hidden in the view or not
-		/// </summary>
-		public bool? HiddenInView { get; set; }
-
-		/// <summary>
-		/// Gets or sets the require state
-		/// </summary>
-		public bool Required { get; set; } = false;
-
-		/// <summary>
-		/// Gets or sets the label - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
-		/// </summary>
-		public string Label { get; set; }
-
-		/// <summary>
-		/// Gets or sets the place-holder - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
-		/// </summary>
-		public string PlaceHolder { get; set; }
-
-		/// <summary>
-		/// Gets or sets the description - use doube braces to specified code of a language resource - ex: {{common.buttons.ok}}
-		/// </summary>
-		public string Description { get; set; }
-
-		/// <summary>
-		/// Gets or sets the RegEx pattern for data validation
-		/// </summary>
-		public bool ValidatePattern { get; set; }
-
-		/// <summary>
-		/// Gets or sets the order number
-		/// </summary>
-		public int? Order { get; set; }
-
-		/// <summary>
-		/// Gets or sets the disable state
-		/// </summary>
-		public bool? Disabled { get; set; }
-
-		/// <summary>
-		/// Gets or sets the read-only state
-		/// </summary>
-		public bool? ReadOnly { get; set; }
-
-		/// <summary>
-		/// Gets or sets the auto-focus state
-		/// </summary>
-		public bool? AutoFocus { get; set; }
-
-		/// <summary>
-		/// Gets or sets the min value
-		/// </summary>
-		public double? MinValue { get; set; }
-
-		/// <summary>
-		/// Gets or sets the max value
-		/// </summary>
-		public double? MaxValue { get; set; }
-
-		/// <summary>
-		/// Gets or sets the min-length
-		/// </summary>
-		public int? MinLength { get; set; }
-
-		/// <summary>
-		/// Gets or sets the max-length
-		/// </summary>
-		public int? MaxLength { get; set; }
-
-		/// <summary>
-		/// Gets or sets the width
-		/// </summary>
-		public string Width { get; set; }
-
-		/// <summary>
-		/// Gets or sets the height
-		/// </summary>
-		public string Height { get; set; }
-
-		/// <summary>
-		/// Gets or sets the state to act as text/html editor
-		/// </summary>
-		public bool? AsTextEditor { get; set; }
-
-		/// <summary>
-		/// Gets or sets the date-picker with times
-		/// </summary>
-		public bool? DatePickerWithTimes { get; set; }
-
-		/// <summary>
-		/// Gets or sets the multiple of select/lookup control
-		/// </summary>
-		public bool? Multiple { get; set; }
-
-		/// <summary>
-		/// Gets or sets the values of select control (JSON string)
-		/// </summary>
-		public string SelectValues { get; set; }
-
-		/// <summary>
-		/// Gets or sets the 'as-boxes' of select control
-		/// </summary>
-		public bool? SelectAsBoxes { get; set; }
-
-		/// <summary>
-		/// Gets or sets the interface mode of select control (alert, popover, actionsheet)
-		/// </summary>
-		public string SelectInterface { get; set; }
-
-		/// <summary>
-		/// Gets or sets the mode for looking-up (Address, User or Business Object)
-		/// </summary>
-		public string LookupMode { get; set; }
-
-		/// <summary>
-		/// Gets or sets the identity of the business repository for looking-up
-		/// </summary>
-		public string LookupRepositoryID { get; set; }
-
-		/// <summary>
-		/// Gets or sets the identity of the business entity for looking-up
-		/// </summary>
-		public string LookupEntityID { get; set; }
-
-		/// <summary>
-		/// Gets or sets the name of business entity's property for displaying while looking-up
-		/// </summary>
-		public string LookupProperty { get; set; }
 		#endregion
 
 	}
