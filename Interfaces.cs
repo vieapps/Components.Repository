@@ -186,6 +186,38 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
+	/// Presents an aliased business entity (means a business object of a business content-type at the run-time that got alias)
+	/// </summary>
+	public interface IAliasEntity : IBusinessEntity
+	{
+		/// <summary>
+		/// Gets the alias of this business entity
+		/// </summary>
+		string Alias { get; }
+
+		/// <summary>
+		/// Gets a business entity by an alias
+		/// </summary>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity (means a business content-type at run-time)</param>
+		/// <param name="alias">The alias</param>
+		/// <param name="parentIdentity">The identity (alias or UUID) of parent object (if has)</param>
+		/// <returns></returns>
+		IBusinessEntity GetByAlias(string businessRepositoryEntityID, string alias, string parentIdentity = null);
+
+		/// <summary>
+		/// Gets a business entity by an alias
+		/// </summary>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity (means a business content-type at run-time)</param>
+		/// <param name="alias">The alias</param>
+		/// <param name="parentIdentity">The identity (alias or UUID) of parent object (if has)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		Task<IBusinessEntity> GetByAliasAsync(string businessRepositoryEntityID, string alias, string parentIdentity = null, CancellationToken cancellationToken = default);
+	}
+
+	//  --------------------------------------------------------------------------------------------
+
+	/// <summary>
 	/// Presents a filtering expression
 	/// </summary>
 	public interface IFilterBy
