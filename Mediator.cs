@@ -59,7 +59,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="type">The type of the definition</param>
 		/// <param name="verify">true to verify</param>
 		/// <returns></returns>
-		public static RepositoryDefinition GetRepositoryDefinition(Type type, bool verify = false)
+		public static RepositoryDefinition GetRepositoryDefinition(this Type type, bool verify = false)
 		{
 			if (type != null && RepositoryMediator.RepositoryDefinitions.TryGetValue(type, out var definition))
 				return definition;
@@ -74,8 +74,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="typeName">The assembly-qualified name of the type to get</param>
 		/// <param name="verify">true to verify</param>
 		/// <returns></returns>
-		public static RepositoryDefinition GetRepositoryDefinition(string typeName, bool verify = false)
-			=> RepositoryMediator.GetRepositoryDefinition(Type.GetType(typeName), verify);
+		public static RepositoryDefinition GetRepositoryDefinition(this string typeName, bool verify = false)
+			=> Type.GetType(typeName)?.GetRepositoryDefinition(verify);
 
 		/// <summary>
 		/// Gets the repository definition that matched with the type name
@@ -84,7 +84,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="verify">true to verify</param>
 		/// <returns></returns>
 		public static RepositoryDefinition GetRepositoryDefinition<T>(bool verify = true) where T : class
-			=> RepositoryMediator.GetRepositoryDefinition(typeof(T), verify);
+			=> typeof(T).GetRepositoryDefinition(verify);
 
 		/// <summary>
 		/// Gets the repository entity definition that matched with the type
@@ -92,7 +92,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="type">The type of the definition</param>
 		/// <param name="verify">true to verify</param>
 		/// <returns></returns>
-		public static EntityDefinition GetEntityDefinition(Type type, bool verify = false)
+		public static EntityDefinition GetEntityDefinition(this Type type, bool verify = false)
 		{
 			if (type != null && RepositoryMediator.EntityDefinitions.TryGetValue(type, out var definition))
 				return definition;
@@ -107,8 +107,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="typeName">The assembly-qualified name of the type to get</param>
 		/// <param name="verify">true to verify</param>
 		/// <returns></returns>
-		public static EntityDefinition GetEntityDefinition(string typeName, bool verify = false)
-			=> RepositoryMediator.GetEntityDefinition(Type.GetType(typeName), verify);
+		public static EntityDefinition GetEntityDefinition(this string typeName, bool verify = false)
+			=> Type.GetType(typeName)?.GetEntityDefinition(verify);
 
 		/// <summary>
 		/// Gets the repository entity definition that matched with the type of a class
@@ -117,14 +117,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="verify">true to verify</param>
 		/// <returns></returns>
 		public static EntityDefinition GetEntityDefinition<T>(bool verify = true) where T : class
-			=> RepositoryMediator.GetEntityDefinition(typeof(T), verify);
+			=> typeof(T).GetEntityDefinition(verify);
 		#endregion
 
-		#region Business repositories & entities
+		#region Business repositories & repository entities
 		/// <summary>
-		/// Gets the runtime repositories (means business modules)  of a system (means an organization)
+		/// Gets the collection of business repositories (means business modules at run-time)
 		/// </summary>
-		/// <param name="systemID"></param>
+		/// <param name="systemID">The identity of a system (means an organization)</param>
 		/// <returns></returns>
 		public static List<IBusinessRepository> GetBusinessRepositories(string systemID)
 		{
@@ -140,41 +140,41 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets the runtime repository (means business module) by identity
+		/// Gets a buiness repository (means a business module at run-time)
 		/// </summary>
-		/// <param name="repositoryID"></param>
+		/// <param name="businessRepositoryID">The identity of a specified business repository</param>
 		/// <returns></returns>
-		public static IBusinessRepository GetBusinessRepository(string repositoryID)
+		public static IBusinessRepository GetBusinessRepository(string businessRepositoryID)
 		{
-			if (string.IsNullOrWhiteSpace(repositoryID))
+			if (string.IsNullOrWhiteSpace(businessRepositoryID))
 				return null;
 
 			var repositories = RepositoryMediator.RepositoryDefinitions
-				.Where(kvp => kvp.Value.BusinessRepositories.ContainsKey(repositoryID))
+				.Where(kvp => kvp.Value.BusinessRepositories.ContainsKey(businessRepositoryID))
 				.Select(kvp => kvp.Value.BusinessRepositories)
 				.FirstOrDefault();
 
-			return repositories != null && repositories.TryGetValue(repositoryID, out var repository)
+			return repositories != null && repositories.TryGetValue(businessRepositoryID, out var repository)
 				? repository
 				: null;
 		}
 
 		/// <summary>
-		/// Gets the runtime repository entity (means business content-type) by identity
+		/// Gets a business repository entity (means a business content-type at run-time)
 		/// </summary>
-		/// <param name="entityID"></param>
+		/// <param name="businessRepositoryEntity"></param>
 		/// <returns></returns>
-		public static IBusinessRepositoryEntity GetBusinessRepositoryEntity(string entityID)
+		public static IBusinessRepositoryEntity GetBusinessRepositoryEntity(string businessRepositoryEntity)
 		{
-			if (string.IsNullOrWhiteSpace(entityID))
+			if (string.IsNullOrWhiteSpace(businessRepositoryEntity))
 				return null;
 
 			var entities = RepositoryMediator.EntityDefinitions
-				.Where(info => info.Value.BusinessRepositoryEntities.ContainsKey(entityID))
-				.Select(info => info.Value.BusinessRepositoryEntities)
+				.Where(kvp => kvp.Value.BusinessRepositoryEntities.ContainsKey(businessRepositoryEntity))
+				.Select(kvp => kvp.Value.BusinessRepositoryEntities)
 				.FirstOrDefault();
 
-			return entities != null && entities.TryGetValue(entityID, out var entity)
+			return entities != null && entities.TryGetValue(businessRepositoryEntity, out var entity)
 				? entity
 				: null;
 		}
@@ -6345,7 +6345,7 @@ namespace net.vieapps.Components.Repository
 					? "TextEditor"
 					: attribute.IsEnum() || attribute.IsEnumString()
 						? "Select"
-						: attribute.IsStoredAsSimpleMapping()
+						: attribute.IsMappings()
 							? "Lookup"
 							: attribute.IsPrimitiveType()
 								? attribute.IsDateTimeType()
@@ -6432,7 +6432,7 @@ namespace net.vieapps.Components.Repository
 				? null
 				: (info?.PlaceHolder ?? parentPlaceHolder)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
 
-			if (attribute.IsClassType() && !attribute.IsStoredAsSimpleMapping())
+			if (attribute.IsClassType() && !attribute.IsMappings())
 			{
 				var subControls = new JArray();
 				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subAttribute, subIndex) =>
@@ -6487,7 +6487,7 @@ namespace net.vieapps.Components.Repository
 					? "TextEditor"
 					: attribute.IsEnum() || attribute.IsEnumString()
 						? "Select"
-						: attribute.IsStoredAsSimpleMapping()
+						: attribute.IsMappings()
 							? "Lookup"
 							: attribute.IsPrimitiveType()
 								? attribute.IsDateTimeType()
@@ -6575,7 +6575,7 @@ namespace net.vieapps.Components.Repository
 
 			var order = info != null && info.Order > -1 ? info.Order : index;
 
-			if (attribute.IsClassType() && !attribute.IsStoredAsSimpleMapping())
+			if (attribute.IsClassType() && !attribute.IsMappings())
 			{
 				var subControls = new JArray();
 				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subAttribute, subIndex) =>
@@ -7032,7 +7032,7 @@ namespace net.vieapps.Components.Repository
 			definition = definition ?? RepositoryMediator.GetEntityDefinition(typeof(T));
 
 			var standardProperties = definition != null
-				? definition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty)).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
+				? definition.Attributes.Where(attribute => !attribute.IsMappings()).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
 				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name, attribute => new AttributeInfo(attribute));
 
 			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessRepositoryEntityID, definition)
