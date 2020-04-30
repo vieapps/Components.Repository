@@ -2185,89 +2185,119 @@ namespace net.vieapps.Components.Repository
 		#region Schemas & Indexes
 		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
-			// prepare indexes
+			// prepare
 			var prefix = "IDX_" + definition.CollectionName;
-			var indexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase)
+			var normalIndexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ prefix, new List<AttributeInfo>() }
 			};
 			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase);
 
-			definition.Attributes.ForEach(attribute =>
+			// sortables
+			definition.Attributes.Where(attribute => attribute.IsSortable()).ForEach(attribute =>
 			{
-				var attributes = attribute.Info.GetCustomAttributes(typeof(SortableAttribute), true);
-				if (attributes.Length > 0)
+				var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
+				if (!string.IsNullOrWhiteSpace(sortInfo.UniqueIndexName))
 				{
-					var attr = attributes[0] as SortableAttribute;
-					if (!string.IsNullOrWhiteSpace(attr.UniqueIndexName))
-					{
-						var name = prefix + "_" + attr.UniqueIndexName;
-						if (!uniqueIndexes.ContainsKey(name))
-							uniqueIndexes.Add(name, new List<AttributeInfo>());
-						uniqueIndexes[name].Add(attribute);
-
-						if (!string.IsNullOrWhiteSpace(attr.IndexName))
-						{
-							name = prefix + "_" + attr.IndexName;
-							if (!indexes.ContainsKey(name))
-								indexes.Add(name, new List<AttributeInfo>());
-							indexes[name].Add(attribute);
-						}
-					}
+					var name = $"{prefix}_{sortInfo.UniqueIndexName}";
+					if (uniqueIndexes.TryGetValue(name, out var indexes))
+						indexes.Add(attribute);
 					else
+						uniqueIndexes.Add(name, new List<AttributeInfo> { attribute });
+
+					if (!string.IsNullOrWhiteSpace(sortInfo.IndexName))
 					{
-						var name = prefix + (string.IsNullOrWhiteSpace(attr.IndexName) ? "" : "_" + attr.IndexName);
-						if (!indexes.ContainsKey(name))
-							indexes.Add(name, new List<AttributeInfo>());
-						indexes[name].Add(attribute);
+						name = $"{prefix}_{sortInfo.IndexName}";
+						if (normalIndexes.TryGetValue(name, out indexes))
+							indexes.Add(attribute);
+						else
+							normalIndexes.Add(name, new List<AttributeInfo> { attribute });
 					}
+				}
+				else
+				{
+					var name = prefix + (string.IsNullOrWhiteSpace(sortInfo.IndexName) ? "" : $"_{sortInfo.IndexName}");
+					if (normalIndexes.TryGetValue(name, out var indexes))
+						indexes.Add(attribute);
+					else
+						normalIndexes.Add(name, new List<AttributeInfo> { attribute });
 				}
 			});
 
+			// mappings
+			definition.Attributes.Where(attribute => !attribute.IsSortable() && (attribute.IsMappings() || attribute.IsParentMapping())).ForEach(attribute =>
+			{
+				var name = $"{prefix}_{attribute.Name}_Mappings";
+				if (normalIndexes.TryGetValue(name, out var indexes))
+					indexes.Add(attribute);
+				else
+					normalIndexes.Add(name, new List<AttributeInfo> { attribute });
+			});
+
+			// alias
+			definition.Attributes.Where(attribute => attribute.IsAlias()).ForEach(attribute =>
+			{
+				var aliasProps = attribute.GetCustomAttribute<AliasAttribute>().Properties.ToHashSet(",", true);
+				var index = new[] { attribute, definition.Attributes.FirstOrDefault(attr => attr.Name.IsEquals("RepositoryEntityID")) }.Concat(definition.Attributes.Where(attr => aliasProps.Contains(attr.Name))).ToList();
+				var name = $"{prefix}_Alias";
+				if (uniqueIndexes.TryGetValue(name, out var indexes))
+					indexes = indexes.Concat(index).ToList();
+				else
+					uniqueIndexes.Add(name, index);
+			});
+
+			// text indexes
 			var textIndexes = definition.Searchable
-				? definition.Attributes
-					.Where(attribute => attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0)
-					.Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)
-					.ToList()
+				? definition.Attributes.Where(attribute => attribute.IsSearchable()).Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column).ToList()
 				: new List<string>();
 
 			// get the collection
 			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
 
 			// create indexes
-			await indexes.ForEachAsync(async (info, token) =>
+			await normalIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async (kvp, token) =>
 			{
-				if (info.Value.Count > 0)
+				IndexKeysDefinition<BsonDocument> index = null;
+				kvp.Value.ForEach(attribute =>
 				{
-					IndexKeysDefinition<BsonDocument> index = null;
-					info.Value.ForEach(attribute =>
-					{
-						index = index == null
-							? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
-							: index.Ascending(attribute.Name);
-					});
-					tracker?.Invoke($"Create index of No SQL: {info.Key}", null);
+					index = index == null
+						? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
+						: index.Ascending(attribute.Name);
+				});
+				try
+				{
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true }), null, token).ConfigureAwait(false);
+					tracker?.Invoke($"Create index of No SQL successful => {kvp.Key}", null);
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"Create index of No SQL: {info.Key}", null);
-					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = info.Key, Background = true }), null, token).ConfigureAwait(false);
+						RepositoryMediator.WriteLogs($"Create index of No SQL successful => {kvp.Key}", null);
+				}
+				catch (Exception ex)
+				{
+					tracker?.Invoke($"Error occurred while creating index of No SQL => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while creating index of No SQL => {ex.Message}", ex);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
-			await uniqueIndexes.ForEachAsync(async (info, token) =>
+			await uniqueIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async (kvp, token) =>
 			{
-				if (info.Value.Count > 0)
+				IndexKeysDefinition<BsonDocument> index = null;
+				kvp.Value.ForEach(attribute =>
 				{
-					IndexKeysDefinition<BsonDocument> index = null;
-					info.Value.ForEach(attribute =>
-					{
-						index = index == null
-							? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
-							: index.Ascending(attribute.Name);
-					});
-					tracker?.Invoke($"Create unique index of No SQL: {info.Key}", null);
+					index = index == null
+						? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
+						: index.Ascending(attribute.Name);
+				});
+				try
+				{
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, Unique = true }), null, token).ConfigureAwait(false);
+					tracker?.Invoke($"Create unique index of No SQL successful => {kvp.Key}", null);
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"Create unique index of No SQL: {info.Key}", null);
-					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = info.Key, Background = true, Unique = true }), null, token).ConfigureAwait(false);
+						RepositoryMediator.WriteLogs($"Create unique index of No SQL successful => {kvp.Key}", null);
+				}
+				catch (Exception ex)
+				{
+					tracker?.Invoke($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -2280,10 +2310,18 @@ namespace net.vieapps.Components.Repository
 						? Builders<BsonDocument>.IndexKeys.Text(attribute)
 						: index.Text(attribute);
 				});
-				tracker?.Invoke($"Create text index of No SQL: {prefix + "_Text_Search"}", null);
-				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"Create text index of No SQL: {prefix + "_Text_Search"}", null);
-				await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = prefix + "_Text_Search", Background = true }), null, cancellationToken).ConfigureAwait(false);
+				try
+				{
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = $"{prefix}_Text_Search", Background = true }), null, cancellationToken).ConfigureAwait(false);
+					tracker?.Invoke($"Create text index of No SQL successful => {prefix}_Text_Search", null);
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Create text index of No SQL successful => {prefix}_Text_Search", null);
+				}
+				catch (Exception ex)
+				{
+					tracker?.Invoke($"Error occurred while creating text index of No SQL => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while creating text index of No SQL => {ex.Message}", ex);
+				}
 			}
 
 			// create the blank document for ensuring the collection is created

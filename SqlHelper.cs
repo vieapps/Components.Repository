@@ -201,10 +201,20 @@ namespace net.vieapps.Components.Repository
 			{ typeof(DateTimeOffset), DbType.DateTimeOffset }
 		};
 
-		internal static DbType GetDbType(this Type type)
+		/// <summary>
+		/// Gets the database type
+		/// </summary>
+		/// <param name="type"></param>
+		/// <returns></returns>
+		public static DbType GetDbType(this Type type)
 			=> SqlHelper.DbTypes[type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)) ? Nullable.GetUnderlyingType(type) : type];
 
-		internal static DbType GetDbType(this AttributeInfo attribute)
+		/// <summary>
+		/// Gets the database type
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static DbType GetDbType(this AttributeInfo attribute)
 			=> (attribute.Type.IsStringType() && (attribute.MaxLength.Equals(32) || attribute.Name.EndsWith("ID"))) || attribute.IsStoredAsString()
 				? DbType.AnsiStringFixedLength
 				: attribute.IsStoredAsJson()
@@ -215,7 +225,12 @@ namespace net.vieapps.Components.Repository
 							: DbType.Int32
 					: attribute.Type.GetDbType();
 
-		internal static DbType GetDbType(this ExtendedPropertyDefinition attribute)
+		/// <summary>
+		/// Gets the database type
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static DbType GetDbType(this ExtendedPropertyDefinition attribute)
 			=> attribute.Type.Equals(typeof(DateTime))
 				? DbType.AnsiString
 				: attribute.Type.GetDbType();
@@ -547,43 +562,16 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Mappings (multiple parent associates or single master/slaves)
-		static bool IsGotMultipleParentAssociates(this EntityDefinition definition)
-			=> definition.ParentType != null
-				&& !string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty)
-				&& definition.MultipleParentAssociates 
-				&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesProperty)
-				&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesTable)
-				&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn)
-				&& !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn);
-
-		static bool IsGotMultipleParentAssociates<T>(this T @object) where T : class
-			=> @object != null && RepositoryMediator.GetEntityDefinition<T>().IsGotMultipleParentAssociates();
-
-		static bool IsGotSingleMappingProperties(this EntityDefinition definition)
-			=> definition.Attributes.Count(attribute => attribute.IsStoredAsSimpleMapping()) > 0;
-
-		static bool IsGotSingleMappingProperties<T>(this T @object) where T : class
-			=> @object != null && RepositoryMediator.GetEntityDefinition<T>().IsGotSingleMappingProperties();
-
-		static string GetSingleMappingTableName(this AttributeInfo attribute, EntityDefinition definition, AsSingleMappingAttribute mappingInfo = null)
+		internal static Tuple<string, string, string> GetMappingInfo(this AttributeInfo attribute, EntityDefinition definition)
 		{
-			mappingInfo = mappingInfo ?? attribute.GetCustomAttribute<AsSingleMappingAttribute>();
-			var name = mappingInfo?.TableName;
-			return string.IsNullOrWhiteSpace(name) ? $"{definition.TableName}_{attribute.Name}_Mappings" : name;
-		}
-
-		static string GetSingleMappingLinkColumn(this AttributeInfo attribute, EntityDefinition definition, AsSingleMappingAttribute mappingInfo = null)
-		{
-			mappingInfo = mappingInfo ?? attribute.GetCustomAttribute<AsSingleMappingAttribute>();
-			var name = mappingInfo?.LinkColumn;
-			return string.IsNullOrWhiteSpace(name) ? $"{definition.Type.GetTypeName(true)}ID" : name;
-		}
-
-		static string GetSingleMappingMapColumn(this AttributeInfo attribute, AsSingleMappingAttribute mappingInfo = null)
-		{
-			mappingInfo = mappingInfo ?? attribute.GetCustomAttribute<AsSingleMappingAttribute>();
-			var name = mappingInfo?.MapColumn;
-			return string.IsNullOrWhiteSpace(name) ? $"{attribute.Name.Replace(StringComparison.OrdinalIgnoreCase, "IDs", "").Replace(StringComparison.OrdinalIgnoreCase, "ID", "")}ID" : name;
+			var mappingInfo = attribute?.GetCustomAttribute<MappingsAttribute>();
+			return mappingInfo != null
+				? new Tuple<string, string, string>(
+					string.IsNullOrWhiteSpace(mappingInfo.TableName) ? $"{definition.TableName}_{attribute.Name}_Mappings" : mappingInfo.TableName,
+					string.IsNullOrWhiteSpace(mappingInfo.LinkColumn) ? $"{definition.Type.GetTypeName(true)}ID" : mappingInfo.LinkColumn,
+					string.IsNullOrWhiteSpace(mappingInfo.MapColumn) ? $"{attribute.Name}ID" : mappingInfo.MapColumn
+				)
+				: null;
 		}
 
 		static List<Tuple<string, List<DbParameter>>> PrepareUpdateMappings(this DbProviderFactory dbProviderFactory, string tableName, string linkColumn, string mapColumn, string linkValue, IEnumerable<string> mapValues)
@@ -615,30 +603,14 @@ namespace net.vieapps.Components.Repository
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
 
-			if (definition.IsGotMultipleParentAssociates())
+			definition.Attributes.Where(attribute => attribute.IsMappings()).ForEach(attribute =>
 			{
-				var mapValues = new List<string>();
-				var values = @object.GetAttributeValue(definition.MultipleParentAssociatesProperty);
-				if (values != null && values.IsGenericListOrHashSet())
-				{
-					var enumerator = (values.IsGenericList() ? values as List<object> : (values as HashSet<object>).ToList()).ToList(typeof(string)).GetEnumerator();
-					while (enumerator.MoveNext())
-						mapValues.Add(enumerator.Current?.ToString());
-				}
-				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(definition.MultipleParentAssociatesTable, definition.MultipleParentAssociatesLinkColumn, definition.MultipleParentAssociatesMapColumn, linkValue, mapValues)).ToList();
-			}
-
-			definition.Attributes.Where(attribute => attribute.IsStoredAsSimpleMapping()).ForEach(attribute =>
-			{
-				var mapValues = new List<string>();
 				var values = @object.GetAttributeValue(attribute);
-				if (values != null && values.IsGenericListOrHashSet())
-				{
-					var enumerator = (values.IsGenericList() ? values as List<object> : (values as HashSet<object>).ToList()).ToList(typeof(string)).GetEnumerator();
-					while (enumerator.MoveNext())
-						mapValues.Add(enumerator.Current?.ToString());
-				}
-				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(attribute.GetSingleMappingTableName(definition), attribute.GetSingleMappingLinkColumn(definition), attribute.GetSingleMappingMapColumn(), linkValue, mapValues)).ToList();
+				var mapValues = values != null && values.IsGenericListOrHashSet()
+					? values.IsGenericList() ? values as List<string> : (values as HashSet<string>).ToList()
+					: new List<string>();
+				var mappingInfo = attribute.GetMappingInfo(definition);
+				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(mappingInfo.Item1, mappingInfo.Item2, mappingInfo.Item3, linkValue, mapValues)).ToList();
 			});
 
 			return statements;
@@ -702,16 +674,11 @@ namespace net.vieapps.Components.Repository
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
 
-			if (definition.IsGotMultipleParentAssociates())
+			definition.Attributes.Where(attribute => attribute.IsMappings()).ForEach(attribute =>
 			{
-				var mapValues = dbProviderFactory.GetMappings(connection, definition.MultipleParentAssociatesTable, definition.MultipleParentAssociatesLinkColumn, definition.MultipleParentAssociatesMapColumn, linkValue);
-				@object.SetAttributeValue(definition.MultipleParentAssociatesProperty, mapValues);
-			}
-
-			definition.Attributes.Where(attribute => attribute.IsStoredAsSimpleMapping()).ForEach(attribute =>
-			{
-				var mapValues = dbProviderFactory.GetMappings(connection, attribute.GetSingleMappingTableName(definition), attribute.GetSingleMappingLinkColumn(definition), attribute.GetSingleMappingMapColumn(), linkValue);
-				@object.SetAttributeValue(attribute, mapValues);
+				var mapInfo = attribute.GetMappingInfo(definition);
+				var mapValues = dbProviderFactory.GetMappings(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue);
+				@object.SetAttributeValue(attribute, attribute.IsGenericHashSet() ? mapValues.ToHashSet() as object : mapValues);
 			});
 		}
 
@@ -732,16 +699,11 @@ namespace net.vieapps.Components.Repository
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
 
-			if (definition.IsGotMultipleParentAssociates())
+			await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async (attribute, token) =>
 			{
-				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, definition.MultipleParentAssociatesTable, definition.MultipleParentAssociatesLinkColumn, definition.MultipleParentAssociatesMapColumn, linkValue, cancellationToken).ConfigureAwait(false);
-				@object.SetAttributeValue(definition.MultipleParentAssociatesProperty, mapValues);
-			}
-
-			await definition.Attributes.Where(attribute => attribute.IsStoredAsSimpleMapping()).ForEachAsync(async (attribute, token) =>
-			{
-				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, attribute.GetSingleMappingTableName(definition), attribute.GetSingleMappingLinkColumn(definition), attribute.GetSingleMappingMapColumn(), linkValue, token).ConfigureAwait(false);
-				@object.SetAttributeValue(attribute, mapValues);
+				var mapInfo = attribute.GetMappingInfo(definition);
+				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, token).ConfigureAwait(false);
+				@object.SetAttributeValue(attribute, attribute.IsGenericHashSet() ? mapValues.ToHashSet() as object : mapValues);
 			}, cancellationToken, true, false).ConfigureAwait(false); 
 		}
 		#endregion
@@ -754,7 +716,7 @@ namespace net.vieapps.Components.Repository
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			foreach (var attribute in definition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty)).ToList())
+			foreach (var attribute in definition.Attributes.Where(attribute => !attribute.IsMappings()).ToList())
 			{
 				var value = @object.GetAttributeValue(attribute.Name);
 				if (value == null && attribute.IsIgnoredIfNull())
@@ -941,7 +903,7 @@ namespace net.vieapps.Components.Repository
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
 			var fields = definition.Attributes
-				.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty))
+				.Where(attribute => !attribute.IsMappings())
 				.Where(attribute => !attribute.IsIgnoredIfNull() || (attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null))
 				.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column + " AS " + attribute.Name))
 				.ToList();
@@ -1288,7 +1250,7 @@ namespace net.vieapps.Components.Repository
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			foreach (var attribute in definition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty)).ToList())
+			foreach (var attribute in definition.Attributes.Where(attribute => !attribute.IsMappings()).ToList())
 			{
 				var value = @object.GetAttributeValue(attribute.Name);
 				if (attribute.Name.IsEquals(definition.PrimaryKey) || (value == null && attribute.IsIgnoredIfNull()))
@@ -1434,7 +1396,7 @@ namespace net.vieapps.Components.Repository
 			var parameters = new List<DbParameter>();
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
-			var standardProperties = definition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(definition.MultipleParentAssociatesProperty)).ToDictionary(attribute => attribute.Name.ToLower());
+			var standardProperties = definition.Attributes.Where(attribute => !attribute.IsMappings()).ToDictionary(attribute => attribute.Name.ToLower());
 			foreach (var attribute in attributes)
 			{
 				if (!standardProperties.ContainsKey(attribute.ToLower()))
@@ -2313,7 +2275,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Find<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true) where T : class
 		{
-			var standardProperties = context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(context.EntityDefinition.MultipleParentAssociatesProperty)).ToDictionary(attribute => attribute.Name);
+			var standardProperties = context.EntityDefinition.Attributes.Where(attribute => !attribute.IsMappings()).ToDictionary(attribute => attribute.Name);
 			var extendedProperties = !string.IsNullOrWhiteSpace(businessRepositoryEntityID) && context.EntityDefinition.BusinessRepositoryEntities.ContainsKey(businessRepositoryEntityID)
 				? context.EntityDefinition.BusinessRepositoryEntities[businessRepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
 				: null;
@@ -2352,7 +2314,7 @@ namespace net.vieapps.Components.Repository
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
 			
-			if (results.Count > 0 && (results.First().IsGotSingleMappingProperties() || results.First().IsGotMultipleParentAssociates()))
+			if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -2380,7 +2342,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> FindAsync<T>(this RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, CancellationToken cancellationToken = default) where T : class
 		{
-			var standardProperties = context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping() && !attribute.Name.Equals(context.EntityDefinition.MultipleParentAssociatesProperty)).ToDictionary(attribute => attribute.Name);
+			var standardProperties = context.EntityDefinition.Attributes.Where(attribute => !attribute.IsMappings()).ToDictionary(attribute => attribute.Name);
 			var extendedProperties = !string.IsNullOrWhiteSpace(businessRepositoryEntityID) && context.EntityDefinition.BusinessRepositoryEntities.ContainsKey(businessRepositoryEntityID)
 				? context.EntityDefinition.BusinessRepositoryEntities[businessRepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name)
 				: null;
@@ -2419,7 +2381,7 @@ namespace net.vieapps.Components.Repository
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
 
-			if (results.Count > 0 && (results.First().IsGotSingleMappingProperties() || results.First().IsGotMultipleParentAssociates()))
+			if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -2948,7 +2910,7 @@ namespace net.vieapps.Components.Repository
 					.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
 					.ToList();
 
-				if (results.Count > 0 && (results.First().IsGotSingleMappingProperties() || results.First().IsGotMultipleParentAssociates()))
+				if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
 					results.ForEach(@object => @object.GetMappings(connection, dbProviderFactory));
 
 				return results;
@@ -3034,7 +2996,7 @@ namespace net.vieapps.Components.Repository
 					.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
 					.ToList();
 
-				if (results.Count > 0 && (results.First().IsGotSingleMappingProperties() || results.First().IsGotMultipleParentAssociates()))
+				if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
 					await results.ForEachAsync(async (@object, token) =>
 					{
 						await @object.GetMappingsAsync(connection, dbProviderFactory, token).ConfigureAwait(false);
@@ -3369,7 +3331,7 @@ namespace net.vieapps.Components.Repository
 			{
 				case "SQLServer":
 					sql = $"CREATE TABLE [{context.EntityDefinition.TableName}] ("
-						+ context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping()).Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
+						+ context.EntityDefinition.Attributes.Where(attribute => !attribute.IsMappings()).Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
 						+ $", CONSTRAINT [PK_{context.EntityDefinition.TableName}] PRIMARY KEY CLUSTERED ([{context.EntityDefinition.PrimaryKey}] ASC) "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY]";
 					break;
@@ -3377,7 +3339,7 @@ namespace net.vieapps.Components.Repository
 				case "MySQL":
 				case "PostgreSQL":
 					sql = $"CREATE TABLE {context.EntityDefinition.TableName} ("
-						+ context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping()).Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
+						+ context.EntityDefinition.Attributes.Where(attribute => !attribute.IsMappings()).Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " " + attribute.GetDbTypeString(dbProviderFactory) + " " + (attribute.NotNull ? "NOT " : "") + "NULL").Join(", ")
 						+ $", PRIMARY KEY ({context.EntityDefinition.PrimaryKey}))";
 					break;
 			}
@@ -3410,40 +3372,53 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			var prefix = $"IDX_{context.EntityDefinition.TableName}";
-			var indexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase)
+			var normalIndexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase)
 			{
 				{ prefix, new List<AttributeInfo>() }
 			};
 			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase);
 
-			context.EntityDefinition.Attributes.Where(attribute => !attribute.IsStoredAsSimpleMapping()).ForEach(attribute =>
+			// sortables
+			context.EntityDefinition.Attributes.Where(attribute => attribute.IsSortable() && !attribute.IsMappings()).ForEach(attribute =>
 			{
-				var sortableAttribute = attribute.GetCustomAttribute<SortableAttribute>(true);
-				if (sortableAttribute != null)
+				var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
+				if (!string.IsNullOrWhiteSpace(sortInfo.UniqueIndexName))
 				{
-					if (!string.IsNullOrWhiteSpace(sortableAttribute.UniqueIndexName))
-					{
-						var name = $"{prefix}_{sortableAttribute.UniqueIndexName}";
-						if (!uniqueIndexes.ContainsKey(name))
-							uniqueIndexes.Add(name, new List<AttributeInfo>());
-						uniqueIndexes[name].Add(attribute);
-
-						if (!string.IsNullOrWhiteSpace(sortableAttribute.IndexName))
-						{
-							name = $"{prefix}_{sortableAttribute.IndexName}";
-							if (!indexes.ContainsKey(name))
-								indexes.Add(name, new List<AttributeInfo>());
-							indexes[name].Add(attribute);
-						}
-					}
+					var name = $"{prefix}_{sortInfo.UniqueIndexName}";
+					if (uniqueIndexes.TryGetValue(name, out var indexes))
+						indexes.Add(attribute);
 					else
+						uniqueIndexes.Add(name, new List<AttributeInfo> { attribute });
+
+					if (!string.IsNullOrWhiteSpace(sortInfo.IndexName))
 					{
-						var name = prefix + (string.IsNullOrWhiteSpace(sortableAttribute.IndexName) ? "" : "_" + sortableAttribute.IndexName);
-						if (!indexes.ContainsKey(name))
-							indexes.Add(name, new List<AttributeInfo>());
-						indexes[name].Add(attribute);
+						name = $"{prefix}_{sortInfo.IndexName}";
+						if (normalIndexes.TryGetValue(name, out indexes))
+							indexes.Add(attribute);
+						else
+							normalIndexes.Add(name, new List<AttributeInfo> { attribute });
 					}
 				}
+				else
+				{
+					var name = $"{prefix}_{attribute.Name}_Mappings";
+					if (normalIndexes.TryGetValue(name, out var indexes))
+						indexes.Add(attribute);
+					else
+						normalIndexes.Add(name, new List<AttributeInfo> { attribute });
+				}
+			});
+
+			// alias
+			context.EntityDefinition.Attributes.Where(attribute => attribute.IsAlias()).ForEach(attribute =>
+			{
+				var aliasProps = attribute.GetCustomAttribute<AliasAttribute>().Properties.ToHashSet(",", true);
+				var index = new[] { attribute, context.EntityDefinition.Attributes.FirstOrDefault(attr => attr.Name.IsEquals("RepositoryEntityID")) }.Concat(context.EntityDefinition.Attributes.Where(attr => aliasProps.Contains(attr.Name))).ToList();
+				var name = $"{prefix}_Alias";
+				if (uniqueIndexes.TryGetValue(name, out var indexes))
+					indexes = indexes.Concat(index).ToList();
+				else
+					uniqueIndexes.Add(name, index);
 			});
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
@@ -3452,11 +3427,11 @@ namespace net.vieapps.Components.Repository
 			switch (dbProviderFactoryName)
 			{
 				case "SQLServer":
-					indexes.Where(info => info.Value.Count > 0).ForEach(info =>
+					normalIndexes.Where(kvp => kvp.Value.Count > 0).ForEach(kvp =>
 					{
 						sql += (sql.Equals("") ? "" : ";\n")
-							+ $"CREATE NONCLUSTERED INDEX [{info.Key}] ON [{context.EntityDefinition.TableName}] ("
-							+ info.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC").Join(", ")
+							+ $"CREATE NONCLUSTERED INDEX [{kvp.Key}] ON [{context.EntityDefinition.TableName}] ("
+							+ kvp.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC").Join(", ")
 							+ ") WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY]";
 					});
 					uniqueIndexes.Where(info => info.Value.Count > 0).ForEach(info =>
@@ -3470,11 +3445,11 @@ namespace net.vieapps.Components.Repository
 
 				case "MySQL":
 				case "PostgreSQL":
-					indexes.Where(info => info.Value.Count > 0).ForEach(info =>
+					normalIndexes.Where(kvp => kvp.Value.Count > 0).ForEach(kvp =>
 					{
 						sql += (sql.Equals("") ? "" : ";\n")
-							+ $"CREATE INDEX {info.Key} ON {context.EntityDefinition.TableName} ("
-							+ info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC").Join(", ")
+							+ $"CREATE INDEX {kvp.Key} ON {context.EntityDefinition.TableName} ("
+							+ kvp.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC").Join(", ")
 							+ ")";
 					});
 					uniqueIndexes.Where(info => info.Value.Count > 0).ForEach(info =>
@@ -3515,10 +3490,7 @@ namespace net.vieapps.Components.Repository
 		{
 			// prepare
 			var columns = context.EntityDefinition.Searchable
-				? context.EntityDefinition.Attributes
-					.Where(attribute => attribute.Info.GetCustomAttributes(typeof(SearchableAttribute), true).Length > 0)
-					.Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)
-					.ToList()
+				? context.EntityDefinition.Attributes.Where(attribute => attribute.IsSearchable()).Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column).ToList()
 				: new List<string>();
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
@@ -3674,28 +3646,28 @@ namespace net.vieapps.Components.Repository
 			{
 				case "SQLServer":
 					sql = $"CREATE TABLE [{tableName}] ("
-						+ columns.Select(info =>
+						+ columns.Select(kvp =>
 						{
-							var type = info.Value.Item1;
-							var precision = info.Value.Item2;
+							var type = kvp.Value.Item1;
+							var precision = kvp.Value.Item2;
 							var asFixedLength = type.Equals(typeof(string)) && precision.Equals(32);
 							var asCLOB = type.Equals(typeof(string)) && precision.Equals(0);
-							return $"[{info.Key}] "
+							return $"[{kvp.Key}] "
 								+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
-								+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
+								+ (kvp.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
 						}).Join(", ")
 						+ $", CONSTRAINT [PK_{tableName}] PRIMARY KEY CLUSTERED ([ID] ASC) "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];\n"
 						+ $"CREATE NONCLUSTERED INDEX [IDX_{tableName}] ON [{tableName}] ([ID] ASC, [SystemID] ASC, [RepositoryID] ASC, [EntityID] ASC)"
 						+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY];";
-					columns.ForEach((info, index) =>
+					columns.ForEach((kvp, index) =>
 					{
-						var type = info.Value.Item1;
-						var precision = info.Value.Item2;
+						var type = kvp.Value.Item1;
+						var precision = kvp.Value.Item2;
 						var isBigText = type.Equals(typeof(string)) && precision.Equals(0);
 						if (index > 3 && !isBigText)
 							sql += "\n"
-								+ $"CREATE NONCLUSTERED INDEX [IDX_{tableName}_{info.Key}] ON [{tableName}] ([{info.Key}] ASC)"
+								+ $"CREATE NONCLUSTERED INDEX [IDX_{tableName}_{kvp.Key}] ON [{tableName}] ([{kvp.Key}] ASC)"
 								+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY];";
 					});
 					break;
@@ -3703,25 +3675,25 @@ namespace net.vieapps.Components.Repository
 				case "MySQL":
 				case "PostgreSQL":
 					sql = $"CREATE TABLE {tableName} ("
-						+ columns.Select(info =>
+						+ columns.Select(kvp =>
 						{
-							var type = info.Value.Item1;
-							var precision = info.Value.Item2;
+							var type = kvp.Value.Item1;
+							var precision = kvp.Value.Item2;
 							var asFixedLength = type.Equals(typeof(string)) && precision.Equals(32);
 							var asCLOB = type.Equals(typeof(string)) && precision.Equals(0);
-							return info.Key + " "
+							return kvp.Key + " "
 								+ type.GetDbTypeString(dbProviderFactoryName, precision, asFixedLength, asCLOB)
-								+ (info.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
+								+ (kvp.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
 						}).Join(", ")
 						+ ", PRIMARY KEY (ID ASC));\n"
 						+ $"CREATE INDEX IDX_{tableName} ON {tableName} (ID ASC, SystemID ASC, RepositoryID ASC, EntityID ASC);";
-					columns.ForEach((info, index) =>
+					columns.ForEach((kvp, index) =>
 					{
-						var type = info.Value.Item1;
-						var precision = info.Value.Item2;
+						var type = kvp.Value.Item1;
+						var precision = kvp.Value.Item2;
 						var isBigText = type.Equals(typeof(string)) && (precision.Equals(0) || precision.Equals(4000));
 						if (index > 3 && !isBigText)
-							sql += "\n" + $"CREATE INDEX IDX_{tableName}_{info.Key} ON {tableName} ({info.Key} ASC);";
+							sql += "\n" + $"CREATE INDEX IDX_{tableName}_{kvp.Key} ON {tableName} ({kvp.Key} ASC);";
 					});
 					break;
 			}
@@ -3785,14 +3757,11 @@ namespace net.vieapps.Components.Repository
 					if (definition.Searchable)
 						await context.CreateTableFulltextIndexAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 
-					if (definition.IsGotMultipleParentAssociates())
-						await context.CreateMapingTableAsync(dataSource, definition.MultipleParentAssociatesTable, definition.MultipleParentAssociatesLinkColumn, definition.MultipleParentAssociatesMapColumn, tracker, cancellationToken).ConfigureAwait(false);
-
-					if (definition.IsGotSingleMappingProperties())
-						await definition.Attributes.Where(attribute => attribute.IsStoredAsSimpleMapping()).ForEachAsync(async (attribute, token) =>
-						{
-							await context.CreateMapingTableAsync(dataSource, attribute.GetSingleMappingTableName(definition), attribute.GetSingleMappingLinkColumn(definition), attribute.GetSingleMappingMapColumn(), tracker, token).ConfigureAwait(false);
-						}, cancellationToken, true, false).ConfigureAwait(false);
+					await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async (attribute, token) =>
+					{
+						var mappingInfo = attribute.GetMappingInfo(definition);
+						await context.CreateMapingTableAsync(dataSource, mappingInfo.Item1, mappingInfo.Item2, mappingInfo.Item3, tracker, token).ConfigureAwait(false);
+					}, cancellationToken, true, false).ConfigureAwait(false);
 
 					if (definition.Extendable && definition.RepositoryDefinition != null)
 						await context.CreateExtentTableAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
