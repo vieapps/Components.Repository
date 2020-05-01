@@ -7027,12 +7027,12 @@ namespace net.vieapps.Components.Repository
 		internal static List<string> GetAssociatedParentIDs<T>(this IFilterBy<T> filter, EntityDefinition definition = null) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition<T>();
-
-			if (definition == null || definition.ParentType == null || string.IsNullOrWhiteSpace(definition.ParentAssociatedProperty))
+			var parentMappingProperty = definition.Attributes.FirstOrDefault(attr => attr.IsParentMapping())?.Name;
+			if (string.IsNullOrWhiteSpace(parentMappingProperty))
 				return null;
 
 			if (filter is FilterBy<T>)
-				return (filter as FilterBy<T>).Attribute.Equals(definition.ParentAssociatedProperty)
+				return (filter as FilterBy<T>).Attribute.Equals(parentMappingProperty)
 					? new List<string> { (filter as FilterBy<T>).Value as string }
 					: null;
 
@@ -7044,7 +7044,7 @@ namespace net.vieapps.Components.Repository
 
 			children.ForEach(info =>
 			{
-				if (info is FilterBy<T> && (info as FilterBy<T>).Attribute.Equals(definition.ParentAssociatedProperty))
+				if (info is FilterBy<T> && (info as FilterBy<T>).Attribute.Equals(parentMappingProperty))
 					parentIDs.Add((info as FilterBy<T>).Value as string);
 				else
 				{

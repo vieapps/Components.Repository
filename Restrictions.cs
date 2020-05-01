@@ -195,27 +195,29 @@ namespace net.vieapps.Components.Repository
 		}
 
 		#region Working with SQL
-		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
+		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string suffix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
-			if (string.IsNullOrEmpty(this.Attribute))
+			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
 
 			var statement = "";
 			var parameters = new Dictionary<string, object>();
 
-			if (definition != null && definition.ParentType != null && definition.ParentAssociatedProperty.Equals(this.Attribute)
-				&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesMapColumn) && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesLinkColumn)
-				&& parentIDs != null && parentIDs.Count > 0 && this.Operator.Equals(CompareOperator.Equals))
+			var parentMappingProperty = definition?.Attributes.FirstOrDefault(attr => attr.IsParentMapping())?.Name;
+			var isCompareWithMultipleParent = definition != null && definition.Attributes.Count(attr => attr.IsMultipleParentMappings()) > 0 && this.Attribute.Equals(parentMappingProperty);
+
+			if (parentIDs != null && parentIDs.Count > 0 && this.Operator.Equals(CompareOperator.Equals) && isCompareWithMultipleParent)
 			{
+				var multipleParentMapColumn = definition.Attributes.FirstOrDefault(attr => attr.IsMultipleParentMappings()).GetMappingInfo(definition)?.Item3;
 				parentIDs.ForEach((id, index) =>
 				{
-					var suffix = (!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString();
+					var suff = (!string.IsNullOrWhiteSpace(suffix) ? suffix : "") + $"_{index}";
 					statement += (statement.Equals("") ? "" : " OR ")
-						+ $"Origin.{this.Attribute}=@{this.Attribute}{suffix}"
-						+ $" OR Link.{definition.MultipleParentAssociatesMapColumn}=@{this.Attribute}{suffix}_L";
+						+ $"Origin.{this.Attribute}=@{this.Attribute}{suff}"
+						+ $" OR Link.{multipleParentMapColumn}=@{this.Attribute}{suff}_L";
 
-					parameters.Add($"@{this.Attribute}{suffix}", id);
-					parameters.Add($"@{this.Attribute}{suffix}_L", id);
+					parameters.Add($"@{this.Attribute}{suff}", id);
+					parameters.Add($"@{this.Attribute}{suff}_L", id);
 				});
 				statement = $"({statement})";
 			}
@@ -230,7 +232,7 @@ namespace net.vieapps.Components.Repository
 							: standardProperties[this.Attribute].Name
 						: this.Attribute;
 
-				var name = this.Attribute + (!string.IsNullOrEmpty(surfix) ? surfix : "");
+				var name = this.Attribute + (!string.IsNullOrEmpty(suffix) ? suffix : "");
 
 				var @operator = "=";
 				var value = this.GetValue(standardProperties, extendedProperties);
@@ -327,16 +329,20 @@ namespace net.vieapps.Components.Repository
 
 			FilterDefinition<T> filter = null;
 
-			if (definition != null && definition.ParentType != null && definition.ParentAssociatedProperty.Equals(attribute)
-				&& definition.MultipleParentAssociates && !string.IsNullOrWhiteSpace(definition.MultipleParentAssociatesProperty) && parentIDs != null
-				&& this.Operator.Equals(CompareOperator.Equals))
+			var parentMappingProperty = definition?.Attributes.FirstOrDefault(attr => attr.IsParentMapping())?.Name;
+			var isCompareWithMultipleParent = definition != null && definition.Attributes.Count(attr => attr.IsMultipleParentMappings()) > 0 && attribute.Equals(parentMappingProperty);
+
+			if (parentIDs != null && parentIDs.Count > 0 && this.Operator.Equals(CompareOperator.Equals) && isCompareWithMultipleParent)
+			{
+				var multipleParentPropertyName = definition.Attributes.FirstOrDefault(attr => attr.IsMultipleParentMappings()).Name;
 				parentIDs.ForEach(id =>
 				{
-					var filterBy = Builders<T>.Filter.Eq(definition.ParentAssociatedProperty, id) | Builders<T>.Filter.Eq(definition.MultipleParentAssociatesProperty, id);
+					var filterBy = Builders<T>.Filter.Eq(parentMappingProperty, id) | Builders<T>.Filter.Eq(multipleParentPropertyName, id);
 					filter = filter == null
 						? filterBy
 						: filter | filterBy;
 				});
+			}
 
 			else
 			{
@@ -601,7 +607,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		#region Working with statement of SQL
-		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string surfix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
+		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string suffix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			var children = this.Children;
 			if (children == null || children.Count < 1)
@@ -609,8 +615,8 @@ namespace net.vieapps.Components.Repository
 
 			else if (children.Count.Equals(1))
 				return children[0] is FilterBys<T>
-					? (children[0] as FilterBys<T>).GetSqlStatement(surfix, standardProperties, extendedProperties, definition, parentIDs)
-					: (children[0] as FilterBy<T>).GetSqlStatement(surfix, standardProperties, extendedProperties, definition, parentIDs);
+					? (children[0] as FilterBys<T>).GetSqlStatement(suffix, standardProperties, extendedProperties, definition, parentIDs)
+					: (children[0] as FilterBy<T>).GetSqlStatement(suffix, standardProperties, extendedProperties, definition, parentIDs);
 
 			else
 			{
@@ -619,8 +625,8 @@ namespace net.vieapps.Components.Repository
 				children.ForEach((child, index) =>
 				{
 					var data = child is FilterBys<T>
-						? (child as FilterBys<T>).GetSqlStatement((!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs)
-						: (child as FilterBy<T>).GetSqlStatement((!string.IsNullOrEmpty(surfix) ? surfix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs);
+						? (child as FilterBys<T>).GetSqlStatement((!string.IsNullOrEmpty(suffix) ? suffix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs)
+						: (child as FilterBy<T>).GetSqlStatement((!string.IsNullOrEmpty(suffix) ? suffix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs);
 
 					if (data != null)
 					{
@@ -630,7 +636,7 @@ namespace net.vieapps.Components.Repository
 				});
 
 				return !statement.Equals("") && parameters.Count > 0
-					? new Tuple<string, Dictionary<string, object>>((!string.IsNullOrEmpty(surfix) ? "(" : "") + statement + (!string.IsNullOrEmpty(surfix) ? ")" : ""), parameters)
+					? new Tuple<string, Dictionary<string, object>>((!string.IsNullOrEmpty(suffix) ? "(" : "") + statement + (!string.IsNullOrEmpty(suffix) ? ")" : ""), parameters)
 					: null;
 			}
 		}

@@ -202,7 +202,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="alias">The alias</param>
 		/// <param name="parentIdentity">The identity (alias or UUID) of parent object (if has)</param>
 		/// <returns></returns>
-		IBusinessEntity GetByAlias(string businessRepositoryEntityID, string alias, string parentIdentity = null);
+		IAliasEntity GetByAlias(string businessRepositoryEntityID, string alias, string parentIdentity = null);
 
 		/// <summary>
 		/// Gets a business entity by an alias
@@ -212,7 +212,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="parentIdentity">The identity (alias or UUID) of parent object (if has)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		Task<IBusinessEntity> GetByAliasAsync(string businessRepositoryEntityID, string alias, string parentIdentity = null, CancellationToken cancellationToken = default);
+		Task<IAliasEntity> GetByAliasAsync(string businessRepositoryEntityID, string alias, string parentIdentity = null, CancellationToken cancellationToken = default);
 	}
 
 	//  --------------------------------------------------------------------------------------------

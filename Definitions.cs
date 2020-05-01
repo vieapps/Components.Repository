@@ -518,36 +518,6 @@ namespace net.vieapps.Components.Repository
 		public Type ParentType => this.Attributes.FirstOrDefault(attribute => attribute.IsParentMapping())?.GetCustomAttribute<ParentMappingAttribute>()?.Type;
 
 		/// <summary>
-		/// Gets the name of the property that use to associate with parent object (when this object is defined as a content-type definition)
-		/// </summary>
-		public string ParentAssociatedProperty => this.Attributes.FirstOrDefault(attribute => attribute.IsParentMapping())?.Name;
-
-		/// <summary>
-		/// Gets the state that specifies this entity had multiple associates with parent object, default is false (when this object is defined as a content-type definition)
-		/// </summary>
-		public bool MultipleParentAssociates => this.Attributes.Count(attribute => attribute.IsMultipleParentMappings()) > 0;
-
-		/// <summary>
-		/// Gets the name of the property that use to store the information of multiple associates with parent, mus be List or HashSet (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesProperty => this.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings())?.Name;
-
-		/// <summary>
-		/// Gets the name of the SQL table that use to store the information of multiple associates with parent (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesTable => this.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings())?.GetMappingInfo(this)?.Item1;
-
-		/// <summary>
-		/// Gets the name of the column of SQL table that use to link the associate with this entity (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesLinkColumn => this.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings())?.GetMappingInfo(this)?.Item2;
-
-		/// <summary>
-		/// Gets the name of the column of SQL table that use to map the associate with parent (when this object is defined as a content-type definition)
-		/// </summary>
-		public string MultipleParentAssociatesMapColumn => this.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings())?.GetMappingInfo(this)?.Item3;
-
-		/// <summary>
 		/// Gets the collection of business repository entities (means business conten-types at run-time)
 		/// </summary>
 		public Dictionary<string, IBusinessRepositoryEntity> BusinessRepositoryEntities { get; } = new Dictionary<string, IBusinessRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
@@ -575,19 +545,19 @@ namespace net.vieapps.Components.Repository
 			foreach (var attribute in properties.Where(attribute => attribute.IsMappings()))
 			{
 				if (!attribute.IsGenericListOrHashSet() || !attribute.GetGenericTypeArguments().First().Equals(typeof(string)))
-					throw new InformationInvalidException($"The attribute [{attribute.Name}] must be list or hash-set of string");
+					throw new InformationInvalidException($"The attribute [{attribute.Name}] must be list or hash-set of string for using as mapping");
 			}
 
 			var parentMappings = properties.Where(attribute => attribute.IsParentMapping()).ToList();
 			if (parentMappings.Count > 0)
 			{
 				if (parentMappings.Count > 1)
-					throw new InformationInvalidException($"The type [{type}] got multiple mappings with parent");
+					throw new InformationInvalidException($"The type [{type}] got multiple mappings with parent entity definition");
 				else if (parentMappings.First().Type == null)
 					throw new InformationRequiredException($"The attribute [{parentMappings.First().Name}] must have the type of parent entity definition");
 			}
 			else if (properties.Count(attribute => attribute.IsMultipleParentMappings()) > 0)
-				throw new InformationInvalidException($"The type [{type}] got multiple parent mappings but got no information of the parent");
+				throw new InformationInvalidException($"The type [{type}] got multiple parent mappings but got no information of the parent entity definition");
 
 			// verify alias
 			var aliasProperties = properties.Where(attribute => attribute.IsAlias()).ToList();
@@ -688,7 +658,7 @@ namespace net.vieapps.Components.Repository
 			};
 
 			// check primary key
-			if (numberOfPrimaryKeys == 0)
+			if (numberOfPrimaryKeys < 1)
 				throw new InformationRequiredException($"The type [{type}] got no primary-key");
 			else if (numberOfPrimaryKeys > 1)
 				throw new InformationInvalidException($"The type [{type}] got multiple primary-keys");
@@ -739,9 +709,11 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// type of repository definition
+			var rootType = typeof(object);
+			var baseType = typeof(RepositoryBase);
 			var parentType = type.BaseType;
 			var grandParentType = parentType.BaseType;
-			while (grandParentType.BaseType != null && grandParentType.BaseType != typeof(object) && grandParentType.BaseType != typeof(RepositoryBase))
+			while (grandParentType.BaseType != null && grandParentType.BaseType != rootType && grandParentType.BaseType != baseType)
 			{
 				parentType = parentType.BaseType;
 				grandParentType = parentType.BaseType;

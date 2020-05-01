@@ -475,7 +475,7 @@ namespace net.vieapps.Components.Repository
 					var value = dataReader[index];
 					if (value != null)
 					{
-						if (attribute.Type.IsDateTimeType() && attribute.IsStoredAsString())
+						if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
 							value = DateTime.Parse(value as string);
 						else if (attribute.IsStoredAsJson())
 							try
@@ -486,7 +486,7 @@ namespace net.vieapps.Components.Repository
 							{
 								value = null;
 							}
-						else if (attribute.Type.IsEnum)
+						else if (attribute.IsEnum())
 							value = attribute.IsEnumString()
 								? value.ToString().ToEnum(attribute.Type)
 								: value.CastAs<int>();
@@ -527,7 +527,7 @@ namespace net.vieapps.Components.Repository
 					var value = dataRow[name];
 					if (value != null)
 					{
-						if (attribute.Type.IsDateTimeType() && attribute.IsStoredAsString())
+						if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
 							value = DateTime.Parse(value as string);
 						else if (attribute.IsStoredAsJson())
 							try
@@ -538,7 +538,7 @@ namespace net.vieapps.Components.Repository
 							{
 								value = null;
 							}
-						else if (attribute.Type.IsEnum)
+						else if (attribute.IsEnum())
 							value = attribute.IsEnumString()
 								? value.ToString().ToEnum(attribute.Type)
 								: value.CastAs<int>();
@@ -564,12 +564,12 @@ namespace net.vieapps.Components.Repository
 		#region Mappings
 		internal static Tuple<string, string, string> GetMappingInfo(this AttributeInfo attribute, EntityDefinition definition)
 		{
-			var mappingInfo = attribute?.GetCustomAttribute<MappingsAttribute>();
-			return mappingInfo != null
+			var info = attribute?.GetCustomAttribute<MappingsAttribute>();
+			return info != null
 				? new Tuple<string, string, string>(
-					string.IsNullOrWhiteSpace(mappingInfo.TableName) ? $"{definition.TableName}_{attribute.Name}_Mappings" : mappingInfo.TableName,
-					string.IsNullOrWhiteSpace(mappingInfo.LinkColumn) ? $"{definition.Type.GetTypeName(true)}ID" : mappingInfo.LinkColumn,
-					string.IsNullOrWhiteSpace(mappingInfo.MapColumn) ? $"{attribute.Name}ID" : mappingInfo.MapColumn
+					string.IsNullOrWhiteSpace(info.TableName) ? $"{definition.TableName}_{attribute.Name}_Mappings" : info.TableName,
+					string.IsNullOrWhiteSpace(info.LinkColumn) ? $"{definition.Type.GetTypeName(true)}ID" : info.LinkColumn,
+					string.IsNullOrWhiteSpace(info.MapColumn) ? $"{attribute.Name}ID" : info.MapColumn
 				)
 				: null;
 		}
@@ -606,11 +606,11 @@ namespace net.vieapps.Components.Repository
 			definition.Attributes.Where(attribute => attribute.IsMappings()).ForEach(attribute =>
 			{
 				var values = @object.GetAttributeValue(attribute);
-				var mapValues = values != null && values.IsGenericListOrHashSet()
+				var mapValues = values != null
 					? values.IsGenericList() ? values as List<string> : (values as HashSet<string>).ToList()
 					: new List<string>();
-				var mappingInfo = attribute.GetMappingInfo(definition);
-				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(mappingInfo.Item1, mappingInfo.Item2, mappingInfo.Item3, linkValue, mapValues)).ToList();
+				var mapInfo = attribute.GetMappingInfo(definition);
+				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, mapValues)).ToList();
 			});
 
 			return statements;
@@ -1953,9 +1953,10 @@ namespace net.vieapps.Components.Repository
 				.ToList();
 
 			// tables (FROM)
+			var mapInfo = definition.Attributes.FirstOrDefault(attr => attr.IsMultipleParentMappings())?.GetMappingInfo(definition);
 			var tables = $" FROM {definition.TableName} AS Origin"
 				+ (extendedProperties != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "")
-				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {definition.MultipleParentAssociatesTable} AS Link ON Origin.{definition.PrimaryKey}=Link.{definition.MultipleParentAssociatesLinkColumn}" : "");
+				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {mapInfo.Item1} AS Link ON Origin.{definition.PrimaryKey}=Link.{mapInfo.Item2}" : "");
 
 			// filtering expressions (WHERE)
 			var where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
@@ -2281,7 +2282,8 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			var results = new List<T>();
-			if (autoAssociateWithMultipleParents && context.EntityDefinition.ParentType != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.ParentAssociatedProperty))
+			var parentMappingProperty = context.EntityDefinition.Attributes.FirstOrDefault(attr => attr.IsParentMapping())?.Name;
+			if (autoAssociateWithMultipleParents && !string.IsNullOrWhiteSpace(parentMappingProperty))
 			{
 				var allAttributes = standardProperties
 					.Select(info => info.Value.Name)
@@ -2348,7 +2350,8 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			var results = new List<T>();
-			if (autoAssociateWithMultipleParents && context.EntityDefinition.ParentType != null && !string.IsNullOrWhiteSpace(context.EntityDefinition.ParentAssociatedProperty))
+			var parentMappingProperty = context.EntityDefinition.Attributes.FirstOrDefault(attr => attr.IsParentMapping())?.Name;
+			if (autoAssociateWithMultipleParents && !string.IsNullOrWhiteSpace(parentMappingProperty))
 			{
 				var allAttributes = standardProperties
 					.Select(info => info.Value.Name)
@@ -2446,9 +2449,10 @@ namespace net.vieapps.Components.Repository
 			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// tables (FROM)
+			var mapInfo = definition.Attributes.FirstOrDefault(attr => attr.IsMultipleParentMappings())?.GetMappingInfo(definition);
 			var tables = $" FROM {definition.TableName} AS Origin"
 				+ (propertiesInfo.Item2 != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "")
-				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {definition.MultipleParentAssociatesTable} AS Link ON Origin.{definition.PrimaryKey}=Link.{definition.MultipleParentAssociatesLinkColumn}" : "");
+				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {mapInfo.Item1} AS Link ON Origin.{definition.PrimaryKey}=Link.{mapInfo.Item2}" : "");
 
 			// couting expressions (WHERE)
 			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
@@ -3566,7 +3570,7 @@ namespace net.vieapps.Components.Repository
 					sql = $"CREATE TABLE [{tableName}] ("
 						+ $"[{linkColumn}] {typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)} NOT  NULL, "
 						+ $"[{mapColumn}] {typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)} NOT  NULL, "
-						+ $"CONSTRAINT [PK_{context.EntityDefinition.MultipleParentAssociatesTable}] PRIMARY KEY CLUSTERED ([{linkColumn}] ASC, [{mapColumn}] ASC "
+						+ $"CONSTRAINT [PK_{tableName}] PRIMARY KEY CLUSTERED ([{linkColumn}] ASC, [{mapColumn}] ASC "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
 					break;
 
@@ -3759,8 +3763,8 @@ namespace net.vieapps.Components.Repository
 
 					await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async (attribute, token) =>
 					{
-						var mappingInfo = attribute.GetMappingInfo(definition);
-						await context.CreateMapingTableAsync(dataSource, mappingInfo.Item1, mappingInfo.Item2, mappingInfo.Item3, tracker, token).ConfigureAwait(false);
+						var mapInfo = attribute.GetMappingInfo(definition);
+						await context.CreateMapingTableAsync(dataSource, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, tracker, token).ConfigureAwait(false);
 					}, cancellationToken, true, false).ConfigureAwait(false);
 
 					if (definition.Extendable && definition.RepositoryDefinition != null)
