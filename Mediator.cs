@@ -52,7 +52,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public static string DefaultTrashDataSourceName { get; internal set; }
 
-		#region Definitions
+		#region Repositories & Entities
 		/// <summary>
 		/// Gets the repository definition that matched with the type
 		/// </summary>
@@ -118,9 +118,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static EntityDefinition GetEntityDefinition<T>(bool verify = true) where T : class
 			=> typeof(T).GetEntityDefinition(verify);
-		#endregion
 
-		#region Business repositories & repository entities
 		/// <summary>
 		/// Gets the collection of business repositories (means business modules at run-time)
 		/// </summary>
@@ -1223,12 +1221,12 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets an object by definition and identity
 		/// </summary>
-		/// <param name="definition">The definition</param>
+		/// <param name="definition">The entity definition</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The identity</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static object Get(EntityDefinition definition, DataSource dataSource, string id, bool processSecondaryWhenNotFound = true)
+		public static RepositoryBase Get(EntityDefinition definition, DataSource dataSource, string id, bool processSecondaryWhenNotFound = true)
 		{
 			// check
 			if (definition == null || string.IsNullOrWhiteSpace(id) || !id.IsValidUUID())
@@ -1296,46 +1294,41 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// return
-			return @object;
+			return @object as RepositoryBase;
 		}
 
 		/// <summary>
 		/// Gets an object by definition and identity
 		/// </summary>
-		/// <param name="definition">The definition</param>
+		/// <param name="definition">The entity definition</param>
 		/// <param name="id">The identity</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static object Get(EntityDefinition definition, string id, bool processSecondaryWhenNotFound = true)
+		public static RepositoryBase Get(EntityDefinition definition, string id, bool processSecondaryWhenNotFound = true)
 			=> RepositoryMediator.Get(definition, null, id, processSecondaryWhenNotFound);
 
 		/// <summary>
 		/// Gets an object by definition and identity
 		/// </summary>
-		/// <param name="definitionID">The identity of the entity definition</param>
+		/// <param name="entityInfo">The identity of a specified business repository entity (means a business content-type at run-time) or type-name of an entity definition</param>
 		/// <param name="objectID">The identity of the object</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static object Get(string definitionID, string objectID, bool processSecondaryWhenNotFound = true)
-		{
-			var entity = !string.IsNullOrWhiteSpace(definitionID)
-				? RepositoryMediator.GetBusinessRepositoryEntity(definitionID)
-				: null;
-			return entity != null
-				? RepositoryMediator.Get(entity.EntityDefinition, objectID, processSecondaryWhenNotFound)
-				: null;
-		}
+		public static RepositoryBase Get(string entityInfo, string objectID, bool processSecondaryWhenNotFound = true)
+			=> string.IsNullOrWhiteSpace(entityInfo)
+				? null
+				: RepositoryMediator.Get(entityInfo.IsValidUUID() ? RepositoryMediator.GetBusinessRepositoryEntity(entityInfo)?.EntityDefinition : RepositoryMediator.GetEntityDefinition(entityInfo), objectID, processSecondaryWhenNotFound);
 
 		/// <summary>
 		/// Gets an object by definition and identity
 		/// </summary>
-		/// <param name="definition">The definition</param>
+		/// <param name="definition">The entity definition</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The identity</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static async Task<object> GetAsync(EntityDefinition definition, DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true)
+		public static async Task<RepositoryBase> GetAsync(EntityDefinition definition, DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true)
 		{
 			// check
 			if (definition == null || string.IsNullOrWhiteSpace(id) || !id.IsValidUUID())
@@ -1415,37 +1408,32 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// return the instance of object
-			return @object;
+			return @object as RepositoryBase;
 		}
 
 		/// <summary>
 		/// Gets an object by definition and identity
 		/// </summary>
-		/// <param name="definition">The definition</param>
+		/// <param name="definition">The entity definition</param>
 		/// <param name="id">The identity</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<object> GetAsync(EntityDefinition definition, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true)
+		public static Task<RepositoryBase> GetAsync(EntityDefinition definition, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true)
 			=> RepositoryMediator.GetAsync(definition, null, id, cancellationToken, processSecondaryWhenNotFound);
 
 		/// <summary>
 		/// Gets an object by definition and identity
 		/// </summary>
-		/// <param name="definitionID">The identity of the entity definition</param>
+		/// <param name="entityInfo">The identity of a specified business repository entity (means a business content-type at run-time) or type-name of an entity definition</param>
 		/// <param name="objectID">The identity of the object</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<object> GetAsync(string definitionID, string objectID, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true)
-		{
-			var entity = !string.IsNullOrWhiteSpace(definitionID)
-				? RepositoryMediator.GetBusinessRepositoryEntity(definitionID)
-				: null;
-			return entity != null
-				? RepositoryMediator.GetAsync(entity.EntityDefinition, objectID, cancellationToken, processSecondaryWhenNotFound)
-				: Task.FromResult<object>(null);
-		}
+		public static Task<RepositoryBase> GetAsync(string entityInfo, string objectID, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true)
+			=> string.IsNullOrWhiteSpace(entityInfo)
+				? null
+				: RepositoryMediator.GetAsync(entityInfo.IsValidUUID() ? RepositoryMediator.GetBusinessRepositoryEntity(entityInfo)?.EntityDefinition : RepositoryMediator.GetEntityDefinition(entityInfo), objectID, cancellationToken, processSecondaryWhenNotFound);
 		#endregion
 
 		#region Replace
@@ -7027,7 +7015,7 @@ namespace net.vieapps.Components.Repository
 		internal static List<string> GetAssociatedParentIDs<T>(this IFilterBy<T> filter, EntityDefinition definition = null) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition<T>();
-			var parentMappingProperty = definition.Attributes.FirstOrDefault(attr => attr.IsParentMapping())?.Name;
+			var parentMappingProperty = definition.GetParentMappingAttributeName();
 			if (string.IsNullOrWhiteSpace(parentMappingProperty))
 				return null;
 
@@ -7059,7 +7047,7 @@ namespace net.vieapps.Components.Repository
 			});
 
 			return parentIDs.Count > 0
-				? parentIDs.Distinct().ToList()
+				? parentIDs.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
 				: null;
 		}
 
@@ -7093,6 +7081,34 @@ namespace net.vieapps.Components.Repository
 
 			return attributes != null && attributes.Count > 0;
 		}
+
+		internal static Tuple<string, string, string> GetMapInfo(this AttributeInfo attribute, EntityDefinition definition)
+		{
+			var info = attribute?.GetCustomAttribute<MappingsAttribute>();
+			return info != null
+				? new Tuple<string, string, string>
+				(
+					string.IsNullOrWhiteSpace(info.TableName) ? $"{definition.TableName}_{attribute.Name}_Mappings" : info.TableName,
+					string.IsNullOrWhiteSpace(info.LinkColumn) ? $"{definition.Type.GetTypeName(true)}ID" : info.LinkColumn,
+					string.IsNullOrWhiteSpace(info.MapColumn) ? $"{attribute.Name}ID" : info.MapColumn
+				)
+				: null;
+		}
+
+		internal static AttributeInfo GetParentMappingAttribute(this EntityDefinition definition)
+			=> definition?.Attributes.FirstOrDefault(attribute => attribute.IsParentMapping());
+
+		internal static string GetParentMappingAttributeName(this EntityDefinition definition)
+			=> definition?.GetParentMappingAttribute()?.Name;
+
+		internal static AttributeInfo GetMultiParentMappingsAttribute(this EntityDefinition definition)
+			=> definition?.Attributes.FirstOrDefault(attribute => attribute.IsMultipleParentMappings());
+
+		internal static bool IsGotMultipleParentMappings(this EntityDefinition definition)
+			=> definition?.GetMultiParentMappingsAttribute() != null;
+
+		internal static string GetMultiParentMappingsAttributeName(this EntityDefinition definition)
+			=> definition?.GetMultiParentMappingsAttribute()?.Name;
 		#endregion
 
 		#region [Logs]

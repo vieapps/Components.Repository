@@ -562,18 +562,6 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Mappings
-		internal static Tuple<string, string, string> GetMappingInfo(this AttributeInfo attribute, EntityDefinition definition)
-		{
-			var info = attribute?.GetCustomAttribute<MappingsAttribute>();
-			return info != null
-				? new Tuple<string, string, string>(
-					string.IsNullOrWhiteSpace(info.TableName) ? $"{definition.TableName}_{attribute.Name}_Mappings" : info.TableName,
-					string.IsNullOrWhiteSpace(info.LinkColumn) ? $"{definition.Type.GetTypeName(true)}ID" : info.LinkColumn,
-					string.IsNullOrWhiteSpace(info.MapColumn) ? $"{attribute.Name}ID" : info.MapColumn
-				)
-				: null;
-		}
-
 		static List<Tuple<string, List<DbParameter>>> PrepareUpdateMappings(this DbProviderFactory dbProviderFactory, string tableName, string linkColumn, string mapColumn, string linkValue, IEnumerable<string> mapValues)
 		{
 			var statements = new List<Tuple<string, List<DbParameter>>>
@@ -609,7 +597,7 @@ namespace net.vieapps.Components.Repository
 				var mapValues = values != null
 					? values.IsGenericList() ? values as List<string> : (values as HashSet<string>).ToList()
 					: new List<string>();
-				var mapInfo = attribute.GetMappingInfo(definition);
+				var mapInfo = attribute.GetMapInfo(definition);
 				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, mapValues)).ToList();
 			});
 
@@ -664,7 +652,7 @@ namespace net.vieapps.Components.Repository
 			using (var dataReader = command.ExecuteReader())
 			{
 				while (dataReader.Read())
-					mapValues.Add(dataReader[0].ToString());
+					mapValues.Add(dataReader[0]?.ToString());
 			}
 			return mapValues;
 		}
@@ -673,10 +661,9 @@ namespace net.vieapps.Components.Repository
 		{
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
-
 			definition.Attributes.Where(attribute => attribute.IsMappings()).ForEach(attribute =>
 			{
-				var mapInfo = attribute.GetMappingInfo(definition);
+				var mapInfo = attribute.GetMapInfo(definition);
 				var mapValues = dbProviderFactory.GetMappings(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue);
 				@object.SetAttributeValue(attribute, attribute.IsGenericHashSet() ? mapValues.ToHashSet() as object : mapValues);
 			});
@@ -689,7 +676,7 @@ namespace net.vieapps.Components.Repository
 			using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 			{
 				while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-					mapValues.Add(dataReader[0].ToString());
+					mapValues.Add(dataReader[0]?.ToString());
 			}
 			return mapValues;
 		}
@@ -698,10 +685,9 @@ namespace net.vieapps.Components.Repository
 		{
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
-
 			await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async (attribute, token) =>
 			{
-				var mapInfo = attribute.GetMappingInfo(definition);
+				var mapInfo = attribute.GetMapInfo(definition);
 				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, token).ConfigureAwait(false);
 				@object.SetAttributeValue(attribute, attribute.IsGenericHashSet() ? mapValues.ToHashSet() as object : mapValues);
 			}, cancellationToken, true, false).ConfigureAwait(false); 
@@ -1953,7 +1939,7 @@ namespace net.vieapps.Components.Repository
 				.ToList();
 
 			// tables (FROM)
-			var mapInfo = definition.Attributes.FirstOrDefault(attr => attr.IsMultipleParentMappings())?.GetMappingInfo(definition);
+			var mapInfo = definition.GetMultiParentMappingsAttribute()?.GetMapInfo(definition);
 			var tables = $" FROM {definition.TableName} AS Origin"
 				+ (extendedProperties != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "")
 				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {mapInfo.Item1} AS Link ON Origin.{definition.PrimaryKey}=Link.{mapInfo.Item2}" : "");
@@ -2449,7 +2435,7 @@ namespace net.vieapps.Components.Repository
 			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// tables (FROM)
-			var mapInfo = definition.Attributes.FirstOrDefault(attr => attr.IsMultipleParentMappings())?.GetMappingInfo(definition);
+			var mapInfo = definition.GetMultiParentMappingsAttribute()?.GetMapInfo(definition);
 			var tables = $" FROM {definition.TableName} AS Origin"
 				+ (propertiesInfo.Item2 != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "")
 				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {mapInfo.Item1} AS Link ON Origin.{definition.PrimaryKey}=Link.{mapInfo.Item2}" : "");
@@ -3763,7 +3749,7 @@ namespace net.vieapps.Components.Repository
 
 					await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async (attribute, token) =>
 					{
-						var mapInfo = attribute.GetMappingInfo(definition);
+						var mapInfo = attribute.GetMapInfo(definition);
 						await context.CreateMapingTableAsync(dataSource, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, tracker, token).ConfigureAwait(false);
 					}, cancellationToken, true, false).ConfigureAwait(false);
 

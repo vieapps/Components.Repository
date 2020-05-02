@@ -557,7 +557,7 @@ namespace net.vieapps.Components.Repository
 		public string LookupRepositoryEntityID { get; set; }
 
 		/// <summary>
-		/// Gets or Sets the name of business entity's property for displaying while looking-up
+		/// Gets or Sets the name of business entity's property for displaying while looking-up (default is Title)
 		/// </summary>
 		public string LookupProperty { get; set; }
 

@@ -150,7 +150,7 @@ namespace net.vieapps.Components.Repository
 
 				else if (standardProperties != null && standardProperties.TryGetValue(this.Attribute, out var standardProperty) && standardProperty != null)
 				{
-					if (standardProperty.GetType().IsDateTimeType())
+					if (standardProperty.IsDateTimeType())
 					{
 						var value = this.Value.GetType().IsDateTimeType()
 							? (DateTime)this.Value
@@ -160,7 +160,7 @@ namespace net.vieapps.Components.Repository
 							: value;
 					}
 					else
-						return standardProperty.GetType().IsStringType()
+						return standardProperty.IsStringType()
 							? this.Value.ToString()
 							: this.Value;
 				}
@@ -203,21 +203,19 @@ namespace net.vieapps.Components.Repository
 			var statement = "";
 			var parameters = new Dictionary<string, object>();
 
-			var parentMappingProperty = definition?.Attributes.FirstOrDefault(attr => attr.IsParentMapping())?.Name;
-			var isCompareWithMultipleParent = definition != null && definition.Attributes.Count(attr => attr.IsMultipleParentMappings()) > 0 && this.Attribute.Equals(parentMappingProperty);
-
-			if (parentIDs != null && parentIDs.Count > 0 && this.Operator.Equals(CompareOperator.Equals) && isCompareWithMultipleParent)
+			var parentMappingProperty = definition?.GetParentMappingAttributeName();
+			if (definition != null && definition.IsGotMultipleParentMappings() && this.Attribute.Equals(parentMappingProperty) && (this.Operator.Equals(CompareOperator.Equals) || this.Operator.Equals(CompareOperator.Contains)))
 			{
-				var multipleParentMapColumn = definition.Attributes.FirstOrDefault(attr => attr.IsMultipleParentMappings()).GetMappingInfo(definition)?.Item3;
-				parentIDs.ForEach((id, index) =>
+				var multipleParentMapColumn = definition.GetMultiParentMappingsAttribute().GetMapInfo(definition).Item3;
+				parentIDs?.ForEach((id, index) =>
 				{
-					var suff = (!string.IsNullOrWhiteSpace(suffix) ? suffix : "") + $"_{index}";
+					suffix = $"{(string.IsNullOrWhiteSpace(suffix) ? "" : suffix)}_{index}";
 					statement += (statement.Equals("") ? "" : " OR ")
-						+ $"Origin.{this.Attribute}=@{this.Attribute}{suff}"
-						+ $" OR Link.{multipleParentMapColumn}=@{this.Attribute}{suff}_L";
+						+ $"Origin.{this.Attribute}=@{this.Attribute}{suffix}"
+						+ $" OR Link.{multipleParentMapColumn}=@{this.Attribute}{suffix}_L";
 
-					parameters.Add($"@{this.Attribute}{suff}", id);
-					parameters.Add($"@{this.Attribute}{suff}_L", id);
+					parameters.Add($"@{this.Attribute}{suffix}", id);
+					parameters.Add($"@{this.Attribute}{suffix}_L", id);
 				});
 				statement = $"({statement})";
 			}
@@ -232,7 +230,7 @@ namespace net.vieapps.Components.Repository
 							: standardProperties[this.Attribute].Name
 						: this.Attribute;
 
-				var name = this.Attribute + (!string.IsNullOrEmpty(suffix) ? suffix : "");
+				var name = this.Attribute + (string.IsNullOrEmpty(suffix) ? "" : suffix);
 
 				var @operator = "=";
 				var value = this.GetValue(standardProperties, extendedProperties);
@@ -323,19 +321,17 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
 
-			var attribute = extendedProperties != null && extendedProperties.ContainsKey(this.Attribute)
+			var field = extendedProperties != null && extendedProperties.ContainsKey(this.Attribute)
 				? "ExtendedProperties." + this.Attribute
 				: this.Attribute;
 
 			FilterDefinition<T> filter = null;
 
-			var parentMappingProperty = definition?.Attributes.FirstOrDefault(attr => attr.IsParentMapping())?.Name;
-			var isCompareWithMultipleParent = definition != null && definition.Attributes.Count(attr => attr.IsMultipleParentMappings()) > 0 && attribute.Equals(parentMappingProperty);
-
-			if (parentIDs != null && parentIDs.Count > 0 && this.Operator.Equals(CompareOperator.Equals) && isCompareWithMultipleParent)
+			var parentMappingProperty = definition?.GetParentMappingAttributeName();
+			if (definition != null && definition.IsGotMultipleParentMappings() && this.Attribute.Equals(parentMappingProperty) && (this.Operator.Equals(CompareOperator.Equals) || this.Operator.Equals(CompareOperator.Contains)))
 			{
-				var multipleParentPropertyName = definition.Attributes.FirstOrDefault(attr => attr.IsMultipleParentMappings()).Name;
-				parentIDs.ForEach(id =>
+				var multipleParentPropertyName = definition.GetMultiParentMappingsAttributeName();
+				parentIDs?.ForEach(id =>
 				{
 					var filterBy = Builders<T>.Filter.Eq(parentMappingProperty, id) | Builders<T>.Filter.Eq(multipleParentPropertyName, id);
 					filter = filter == null
@@ -350,45 +346,45 @@ namespace net.vieapps.Components.Repository
 				switch (this.Operator)
 				{
 					case CompareOperator.Equals:
-						filter = Builders<T>.Filter.Eq(attribute, value);
+						filter = Builders<T>.Filter.Eq(field, value);
 						break;
 
 					case CompareOperator.NotEquals:
-						filter = Builders<T>.Filter.Ne(attribute, value);
+						filter = Builders<T>.Filter.Ne(field, value);
 						break;
 
 					case CompareOperator.LessThan:
-						filter = Builders<T>.Filter.Lt(attribute, value);
+						filter = Builders<T>.Filter.Lt(field, value);
 						break;
 
 					case CompareOperator.LessThanOrEquals:
-						filter = Builders<T>.Filter.Lte(attribute, value);
+						filter = Builders<T>.Filter.Lte(field, value);
 						break;
 
 					case CompareOperator.Greater:
-						filter = Builders<T>.Filter.Gt(attribute, value);
+						filter = Builders<T>.Filter.Gt(field, value);
 						break;
 
 					case CompareOperator.GreaterOrEquals:
-						filter = Builders<T>.Filter.Gte(attribute, value);
+						filter = Builders<T>.Filter.Gte(field, value);
 						break;
 
 					case CompareOperator.Contains:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
-							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression($"/.*{value}.*/"));
+							? Builders<T>.Filter.Eq(field, "")
+							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"/.*{value}.*/"));
 						break;
 
 					case CompareOperator.StartsWith:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
-							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression($"^{value}"));
+							? Builders<T>.Filter.Eq(field, "")
+							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"^{value}"));
 						break;
 
 					case CompareOperator.EndsWith:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
-							? Builders<T>.Filter.Eq(attribute, "")
-							: Builders<T>.Filter.Regex(attribute, new BsonRegularExpression($"{value}$"));
+							? Builders<T>.Filter.Eq(field, "")
+							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"{value}$"));
 						break;
 
 					case CompareOperator.IsNull:
@@ -401,25 +397,25 @@ namespace net.vieapps.Components.Repository
 						if (this.Operator == CompareOperator.IsNull)
 						{
 							if (type != null && type.IsStringType())
-								filter = Builders<T>.Filter.Eq<string>(attribute, null);
+								filter = Builders<T>.Filter.Eq<string>(field, null);
 							else
-								filter = Builders<T>.Filter.Eq(attribute, BsonNull.Value);
+								filter = Builders<T>.Filter.Eq(field, BsonNull.Value);
 						}
 						else
 						{
 							if (type != null && type.IsStringType())
-								filter = Builders<T>.Filter.Ne<string>(attribute, null);
+								filter = Builders<T>.Filter.Ne<string>(field, null);
 							else
-								filter = Builders<T>.Filter.Ne(attribute, BsonNull.Value);
+								filter = Builders<T>.Filter.Ne(field, BsonNull.Value);
 						}
 						break;
 
 					case CompareOperator.IsEmpty:
-						filter = Builders<T>.Filter.Eq(attribute, "");
+						filter = Builders<T>.Filter.Eq(field, "");
 						break;
 
 					case CompareOperator.IsNotEmpty:
-						filter = Builders<T>.Filter.Ne(attribute, "");
+						filter = Builders<T>.Filter.Ne(field, "");
 						break;
 
 					default:
@@ -507,7 +503,7 @@ namespace net.vieapps.Components.Repository
 			=> new JObject
 			{
 				{ "Operator", this.Operator.ToString() },
-				{ "Children", this.Children.Select(c => c.ToJson()).ToJArray() }
+				{ "Children", this.Children.ToJArray(c => c.ToJson()) }
 			};
 
 		/// <summary>

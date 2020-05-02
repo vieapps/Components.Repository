@@ -515,7 +515,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the type of parent entity definition (when this object is defined as a content-type definition)
 		/// </summary>
-		public Type ParentType => this.Attributes.FirstOrDefault(attribute => attribute.IsParentMapping())?.GetCustomAttribute<ParentMappingAttribute>()?.Type;
+		public Type ParentType => this.GetParentMappingAttribute()?.GetCustomAttribute<ParentMappingAttribute>()?.Type;
 
 		/// <summary>
 		/// Gets the collection of business repository entities (means business conten-types at run-time)
