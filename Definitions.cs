@@ -508,11 +508,6 @@ namespace net.vieapps.Components.Repository
 		public bool Extendable { get; internal set; } = false;
 
 		/// <summary>
-		/// Gets or Sets the name of the standard property to place extended properties before its (when this object is defined as a content-type definition)
-		/// </summary>
-		public string ExtendedPropertiesBefore { get; internal set; }
-
-		/// <summary>
 		/// Gets the type of parent entity definition (when this object is defined as a content-type definition)
 		/// </summary>
 		public Type ParentType => this.GetParentMappingAttribute()?.GetCustomAttribute<ParentMappingAttribute>()?.Type;
@@ -592,8 +587,7 @@ namespace net.vieapps.Components.Repository
 				Icon = !string.IsNullOrWhiteSpace(definitionInfo.Icon) ? definitionInfo.Icon : null,
 				MultipleIntances = definitionInfo.MultipleIntances,
 				Indexable = definitionInfo.Indexable,
-				Extendable = definitionInfo.Extendable,
-				ExtendedPropertiesBefore = definitionInfo.Extendable ? definitionInfo.ExtendedPropertiesBefore : null
+				Extendable = definitionInfo.Extendable
 			};
 
 			// public properties
@@ -636,7 +630,7 @@ namespace net.vieapps.Components.Repository
 						if (!propertyInfo.IsCLOB)
 							attribute.MaxLength = propertyInfo.MaxLength > 0 && propertyInfo.MaxLength < 4000
 								? propertyInfo.MaxLength
-								: attribute.Name.EndsWith("ID") ? 32 : 4000;
+								: attribute.IsParentMapping() || attribute.Name.EndsWith("ID") ? 32 : 4000;
 					}
 					else
 					{
@@ -685,7 +679,7 @@ namespace net.vieapps.Components.Repository
 						if (!fieldInfo.IsCLOB)
 							attribute.MaxLength = fieldInfo.MaxLength > 0 && fieldInfo.MaxLength < 4000
 								? fieldInfo.MaxLength
-								: attribute.Name.EndsWith("ID") ? 32 : 4000;
+								: attribute.IsParentMapping() || attribute.Name.EndsWith("ID") ? 32 : 4000;
 					}
 					else
 					{
@@ -696,7 +690,6 @@ namespace net.vieapps.Components.Repository
 					}
 
 					// update definitions
-					definition.FormAttributes.Add(attribute);
 					definition.Attributes.Add(attribute);
 				}
 			});
@@ -718,8 +711,8 @@ namespace net.vieapps.Components.Repository
 				parentType = parentType.BaseType;
 				grandParentType = parentType.BaseType;
 			}
-			var parentTypeName = parentType.GetTypeName();
-			definition.RepositoryDefinitionType = Type.GetType(parentTypeName.Left(parentTypeName.IndexOf("[")) + parentTypeName.Substring(parentTypeName.IndexOf("]") + 2));
+			var repositoryDefinitionTypeName = parentType.GetTypeName();
+			definition.RepositoryDefinitionType = Type.GetType(repositoryDefinitionTypeName.Left(repositoryDefinitionTypeName.IndexOf("[")) + repositoryDefinitionTypeName.Substring(repositoryDefinitionTypeName.IndexOf("]") + 2));
 
 			// update into collection
 			if (RepositoryMediator.EntityDefinitions.TryAdd(type, definition) && RepositoryMediator.IsDebugEnabled)
