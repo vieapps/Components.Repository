@@ -242,7 +242,7 @@ namespace net.vieapps.Components.Repository
 		void OnDeserialized(StreamingContext context)
 		{
 			this.AssignPropertyChangedEventHandler();
-			this.GetProperties().Where(attribute => attribute.CanWrite).Select(attribute => attribute.Name).ForEach(name => this.NotifyPropertyChanged(name));
+			this.GetPublicAttributes(attribute => attribute.CanWrite).ForEach(attribute => this.NotifyPropertyChanged(attribute.Name));
 		}
 
 		public virtual void NotifyPropertyChanged([CallerMemberName] string name = "", object sender = null)
@@ -264,7 +264,8 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents the base of a repository entity of a repository with helper methods to perform CRUD operations, count, find, and query (full-text search)
 	/// </summary>
-	[Serializable, DebuggerDisplay("ID = {ID}, Type = {typeof(T).FullName}")]
+	[Serializable]
+	[DebuggerDisplay("ID = {ID}, Type = {typeof(T).FullName}")]
 	public abstract class RepositoryBase<T> : RepositoryBase where T : class
 	{
 		/// <summary>

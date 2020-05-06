@@ -372,6 +372,11 @@ namespace net.vieapps.Components.Repository
 	public class ChildrenMappingsAttribute : MappingsAttribute
 	{
 		public ChildrenMappingsAttribute() { }
+
+		/// <summary>
+		/// Gets or Sets the type of child entity definition
+		/// </summary>
+		public Type Type { get; set; }
 	}
 
 	// ------------------------------------------
