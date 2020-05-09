@@ -503,7 +503,7 @@ namespace net.vieapps.Components.Repository
 			=> new JObject
 			{
 				{ "Operator", this.Operator.ToString() },
-				{ "Children", this.Children.ToJArray(c => c.ToJson()) }
+				{ "Children", this.Children.Select(filter => filter.ToJson()).ToJArray() }
 			};
 
 		/// <summary>
