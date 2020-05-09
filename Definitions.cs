@@ -473,6 +473,16 @@ namespace net.vieapps.Components.Repository
 		public string ObjectName { get; internal set; }
 
 		/// <summary>
+		/// Gets the name prefix of the service's object that associates with the entity (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ObjectNamePrefix { get; internal set; }
+
+		/// <summary>
+		/// Gets the name suffix of the service's object that associates with the entity (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ObjectNameSuffix { get; internal set; }
+
+		/// <summary>
 		/// Gets the identity (when this object is defined as a content-type definition)
 		/// </summary>
 		public string ID { get; internal set; }
@@ -581,6 +591,8 @@ namespace net.vieapps.Components.Repository
 				Searchable = definitionInfo.Searchable,
 				CreateNewVersionWhenUpdated = definitionInfo.CreateNewVersionWhenUpdated,
 				ObjectName = !string.IsNullOrWhiteSpace(definitionInfo.ObjectName) ? definitionInfo.ObjectName : type.GetTypeName(true),
+				ObjectNamePrefix = !string.IsNullOrWhiteSpace(definitionInfo.ObjectNamePrefix) ? definitionInfo.ObjectNamePrefix : null,
+				ObjectNameSuffix = !string.IsNullOrWhiteSpace(definitionInfo.ObjectNameSuffix) ? definitionInfo.ObjectNameSuffix : null,
 				ID = !string.IsNullOrWhiteSpace(definitionInfo.ID) ? definitionInfo.ID : "",
 				Title = !string.IsNullOrWhiteSpace(definitionInfo.Title) ? definitionInfo.Title : "",
 				Description = !string.IsNullOrWhiteSpace(definitionInfo.Description) ? definitionInfo.Description : "",
