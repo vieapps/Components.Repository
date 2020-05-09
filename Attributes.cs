@@ -92,6 +92,16 @@ namespace net.vieapps.Components.Repository
 		public string ObjectName { get; set; }
 
 		/// <summary>
+		/// Gets or Sets the name prefix of the service's object that associates with the entity (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ObjectNamePrefix { get; set; }
+
+		/// <summary>
+		/// Gets or Sets the name suffix of the service's object that associates with the entity (when this object is defined as a content-type definition)
+		/// </summary>
+		public string ObjectNameSuffix { get; set; }
+
+		/// <summary>
 		/// Gets or Sets the identity (when this object is defined as a content-type definition)
 		/// </summary>
 		public string ID { get; set; }
