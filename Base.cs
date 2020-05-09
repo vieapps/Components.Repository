@@ -3305,7 +3305,7 @@ namespace net.vieapps.Components.Repository
 				json["RepositoryID"] = new JValue(this.RepositoryID);
 
 			if (!string.IsNullOrWhiteSpace(this.RepositoryEntityID))
-				json["EntityID"] = new JValue(this.RepositoryEntityID);
+				json["RepositoryEntityID"] = new JValue(this.RepositoryEntityID);
 
 			// run the handler on pre-completed
 			onPreCompleted?.Invoke(json);
@@ -3373,7 +3373,7 @@ namespace net.vieapps.Components.Repository
 				xml.Add(new XElement("RepositoryID", this.RepositoryID));
 
 			if (!string.IsNullOrWhiteSpace(this.RepositoryEntityID))
-				xml.Add(new XElement("EntityID", this.RepositoryEntityID));
+				xml.Add(new XElement("RepositoryEntityID", this.RepositoryEntityID));
 
 			// run the handler
 			onPreCompleted?.Invoke(xml);
