@@ -11,13 +11,10 @@ using System.Data;
 using System.Data.Common;
 using System.Xml;
 using System.Xml.Linq;
-
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
 using Microsoft.Extensions.Logging;
-
 using net.vieapps.Components.Caching;
 using net.vieapps.Components.Utility;
 using net.vieapps.Components.Security;
@@ -6226,7 +6223,7 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 
-		internal static JObject GenerateControlOptions(this AttributeInfo attribute, string label, string description, string placeHolder, bool asViewControl = false)
+		internal static JObject GenerateControlOptions<T>(this AttributeInfo attribute, string label, string description, string placeHolder, bool asViewControl = false) where T : class
 		{
 			var info = attribute.GetCustomAttribute<FormControlAttribute>();
 			var hidden = info != null ? info.Hidden : attribute.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault() != null;
@@ -6374,7 +6371,17 @@ namespace net.vieapps.Components.Repository
 			return options;
 		}
 
-		internal static JToken GenerateFormControl(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null)
+		internal static string NormalizeLabel<T>(this string attributeName, string label) where T : class
+		{
+			if (string.IsNullOrWhiteSpace(label))
+				return null;
+
+			label = label.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName).Replace(StringComparison.OrdinalIgnoreCase, "[nameLower]", attributeName.ToLower());
+			label = label.Replace(StringComparison.OrdinalIgnoreCase, "[type]", typeof(T).GetTypeName(true)).Replace(StringComparison.OrdinalIgnoreCase, "[typeLower]", typeof(T).GetTypeName(true).ToLower());
+			return label;
+		}
+
+		internal static JToken GenerateFormControl<T>(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null) where T : class
 		{
 			var info = attribute.GetCustomAttribute<FormControlAttribute>();
 
@@ -6394,20 +6401,20 @@ namespace net.vieapps.Components.Repository
 			var attributeName = $"{(string.IsNullOrWhiteSpace(parentName) ? "" : $"{parentName}.")}{attribute.Name}";
 			var label = hidden
 				? null
-				: (info?.Label ?? parentLabel ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+				: attributeName.NormalizeLabel<T>(info?.Label ?? parentLabel ?? attribute.Name);
 			var description = hidden
 				? null
-				: (info?.Description ?? parentDescription)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+				: attributeName.NormalizeLabel<T>(info?.Description ?? parentDescription);
 			var placeHolder = hidden
 				? null
-				: (info?.PlaceHolder ?? parentPlaceHolder)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+				: attributeName.NormalizeLabel<T>(info?.PlaceHolder ?? parentPlaceHolder);
 
 			if (attribute.IsClassType() && !attribute.IsMappings())
 			{
 				var subControls = new JArray();
 				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subAttribute, subIndex) =>
 				{
-					var subControl = subAttribute.GenerateFormControl(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
+					var subControl = subAttribute.GenerateFormControl<T>(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
 					if (subControl != null)
 						subControls.Add(subControl);
 				});
@@ -6448,7 +6455,7 @@ namespace net.vieapps.Components.Repository
 			{
 				{ "Name", attribute.Name },
 				{ "Order", order },
-				{ "Options", attribute.GenerateControlOptions(label, description, placeHolder) }
+				{ "Options", attribute.GenerateControlOptions<T>(label, description, placeHolder) }
 			};
 
 			var controlType = !string.IsNullOrWhiteSpace(info?.ControlType)
@@ -6514,7 +6521,7 @@ namespace net.vieapps.Components.Repository
 			return control;
 		}
 
-		internal static JToken GenerateViewControl(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null)
+		internal static JToken GenerateViewControl<T>(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null) where T : class
 		{
 			var info = attribute.GetCustomAttribute<FormControlAttribute>();
 
@@ -6535,13 +6542,13 @@ namespace net.vieapps.Components.Repository
 			var attributeName = $"{(string.IsNullOrWhiteSpace(parentName) ? "" : $"{parentName}.")}{attribute.Name}";
 			var label = hidden
 				? null
-				: (info?.Label ?? parentLabel ?? attribute.Name).Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+				: attributeName.NormalizeLabel<T>(info?.Label ?? parentLabel ?? attribute.Name);
 			var description = hidden
 				? null
-				: (info?.Description ?? parentDescription)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+				: attributeName.NormalizeLabel<T>(info?.Description ?? parentDescription);
 			var placeHolder = hidden
 				? null
-				: (info?.PlaceHolder ?? parentPlaceHolder)?.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName);
+				: attributeName.NormalizeLabel<T>(info?.PlaceHolder ?? parentPlaceHolder);
 
 			var order = info != null && info.Order > -1 ? info.Order : index;
 
@@ -6550,7 +6557,7 @@ namespace net.vieapps.Components.Repository
 				var subControls = new JArray();
 				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subAttribute, subIndex) =>
 				{
-					var subControl = subAttribute.GenerateViewControl(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
+					var subControl = subAttribute.GenerateViewControl<T>(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
 					if (subControl != null)
 						subControls.Add(subControl);
 				});
@@ -6588,7 +6595,7 @@ namespace net.vieapps.Components.Repository
 				{ "Name", attribute.Name },
 				{ "Order", order },
 				{ "Type", "Text" },
-				{ "Options", attribute.GenerateControlOptions(label, description, placeHolder, true) }
+				{ "Options", attribute.GenerateControlOptions<T>(label, description, placeHolder, true) }
 			};
 			if (!string.IsNullOrWhiteSpace(info?.Segment))
 				control["Segment"] = info.Segment;
@@ -6629,8 +6636,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <param name="index"></param>
 		/// <returns></returns>
-		public static JToken GenerateFormControl(this ObjectService.AttributeInfo attribute, int index = 0)
-			=> new AttributeInfo(attribute).GenerateFormControl(index);
+		public static JToken GenerateFormControl<T>(this ObjectService.AttributeInfo attribute, int index = 0) where T : class
+			=> new AttributeInfo(attribute).GenerateFormControl<T>(index);
 
 		/// <summary>
 		/// Generates the form controls of this type
@@ -6648,7 +6655,7 @@ namespace net.vieapps.Components.Repository
 			{
 				try
 				{
-					var control = attribute.GenerateFormControl(index);
+					var control = attribute.GenerateFormControl<T>(index);
 					if (control != null)
 						controls.Add(control);
 				}
