@@ -3122,7 +3122,7 @@ namespace net.vieapps.Components.Repository
 			=> RepositoryMediator.SyncAsync(aliasTypeName, @object, cancellationToken);
 		#endregion
 
-		#region [Public] Generate form/view controls
+		#region [Public] Generate form controls
 		/// <summary>
 		/// Generates the form controls of this type
 		/// </summary>
@@ -3135,19 +3135,6 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		protected virtual JToken GenerateFormControls()
 			=> RepositoryMediator.GenerateFormControls<T>();
-
-		/// <summary>
-		/// Generates the view controls of this type
-		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
-		public static JToken GenerateViewControls<TEntity>() where TEntity : class
-			=> RepositoryMediator.GenerateViewControls<TEntity>();
-
-		/// <summary>
-		/// Generates the view controls of this type
-		/// </summary>
-		protected virtual JToken GenerateViewControls()
-			=> RepositoryMediator.GenerateViewControls<T>();
 		#endregion
 
 		#region [Public] Get/Set properties
