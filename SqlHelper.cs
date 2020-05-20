@@ -368,7 +368,7 @@ namespace net.vieapps.Components.Repository
 			=> attribute.Type.IsStringType() && attribute.Name.EndsWith("ID") && (attribute.MaxLength.Equals(0) || attribute.MaxLength.Equals(32))
 				? typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)
 				: attribute.IsStoredAsString()
-					? typeof(string).GetDbTypeString(dbProviderFactory, 19, true, false)
+					? typeof(string).GetDbTypeString(dbProviderFactory, attribute.IsStoredAsDateOnlyString() ? 10 : 19, true, false)
 					: (attribute.IsCLOB != null && attribute.IsCLOB.Value) || attribute.IsStoredAsJson()
 						? typeof(string).GetDbTypeString(dbProviderFactory, 0, false, true)
 						: attribute.Type.IsEnum
@@ -436,7 +436,7 @@ namespace net.vieapps.Components.Repository
 				: attribute.IsStoredAsString()
 					? value == null
 						? ""
-						: ((DateTime)value).ToDTString()
+						: ((DateTime)value).ToDTString(false, attribute.IsStoredAsDateTimeString())
 					: value);
 
 		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, ExtendedPropertyDefinition attribute, object value)
