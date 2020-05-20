@@ -6187,8 +6187,8 @@ namespace net.vieapps.Components.Repository
 			=> objects.ToXml(null, false, onItemPreCompleted);
 		#endregion
 
-		#region Generate form/view controls
-		internal static Dictionary<Type, string> FormControlDataTypes { get; } = new Dictionary<Type, string>()
+		#region Generate form controls
+		static Dictionary<Type, string> FormControlDataTypes { get; } = new Dictionary<Type, string>()
 		{
 			{ typeof(string), "text" },
 			{ typeof(char), "text" },
@@ -6210,33 +6210,33 @@ namespace net.vieapps.Components.Repository
 			{ typeof(DateTimeOffset), "date" }
 		};
 
-		internal static List<AttributeInfo> GetFormAttributes(Type type)
+		static List<AttributeInfo> GetFormAttributes(Type type)
 		{
 			try
 			{
-				return RepositoryMediator.GetEntityDefinition(type)?.FormAttributes ?? ObjectService.GetProperties(type).Select(attribute => new AttributeInfo(attribute)).ToList();
+				return RepositoryMediator.GetEntityDefinition(type)?.FormAttributes ?? type.GetPublicAttributes().Select(attribute => new AttributeInfo(attribute)).ToList();
 			}
 			catch (Exception ex)
 			{
 				RepositoryMediator.WriteLogs($"Error occurred while preparing attributes to generate form controls => {ex.Message}", ex, LogLevel.Error);
-				return ObjectService.GetProperties(type).Select(attribute => new AttributeInfo(attribute)).ToList();
+				return type.GetPublicAttributes().Select(attribute => new AttributeInfo(attribute)).ToList();
 			}
 		}
 
-		internal static JObject GenerateControlOptions<T>(this AttributeInfo attribute, string label, string description, string placeHolder, bool asViewControl = false) where T : class
+		static JObject GenerateControlOptions<T>(this AttributeInfo attribute, string controlType, string label, string description, string placeHolder) where T : class
 		{
 			var info = attribute.GetCustomAttribute<FormControlAttribute>();
-			var hidden = info != null ? info.Hidden : attribute.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault() != null;
+			var hidden = info != null ? info.Hidden : attribute.GetCustomAttribute<PrimaryKeyAttribute>() != null;
 
-			var dataType = asViewControl
-				? attribute.IsLargeString() ? "paragraph" : "label"
-				: "Lookup".IsEquals(info?.ControlType) && !string.IsNullOrWhiteSpace(info?.LookupType)
-					? info.LookupType
-					: !string.IsNullOrWhiteSpace(info?.DataType)
-						? info.DataType
-						: attribute.IsEnum() || attribute.IsEnumString()
-							? "text"
-							: RepositoryMediator.FormControlDataTypes.TryGetValue(attribute.Type, out string predefinedDataType)
+			var dataType = "Lookup".IsEquals(controlType) && !string.IsNullOrWhiteSpace(info?.LookupType)
+				? info.LookupType
+				: !string.IsNullOrWhiteSpace(info?.DataType)
+					? info.DataType
+					: attribute.IsEnum() || attribute.IsEnumString()
+						? "text"
+						: "DatePicker".IsEquals(controlType)
+							? "date"
+							: RepositoryMediator.FormControlDataTypes.TryGetValue(attribute.Type, out var predefinedDataType)
 								? predefinedDataType
 								: null;
 
@@ -6306,32 +6306,12 @@ namespace net.vieapps.Components.Repository
 			if (maxLength != null && Int32.TryParse(maxLength, out int maxLen))
 				options["MaxLength"] = maxLen;
 
-			var controlType = !string.IsNullOrWhiteSpace(info?.ControlType)
-				? info.ControlType
-				: attribute.IsLargeString()
-					? "TextEditor"
-					: attribute.IsEnum() || attribute.IsEnumString()
-						? "Select"
-						: attribute.IsMappings()
-							? "Lookup"
-							: attribute.IsPrimitiveType()
-								? attribute.IsDateTimeType()
-									? "DatePicker"
-									: attribute.Type == typeof(bool)
-										? "YesNo"
-										: "TextBox"
-								: "";
-
-			var datepickerOptions = "DatePicker".IsEquals(controlType) && info != null && info.DatePickerWithTimes
-				? new JObject
+			if ("DatePicker".IsEquals(controlType) && info != null)
+				options["DatePickerOptions"] = new JObject
 				{
-					{ "AllowTimes", true }
-				}
-				: null;
-			if (datepickerOptions != null)
-				options["DatePickerOptions"] = datepickerOptions;
+					{ "AllowTimes", info.DatePickerWithTimes }
+				};
 
-			JObject selectOptions = null;
 			if ("Select".IsEquals(controlType) || attribute.IsEnum() || attribute.IsEnumString())
 			{
 				var selectValues = info?.SelectValues;
@@ -6351,27 +6331,57 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while generating enums [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
 					}
-
-				selectOptions = new JObject
+				options["SelectOptions"] = new JObject
 				{
 					{ "Values", selectValues },
 					{ "Multiple", info != null && info.Multiple },
-					{ "SelectAsBoxes", info != null && info.SelectAsBoxes }
+					{ "AsBoxes", info != null && info.SelectAsBoxes },
+					{ "Interface", info?.SelectInterface ?? "alert" },
+					{ "RemoteURI", info?.SelectValuesRemoteURI }
 				};
-
-				if (!string.IsNullOrWhiteSpace(info?.SelectValuesRemoteURI))
-					selectOptions["RemoteURI"] = info.SelectValuesRemoteURI;
-
-				if (!string.IsNullOrWhiteSpace(info?.SelectInterface))
-					selectOptions["Interface"] = info.SelectInterface;
 			}
-			if (selectOptions != null)
-				options["SelectOptions"] = selectOptions;
+
+			if ("Lookup".IsEquals(controlType) && info != null)
+			{
+				var definition = RepositoryMediator.GetEntityDefinition<T>(false);
+				var objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : typeof(T).GetTypeName(true);
+				if (attribute.IsParentMapping() || attribute.IsMultipleParentMappings())
+				{
+					var parentType = definition.ParentType;
+					definition = RepositoryMediator.GetEntityDefinition(parentType, false);
+					objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : (parentType ?? typeof(T)).GetTypeName(true);
+				}
+				else if (attribute.IsChildrenMappings())
+				{
+					var childType = attribute.GetCustomAttribute<ChildrenMappingsAttribute>().Type;
+					definition = RepositoryMediator.GetEntityDefinition(childType, false);
+					objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : (childType ?? typeof(T)).GetTypeName(true);
+				}
+				options["LookupOptions"] = new JObject
+				{
+					{ "Multiple", info.Multiple },
+					{ "ModalOptions", new JObject
+						{
+							{ "Component", null },
+							{ "ComponentProps", new JObject
+								{
+									{ "organizationID", null },
+									{ "moduleID", null },
+									{ "contentTypeID", null },
+									{ "objectName", objectName },
+									{ "nested", info.LookupObjectIsNested },
+									{ "multiple", info.Multiple }
+								}
+							}
+						}
+					}
+				};
+			}
 
 			return options;
 		}
 
-		internal static string NormalizeLabel<T>(this string attributeName, string label) where T : class
+		static string NormalizeLabel<T>(this string attributeName, string label) where T : class
 		{
 			if (string.IsNullOrWhiteSpace(label))
 				return null;
@@ -6381,7 +6391,7 @@ namespace net.vieapps.Components.Repository
 			return label;
 		}
 
-		internal static JToken GenerateFormControl<T>(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null) where T : class
+		static JToken GenerateFormControl<T>(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null) where T : class
 		{
 			var info = attribute.GetCustomAttribute<FormControlAttribute>();
 
@@ -6394,7 +6404,7 @@ namespace net.vieapps.Components.Repository
 
 			JObject control;
 
-			var isPrimaryKey = attribute.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault() != null;
+			var isPrimaryKey = attribute.GetCustomAttribute<PrimaryKeyAttribute>() != null;
 			var hidden = info != null ? info.Hidden : isPrimaryKey;
 			var order = info != null && info.Order > -1 ? info.Order : index;
 
@@ -6412,18 +6422,40 @@ namespace net.vieapps.Components.Repository
 			if (attribute.IsClassType() && !attribute.IsMappings())
 			{
 				var subControls = new JArray();
-				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subAttribute, subIndex) =>
+				if (attribute.IsGenericListOrHashSet() && attribute.GetGenericTypeArguments().First().IsClassType())
 				{
-					var subControl = subAttribute.GenerateFormControl<T>(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
-					if (subControl != null)
-						subControls.Add(subControl);
-				});
+					var complexSubControls = new JArray();
+					RepositoryMediator.GetFormAttributes(attribute.GetGenericTypeArguments().First()).ForEach((subAttribute, subIndex) =>
+					{
+						var subControl = subAttribute.GenerateFormControl<T>(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
+						if (subControl != null)
+							complexSubControls.Add(subControl);
+					});
+					subControls.Add(new JObject
+					{
+						{ "Extras", new JObject() },
+						{ "Options", new JObject() },
+						{ "SubControls", new JObject
+							{
+								{ "Controls", complexSubControls }
+							}
+						}
+					});
+				}
+				else
+					RepositoryMediator.GetFormAttributes(attribute.IsGenericListOrHashSet() ? attribute.GetGenericTypeArguments().First() : attribute.Type).ForEach((subAttribute, subIndex) =>
+					{
+						var subControl = subAttribute.GenerateFormControl<T>(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
+						if (subControl != null)
+							subControls.Add(subControl);
+					});
 
 				control = new JObject
 				{
 					{ "Name", attribute.Name },
 					{ "Order", order },
 					{ "Type", info?.ControlType },
+					{ "Extras", new JObject() },
 					{ "Options", hidden
 						? new JObject()
 						: new JObject
@@ -6451,13 +6483,6 @@ namespace net.vieapps.Components.Repository
 				return control;
 			}
 
-			control = new JObject
-			{
-				{ "Name", attribute.Name },
-				{ "Order", order },
-				{ "Options", attribute.GenerateControlOptions<T>(label, description, placeHolder) }
-			};
-
 			var controlType = !string.IsNullOrWhiteSpace(info?.ControlType)
 				? info.ControlType
 				: attribute.IsLargeString()
@@ -6472,9 +6497,16 @@ namespace net.vieapps.Components.Repository
 									: attribute.Type == typeof(bool)
 										? "YesNo"
 										: "TextBox"
-								: "";
-			if (!string.IsNullOrWhiteSpace(controlType))
-				control["Type"] = controlType;
+								: null;
+
+			control = new JObject
+			{
+				{ "Name", attribute.Name },
+				{ "Order", order },
+				{ "Type", controlType },
+				{ "Extras", new JObject() },
+				{ "Options", attribute.GenerateControlOptions<T>(controlType, label, description, placeHolder) }
+			};
 
 			var required = isPrimaryKey
 				? false
@@ -6493,6 +6525,7 @@ namespace net.vieapps.Components.Repository
 				{
 					{ "Name", attribute.Name },
 					{ "Order", order },
+					{ "Extras", new JObject() },
 					{ "Options", hidden
 						? new JObject()
 						: new JObject
@@ -6517,115 +6550,6 @@ namespace net.vieapps.Components.Repository
 
 			if (RepositoryMediator.IsDebugEnabled)
 				RepositoryMediator.WriteLogs($"A form control of a primitive-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
-
-			return control;
-		}
-
-		internal static JToken GenerateViewControl<T>(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null) where T : class
-		{
-			var info = attribute.GetCustomAttribute<FormControlAttribute>();
-
-			if (info != null ? info.Excluded : attribute.IsIgnored())
-			{
-				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"By-pass the view control [{attribute.Name}] => {(info != null ? "Excluded" : "Ignored")}");
-				return null;
-			}
-
-			JObject control;
-
-			var isPrimaryKey = attribute.GetCustomAttributes<PrimaryKeyAttribute>().FirstOrDefault() != null;
-			var hidden = info != null ? info.Hidden : isPrimaryKey;
-			if (hidden)
-				return null;
-
-			var attributeName = $"{(string.IsNullOrWhiteSpace(parentName) ? "" : $"{parentName}.")}{attribute.Name}";
-			var label = hidden
-				? null
-				: attributeName.NormalizeLabel<T>(info?.Label ?? parentLabel ?? attribute.Name);
-			var description = hidden
-				? null
-				: attributeName.NormalizeLabel<T>(info?.Description ?? parentDescription);
-			var placeHolder = hidden
-				? null
-				: attributeName.NormalizeLabel<T>(info?.PlaceHolder ?? parentPlaceHolder);
-
-			var order = info != null && info.Order > -1 ? info.Order : index;
-
-			if (attribute.IsClassType() && !attribute.IsMappings())
-			{
-				var subControls = new JArray();
-				RepositoryMediator.GetFormAttributes(attribute.Type).ForEach((subAttribute, subIndex) =>
-				{
-					var subControl = subAttribute.GenerateViewControl<T>(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
-					if (subControl != null)
-						subControls.Add(subControl);
-				});
-
-				control = new JObject
-				{
-					{ "Name", attribute.Name },
-					{ "Order", order },
-					{ "Type", "Text" },
-					{ "Options", new JObject
-						{
-							{ "Label", label },
-							{ "Description", description }
-						}
-					},
-					{ "SubControls", new JObject
-						{
-							{ "AsArray", info != null ? info.AsArray : false },
-							{ "Controls", subControls }
-						}
-					}
-				};
-
-				if (!string.IsNullOrWhiteSpace(info?.Segment))
-					control["Segment"] = info.Segment;
-
-				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"A view control of a class-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
-
-				return control;
-			}
-
-			control = new JObject
-			{
-				{ "Name", attribute.Name },
-				{ "Order", order },
-				{ "Type", "Text" },
-				{ "Options", attribute.GenerateControlOptions<T>(label, description, placeHolder, true) }
-			};
-			if (!string.IsNullOrWhiteSpace(info?.Segment))
-				control["Segment"] = info.Segment;
-
-			if (info != null && info.AsArray)
-			{
-				control = new JObject
-				{
-					{ "Name", attribute.Name },
-					{ "Order", order },
-					{ "Type", "Text" },
-					{ "Options", new JObject
-						{
-							{ "Label", label },
-							{ "Description", description }
-						}
-					},
-					{ "SubControls", new JObject
-						{
-							{ "AsArray", true },
-							{ "Controls", new JArray { control } }
-						}
-					}
-				};
-				if (!string.IsNullOrWhiteSpace(info?.Segment))
-					control["Segment"] = info.Segment;
-			}
-
-			if (RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs($"A view control of a primitive-type attribute was generated => {control.ToString(Newtonsoft.Json.Formatting.None)}");
 
 			return control;
 		}
@@ -6662,43 +6586,6 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					RepositoryMediator.WriteLogs($"Error occurred while generating form control [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
-				}
-			});
-			return controls;
-		}
-
-		/// <summary>
-		/// Generates the view controls from this object attribute
-		/// </summary>
-		/// <param name="attribute"></param>
-		/// <param name="index"></param>
-		/// <returns></returns>
-		public static JToken GenerateViewControl(this ObjectService.AttributeInfo attribute, int index = 0)
-			=> new AttributeInfo(attribute).GenerateViewControl(index);
-
-		/// <summary>
-		/// Generates the view controls of this type
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <returns></returns>
-		public static JToken GenerateViewControls<T>() where T : class
-		{
-			var controls = new JArray();
-			var attributes = RepositoryMediator.GetFormAttributes(typeof(T));
-			if (RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs($"Start to generate view controls ({typeof(T).GetTypeName(true)}) => {attributes.Select(attribute => attribute.Name).Join(", ")}]");
-
-			attributes.ForEach((attribute, index) =>
-			{
-				try
-				{
-					var control = attribute.GenerateViewControl(index);
-					if (control != null)
-						controls.Add(control);
-				}
-				catch (Exception ex)
-				{
-					RepositoryMediator.WriteLogs($"Error occurred while generating view control [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
 				}
 			});
 			return controls;
