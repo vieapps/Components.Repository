@@ -398,6 +398,11 @@ namespace net.vieapps.Components.Repository
 	public class AsStringAttribute : Attribute
 	{
 		public AsStringAttribute() { }
+
+		/// <summary>
+		/// Gets or Sets the state to allow time - false to store date only
+		/// </summary>
+		public bool AllowTime { get; set; } = true;
 	}
 
 	// ------------------------------------------
@@ -557,24 +562,14 @@ namespace net.vieapps.Components.Repository
 		public string SelectInterface { get; set; }
 
 		/// <summary>
-		/// Gets or Sets the type for looking-up (Address, User or Business Object)
+		/// Gets or Sets the type for looking-up (Address, User or type-name of business object)
 		/// </summary>
 		public string LookupType { get; set; }
 
 		/// <summary>
-		/// Gets or Sets the identity of the business repository (means business module at run-time) for looking-up
+		/// Gets or Sets the nested state for looking-up
 		/// </summary>
-		public string LookupRepositoryID { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the identity of the business repository entity (means business content-type at run-time) for looking-up
-		/// </summary>
-		public string LookupRepositoryEntityID { get; set; }
-
-		/// <summary>
-		/// Gets or Sets the name of business entity's property for displaying while looking-up (default is Title)
-		/// </summary>
-		public string LookupProperty { get; set; }
+		public bool LookupObjectIsNested { get; set; } = false;
 
 		/// <summary>
 		/// Gets or Sets the state that determines the sub-controls as array of controls
@@ -720,6 +715,22 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static bool IsStoredAsString(this ObjectService.AttributeInfo attribute)
 			=> attribute != null && attribute.IsDateTimeType() && attribute.GetCustomAttribute<AsStringAttribute>() != null;
+
+		/// <summary>
+		/// Gets the state that determines this date-time attribute is be stored as string with date-only or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsStoredAsDateOnlyString(this ObjectService.AttributeInfo attribute)
+			=> attribute != null && attribute.IsStoredAsString() && !attribute.GetCustomAttribute<AsStringAttribute>().AllowTime;
+
+		/// <summary>
+		/// Gets the state that determines this date-time attribute is be stored as string with date and time or not
+		/// </summary>
+		/// <param name="attribute"></param>
+		/// <returns></returns>
+		public static bool IsStoredAsDateTimeString(this ObjectService.AttributeInfo attribute)
+			=> attribute != null && attribute.IsStoredAsString() && attribute.GetCustomAttribute<AsStringAttribute>().AllowTime;
 
 		/// <summary>
 		/// Gets the state that determines this object attribute is be stored as JSON or not
