@@ -156,7 +156,7 @@ namespace net.vieapps.Components.Repository
 							? (DateTime)this.Value
 							: DateTime.Parse(this.Value.ToString());
 						return standardProperty.IsStoredAsString()
-							? value.ToDTString() as object
+							? value.ToDTString(false, standardProperty.IsStoredAsDateTimeString()) as object
 							: value;
 					}
 					else
@@ -389,25 +389,18 @@ namespace net.vieapps.Components.Repository
 
 					case CompareOperator.IsNull:
 					case CompareOperator.IsNotNull:
-						var type = standardProperties.TryGetValue(this.Attribute, out AttributeInfo standardAttribute)
-							? standardAttribute.Type
-							: extendedProperties.TryGetValue(this.Attribute, out ExtendedPropertyDefinition extendedAttribute)
-								? extendedAttribute.Type
+						var type = standardProperties != null && standardProperties.TryGetValue(this.Attribute, out var standardAttribute)
+							? standardAttribute?.Type
+							: extendedProperties != null && extendedProperties.TryGetValue(this.Attribute, out var extendedAttribute)
+								? extendedAttribute?.Type
 								: null;
-						if (this.Operator == CompareOperator.IsNull)
-						{
-							if (type != null && type.IsStringType())
-								filter = Builders<T>.Filter.Eq<string>(field, null);
-							else
-								filter = Builders<T>.Filter.Eq(field, BsonNull.Value);
-						}
-						else
-						{
-							if (type != null && type.IsStringType())
-								filter = Builders<T>.Filter.Ne<string>(field, null);
-							else
-								filter = Builders<T>.Filter.Ne(field, BsonNull.Value);
-						}
+						filter = this.Operator == CompareOperator.IsNull
+							? type != null && type.IsStringType()
+								? Builders<T>.Filter.Eq<string>(field, null)
+								:  Builders<T>.Filter.Eq(field, BsonNull.Value)
+							 : type != null && type.IsStringType()
+								? Builders<T>.Filter.Ne<string>(field, null)
+								:  Builders<T>.Filter.Ne(field, BsonNull.Value);
 						break;
 
 					case CompareOperator.IsEmpty:
