@@ -1,6 +1,7 @@
 ﻿#region Related components
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Configuration;
 using System.Linq;
 using System.Reflection;
@@ -152,7 +153,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of business repositories (means business modules at run-time)
 		/// </summary>
-		public Dictionary<string, IBusinessRepository> BusinessRepositories { get; } = new Dictionary<string, IBusinessRepository>(StringComparer.OrdinalIgnoreCase);
+		public ConcurrentDictionary<string, IBusinessRepository> BusinessRepositories { get; } = new ConcurrentDictionary<string, IBusinessRepository>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register & Update settings
@@ -525,7 +526,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of business repository entities (means business conten-types at run-time)
 		/// </summary>
-		public Dictionary<string, IBusinessRepositoryEntity> BusinessRepositoryEntities { get; } = new Dictionary<string, IBusinessRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
+		public ConcurrentDictionary<string, IBusinessRepositoryEntity> BusinessRepositoryEntities { get; } = new ConcurrentDictionary<string, IBusinessRepositoryEntity>(StringComparer.OrdinalIgnoreCase);
 		#endregion
 
 		#region Register & Update settings
