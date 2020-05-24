@@ -167,7 +167,7 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
 			});
 			tracker?.Invoke($"Construct {RepositoryMediator.DataSources.Count} data sources [{RepositoryMediator.DataSources.Select(kvp => kvp.Key).ToString(", ")}]", null);
-			if (RepositoryMediator.IsDebugEnabled)
+			if (tracker == null && RepositoryMediator.IsDebugEnabled)
 				RepositoryMediator.WriteLogs($"Construct {RepositoryMediator.DataSources.Count} data sources [{RepositoryMediator.DataSources.Select(kvp => kvp.Key).ToString(", ")}]", null);
 		}
 

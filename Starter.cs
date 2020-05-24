@@ -29,23 +29,23 @@ namespace net.vieapps.Components.Repository
 			{
 				var types = assembly.GetExportedTypes();
 				tracker?.Invoke($"Initialize the assembly: {assembly.GetName().Name} with {types.Length} exported type(s)", null);
-				if (RepositoryMediator.IsDebugEnabled)
+				if (tracker == null && RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"Initialize the assembly: {assembly.GetName().Name} with {types.Length} exported type(s)", null);
 
 				// repositories
 				types.Where(type => type.IsDefined(typeof(RepositoryAttribute), false)).ForEach(type =>
 				{
 					tracker?.Invoke($"Register the repository: {type.GetTypeName()}", null);
-					if (RepositoryMediator.IsDebugEnabled)
+					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Register the repository: {type.GetTypeName()}", null);
-					RepositoryDefinition.Register(type);
+					RepositoryDefinition.Register(type, tracker);
 				});
 
 				// entities
 				types.Where(type => type.IsDefined(typeof(EntityAttribute), false)).ForEach(type =>
 				{
 					tracker?.Invoke($"Register the repository entity: {type.GetTypeName()}", null);
-					if (RepositoryMediator.IsDebugEnabled)
+					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Register the repository entity: {type.GetTypeName()}", null);
 					EntityDefinition.Register(type);
 				});
@@ -59,7 +59,7 @@ namespace net.vieapps.Components.Repository
 					.ForEach(type =>
 					{
 						tracker?.Invoke($"Register the event-handler: {type.GetTypeName()}", null);
-						if (RepositoryMediator.IsDebugEnabled)
+						if (tracker == null && RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"Register the event-handler: {type.GetTypeName()}", null);
 						RepositoryMediator.EventHandlers.Add(type);
 					});
@@ -69,7 +69,8 @@ namespace net.vieapps.Components.Repository
 				if (ex.LoaderExceptions.FirstOrDefault(e => e is System.IO.FileNotFoundException) == null)
 				{
 					tracker?.Invoke($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
-					RepositoryMediator.WriteLogs($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
+					if (tracker == null)
+						RepositoryMediator.WriteLogs($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
 					ex.LoaderExceptions.ForEach(exception => tracker?.Invoke(null, exception));
 					throw ex;
 				}
@@ -77,7 +78,8 @@ namespace net.vieapps.Components.Repository
 			catch (Exception ex)
 			{
 				tracker?.Invoke($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
-				RepositoryMediator.WriteLogs($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
+				if (tracker == null)
+					RepositoryMediator.WriteLogs($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
 				throw ex;
 			}
 		}
@@ -91,8 +93,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="config">The XML node that contains configuration</param>
 		public static void Initialize(IEnumerable<Assembly> assemblies, Action<string, Exception> tracker = null, bool updateFromConfigurationFile = true, XmlNode config = null)
 		{
-			if (RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs("Start to initialize repositories & entities [" + assemblies.Select(a => a.GetName().Name).ToString(", ") + "]");
+			tracker?.Invoke($"Start to initialize repositories & entities [{assemblies.Select(a => a.GetName().Name).ToString(", ")}]", null);
+			if (tracker == null && RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs($"Start to initialize repositories & entities [{assemblies.Select(a => a.GetName().Name).ToString(", ")}]");
 
 			// initialize & register all types
 			assemblies.ForEach(assembly => RepositoryStarter.Initialize(assembly, tracker));
@@ -119,11 +122,22 @@ namespace net.vieapps.Components.Repository
 						repositoryNodes.ToList().ForEach(repositoryNode =>
 						{
 							// update repository
-							RepositoryDefinition.Update(repositoryNode.ToJson(), tracker);
+							var settingsJson = repositoryNode.ToJson();
+							tracker?.Invoke($"Update settings of a repository => {settingsJson}", null);
+							if (tracker == null && RepositoryMediator.IsDebugEnabled)
+								RepositoryMediator.WriteLogs($"Update settings of a repository => {settingsJson}");
+							RepositoryDefinition.Update(settingsJson, tracker);
 
 							// update repository entities
 							if (repositoryNode.SelectNodes("entity") is XmlNodeList entityNodes)
-								entityNodes.ToList().ForEach(repositoryEntityNode => EntityDefinition.Update(repositoryEntityNode.ToJson(), tracker));
+								entityNodes.ToList().ForEach(repositoryEntityNode =>
+								{
+									settingsJson = repositoryEntityNode.ToJson();
+									tracker?.Invoke($"Update settings of a repository entity => {settingsJson}", null);
+									if (tracker == null && RepositoryMediator.IsDebugEnabled)
+										RepositoryMediator.WriteLogs($"Update settings of a repository entity => {settingsJson}");
+									EntityDefinition.Update(settingsJson, tracker);
+								});
 						});
 
 					// default data sources
@@ -176,10 +190,17 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
-					tracker?.Invoke($"Error occurred while updating the repository: {ex.Message}", ex);
-					RepositoryMediator.WriteLogs("Error occurred while updating the repository", ex);
+					tracker?.Invoke($"Error occurred while updating the repository => {ex.Message}", ex);
+					if (tracker == null)
+						RepositoryMediator.WriteLogs($"Error occurred while updating the repository => {ex.Message}", ex);
 					throw ex;
 				}
+			else
+			{
+				tracker?.Invoke("No configuration to update", null);
+				if (tracker == null && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs("No configuration to update");
+			}
 
 			tracker?.Invoke($"Total of registered repositories: {RepositoryMediator.RepositoryDefinitions.Count}", null);
 			tracker?.Invoke($"Total of registered repository entities: {RepositoryMediator.EntityDefinitions.Count}", null);
@@ -188,7 +209,7 @@ namespace net.vieapps.Components.Repository
 			tracker?.Invoke($"Default data-source for storing version contents: {RepositoryMediator.DefaultVersionDataSourceName ?? "(None)"}", null);
 			tracker?.Invoke($"Default data-source for storing trash contents: {RepositoryMediator.DefaultTrashDataSourceName ?? "(None)"}", null);
 
-			if (RepositoryMediator.IsDebugEnabled)
+			if (tracker == null && RepositoryMediator.IsDebugEnabled)
 			{
 				RepositoryMediator.WriteLogs($"Total of registered repositories: {RepositoryMediator.RepositoryDefinitions.Count}", null);
 				RepositoryMediator.WriteLogs($"Total of registered repository entities: {RepositoryMediator.EntityDefinitions.Count}", null);
@@ -265,14 +286,15 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					tracker?.Invoke($"Ensure schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
-					if (RepositoryMediator.IsDebugEnabled)
+					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Ensure schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", null);
 					await definition.EnsureSchemasAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					tracker?.Invoke($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
-					RepositoryMediator.WriteLogs($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
+					if (tracker == null)
+						RepositoryMediator.WriteLogs($"Error occurred while ensuring schemas of SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.TableName}]", ex);
 				}
 		}
 
@@ -290,14 +312,15 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					tracker?.Invoke($"Ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
-					if (RepositoryMediator.IsDebugEnabled)
+					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", null);
 					await definition.EnsureIndexesAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
 					tracker?.Invoke($"Error occurred while ensuring indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
-					RepositoryMediator.WriteLogs($"Cannot ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
+					if (tracker == null)
+						RepositoryMediator.WriteLogs($"Cannot ensure indexes of No SQL: {definition.Type} [{dataSource.Name} @ {dataSource.Mode} => {definition.CollectionName}]", ex);
 				}
 		}
 	}

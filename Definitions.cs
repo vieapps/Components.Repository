@@ -157,7 +157,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Register & Update settings
-		internal static void Register(Type type)
+		internal static void Register(Type type, Action<string, Exception> tracker = null)
 		{
 			// check
 			if (type == null || RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
@@ -182,8 +182,12 @@ namespace net.vieapps.Components.Repository
 			};
 
 			// update into collection
-			if (RepositoryMediator.RepositoryDefinitions.TryAdd(type, definition) && RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs($"The repository definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]");
+			if (RepositoryMediator.RepositoryDefinitions.TryAdd(type, definition))
+			{
+				tracker?.Invoke($"The repository definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]", null);
+				if (tracker == null && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"The repository definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]");
+			}
 		}
 
 		internal static void Update(JObject settings, Action<string, Exception> tracker = null)
@@ -196,9 +200,7 @@ namespace net.vieapps.Components.Repository
 
 			// prepare
 			Type aliasOf = null;
-			var isAlias = settings["isAlias"] != null
-				? "true".IsEquals((settings["isAlias"] as JValue).Value as string)
-				: false;
+			var isAlias = settings["isAlias"] != null && "true".IsEquals((settings["isAlias"] as JValue).Value as string);
 			if (isAlias)
 			{
 				var targetType = settings["target"] != null
@@ -209,15 +211,21 @@ namespace net.vieapps.Components.Repository
 					isAlias = false;
 				else
 				{
-					aliasOf = Type.GetType(targetType);
+					aliasOf = Enyim.Caching.AssemblyLoader.GetType(targetType);
 					if (aliasOf == null)
 						isAlias = false;
 				}
 			}
 
-			var type = Type.GetType((settings["type"] as JValue).Value as string);
+			var typeStr = (settings["type"] as JValue).Value as string;
+			var type = Enyim.Caching.AssemblyLoader.GetType(typeStr);
 			if (type == null)
+			{
+				tracker?.Invoke($"The type of repository definition is not found [{typeStr}]", null);
+				if (tracker == null && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"The type of repository definition is not found [{typeStr}]");
 				return;
+			}
 
 			// clone definition for new alias
 			if (isAlias)
@@ -234,7 +242,12 @@ namespace net.vieapps.Components.Repository
 			// get definition
 			var definition = RepositoryMediator.GetRepositoryDefinition(type);
 			if (definition == null)
+			{
+				tracker?.Invoke($"The repository definition was not registered [{type}]", null);
+				if (tracker == null && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"The repository definition was not registered [{type}]");
 				return;
+			}
 
 			// update
 			var data = settings["primaryDataSource"] != null
@@ -530,7 +543,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Register & Update settings
-		internal static void Register(Type type)
+		internal static void Register(Type type, Action<string, Exception> tracker = null)
 		{
 			// check
 			if (type == null || RepositoryMediator.EntityDefinitions.ContainsKey(type))
@@ -728,22 +741,25 @@ namespace net.vieapps.Components.Repository
 			definition.RepositoryDefinitionType = Type.GetType(repositoryDefinitionTypeName.Left(repositoryDefinitionTypeName.IndexOf("[")) + repositoryDefinitionTypeName.Substring(repositoryDefinitionTypeName.IndexOf("]") + 2));
 
 			// update into collection
-			if (RepositoryMediator.EntityDefinitions.TryAdd(type, definition) && RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs(
-					$"The repository entity definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]" + "\r\n" +
-					$"- Attributes: " + "\r\n" + definition.Attributes.ToJArray(attribute => new JObject
-					{
-						{ "Name", attribute.Name },
-						{ "Type", attribute.Type.GetTypeName(true) },
-						{ "MinLength", attribute.MinLength },
-						{ "MaxLength", attribute.MaxLength },
-						{ "MinValue", attribute.MinValue },
-						{ "MaxValue", attribute.MaxValue },
-						{ "NotNull", attribute.NotNull },
-						{ "NotEmpty", attribute.NotEmpty },
-						{ "CLOB", attribute.IsCLOB }
-					}).ToString(Newtonsoft.Json.Formatting.Indented)
-				);
+			if (RepositoryMediator.EntityDefinitions.TryAdd(type, definition))
+			{
+				var log = $"The repository entity definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]" + "\r\n" +
+				$"- Attributes: " + "\r\n" + definition.Attributes.ToJArray(attribute => new JObject
+				{
+					{ "Name", attribute.Name },
+					{ "Type", attribute.Type.GetTypeName(true) },
+					{ "MinLength", attribute.MinLength },
+					{ "MaxLength", attribute.MaxLength },
+					{ "MinValue", attribute.MinValue },
+					{ "MaxValue", attribute.MaxValue },
+					{ "NotNull", attribute.NotNull },
+					{ "NotEmpty", attribute.NotEmpty },
+					{ "CLOB", attribute.IsCLOB }
+				}).ToString(Newtonsoft.Json.Formatting.Indented);
+				tracker?.Invoke(log, null);
+				if (tracker == null && RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(log);
+			}
 		}
 
 		internal static void Update(JObject settings, Action<string, Exception> tracker = null)
@@ -805,9 +821,7 @@ namespace net.vieapps.Components.Repository
 							cacheExpirationTime = 30;
 					}
 					catch { }
-				var cacheActiveSynchronize = settings["cacheActiveSynchronize"] != null
-					? ((settings["cacheActiveSynchronize"] as JValue).Value as string).IsEquals("true")
-					: false;
+				var cacheActiveSynchronize = settings["cacheActiveSynchronize"] != null && ((settings["cacheActiveSynchronize"] as JValue).Value as string).IsEquals("true");
 				var cacheProvider = settings["cacheProvider"] != null
 					? (settings["cacheProvider"] as JValue).Value as string
 					: null;

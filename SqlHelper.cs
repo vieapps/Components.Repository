@@ -3342,9 +3342,8 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
-
-						if (RepositoryMediator.IsDebugEnabled)
+						tracker?.Invoke($"Create SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}\r\nSQL Command: {sql}", null);
+						if (tracker == null && RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs(new[]
 							{
 								$"STARTER: Create SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
@@ -3460,9 +3459,8 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
-
-						if (RepositoryMediator.IsDebugEnabled)
+						tracker?.Invoke($"Create indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}\r\nSQL Command: {sql}", null);
+						if (tracker == null && RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs(new[]
 							{
 								$"STARTER: Create indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
@@ -3530,9 +3528,8 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create full-text indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}", null);
-
-						if (RepositoryMediator.IsDebugEnabled)
+						tracker?.Invoke($"Create full-text indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}\r\nSQL Command: {sql}", null);
+						if (tracker == null && RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs(new[]
 							{
 								$"STARTER: Create full-text indexes of SQL table successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",
@@ -3578,9 +3575,8 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL mapping table successful [{tableName}] @ {dataSource.Name}", null);
-
-						if (RepositoryMediator.IsDebugEnabled)
+						tracker?.Invoke($"Create SQL mapping table successful [{tableName}] @ {dataSource.Name}SQL Command: {sql}", null);
+						if (tracker == null && RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs(new[]
 							{
 								$"STARTER: Create SQL mapping table successful [{tableName}] @ {dataSource.Name}",
@@ -3696,9 +3692,8 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL table of extended properties successful [{tableName}] @ {dataSource.Name}", null);
-
-						if (RepositoryMediator.IsDebugEnabled)
+						tracker?.Invoke($"Create SQL table of extended properties successful [{tableName}] @ {dataSource.Name}\r\nSQL Command: {sql}", null);
+						if (tracker == null && RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs(new[]
 							{
 								$"STARTER: Create SQL table of extended properties successful [{context.EntityDefinition.TableName}] @ {dataSource.Name}",

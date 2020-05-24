@@ -2268,13 +2268,14 @@ namespace net.vieapps.Components.Repository
 				{
 					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true }), null, token).ConfigureAwait(false);
 					tracker?.Invoke($"Create index of No SQL successful => {kvp.Key}", null);
-					if (RepositoryMediator.IsDebugEnabled)
+					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create index of No SQL successful => {kvp.Key}", null);
 				}
 				catch (Exception ex)
 				{
 					tracker?.Invoke($"Error occurred while creating index of No SQL => {ex.Message}", ex);
-					RepositoryMediator.WriteLogs($"Error occurred while creating index of No SQL => {ex.Message}", ex);
+					if (tracker == null)
+						RepositoryMediator.WriteLogs($"Error occurred while creating index of No SQL => {ex.Message}", ex);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -2291,13 +2292,14 @@ namespace net.vieapps.Components.Repository
 				{
 					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, Unique = true }), null, token).ConfigureAwait(false);
 					tracker?.Invoke($"Create unique index of No SQL successful => {kvp.Key}", null);
-					if (RepositoryMediator.IsDebugEnabled)
+					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create unique index of No SQL successful => {kvp.Key}", null);
 				}
 				catch (Exception ex)
 				{
 					tracker?.Invoke($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
-					RepositoryMediator.WriteLogs($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
+					if (tracker == null)
+						RepositoryMediator.WriteLogs($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -2314,13 +2316,14 @@ namespace net.vieapps.Components.Repository
 				{
 					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = $"{prefix}_Text_Search", Background = true }), null, cancellationToken).ConfigureAwait(false);
 					tracker?.Invoke($"Create text index of No SQL successful => {prefix}_Text_Search", null);
-					if (RepositoryMediator.IsDebugEnabled)
+					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create text index of No SQL successful => {prefix}_Text_Search", null);
 				}
 				catch (Exception ex)
 				{
 					tracker?.Invoke($"Error occurred while creating text index of No SQL => {ex.Message}", ex);
-					RepositoryMediator.WriteLogs($"Error occurred while creating text index of No SQL => {ex.Message}", ex);
+					if (tracker == null)
+						RepositoryMediator.WriteLogs($"Error occurred while creating text index of No SQL => {ex.Message}", ex);
 				}
 			}
 
