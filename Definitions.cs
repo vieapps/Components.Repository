@@ -28,13 +28,15 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
 	public class RepositoryDefinition
 	{
-		public RepositoryDefinition() { }
+		public RepositoryDefinition() : this(null) { }
+
+		public RepositoryDefinition(Type type) => this.Type = type;
 
 		#region Properties
 		/// <summary>
 		/// Gets the type of the class that responsibility to process data of the repository
 		/// </summary>
-		public Type Type { get; internal set; }
+		public Type Type { get; }
 
 		/// <summary>
 		/// Gets the name of the primary data source
@@ -118,37 +120,44 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the service that associates with the repository (when this object is defined as a module definition)
 		/// </summary>
-		public string ServiceName { get; internal set; }
+		public string ServiceName => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.ServiceName ?? this.Type?.GetTypeName(true);
 
 		/// <summary>
 		/// Gets the identity (when this object is defined as a module definition)
 		/// </summary>
-		public string ID { get; internal set; }
+		public string ID => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.ID;
 
 		/// <summary>
 		/// Gets the title (when this object is defined as a module definition)
 		/// </summary>
-		public string Title { get; internal set; }
+		public string Title => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.Title;
 
 		/// <summary>
 		/// Gets the description (when this object is defined as a module definition)
 		/// </summary>
-		public string Description { get; internal set; }
+		public string Description => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.Description;
 
 		/// <summary>
 		/// Gets or sets the name of the icon for working with user interfaces (when this object is defined as a module definition)
 		/// </summary>
-		public string Icon { get; set; }
+		public string Icon => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.Icon;
 
 		/// <summary>
 		/// Gets or sets the name of the directory that contains all files for working with user interfaces (when this object is defined as a module definition - will be placed in directory named '/themes/modules/', the value of 'ServiceName' will be used if no value was provided)
 		/// </summary>
-		public string Directory { get; internal set; }
+		public string Directory => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.Directory;
 
 		/// <summary>
 		/// Gets the name of the SQL table for storing extended properties, default is 'T_Data_Extended_Properties' (when this object is defined as a module definition)
 		/// </summary>
-		public string ExtendedPropertiesTableName { get; internal set; }
+		public string ExtendedPropertiesTableName
+		{
+			get
+			{
+				var tableName = this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.ExtendedPropertiesTableName;
+				return string.IsNullOrWhiteSpace(tableName) ? "T_Data_Extended_Properties" : tableName.Trim();
+			}
+		}
 
 		/// <summary>
 		/// Gets the collection of business repositories (means business modules at run-time)
@@ -160,26 +169,11 @@ namespace net.vieapps.Components.Repository
 		internal static void Register(Type type, Action<string, Exception> tracker = null)
 		{
 			// check
-			if (type == null || RepositoryMediator.RepositoryDefinitions.ContainsKey(type))
-				return;
-
-			// get info of the definition
-			var definitionInfo = type.GetCustomAttribute<RepositoryAttribute>(false);
-			if (definitionInfo == null)
+			if (type == null || RepositoryMediator.RepositoryDefinitions.ContainsKey(type) || type.GetCustomAttribute<RepositoryAttribute>(false) == null)
 				return;
 
 			// initialize
-			var definition = new RepositoryDefinition
-			{
-				Type = type,
-				ServiceName = !string.IsNullOrWhiteSpace(definitionInfo.ServiceName) ? definitionInfo.ServiceName : "",
-				ID = !string.IsNullOrWhiteSpace(definitionInfo.ID) ? definitionInfo.ID : "",
-				Directory = !string.IsNullOrWhiteSpace(definitionInfo.Directory) ? definitionInfo.Directory : null,
-				Title = !string.IsNullOrWhiteSpace(definitionInfo.Title) ? definitionInfo.Title : "",
-				Description = !string.IsNullOrWhiteSpace(definitionInfo.Description) ? definitionInfo.Description : "",
-				Icon = !string.IsNullOrWhiteSpace(definitionInfo.Icon) ? definitionInfo.Icon : null,
-				ExtendedPropertiesTableName = !string.IsNullOrWhiteSpace(definitionInfo.ExtendedPropertiesTableName) ? definitionInfo.ExtendedPropertiesTableName : "T_Data_Extended_Properties"
-			};
+			var definition = new RepositoryDefinition(type);
 
 			// update into collection
 			if (RepositoryMediator.RepositoryDefinitions.TryAdd(type, definition))
@@ -345,13 +339,15 @@ namespace net.vieapps.Components.Repository
 	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
 	public class EntityDefinition
 	{
-		public EntityDefinition() { }
+		public EntityDefinition() : this(null) { }
+
+		public EntityDefinition(Type type) => this.Type = type;
 
 		#region Properties
 		/// <summary>
 		/// Gets the type of the class that responsibility to process data of the repository entity
 		/// </summary>
-		public Type Type { get; internal set; }
+		public Type Type { get; }
 
 		/// <summary>
 		/// Gets the name of the primary data source
@@ -412,22 +408,36 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the name of the table in SQL database
 		/// </summary>
-		public string TableName { get; internal set; }
+		public string TableName => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.TableName;
 
 		/// <summary>
 		/// Gets or sets the name of the collection in NoSQL database
 		/// </summary>
-		public string CollectionName { get; internal set; }
+		public string CollectionName => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.CollectionName;
 
 		/// <summary>
 		/// Gets or sets the state that specifies this entity is able to search using full-text method
 		/// </summary>
-		public bool Searchable { get; internal set; } = true;
+		public bool Searchable
+		{
+			get
+			{
+				var info = this.Type?.GetCustomAttribute<EntityAttribute>(false);
+				return info != null && info.Searchable;
+			}
+		}
 
 		/// <summary>
 		/// Gets the state to create new version when a repository entity object is updated
 		/// </summary>
-		public bool CreateNewVersionWhenUpdated { get; internal set; } = true;
+		public bool CreateNewVersionWhenUpdated
+		{
+			get
+			{
+				var info = this.Type?.GetCustomAttribute<EntityAttribute>(false);
+				return info != null && info.CreateNewVersionWhenUpdated;
+			}
+		}
 
 		/// <summary>
 		/// Gets that state that specified data of this repository entity is sync automatically between data sources
@@ -484,52 +494,85 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the service's object that associates with the entity (when this object is defined as a content-type definition)
 		/// </summary>
-		public string ObjectName { get; internal set; }
+		public string ObjectName => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.ObjectName ?? this.Type?.GetTypeName(true);
 
 		/// <summary>
 		/// Gets the name prefix of the service's object that associates with the entity (when this object is defined as a content-type definition)
 		/// </summary>
-		public string ObjectNamePrefix { get; internal set; }
+		public string ObjectNamePrefix => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.ObjectNamePrefix;
 
 		/// <summary>
 		/// Gets the name suffix of the service's object that associates with the entity (when this object is defined as a content-type definition)
 		/// </summary>
-		public string ObjectNameSuffix { get; internal set; }
+		public string ObjectNameSuffix => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.ObjectNameSuffix;
 
 		/// <summary>
 		/// Gets the identity (when this object is defined as a content-type definition)
 		/// </summary>
-		public string ID { get; internal set; }
+		public string ID => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.ID;
 
 		/// <summary>
 		/// Gets the title (when this object is defined as a content-type definition)
 		/// </summary>
-		public string Title { get; internal set; }
+		public string Title => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.Title;
 
 		/// <summary>
 		/// Gets the description (when this object is defined as a content-type definition)
 		/// </summary>
-		public string Description { get; internal set; }
+		public string Description => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.Description;
 
 		/// <summary>
 		/// Gets or sets the name of the icon for working with user interfaces (when this object is defined as a content-type definition)
 		/// </summary>
-		public string Icon { get; set; }
+		public string Icon => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.Icon;
 
 		/// <summary>
 		/// Gets the state that allow to use multiple instances, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool MultipleIntances { get; internal set; } = false;
+		public bool MultipleIntances
+		{
+			get
+			{
+				var info = this.Type?.GetCustomAttribute<EntityAttribute>(false);
+				return info != null && info.MultipleIntances;
+			}
+		}
 
 		/// <summary>
 		/// Gets or sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Indexable { get; internal set; } = false;
+		public bool Indexable
+		{
+			get
+			{
+				var info = this.Type?.GetCustomAttribute<EntityAttribute>(false);
+				return info != null && info.Indexable;
+			}
+		}
 
 		/// <summary>
 		/// Gets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Extendable { get; internal set; } = false;
+		public bool Extendable
+		{
+			get
+			{
+				var info = this.Type?.GetCustomAttribute<EntityAttribute>(false);
+				return info != null && info.Extendable;
+			}
+		}
+
+		/// <summary>
+		/// Gets the state to specify that entity got some instances of portlet
+		/// </summary>
+		public bool Portlets
+		{
+			get
+			{
+				var info = this.Type?.GetCustomAttribute<EntityAttribute>(false);
+				return info != null &&!string.IsNullOrWhiteSpace(info.ID) && info.Portlets;
+			}
+		}
 
 		/// <summary>
 		/// Gets the type of parent entity definition (when this object is defined as a content-type definition)
@@ -546,16 +589,12 @@ namespace net.vieapps.Components.Repository
 		internal static void Register(Type type, Action<string, Exception> tracker = null)
 		{
 			// check
-			if (type == null || RepositoryMediator.EntityDefinitions.ContainsKey(type))
+			if (type == null || RepositoryMediator.EntityDefinitions.ContainsKey(type) || type.GetCustomAttribute<EntityAttribute>(false) == null)
 				return;
 
-			// get info of the definition
-			var definitionInfo = type.GetCustomAttribute<EntityAttribute>(false);
-			if (definitionInfo == null)
-				return;
-
-			// verify the name of table/collection
-			if (string.IsNullOrWhiteSpace(definitionInfo.TableName) && string.IsNullOrWhiteSpace(definitionInfo.CollectionName))
+			// initialize & verify the name of table/collection
+			var definition = new EntityDefinition(type);
+			if (string.IsNullOrWhiteSpace(definition.TableName) && string.IsNullOrWhiteSpace(definition.CollectionName))
 				throw new InformationRequiredException($"The type [{type}] must have name of SQL table or NoSQL collection");
 
 			// verify the mappings
@@ -578,7 +617,7 @@ namespace net.vieapps.Components.Repository
 			else if (properties.Count(attribute => attribute.IsMultipleParentMappings()) > 0)
 				throw new InformationInvalidException($"The type [{type}] got multiple parent mappings but got no information of the parent entity definition");
 
-			// verify alias
+			// verify the alias
 			var aliasProperties = properties.Where(attribute => attribute.IsAlias()).ToList();
 			if (aliasProperties.Count > 0)
 			{
@@ -595,26 +634,6 @@ namespace net.vieapps.Components.Repository
 						throw new InformationInvalidException($"The properties to make the alias combination of the type [{type}] are invalid [missing: {missingProps.Join(", ")}]");
 				}
 			}
-
-			// initialize
-			var definition = new EntityDefinition
-			{
-				Type = type,
-				TableName = definitionInfo.TableName,
-				CollectionName = definitionInfo.CollectionName,
-				Searchable = definitionInfo.Searchable,
-				CreateNewVersionWhenUpdated = definitionInfo.CreateNewVersionWhenUpdated,
-				ObjectName = !string.IsNullOrWhiteSpace(definitionInfo.ObjectName) ? definitionInfo.ObjectName : type.GetTypeName(true),
-				ObjectNamePrefix = !string.IsNullOrWhiteSpace(definitionInfo.ObjectNamePrefix) ? definitionInfo.ObjectNamePrefix : null,
-				ObjectNameSuffix = !string.IsNullOrWhiteSpace(definitionInfo.ObjectNameSuffix) ? definitionInfo.ObjectNameSuffix : null,
-				ID = !string.IsNullOrWhiteSpace(definitionInfo.ID) ? definitionInfo.ID : "",
-				Title = !string.IsNullOrWhiteSpace(definitionInfo.Title) ? definitionInfo.Title : "",
-				Description = !string.IsNullOrWhiteSpace(definitionInfo.Description) ? definitionInfo.Description : "",
-				Icon = !string.IsNullOrWhiteSpace(definitionInfo.Icon) ? definitionInfo.Icon : null,
-				MultipleIntances = definitionInfo.MultipleIntances,
-				Indexable = definitionInfo.Indexable,
-				Extendable = definitionInfo.Extendable
-			};
 
 			// public properties
 			var numberOfPrimaryKeys = 0;
@@ -721,6 +740,7 @@ namespace net.vieapps.Components.Repository
 			});
 
 			// cache
+			var definitionInfo = type.GetCustomAttribute<EntityAttribute>(false);
 			if (definitionInfo.CacheClass != null && !string.IsNullOrWhiteSpace(definitionInfo.CacheName))
 			{
 				var cache = definitionInfo.CacheClass.GetStaticObject(definitionInfo.CacheName);

@@ -82,9 +82,9 @@ namespace net.vieapps.Components.Repository
 		public string CacheName { get; set; }
 
 		/// <summary>
-		/// Gets or Sets the state that specifies this entity is able to search using full-text method
+		/// Gets or Sets the state that specifies this entity is able to search using full-text method (default is false)
 		/// </summary>
-		public bool Searchable { get; set; } = true;
+		public bool Searchable { get; set; } = false;
 
 		/// <summary>
 		/// Gets or Sets the name of the service's object that associates with the entity (when this object is defined as a content-type definition)
@@ -122,7 +122,7 @@ namespace net.vieapps.Components.Repository
 		public string Icon { get; set; }
 
 		/// <summary>
-		/// Gets or Sets the state to create new version when an entity object is updated
+		/// Gets or Sets the state to create new version when an entity object is updated (default is true)
 		/// </summary>
 		public bool CreateNewVersionWhenUpdated { get; set; } = true;
 
@@ -132,9 +132,9 @@ namespace net.vieapps.Components.Repository
 		public bool MultipleIntances { get; set; } = false;
 
 		/// <summary>
-		/// Gets or Sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
+		/// Gets or Sets the state that specifies this entity is able to index with global search module, default is false (when this object is defined as a content-type definition)
 		/// </summary>
-		public bool Indexable { get; set; } = true;
+		public bool Indexable { get; set; } = false;
 
 		/// <summary>
 		/// Gets or Sets the state that allow to extend this entity by extended properties, default is false (when this object is defined as a content-type definition)
@@ -142,9 +142,9 @@ namespace net.vieapps.Components.Repository
 		public bool Extendable { get; set; } = false;
 
 		/// <summary>
-		/// Gets or Sets the name of the standard property to place extended properties before its (when this object is defined as a content-type definition)
+		/// Gets or Sets the state to specify that content-type got some instances of portlet (default is true)
 		/// </summary>
-		public string ExtendedPropertiesBefore { get; set; }
+		public bool Portlets { get; set; } = true;
 	}
 
 	// ------------------------------------------
