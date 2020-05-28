@@ -675,9 +675,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsViewControl(this ObjectService.AttributeInfo attribute)
-			=> attribute != null && attribute.IsFormControl()
-				? attribute.GetCustomAttribute<FormControlAttribute>().AsViewControl
-				: false;
+			=> attribute != null && attribute.IsFormControl() && attribute.GetCustomAttribute<FormControlAttribute>().AsViewControl;
 
 		/// <summary>
 		/// Gets the state that determines this attribute is large string (CLOB) or not
@@ -701,12 +699,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsEnumString(this ObjectService.AttributeInfo attribute)
-		{
-			var jsonAttribute = attribute != null && attribute.IsEnum()
-				? attribute.GetCustomAttribute<JsonConverterAttribute>()
-				: null;
-			return jsonAttribute != null && jsonAttribute.ConverterType.Equals(typeof(Newtonsoft.Json.Converters.StringEnumConverter));
-		}
+			=> attribute != null && attribute.IsEnum() && typeof(Newtonsoft.Json.Converters.StringEnumConverter).Equals(attribute.GetCustomAttribute<JsonConverterAttribute>()?.ConverterType);
 
 		/// <summary>
 		/// Gets the state that determines this date-time attribute is be stored as string or not

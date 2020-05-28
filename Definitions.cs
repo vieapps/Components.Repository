@@ -25,7 +25,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a respository definition (means a module definition)
 	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
+	[Serializable, DebuggerDisplay("Name = {Type?.FullName}")]
 	public class RepositoryDefinition
 	{
 		public RepositoryDefinition() : this(null) { }
@@ -41,7 +41,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the primary data source
 		/// </summary>
-		public string PrimaryDataSourceName { get; internal set; }
+		public string PrimaryDataSourceName { get; private set; }
 
 		/// <summary>
 		/// Gets the primary data-source
@@ -51,7 +51,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the secondary data source
 		/// </summary>
-		public string SecondaryDataSourceName { get; internal set; }
+		public string SecondaryDataSourceName { get; private set; }
 
 		/// <summary>
 		/// Gets the secondary data-source
@@ -61,7 +61,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the names of the all data-sources that available for sync
 		/// </summary>
-		public string SyncDataSourceNames { get; internal set; }
+		public string SyncDataSourceNames { get; private set; }
 
 		/// <summary>
 		/// Gets the secondary data-source
@@ -78,7 +78,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the data source for storing information of versioning contents
 		/// </summary>
-		public string VersionDataSourceName { get; internal set; }
+		public string VersionDataSourceName { get; private set; }
 
 		/// <summary>
 		/// Gets the data-source that use to store versioning contents
@@ -88,7 +88,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the data source for storing information of trash contents
 		/// </summary>
-		public string TrashDataSourceName { get; internal set; }
+		public string TrashDataSourceName { get; private set; }
 
 		/// <summary>
 		/// Gets the data-source that use to store trash contents
@@ -98,17 +98,17 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets that state that specified this repository is an alias of other repository
 		/// </summary>
-		public bool IsAlias { get; internal set; } = false;
+		public bool IsAlias { get; private set; } = false;
 
 		/// <summary>
 		/// Gets that state that specified data of this repository is sync automatically between data sources
 		/// </summary>
-		public bool AutoSync { get; internal set; } = false;
+		public bool AutoSync { get; private set; } = false;
 
 		/// <summary>
 		/// Gets the extra information of the repository definition
 		/// </summary>
-		public Dictionary<string, object> Extras { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+		public Dictionary<string, object> Extras { get; private set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Gets the definitions of all entities
@@ -120,7 +120,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the service that associates with the repository (when this object is defined as a module definition)
 		/// </summary>
-		public string ServiceName => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.ServiceName ?? this.Type?.GetTypeName(true);
+		public string ServiceName => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.ServiceName;
 
 		/// <summary>
 		/// Gets the identity (when this object is defined as a module definition)
@@ -172,10 +172,8 @@ namespace net.vieapps.Components.Repository
 			if (type == null || RepositoryMediator.RepositoryDefinitions.ContainsKey(type) || type.GetCustomAttribute<RepositoryAttribute>(false) == null)
 				return;
 
-			// initialize
+			// initialize & register
 			var definition = new RepositoryDefinition(type);
-
-			// update into collection
 			if (RepositoryMediator.RepositoryDefinitions.TryAdd(type, definition))
 			{
 				tracker?.Invoke($"The repository definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]", null);
@@ -336,7 +334,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a repository entity definition (means a content-type definition)
 	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Type.FullName}")]
+	[Serializable, DebuggerDisplay("Name = {Type?.FullName}")]
 	public class EntityDefinition
 	{
 		public EntityDefinition() : this(null) { }
@@ -352,7 +350,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the primary data source
 		/// </summary>
-		public string PrimaryDataSourceName { get; internal set; }
+		public string PrimaryDataSourceName { get; private set; }
 
 		/// <summary>
 		/// Gets the primary data-source
@@ -362,7 +360,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the secondary data source
 		/// </summary>
-		public string SecondaryDataSourceName { get; internal set; }
+		public string SecondaryDataSourceName { get; private set; }
 
 		/// <summary>
 		/// Gets the secondary data-source
@@ -372,7 +370,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the names of the all data-sources that available for sync
 		/// </summary>
-		public string SyncDataSourceNames { get; internal set; }
+		public string SyncDataSourceNames { get; private set; }
 
 		/// <summary>
 		/// Gets the other data sources that are available for synchronizing
@@ -388,7 +386,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the data source for storing information of versioning contents
 		/// </summary>
-		public string VersionDataSourceName { get; internal set; }
+		public string VersionDataSourceName { get; private set; }
 
 		/// <summary>
 		/// Gets the data-source that use to store versioning contents
@@ -398,7 +396,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the name of the data source for storing information of trash contents
 		/// </summary>
-		public string TrashDataSourceName { get; internal set; }
+		public string TrashDataSourceName { get; private set; }
 
 		/// <summary>
 		/// Gets the data-source that use to store trash contents
@@ -442,12 +440,12 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets that state that specified data of this repository entity is sync automatically between data sources
 		/// </summary>
-		public bool AutoSync { get; internal set; } = false;
+		public bool AutoSync { get; private set; } = false;
 
 		/// <summary>
 		/// Gets the extra information of the repository entity definition
 		/// </summary>
-		public Dictionary<string, object> Extras { get; internal set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+		public Dictionary<string, object> Extras { get; private set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
 		/// <summary>
 		/// Gets the collection of all available attributes (properties and fields)
@@ -477,12 +475,12 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the caching object for processing with caching data of this entity
 		/// </summary>
-		public ICache Cache { get; internal set; }
+		public ICache Cache { get; private set; }
 
 		/// <summary>
 		/// Gets the type of the type that presents the repository definition of this repository entity definition
 		/// </summary>
-		public Type RepositoryDefinitionType { get; internal set; }
+		public Type RepositoryDefinitionType { get; private set; }
 
 		/// <summary>
 		/// Gets the repository definition of this repository entity definition
@@ -740,10 +738,10 @@ namespace net.vieapps.Components.Repository
 			});
 
 			// cache
-			var definitionInfo = type.GetCustomAttribute<EntityAttribute>(false);
-			if (definitionInfo.CacheClass != null && !string.IsNullOrWhiteSpace(definitionInfo.CacheName))
+			var info = type.GetCustomAttribute<EntityAttribute>(false);
+			if (info.CacheClass != null && !string.IsNullOrWhiteSpace(info.CacheName))
 			{
-				var cache = definitionInfo.CacheClass.GetStaticObject(definitionInfo.CacheName);
+				var cache = info.CacheClass.GetStaticObject(info.CacheName);
 				definition.Cache = cache != null && cache is ICache ? cache as ICache : null;
 			}
 

@@ -33,7 +33,7 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs($"Initialize the assembly: {assembly.GetName().Name} with {types.Length} exported type(s)", null);
 
 				// repositories
-				types.Where(type => type.IsDefined(typeof(RepositoryAttribute), false)).ForEach(type =>
+				types.Where(type => type.IsDefined<RepositoryAttribute>(false)).ForEach(type =>
 				{
 					tracker?.Invoke($"Register the repository: {type.GetTypeName()}", null);
 					if (tracker == null && RepositoryMediator.IsDebugEnabled)
@@ -42,7 +42,7 @@ namespace net.vieapps.Components.Repository
 				});
 
 				// entities
-				types.Where(type => type.IsDefined(typeof(EntityAttribute), false)).ForEach(type =>
+				types.Where(type => type.IsDefined<EntityAttribute>(false)).ForEach(type =>
 				{
 					tracker?.Invoke($"Register the repository entity: {type.GetTypeName()}", null);
 					if (tracker == null && RepositoryMediator.IsDebugEnabled)
@@ -51,7 +51,7 @@ namespace net.vieapps.Components.Repository
 				});
 
 				// event handlers
-				types.Where(type => type.IsDefined(typeof(EventHandlersAttribute), false))
+				types.Where(type => type.IsDefined<EventHandlersAttribute>(false))
 					.Where(type => typeof(IPreCreateHandler).IsAssignableFrom(type) || typeof(IPostCreateHandler).IsAssignableFrom(type)
 						|| typeof(IPreGetHandler).IsAssignableFrom(type) || typeof(IPostGetHandler).IsAssignableFrom(type)
 						|| typeof(IPreUpdateHandler).IsAssignableFrom(type) || typeof(IPostUpdateHandler).IsAssignableFrom(type)

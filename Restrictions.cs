@@ -590,7 +590,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var @operator = cjson.Get<string>("Operator");
 					if (!string.IsNullOrWhiteSpace(@operator))
-						this.Add(@operator.IsEquals("And") || @operator.IsEquals("Or") ? new FilterBys<T>(cjson as JObject) as IFilterBy<T> : new FilterBy<T>(cjson as JObject) as IFilterBy<T>);
+						this.Add(@operator.IsEquals("And") || @operator.IsEquals("Or") ? new FilterBys<T>(cjson as JObject) : new FilterBy<T>(cjson as JObject) as IFilterBy<T>);
 				});
 			}
 		}
@@ -985,7 +985,7 @@ namespace net.vieapps.Components.Repository
 			if (!string.IsNullOrWhiteSpace(this.Attribute))
 			{
 				var next = (this.ThenBy as SortBy<T>)?.GetSqlStatement(standardProperties, extendedProperties);
-				return this.Attribute + (this.Mode.Equals(SortMode.Ascending) ? " ASC" : " DESC") + (!string.IsNullOrWhiteSpace(next) ? ", " + next : "");
+				return this.Attribute + (this.Mode.Equals(SortMode.Ascending) ? " ASC" : " DESC") + (string.IsNullOrWhiteSpace(next) ? "" : $", {next}");
 			}
 			return null;
 		}
