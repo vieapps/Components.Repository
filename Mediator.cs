@@ -1312,7 +1312,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
 		public static RepositoryBase Get(string entityInfo, string objectID, bool processSecondaryWhenNotFound = true)
-			=> string.IsNullOrWhiteSpace(entityInfo)
+			=> string.IsNullOrWhiteSpace(entityInfo) || string.IsNullOrWhiteSpace(objectID)
 				? null
 				: RepositoryMediator.Get(entityInfo.IsValidUUID() ? RepositoryMediator.GetBusinessRepositoryEntity(entityInfo)?.EntityDefinition : RepositoryMediator.GetEntityDefinition(entityInfo), objectID, processSecondaryWhenNotFound);
 
@@ -1428,8 +1428,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
 		public static Task<RepositoryBase> GetAsync(string entityInfo, string objectID, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true)
-			=> string.IsNullOrWhiteSpace(entityInfo)
-				? null
+			=> string.IsNullOrWhiteSpace(entityInfo) || string.IsNullOrWhiteSpace(objectID)
+				? Task.FromResult<RepositoryBase>(null)
 				: RepositoryMediator.GetAsync(entityInfo.IsValidUUID() ? RepositoryMediator.GetBusinessRepositoryEntity(entityInfo)?.EntityDefinition : RepositoryMediator.GetEntityDefinition(entityInfo), objectID, cancellationToken, processSecondaryWhenNotFound);
 		#endregion
 
@@ -6117,11 +6117,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
-		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <param name="onItemCompleted">The action to run on item completed</param>
 		/// <returns></returns>
-		public static JArray ToJsonArray<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemPreCompleted = null) where T : class
+		public static JArray ToJsonArray<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemCompleted = null) where T : class
 			=> objects != null && objects.Count > 0
-				? objects.ToJArray(@object => @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object?.ToJson())
+				? objects.ToJArray(@object => @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemCompleted) : @object?.ToJson())
 				: new JArray();
 
 		/// <summary>
@@ -6129,10 +6129,10 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
-		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <param name="onItemCompleted">The action to run on item completed</param>
 		/// <returns></returns>
-		public static JArray ToJsonArray<T>(this List<T> objects, Action<JObject> onItemPreCompleted) where T : class
-			=> objects.ToJsonArray(false, onItemPreCompleted);
+		public static JArray ToJsonArray<T>(this List<T> objects, Action<JObject> onItemCompleted) where T : class
+			=> objects.ToJsonArray(false, onItemCompleted);
 
 		/// <summary>
 		/// Serializes the collection of objects to a JSON object
@@ -6140,12 +6140,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
-		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <param name="onItemCompleted">The action to run on item completed</param>
 		/// <returns></returns>
-		public static JObject ToJsonObject<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemPreCompleted = null) where T : class
+		public static JObject ToJsonObject<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemCompleted = null) where T : class
 		{
 			var json = new JObject();
-			objects.ForEach(@object => json.Add(new JProperty(@object?.GetEntityID(), @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemPreCompleted) : @object?.ToJson())));
+			objects.ForEach(@object => json.Add(new JProperty(@object?.GetEntityID(), @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemCompleted) : @object?.ToJson())));
 			return json;
 		}
 
@@ -6154,10 +6154,10 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
-		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <param name="onItemCompleted">The action to run on item completed</param>
 		/// <returns></returns>
-		public static JObject ToJsonObject<T>(this List<T> objects, Action<JObject> onItemPreCompleted) where T : class
-			=> objects.ToJsonObject(false, onItemPreCompleted);
+		public static JObject ToJsonObject<T>(this List<T> objects, Action<JObject> onItemCompleted) where T : class
+			=> objects.ToJsonObject(false, onItemCompleted);
 
 		/// <summary>
 		/// Serializes the collection of objects to XML
@@ -6166,13 +6166,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="objects">The object to serialize</param>
 		/// <param name="name">The string that presents name of root tag, null to use default</param>
 		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties when generate elements</param>
-		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <param name="onItemCompleted">The action to run on item completed</param>
 		/// <returns></returns>
-		public static XElement ToXml<T>(this List<T> objects, string name = null, bool addTypeOfExtendedProperties = false, Action<XElement> onItemPreCompleted = null) where T : class
+		public static XElement ToXml<T>(this List<T> objects, string name = null, bool addTypeOfExtendedProperties = false, Action<XElement> onItemCompleted = null) where T : class
 		{
 			var xml = new XElement(XName.Get(string.IsNullOrWhiteSpace(name) ? typeof(T).GetTypeName(true) : name));
 			if (objects != null)
-				objects.ForEach(@object => xml.Add(@object is RepositoryBase ? (@object as RepositoryBase)?.ToXml(addTypeOfExtendedProperties, onItemPreCompleted) : @object?.ToXml()));
+				objects.ForEach(@object => xml.Add(@object is RepositoryBase ? (@object as RepositoryBase)?.ToXml(addTypeOfExtendedProperties, onItemCompleted) : @object?.ToXml()));
 			return xml;
 		}
 
@@ -6181,10 +6181,10 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="objects">The object to serialize</param>
-		/// <param name="onItemPreCompleted">The action to run on item pre-completed</param>
+		/// <param name="onItemCompleted">The action to run on item completed</param>
 		/// <returns></returns>
-		public static XElement ToXml<T>(this List<T> objects, Action<XElement> onItemPreCompleted) where T : class
-			=> objects.ToXml(null, false, onItemPreCompleted);
+		public static XElement ToXml<T>(this List<T> objects, Action<XElement> onItemCompleted) where T : class
+			=> objects.ToXml(null, false, onItemCompleted);
 		#endregion
 
 		#region Generate form controls

@@ -595,7 +595,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsIgnored(this ObjectService.AttributeInfo attribute)
-			=> attribute?.GetCustomAttribute<IgnoreAttribute>() != null || attribute?.GetCustomAttribute<MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute>() != null;
+			=> attribute?.GetCustomAttribute<IgnoreAttribute>(false) != null || attribute?.GetCustomAttribute<MongoDB.Bson.Serialization.Attributes.BsonIgnoreAttribute>(false) != null;
 
 		/// <summary>
 		/// Gets the state that determines this attribute is be ignored if value is null or not
@@ -603,7 +603,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="attribute"></param>
 		/// <returns></returns>
 		public static bool IsIgnoredIfNull(this ObjectService.AttributeInfo attribute)
-			=> attribute?.GetCustomAttribute<IgnoreIfNullAttribute>() != null;
+			=> attribute?.GetCustomAttribute<IgnoreIfNullAttribute>(false) != null;
 
 		/// <summary>
 		/// Gets the state that determines this property is mark as alias

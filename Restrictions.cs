@@ -10,13 +10,12 @@ using System.Linq;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using System.Dynamic;
-
 using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
+using Newtonsoft.Json.Converters;
 using net.vieapps.Components.Utility;
 #endregion
 
@@ -28,6 +27,11 @@ namespace net.vieapps.Components.Repository
 	[Serializable]
 	public class FilterBy : IFilterBy
 	{
+		/// <summary>
+		/// Initializes a new filtering expression
+		/// </summary>
+		public FilterBy() : this(null, null) { }
+
 		/// <summary>
 		/// Initializes a new filtering expression
 		/// </summary>
@@ -60,6 +64,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the operator for comparing
 		/// </summary>
+		[JsonConverter(typeof(StringEnumConverter)), BsonRepresentation(BsonType.String)]
 		public CompareOperator Operator { get; set; }
 
 		/// <summary>
@@ -440,6 +445,11 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Initializes a group of filtering expressions
 		/// </summary>
+		public FilterBys() : this(null) { }
+
+		/// <summary>
+		/// Initializes a group of filtering expressions
+		/// </summary>
 		/// <param name="operator">The initializing operator</param>
 		/// <param name="children">The initializing child expressions</param>
 		public FilterBys(GroupOperator @operator = GroupOperator.And, List<IFilterBy> children = null)
@@ -461,6 +471,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the operator
 		/// </summary>
+		[JsonConverter(typeof(StringEnumConverter)), BsonRepresentation(BsonType.String)]
 		public GroupOperator Operator { get; set; }
 
 		/// <summary>
@@ -487,7 +498,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var @operator = cjson.Get<string>("Operator");
 					if (!string.IsNullOrWhiteSpace(@operator))
-						this.Add(@operator.IsEquals("And") || @operator.IsEquals("Or") ? new FilterBys(cjson as JObject) as IFilterBy : new FilterBy(cjson as JObject) as IFilterBy);
+						this.Add(@operator.IsEquals("And") || @operator.IsEquals("Or") ? new FilterBys(cjson as JObject) : new FilterBy(cjson as JObject) as IFilterBy);
 				});
 			}
 		}
@@ -570,6 +581,13 @@ namespace net.vieapps.Components.Repository
 				base.Children.Add(filter);
 			}
 		}
+
+		/// <summary>
+		/// Adds a list of filtering expressions into the collection of children
+		/// </summary>
+		/// <param name="filters"></param>
+		public void Add(params IFilterBy<T>[] filters)
+			=> filters?.ForEach(item => this.Add(item));
 
 		/// <summary>
 		/// Adds a filtering expression into the collection of children
@@ -856,6 +874,11 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Initializes a sorting expression
 		/// </summary>
+		public SortBy() : this(null, null) { }
+
+		/// <summary>
+		/// Initializes a sorting expression
+		/// </summary>
 		/// <param name="attribute">The sorting-by attribute</param>
 		/// <param name="mode">The sorting mode</param>
 		public SortBy(string attribute = null, SortMode mode = SortMode.Ascending)
@@ -876,6 +899,7 @@ namespace net.vieapps.Components.Repository
 
 		public string Attribute { get; set; }
 
+		[JsonConverter(typeof(StringEnumConverter)), BsonRepresentation(BsonType.String)]
 		public SortMode Mode { get; set; }
 
 		public ISortBy ThenBy { get; set; }
