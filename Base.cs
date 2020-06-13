@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using System.Xml.Serialization;
+using System.Globalization;
 using System.Xml.Linq;
+using System.Xml.Serialization;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -3272,8 +3273,8 @@ namespace net.vieapps.Components.Repository
 					var value = type == null || type.IsPrimitiveType()
 						? property.Value
 						: property.Value is RepositoryBase
-							? (property.Value as RepositoryBase).ToJson(addTypeOfExtendedProperties, null)
-							: property.Value.ToJson();
+							? (property.Value as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, null)
+							: property.Value?.ToJson();
 
 					json.Add(new JProperty(property.Key, value));
 				});
@@ -3323,21 +3324,36 @@ namespace net.vieapps.Components.Repository
 		/// <param name="onCompleted">The action to run when complete</param>
 		/// <returns></returns>
 		public override XElement ToXml(bool addTypeOfExtendedProperties = false, Action<XElement> onCompleted = null)
+			=> this.ToXml(addTypeOfExtendedProperties, "", onCompleted);
+
+		/// <summary>
+		/// Serializes this object to XML object
+		/// </summary>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (attribute named '$type')</param>
+		/// <param name="cultureName">The culture name to format date-time and number, ex: vi-VN, en-US, ...</param>
+		/// <param name="onCompleted">The action to run when complete</param>
+		/// <returns></returns>
+		public XElement ToXml(bool addTypeOfExtendedProperties, string cultureName, Action<XElement> onCompleted = null)
+			=> this.ToXml(addTypeOfExtendedProperties, string.IsNullOrWhiteSpace(cultureName) ? CultureInfo.GetCultureInfo("vi-VN") : CultureInfo.GetCultureInfo(cultureName) ?? CultureInfo.GetCultureInfo("vi-VN"), onCompleted);
+
+		/// <summary>
+		/// Serializes this object to XML object
+		/// </summary>
+		/// <param name="addTypeOfExtendedProperties">true to add type of all extended properties (attribute named '$type')</param>
+		/// <param name="cultureInfo">The culture information to format date-time and number</param>
+		/// <param name="onCompleted">The action to run when complete</param>
+		/// <returns></returns>
+		public XElement ToXml(bool addTypeOfExtendedProperties, CultureInfo cultureInfo, Action<XElement> onCompleted = null)
 		{
 			// the original object
 			var xml = (this as T).ToXml();
-			this.GetPublicAttributes(attribute => attribute.IsDateTimeType()).ForEach(attribute =>
+			this.GetPublicAttributes(attribute => attribute.IsDateTimeType() || attribute.IsNumericType()).ForEach(attribute =>
 			{
 				var element = xml.Element(attribute.Name);
-				var value = this.GetAttributeValue(attribute);
-				if (element != null && value != null)
-				{
-					var datetime = value is DateTime? ? (value as DateTime?).Value : (DateTime)value;
-					element.Add(new XAttribute("Full", datetime.ToString("dd/MM/yyyy HH:mm:ss")));
-					element.Add(new XAttribute("FullAlternative", datetime.ToString("MM/dd/yyyy HH:mm:ss")));
-					element.Add(new XAttribute("Short", datetime.ToString("hh:mm tt @ dd/MM/yyyy")));
-					element.Add(new XAttribute("ShortAlternative", datetime.ToString("hh:mm tt @ MM/dd/yyyy")));
-				}
+				if (attribute.IsDateTimeType())
+					element.UpdateDateTime(cultureInfo);
+				else
+					element.UpdateNumber(attribute.IsFloatingPointType(), cultureInfo);
 			});
 
 			// extended properties (IBusinessEntity)
@@ -3353,16 +3369,15 @@ namespace net.vieapps.Components.Repository
 							: property.Value.ToXml();
 
 					var element = new XElement(property.Key, value);
-					if (addTypeOfExtendedProperties && type != null)
-						element.Add(new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
 
-					if (value != null && value.GetType().IsDateTimeType())
+					if (type != null)
 					{
-						var datetime = value is DateTime? ? (value as DateTime?).Value : (DateTime)value;
-						element.Add(new XAttribute("Full", datetime.ToString("dd/MM/yyyy HH:mm:ss")));
-						element.Add(new XAttribute("FullAlternative", datetime.ToString("MM/dd/yyyy HH:mm:ss")));
-						element.Add(new XAttribute("Short", datetime.ToString("hh:mm tt @ dd/MM/yyyy")));
-						element.Add(new XAttribute("ShortAlternative", datetime.ToString("hh:mm tt @ MM/dd/yyyy")));
+						if (addTypeOfExtendedProperties)
+							element.Add(new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
+						if (type.IsDateTimeType())
+							element.UpdateDateTime(cultureInfo);
+						else if (type.IsNumericType())
+							element.UpdateNumber(type.IsFloatingPointType(), cultureInfo);
 					}
 
 					xml.Add(element);
