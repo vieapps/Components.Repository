@@ -1,16 +1,17 @@
 ﻿#region Related components
 using System;
+using System.IO;
+using System.Data;
+using System.Data.Common;
 using System.Linq;
-using System.Collections.Generic;
+using System.Xml;
+using System.Xml.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Configuration;
 using System.Diagnostics;
-using System.IO;
-using System.Data;
-using System.Data.Common;
-using System.Xml;
-using System.Xml.Linq;
+using System.Globalization;
+using System.Collections.Generic;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -6145,7 +6146,14 @@ namespace net.vieapps.Components.Repository
 		public static JObject ToJsonObject<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemCompleted = null) where T : class
 		{
 			var json = new JObject();
-			objects.ForEach(@object => json.Add(new JProperty(@object?.GetEntityID(), @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemCompleted) : @object?.ToJson())));
+			objects?.ForEach(@object =>
+			{
+				var itemjson = @object is RepositoryBase
+					? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, null)
+					: @object?.ToJson() as JObject;
+				onItemCompleted?.Invoke(itemjson);
+				json.Add(new JProperty(@object?.GetEntityID(), itemjson));
+			});
 			return json;
 		}
 
@@ -6170,9 +6178,15 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static XElement ToXml<T>(this List<T> objects, string name = null, bool addTypeOfExtendedProperties = false, Action<XElement> onItemCompleted = null) where T : class
 		{
-			var xml = new XElement(XName.Get(string.IsNullOrWhiteSpace(name) ? typeof(T).GetTypeName(true) : name));
-			if (objects != null)
-				objects.ForEach(@object => xml.Add(@object is RepositoryBase ? (@object as RepositoryBase)?.ToXml(addTypeOfExtendedProperties, onItemCompleted) : @object?.ToXml()));
+			var xml = new XElement(string.IsNullOrWhiteSpace(name) ? typeof(T).GetTypeName(true) : name);
+			objects?.ForEach(@object =>
+			{
+				var element = @object is RepositoryBase
+					? (@object as RepositoryBase)?.ToXml(addTypeOfExtendedProperties, null)
+					: @object?.ToXml();
+				onItemCompleted?.Invoke(element);
+				xml.Add(element);
+			});
 			return xml;
 		}
 
@@ -6185,6 +6199,50 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static XElement ToXml<T>(this List<T> objects, Action<XElement> onItemCompleted) where T : class
 			=> objects.ToXml(null, false, onItemCompleted);
+
+		/// <summary>
+		/// Updates date-time attributes of this element
+		/// </summary>
+		/// <param name="element"></param>
+		/// <param name="cultureInfo"></param>
+		/// <param name="onCompleted"></param>
+		/// <returns></returns>
+		public static XElement UpdateDateTime(this XElement element, CultureInfo cultureInfo, Action<XElement> onCompleted = null)
+		{
+			if (element != null && DateTime.TryParse(element.Value, out var value))
+			{
+				element.Add(new XAttribute("Full", value.ToString("hh:mm tt @ dddd - dd MMMM, yyyy", cultureInfo)));
+				element.Add(new XAttribute("Long", value.ToString("dd/MM/yyyy HH:mm:ss")), new XAttribute("LongAlternative", value.ToString("MM/dd/yyyy HH:mm:ss")));
+				element.Add(new XAttribute("Short", value.ToString("hh:mm tt @ dd/MM/yyyy", cultureInfo)), new XAttribute("ShortAlternative", value.ToString("hh:mm tt @ MM/dd/yyyy", cultureInfo)));
+				element.Add(new XAttribute("DateOnly", value.ToString("dd/MM/yyyy")), new XAttribute("DateOnlyAlternative", value.ToString("MM/dd/yyyy")));
+				element.Add(new XAttribute("TimeOnly", value.ToString("HH:mm:ss")), new XAttribute("TimeOnlyAlternative", value.ToString("hh:mm tt", cultureInfo)));
+			}
+			onCompleted?.Invoke(element);
+			return element;
+		}
+
+		/// <summary>
+		/// Updates numberic attributes of this element
+		/// </summary>
+		/// <param name="element"></param>
+		/// <param name="isFloatingPointNumber"></param>
+		/// <param name="cultureInfo"></param>
+		/// <param name="onCompleted"></param>
+		/// <returns></returns>
+		public static XElement UpdateNumber(this XElement element, bool isFloatingPointNumber, CultureInfo cultureInfo, Action<XElement> onCompleted = null)
+		{
+			if (element != null)
+			{
+				if (isFloatingPointNumber && Decimal.TryParse(element.Value, out var floatingNumber))
+					element.Add(new XAttribute("Formatted", floatingNumber.ToString("###,###,###,###,##0.##", cultureInfo)));
+				else if (!isFloatingPointNumber && Int64.TryParse(element.Value, out var integralNumber))
+					element.Add(new XAttribute("Formatted", integralNumber.ToString("###,###,###,###,##0", cultureInfo)));
+				else
+					element.Add(new XAttribute("Formatted", Decimal.TryParse(element.Value, out var number) ? number.ToString("###,###,###,###,##0.##", cultureInfo) : "unknown"));
+			}
+			onCompleted?.Invoke(element);
+			return element;
+		}
 		#endregion
 
 		#region Generate form controls
@@ -6192,22 +6250,36 @@ namespace net.vieapps.Components.Repository
 		{
 			{ typeof(string), "text" },
 			{ typeof(char), "text" },
-			{ typeof(byte[]), "" },
+			{ typeof(char?), "text" },
 			{ typeof(byte), "number" },
+			{ typeof(byte?), "number" },
 			{ typeof(sbyte), "number" },
+			{ typeof(sbyte?), "number" },
 			{ typeof(short), "number" },
+			{ typeof(short?), "number" },
 			{ typeof(ushort), "number" },
+			{ typeof(ushort?), "number" },
 			{ typeof(int), "number" },
+			{ typeof(int?), "number" },
 			{ typeof(uint), "number" },
+			{ typeof(uint?), "number" },
 			{ typeof(long), "number" },
+			{ typeof(long?), "number" },
 			{ typeof(ulong), "number" },
+			{ typeof(ulong?), "number" },
 			{ typeof(float), "number" },
+			{ typeof(float?), "number" },
 			{ typeof(double), "number" },
+			{ typeof(double?), "number" },
 			{ typeof(decimal), "number" },
+			{ typeof(decimal?), "number" },
+			{ typeof(DateTime), "date" },
+			{ typeof(DateTime?), "date" },
+			{ typeof(DateTimeOffset), "date" },
+			{ typeof(DateTimeOffset?), "date" },
 			{ typeof(bool), "" },
 			{ typeof(Guid), "" },
-			{ typeof(DateTime), "date" },
-			{ typeof(DateTimeOffset), "date" }
+			{ typeof(byte[]), "" }
 		};
 
 		static List<AttributeInfo> GetFormAttributes(Type type)
@@ -6318,11 +6390,10 @@ namespace net.vieapps.Components.Repository
 				if (selectValues == null && (attribute.IsEnum() || attribute.IsEnumString()))
 					try
 					{
-						var underlyingType = Nullable.GetUnderlyingType(attribute.Type);
-						selectValues = underlyingType != null
+						selectValues = attribute.IsNullable()
 							? attribute.IsEnumString()
-								? Enum.GetNames(underlyingType).Join(",")
-								: Enum.GetValues(underlyingType).ToEnumerable().Select(e => e.ToString()).Join(",")
+								? Enum.GetNames(attribute.Type.GetEnumUnderlyingType() ?? attribute.Type).Join(",")
+								: Enum.GetValues(attribute.Type.GetEnumUnderlyingType() ?? attribute.Type).ToEnumerable().Select(e => e.ToString()).Join(",")
 							: attribute.IsEnumString()
 								? Enum.GetNames(attribute.Type).Join(",")
 								: Enum.GetValues(attribute.Type).ToEnumerable().Select(e => e.ToString()).Join(",");
@@ -6508,9 +6579,7 @@ namespace net.vieapps.Components.Repository
 				{ "Options", attribute.GenerateControlOptions<T>(controlType, label, description, placeHolder) }
 			};
 
-			var required = isPrimaryKey
-				? false
-				: attribute.NotNull || (attribute.NotEmpty != null && attribute.NotEmpty.Value) || (info != null && info.Required);
+			var required = !isPrimaryKey && (attribute.NotNull || (attribute.NotEmpty != null && attribute.NotEmpty.Value) || (info != null && info.Required));
 
 			if (hidden)
 				control["Hidden"] = hidden;
