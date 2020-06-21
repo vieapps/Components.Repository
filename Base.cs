@@ -18,6 +18,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using net.vieapps.Components.Utility;
 using net.vieapps.Components.Security;
+using System.Dynamic;
 #endregion
 
 namespace net.vieapps.Components.Repository
@@ -293,6 +294,86 @@ namespace net.vieapps.Components.Repository
 				return this._totalVersions;
 			}
 		}
+
+		#region [Public] Fill
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		public T Fill(ExpandoObject data, HashSet<string> excluded = null, Action<T> onCompleted = null)
+		{
+			// standard properties
+			this.CopyFrom(data, excluded);
+			this.OriginalPrivileges = this.OriginalPrivileges?.Normalize();
+			this.TrimAll();
+
+			// extended properties
+			if (this is IBusinessEntity && !string.IsNullOrWhiteSpace(this.RepositoryEntityID))
+			{
+				var definition = RepositoryMediator.GetEntityDefinition<T>(false);
+				if (definition != null && definition.BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity) && repositoryEntity != null && repositoryEntity.ExtendedPropertyDefinitions != null)
+					repositoryEntity.ExtendedPropertyDefinitions.ForEach(propertyDefinition =>
+					{
+						var value = data?.Get(propertyDefinition.Name);
+						if (value != null && value is string)
+						{
+							var maxLength = 0;
+							switch (propertyDefinition.Mode)
+							{
+								case ExtendedPropertyMode.SmallText:
+								case ExtendedPropertyMode.Select:
+									maxLength = 250;
+									break;
+
+								case ExtendedPropertyMode.MediumText:
+									maxLength = 4000;
+									break;
+							}
+							if (maxLength > 0 && (value as string).Length > maxLength)
+								value = (value as string).Left(maxLength);
+						}
+						this.ExtendedProperties[propertyDefinition.Name] = value;
+					});
+			}
+
+			// return object
+			onCompleted?.Invoke(this as T);
+			return this as T;
+		}
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		public T Fill(JToken data, HashSet<string> excluded = null, Action<T> onCompleted = null)
+			=> this.Fill(data?.ToExpandoObject(), excluded, onCompleted);
+		#endregion
+
+		#region [Static] Create new an instance
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <returns></returns>
+		public static T CreateInstance(ExpandoObject data, HashSet<string> excluded = null, Action<T> onCompleted = null)
+			=> (ObjectService.CreateInstance<T>() as RepositoryBase<T>).Fill(data, excluded, onCompleted);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <returns></returns>
+		public static T CreateInstance(JToken data, HashSet<string> excluded = null, Action<T> onCompleted = null)
+			=> (ObjectService.CreateInstance<T>() as RepositoryBase<T>).Fill(data, excluded, onCompleted);
+		#endregion
 
 		#region [Static] Create
 		/// <summary>
@@ -665,7 +746,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static TEntity Get<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessRepositoryEntityID = null) where TEntity : class
-			=> RepositoryMediator.Get<TEntity>(context, dataSource, filter, sort, businessRepositoryEntityID);
+			=> RepositoryMediator.Get(context, dataSource, filter, sort, businessRepositoryEntityID);
 
 		/// <summary>
 		/// Gets an object (the first matched with the filter)
@@ -695,7 +776,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static TEntity Get<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessRepositoryEntityID = null) where TEntity : class
-			=> RepositoryMediator.Get<TEntity>(context, aliasTypeName, filter, sort, businessRepositoryEntityID);
+			=> RepositoryMediator.Get(context, aliasTypeName, filter, sort, businessRepositoryEntityID);
 
 		/// <summary>
 		/// Gets an object (the first matched with the filter)
@@ -707,7 +788,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static TEntity Get<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessRepositoryEntityID = null) where TEntity : class
-			=> RepositoryMediator.Get<TEntity>(aliasTypeName, filter, sort, businessRepositoryEntityID);
+			=> RepositoryMediator.Get(aliasTypeName, filter, sort, businessRepositoryEntityID);
 
 		/// <summary>
 		/// Gets an object (the first matched with the filter)
@@ -753,7 +834,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
-			=> RepositoryMediator.GetAsync<TEntity>(context, dataSource, filter, sort, businessRepositoryEntityID, cancellationToken);
+			=> RepositoryMediator.GetAsync(context, dataSource, filter, sort, businessRepositoryEntityID, cancellationToken);
 
 		/// <summary>
 		/// Gets an object (the first matched with the filter)
@@ -785,7 +866,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
-			=> RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, filter, sort, businessRepositoryEntityID, cancellationToken);
+			=> RepositoryMediator.GetAsync(context, aliasTypeName, filter, sort, businessRepositoryEntityID, cancellationToken);
 
 		/// <summary>
 		/// Gets an object (the first matched with the filter)
@@ -798,7 +879,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The first object that matched with the filter; otherwise null</returns>
 		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
-			=> RepositoryMediator.GetAsync<TEntity>(aliasTypeName, filter, sort, businessRepositoryEntityID, cancellationToken);
+			=> RepositoryMediator.GetAsync(aliasTypeName, filter, sort, businessRepositoryEntityID, cancellationToken);
 
 		/// <summary>
 		/// Gets an object (the first matched with the filter)
@@ -3333,7 +3414,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cultureName">The culture name to format date-time and number, ex: vi-VN, en-US, ...</param>
 		/// <param name="onCompleted">The action to run when complete</param>
 		/// <returns></returns>
-		public XElement ToXml(bool addTypeOfExtendedProperties, string cultureName, Action<XElement> onCompleted = null)
+		public virtual XElement ToXml(bool addTypeOfExtendedProperties, string cultureName, Action<XElement> onCompleted = null)
 			=> this.ToXml(addTypeOfExtendedProperties, string.IsNullOrWhiteSpace(cultureName) ? CultureInfo.GetCultureInfo("vi-VN") : CultureInfo.GetCultureInfo(cultureName) ?? CultureInfo.GetCultureInfo("vi-VN"), onCompleted);
 
 		/// <summary>
@@ -3343,7 +3424,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cultureInfo">The culture information to format date-time and number</param>
 		/// <param name="onCompleted">The action to run when complete</param>
 		/// <returns></returns>
-		public XElement ToXml(bool addTypeOfExtendedProperties, CultureInfo cultureInfo, Action<XElement> onCompleted = null)
+		public virtual XElement ToXml(bool addTypeOfExtendedProperties, CultureInfo cultureInfo, Action<XElement> onCompleted = null)
 		{
 			// the original object
 			var xml = (this as T).ToXml();
@@ -3382,25 +3463,6 @@ namespace net.vieapps.Components.Repository
 
 					xml.Add(element);
 				});
-
-			/*
-			// privileges				
-			if (this.WorkingPrivileges != null && !this.WorkingPrivileges.IsInheritFromParent() && xml.Elements().FirstOrDefault(e => e.Name.Equals("Privileges")) == null)
-				xml.Add(new XElement("Privileges", this.WorkingPrivileges.ToXml()));
-
-			if (this.OriginalPrivileges != null && !this.OriginalPrivileges.IsInheritFromParent() && xml.Elements().FirstOrDefault(e => e.Name.Equals("OriginalPrivileges")) == null)
-				xml.Add(new XElement("OriginalPrivileges", this.OriginalPrivileges.ToXml()));
-
-			// system management properties
-			if (!string.IsNullOrWhiteSpace(this.SystemID))
-				xml.Add(new XElement("SystemID", this.SystemID));
-
-			if (!string.IsNullOrWhiteSpace(this.RepositoryID))
-				xml.Add(new XElement("RepositoryID", this.RepositoryID));
-
-			if (!string.IsNullOrWhiteSpace(this.RepositoryEntityID))
-				xml.Add(new XElement("RepositoryEntityID", this.RepositoryEntityID));
-			*/
 
 			// return
 			onCompleted?.Invoke(xml);
