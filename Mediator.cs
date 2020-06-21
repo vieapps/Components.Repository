@@ -497,10 +497,10 @@ namespace net.vieapps.Components.Repository
 
 				else if (attribute.Type.IsStringType())
 				{
-					var isCLOB = attribute.IsCLOB != null ? attribute.IsCLOB.Value : false;
+					var isCLOB = attribute.IsCLOB != null && attribute.IsCLOB.Value;
 					if (!isCLOB)
 					{
-						var isNotEmpty = attribute.NotEmpty != null ? attribute.NotEmpty.Value : false;
+						var isNotEmpty = attribute.NotEmpty != null && attribute.NotEmpty.Value;
 						if (isNotEmpty && string.IsNullOrWhiteSpace(value as string))
 							throw new InformationRequiredException($"The value of the {(attribute.IsPublic ? "property" : "attribute")} named '{attribute.Name}' is required (doesn't allow empty or null)");
 
@@ -515,13 +515,13 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// extended properties
-			stateData.TryGetValue("EntityID", out object entityID);
-			if (entityID != null && entityID is string && !string.IsNullOrWhiteSpace(entityID as string))
-				if (definition.BusinessRepositoryEntities.TryGetValue(entityID as string, out var repositoryEntity))
-					foreach (var attribute in (repositoryEntity?.ExtendedPropertyDefinitions ?? new List<ExtendedPropertyDefinition>()))
+			stateData.TryGetValue("RepositoryEntityID", out object repositoryEntityID);
+			if (repositoryEntityID != null && repositoryEntityID is string && !string.IsNullOrWhiteSpace(repositoryEntityID as string))
+				if (definition.BusinessRepositoryEntities.TryGetValue(repositoryEntityID as string, out var repositoryEntity))
+					foreach (var attribute in repositoryEntity?.ExtendedPropertyDefinitions ?? new List<ExtendedPropertyDefinition>())
 					{
-						if (attribute.Mode.Equals(ExtendedPropertyMode.YesNo) || attribute.Mode.Equals(ExtendedPropertyMode.Number)
-						|| attribute.Mode.Equals(ExtendedPropertyMode.Decimal) || attribute.Mode.Equals(ExtendedPropertyMode.DateTime)
+						if (attribute.Mode.Equals(ExtendedPropertyMode.YesNo) || attribute.Mode.Equals(ExtendedPropertyMode.IntegralNumber)
+						|| attribute.Mode.Equals(ExtendedPropertyMode.FloatingPointNumber) || attribute.Mode.Equals(ExtendedPropertyMode.DateTime)
 						|| attribute.Mode.Equals(ExtendedPropertyMode.LargeText))
 							continue;
 
@@ -531,11 +531,7 @@ namespace net.vieapps.Components.Repository
 						if (value == null || string.IsNullOrWhiteSpace(value as string))
 							continue;
 
-						var maxLength = attribute.Mode.Equals(ExtendedPropertyMode.SmallText) || attribute.Mode.Equals(ExtendedPropertyMode.Select)
-						|| attribute.Mode.Equals(ExtendedPropertyMode.Lookup) || attribute.Mode.Equals(ExtendedPropertyMode.User)
-							? 250
-							: 4000;
-
+						var maxLength = attribute.Mode.Equals(ExtendedPropertyMode.SmallText) || attribute.Mode.Equals(ExtendedPropertyMode.Select) ? 250 : 4000;
 						if ((value as string).Length > maxLength)
 						{
 							changed = true;

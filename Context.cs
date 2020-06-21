@@ -289,7 +289,7 @@ namespace net.vieapps.Components.Repository
 			var dirtyAttributes = new HashSet<string>();
 			currentStateData.ForEach(kvp =>
 			{
-				var previousState = previousStateData[kvp.Key];
+				previousStateData.TryGetValue(kvp.Key, out var previousState);
 				if (kvp.Value == null)
 				{
 					if (previousState != null)

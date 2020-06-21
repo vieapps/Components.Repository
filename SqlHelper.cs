@@ -907,7 +907,7 @@ namespace net.vieapps.Components.Repository
 			var fields = definition.Attributes
 				.Where(attribute => !attribute.IsMappings())
 				.Where(attribute => !attribute.IsIgnoredIfNull() || (attribute.IsIgnoredIfNull() && @object.GetAttributeValue(attribute) != null))
-				.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : attribute.Column + " AS " + attribute.Name))
+				.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : $"{attribute.Column} AS {attribute.Name}"))
 				.ToList();
 
 			var info = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
@@ -3436,14 +3436,14 @@ namespace net.vieapps.Components.Repository
 					{
 						sql += (sql.Equals("") ? "" : ";\n")
 							+ $"CREATE NONCLUSTERED INDEX [{kvp.Key}] ON [{context.EntityDefinition.TableName}] ("
-							+ kvp.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC").Join(", ")
+							+ kvp.Value.Select(attribute => $"[{(string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)}] ASC").Join(", ")
 							+ ") WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY]";
 					});
-					uniqueIndexes.Where(info => info.Value.Count > 0).ForEach(info =>
+					uniqueIndexes.Where(kvp => kvp.Value.Count > 0).ForEach(kvp =>
 					{
 						sql += (sql.Equals("") ? "" : ";")
-							+ $"CREATE UNIQUE NONCLUSTERED INDEX [{info.Key}] ON [{context.EntityDefinition.TableName}] ("
-							+ info.Value.Select(attribute => "[" + (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "] ASC").Join(", ")
+							+ $"CREATE UNIQUE NONCLUSTERED INDEX [{kvp.Key}] ON [{context.EntityDefinition.TableName}] ("
+							+ kvp.Value.Select(attribute => $"[{(string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)}] ASC").Join(", ")
 							+ ") WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY]";
 					});
 					break;
@@ -3454,14 +3454,14 @@ namespace net.vieapps.Components.Repository
 					{
 						sql += (sql.Equals("") ? "" : ";\n")
 							+ $"CREATE INDEX {kvp.Key} ON {context.EntityDefinition.TableName} ("
-							+ kvp.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC").Join(", ")
+							+ kvp.Value.Select(attribute => $"{(string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)} ASC").Join(", ")
 							+ ")";
 					});
-					uniqueIndexes.Where(info => info.Value.Count > 0).ForEach(info =>
+					uniqueIndexes.Where(kvp => kvp.Value.Count > 0).ForEach(kvp =>
 					{
 						sql += (sql.Equals("") ? "" : ";\n")
-							+ $"CREATE UNIQUE INDEX {info.Key} ON {context.EntityDefinition.TableName} ("
-							+ info.Value.Select(attribute => (string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + " ASC").Join(", ")
+							+ $"CREATE UNIQUE INDEX {kvp.Key} ON {context.EntityDefinition.TableName} ("
+							+ kvp.Value.Select(attribute => $"{(string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)} ASC").Join(", ")
 							+ ")";
 					});
 					break;
@@ -3624,7 +3624,7 @@ namespace net.vieapps.Components.Repository
 			for (var index = 1; index <= max; index++)
 				columns.Add($"SmallText{index}", new Tuple<Type, int>(typeof(string), 250));
 
-			max = dbProviderFactoryName.Equals("MySQL") ? 3 : 10;
+			max = dbProviderFactoryName.Equals("MySQL") ? 5 : 10;
 			for (var index = 1; index <= max; index++)
 				columns.Add($"MediumText{index}", new Tuple<Type, int>(typeof(string), 4000));
 
@@ -3632,16 +3632,21 @@ namespace net.vieapps.Components.Repository
 			for (var index = 1; index <= max; index++)
 				columns.Add($"LargeText{index}", new Tuple<Type, int>(typeof(string), 0));
 
+			max = dbProviderFactoryName.Equals("MySQL") ? 10 : 20;
+			for (var index = 1; index <= max; index++)
+				columns.Add($"YesNo{index}", new Tuple<Type, int>(typeof(bool), 0));
+
+			max = dbProviderFactoryName.Equals("MySQL") ? 10 : 20;
+			for (var index = 1; index <= max; index++)
+				columns.Add($"DateTime{index}", new Tuple<Type, int>(typeof(DateTime), 0));
+
 			max = dbProviderFactoryName.Equals("MySQL") ? 20 : 40;
 			for (var index = 1; index <= max; index++)
-				columns.Add($"Number{index}", new Tuple<Type, int>(typeof(int), 0));
+				columns.Add($"IntegralNumber{index}", new Tuple<Type, int>(typeof(long), 0));
 
 			max = 10;
 			for (var index = 1; index <= max; index++)
-				columns.Add($"Decimal{index}", new Tuple<Type, int>(typeof(decimal), 0));
-
-			for (var index = 1; index <= max; index++)
-				columns.Add($"DateTime{index}", new Tuple<Type, int>(typeof(string), 19));
+				columns.Add($"FloatingPointNumber{index}", new Tuple<Type, int>(typeof(decimal), 0));
 
 			var sql = "";
 			switch (dbProviderFactoryName)
@@ -3660,7 +3665,7 @@ namespace net.vieapps.Components.Repository
 						}).Join(", ")
 						+ $", CONSTRAINT [PK_{tableName}] PRIMARY KEY CLUSTERED ([ID] ASC) "
 						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];\n"
-						+ $"CREATE NONCLUSTERED INDEX [IDX_{tableName}] ON [{tableName}] ([ID] ASC, [SystemID] ASC, [RepositoryID] ASC, [EntityID] ASC)"
+						+ $"CREATE NONCLUSTERED INDEX [IDX_{tableName}] ON [{tableName}] ([ID] ASC, [SystemID] ASC, [RepositoryID] ASC, [RepositoryEntityID] ASC)"
 						+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY];";
 					columns.ForEach((kvp, index) =>
 					{
@@ -3688,7 +3693,7 @@ namespace net.vieapps.Components.Repository
 								+ (kvp.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
 						}).Join(", ")
 						+ ", PRIMARY KEY (ID ASC));\n"
-						+ $"CREATE INDEX IDX_{tableName} ON {tableName} (ID ASC, SystemID ASC, RepositoryID ASC, EntityID ASC);";
+						+ $"CREATE INDEX IDX_{tableName} ON {tableName} (ID ASC, SystemID ASC, RepositoryID ASC, RepositoryEntityID ASC);";
 					columns.ForEach((kvp, index) =>
 					{
 						var type = kvp.Value.Item1;

@@ -178,7 +178,6 @@ namespace net.vieapps.Components.Repository
 						case ExtendedPropertyMode.LargeText:
 						case ExtendedPropertyMode.Select:
 						case ExtendedPropertyMode.Lookup:
-						case ExtendedPropertyMode.User:
 							return this.Value.ToString();
 
 						case ExtendedPropertyMode.DateTime:
@@ -1117,10 +1116,10 @@ namespace net.vieapps.Components.Repository
 			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID) && extendedProperties != null)
 				filterBy = new Tuple<string, Dictionary<string, object>>
 				(
-					"Origin.EntityID=@EntityID" + (filterBy != null ? " AND " + filterBy.Item1 : ""),
+					"Origin.RepositoryEntityID=@RepositoryEntityID" + (filterBy != null ? " AND " + filterBy.Item1 : ""),
 					new Dictionary<string, object>(filterBy != null ? filterBy.Item2 : new Dictionary<string, object>())
 					{
-						{ "@EntityID", businessRepositoryEntityID }
+						{ "@RepositoryEntityID", businessRepositoryEntityID }
 					}
 				);
 
@@ -1148,8 +1147,8 @@ namespace net.vieapps.Components.Repository
 
 			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID) && extendedProperties != null)
 				filterBy = filterBy == null
-					? Builders<T>.Filter.Eq("EntityID", businessRepositoryEntityID)
-					: filterBy & Builders<T>.Filter.Eq("EntityID", businessRepositoryEntityID);
+					? Builders<T>.Filter.Eq("RepositoryEntityID", businessRepositoryEntityID)
+					: filterBy & Builders<T>.Filter.Eq("RepositoryEntityID", businessRepositoryEntityID);
 
 			var sortBy = sort?.GetNoSqlStatement(null, standardProperties, extendedProperties);
 

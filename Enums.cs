@@ -170,12 +170,12 @@ namespace net.vieapps.Components.Repository
 	public enum ExtendedPropertyMode
 	{
 		/// <summary>
-		/// Small Unicode text - max length = 250
+		/// Small Unicode text (max length: 250)
 		/// </summary>
 		SmallText,
 
 		/// <summary>
-		/// Medium Unicode text - max length = 4000
+		/// Medium Unicode text (max length: 4000)
 		/// </summary>
 		MediumText,
 
@@ -190,33 +190,28 @@ namespace net.vieapps.Components.Repository
 		YesNo,
 
 		/// <summary>
+		/// Date Time
+		/// </summary>
+		DateTime,
+
+		/// <summary>
+		/// Integral number (long)
+		/// </summary>
+		IntegralNumber,
+
+		/// <summary>
+		/// Floating point number (decimal)
+		/// </summary>
+		FloatingPointNumber,
+
+		/// <summary>
 		/// Select one (or more as multiple) from the pre-defined values - stored as small-text, multiple values are separated by hashtag and comma (#;)
 		/// </summary>
 		Select,
 
 		/// <summary>
-		/// Date Time - stored as string (max length = 19)
+		/// Lookup identities - stored as medium-text, multiple values are separated comma (;)
 		/// </summary>
-		DateTime,
-
-		/// <summary>
-		/// Integer number
-		/// </summary>
-		Number,
-
-		/// <summary>
-		/// Decimal number
-		/// </summary>
-		Decimal,
-
-		/// <summary>
-		/// Lookup identities - stored as small-text, multiple values are separated comma (;)
-		/// </summary>
-		Lookup,
-
-		/// <summary>
-		/// User identities - stored as small-text, multiple values are separated comma (;)
-		/// </summary>
-		User
+		Lookup
 	}
 }

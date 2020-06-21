@@ -1,21 +1,20 @@
 ﻿#region Related components
 using System;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Configuration;
-using System.Linq;
-using System.Reflection;
-using System.Diagnostics;
-using System.Dynamic;
 using System.Data;
+using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
-
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Configuration;
+using System.Reflection;
+using System.Diagnostics;
+using System.Dynamic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Converters;
 using MongoDB.Bson.Serialization.Attributes;
-
 using net.vieapps.Components.Utility;
 using net.vieapps.Components.Caching;
 #endregion
@@ -138,12 +137,12 @@ namespace net.vieapps.Components.Repository
 		public string Description => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.Description;
 
 		/// <summary>
-		/// Gets or sets the name of the icon for working with user interfaces (when this object is defined as a module definition)
+		/// Gets or Sets the name of the icon for working with user interfaces (when this object is defined as a module definition)
 		/// </summary>
 		public string Icon => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.Icon;
 
 		/// <summary>
-		/// Gets or sets the name of the directory that contains all files for working with user interfaces (when this object is defined as a module definition - will be placed in directory named '/themes/modules/', the value of 'ServiceName' will be used if no value was provided)
+		/// Gets or Sets the name of the directory that contains all files for working with user interfaces (when this object is defined as a module definition - will be placed in directory named '/themes/modules/', the value of 'ServiceName' will be used if no value was provided)
 		/// </summary>
 		public string Directory => this.Type?.GetCustomAttribute<RepositoryAttribute>(false)?.Directory;
 
@@ -404,17 +403,17 @@ namespace net.vieapps.Components.Repository
 		public DataSource TrashDataSource => RepositoryMediator.GetDataSource(this.TrashDataSourceName);
 
 		/// <summary>
-		/// Gets or sets the name of the table in SQL database
+		/// Gets or Sets the name of the table in SQL database
 		/// </summary>
 		public string TableName => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.TableName;
 
 		/// <summary>
-		/// Gets or sets the name of the collection in NoSQL database
+		/// Gets or Sets the name of the collection in NoSQL database
 		/// </summary>
 		public string CollectionName => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.CollectionName;
 
 		/// <summary>
-		/// Gets or sets the state that specifies this entity is able to search using full-text method
+		/// Gets or Sets the state that specifies this entity is able to search using full-text method
 		/// </summary>
 		public bool Searchable
 		{
@@ -520,7 +519,7 @@ namespace net.vieapps.Components.Repository
 		public string Description => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.Description;
 
 		/// <summary>
-		/// Gets or sets the name of the icon for working with user interfaces (when this object is defined as a content-type definition)
+		/// Gets or Sets the name of the icon for working with user interfaces (when this object is defined as a content-type definition)
 		/// </summary>
 		public string Icon => this.Type?.GetCustomAttribute<EntityAttribute>(false)?.Icon;
 
@@ -537,7 +536,7 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Gets or sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
+		/// Gets or Sets the state that specifies this entity is able to index with global search module, default is true (when this object is defined as a content-type definition)
 		/// </summary>
 		public bool Indexable
 		{
@@ -944,39 +943,45 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	/// <summary>
-	/// Presents a definition of an extended property of an entiry in a respository 
+	/// Presents a definition of an extended property of an entity in a respository 
 	/// </summary>
 	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
 	public sealed class ExtendedPropertyDefinition
 	{
-		public ExtendedPropertyDefinition(JObject json = null)
-			=> this.CopyFrom(json ?? new JObject());
+		public ExtendedPropertyDefinition() { }
+
+		public ExtendedPropertyDefinition(JObject data = null)
+			=> this.CopyFrom(data ?? new JObject());
+
+		public ExtendedPropertyDefinition(ExpandoObject data = null)
+			=> this.CopyFrom(data ?? new ExpandoObject());
 
 		#region Properties
 		/// <summary>
-		/// Gets or sets the name
+		/// Gets or Sets the name
 		/// </summary>
-		public string Name { get; set; } = "";
+		public string Name { get; set; }
 
 		/// <summary>
-		/// Gets or sets the mode
+		/// Gets or Sets the mode
 		/// </summary>
+		[JsonConverter(typeof(StringEnumConverter)), BsonRepresentation(MongoDB.Bson.BsonType.String)]
 		public ExtendedPropertyMode Mode { get; set; } = ExtendedPropertyMode.SmallText;
 
 		/// <summary>
-		/// Gets or sets the name of column for storing data (when repository mode is SQL)
+		/// Gets or Sets the name of column for storing data (when repository mode is SQL)
 		/// </summary>
-		public string Column { get; set; } = "";
+		public string Column { get; set; }
 
 		/// <summary>
-		/// Gets or sets the default value
+		/// Gets or Sets the default value
 		/// </summary>
-		public string DefaultValue { get; set; } = "";
+		public string DefaultValue { get; set; }
 
 		/// <summary>
-		/// Gets or sets the formula for computing default value
+		/// Gets or Sets the formula for computing default value
 		/// </summary>
-		public string DefaultValueFormula { get; set; } = "";
+		public string DefaultValueFormula { get; set; }
 		#endregion
 
 		#region Properties [Helper]
@@ -991,16 +996,20 @@ namespace net.vieapps.Components.Repository
 				switch (this.Mode)
 				{
 					case ExtendedPropertyMode.YesNo:
-					case ExtendedPropertyMode.Number:
-						return typeof(int);
+						return typeof(bool);
 
-					case ExtendedPropertyMode.Decimal:
+					case ExtendedPropertyMode.IntegralNumber:
+						return typeof(long);
+
+					case ExtendedPropertyMode.FloatingPointNumber:
 						return typeof(decimal);
 
 					case ExtendedPropertyMode.DateTime:
 						return typeof(DateTime);
+
+					default:
+						return typeof(string);
 				}
-				return typeof(string);
 			}
 		}
 
@@ -1015,151 +1024,22 @@ namespace net.vieapps.Components.Repository
 				switch (this.Mode)
 				{
 					case ExtendedPropertyMode.YesNo:
-					case ExtendedPropertyMode.Number:
-						return typeof(int).GetDbType();
+						return typeof(bool).GetDbType();
 
-					case ExtendedPropertyMode.Decimal:
+					case ExtendedPropertyMode.IntegralNumber:
+						return typeof(long).GetDbType();
+
+					case ExtendedPropertyMode.FloatingPointNumber:
 						return typeof(decimal).GetDbType();
 
 					case ExtendedPropertyMode.DateTime:
-						return DbType.AnsiString;
-				}
-				return typeof(string).GetDbType();
-			}
-		}
-		#endregion
-
-		#region Parse XML (backward compatible)
-		/*
-		public void Parse(XElement element)
-		{
-			try
-			{
-				var node = element.Element(XName.Get("Mode"));
-				var mode = node != null ? node.Value : "";
-
-				node = element.Element(XName.Get("Name"));
-				this.Name = node != null ? node.Value : this.Name;
-
-				node = element.Element(XName.Get("Column"));
-				this.Column = node != null ? node.Value : this.Column;
-
-				node = element.Element(XName.Get("DefaultValue"));
-				this.DefaultValue = node != null ? node.Value : this.DefaultValue;
-
-				node = element.Element(XName.Get("Label"));
-				this.UI.Label = node != null ? node.Value : this.UI.Label;
-
-				node = element.Element(XName.Get("Description"));
-				this.UI.Description = node != null ? node.Value : this.UI.Description;
-
-				node = element.Element(XName.Get("Required"));
-				this.UI.Required = node != null ? node.Value.IsEquals("true") : this.UI.Required;
-
-				node = element.Element(XName.Get("MaxLength"));
-				this.UI.MaxLength = node != null ? node.Value.CastType<int>() : this.UI.MaxLength;
-
-				switch (mode)
-				{
-					// text
-					case "0":
-					case "1":
-						this.Mode = CustomPropertyMode.Text;
-						this.UI.AllowMultiple = mode.Equals("1");
-						break;
-
-					// text (large)
-					case "2":
-						this.Mode = CustomPropertyMode.LargeText;
-						this.UI.UseAsTextEditor = true;
-						node = element.Element(XName.Get("TextEditorWidth"));
-						this.UI.TextEditorWidth = node != null ? node.Value : this.UI.TextEditorWidth;
-						node = element.Element(XName.Get("TextEditorHeight"));
-						this.UI.TextEditorHeight = node != null ? node.Value : this.UI.TextEditorHeight;
-						break;
-
-					// yes/no
-					case "3":
-						this.Mode = CustomPropertyMode.YesNo;
-						this.DefaultValue = "Yes";
-						this.UI.PredefinedValues = "Yes\nNo";
-						break;
-
-					// choice
-					case "4":
-					case "5":
-						this.Mode = CustomPropertyMode.Choice;
-						this.UI.AllowMultiple = mode.Equals("5");
-						node = element.Element(XName.Get("ChoiceStyle"));
-						if (mode.Equals("4"))
-							this.UI.Format = node != null && node.Value.Equals("0") ? "Radio" : "Select";
-						else
-							this.UI.Format = node != null && node.Value.Equals("0") ? "Checkbox" : "Listbox";
-						node = element.Element(XName.Get("ChoiceValues"));
-						this.UI.PredefinedValues = node != null ? node.Value : this.UI.PredefinedValues;
-						break;
-
-					// date-time
-					case "6":
-						this.Mode = CustomPropertyMode.DateTime;
-						node = element.Element(XName.Get("DateTimeValueFormat"));
-						this.UI.Format = node != null ? node.Value : "dd/MM/yyyy";
-						break;
-
-					// number (integer)
-					case "7":
-					case "8":
-						this.Mode = CustomPropertyMode.Number;
-						node = element.Element(XName.Get("NumberMinValue"));
-						this.UI.MinValue = node != null && node.Value.CastType<int>() > -1 ? node.Value.CastType<int>().ToString() : this.UI.MinValue;
-						node = element.Element(XName.Get("NumberMaxValue"));
-						this.UI.MaxValue = node != null && node.Value.CastType<int>() > -1 ? node.Value.CastType<int>().ToString() : this.UI.MaxValue;
-						node = element.Element(XName.Get("DisplayFormat"));
-						this.UI.Format = node != null ? node.Value : this.UI.Format;
-						break;
-
-					// number (decimal)
-					case "9":
-						this.Mode = CustomPropertyMode.Decimal;
-						node = element.Element(XName.Get("DisplayFormat"));
-						this.UI.Format = node != null ? node.Value : this.UI.Format;
-						break;
-
-					// hyper-link
-					case "10":
-						this.Mode = CustomPropertyMode.HyperLink;
-						break;
-
-					// look-up
-					case "11":
-						this.Mode = CustomPropertyMode.Lookup;
-						node = element.Element(XName.Get("LookupModuleId"));
-						this.UI.LookupRepositoryID = node != null ? node.Value : this.UI.LookupRepositoryID;
-						node = element.Element(XName.Get("LookupContentTypeId"));
-						this.UI.LookupEntityID = node != null ? node.Value : this.UI.LookupEntityID;
-						node = element.Element(XName.Get("LookupColumn"));
-						this.UI.LookupProperty = node != null ? node.Value : this.UI.LookupProperty;
-						node = element.Element(XName.Get("LookupMultiple"));
-						this.UI.AllowMultiple = node != null ? node.Value.IsEquals("true") : this.UI.AllowMultiple;
-						break;
-
-					// user
-					case "12":
-						this.Mode = CustomPropertyMode.User;
-						node = element.Element(XName.Get("LookupMultiple"));
-						this.UI.AllowMultiple = node != null ? node.Value.IsEquals("true") : this.UI.AllowMultiple;
-						break;
+						return typeof(DateTime).GetDbType();
 
 					default:
-						this.Mode = CustomPropertyMode.Text;
-						this.UI.MaxLength = 250;
-						this.UI.UseAsTextEditor = true;
-						break;
+						return typeof(string).GetDbType();
 				}
 			}
-			catch { }
 		}
-		*/
 		#endregion
 
 		#region Name validation
@@ -1236,7 +1116,7 @@ namespace net.vieapps.Components.Repository
 		public string ConnectionStringName { get; internal set; }
 
 		/// <summary>
-		/// Gets or sets the connection string (for working with database server)
+		/// Gets or Sets the connection string (for working with database server)
 		/// </summary>
 		public string ConnectionString { get; set; }
 

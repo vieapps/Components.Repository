@@ -327,8 +327,8 @@ namespace net.vieapps.Components.Repository
 				: null;
 			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID) && extendedProperties != null)
 				filterDefinition = filterDefinition == null
-					? Builders<T>.Filter.Eq("EntityID", businessRepositoryEntityID)
-					: filterDefinition & Builders<T>.Filter.Eq("EntityID", businessRepositoryEntityID);
+					? Builders<T>.Filter.Eq("RepositoryEntityID", businessRepositoryEntityID)
+					: filterDefinition & Builders<T>.Filter.Eq("RepositoryEntityID", businessRepositoryEntityID);
 			return filterDefinition;
 		}
 
