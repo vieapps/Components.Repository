@@ -310,14 +310,16 @@ namespace net.vieapps.Components.Repository
 			this.TrimAll();
 
 			// extended properties
-			if (this is IBusinessEntity && !string.IsNullOrWhiteSpace(this.RepositoryEntityID))
+			if (this is IBusinessEntity && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity))
 			{
-				var definition = RepositoryMediator.GetEntityDefinition<T>(false);
-				if (definition != null && definition.BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity) && repositoryEntity != null && repositoryEntity.ExtendedPropertyDefinitions != null)
-					repositoryEntity.ExtendedPropertyDefinitions.ForEach(propertyDefinition =>
+				this.ExtendedProperties = this.ExtendedProperties ?? new Dictionary<string, object>();
+				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(propertyDefinition =>
+				{
+					var value = data?.Get(propertyDefinition.Name);
+					if (value != null)
 					{
-						var value = data?.Get(propertyDefinition.Name);
-						if (value != null && value is string)
+						// validate string value
+						if (value is string @string)
 						{
 							var maxLength = 0;
 							switch (propertyDefinition.Mode)
@@ -328,14 +330,31 @@ namespace net.vieapps.Components.Repository
 									break;
 
 								case ExtendedPropertyMode.MediumText:
+								case ExtendedPropertyMode.Lookup:
 									maxLength = 4000;
 									break;
 							}
-							if (maxLength > 0 && (value as string).Length > maxLength)
-								value = (value as string).Left(maxLength);
+							value = maxLength > 0 && @string.Length > maxLength ? @string.Left(maxLength) : @string.Trim();
 						}
-						this.ExtendedProperties[propertyDefinition.Name] = value;
-					});
+
+						// validate multiple values of select (array/list)
+						if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.Select) && value is List<string> selectValues)
+						{
+							var maxLength = 250;
+							@string = selectValues.Where(val => !string.IsNullOrWhiteSpace(val)).Join("#;");
+							value = maxLength > 0 && @string.Length > maxLength ? @string.Left(maxLength) : @string.Trim();
+						}
+
+						// validate multiple values of lookup (array/list)
+						if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.Lookup) && value is List<string> lookupValues)
+						{
+							var maxLength = 4000;
+							@string = lookupValues.Where(val => !string.IsNullOrWhiteSpace(val)).Join(",");
+							value = maxLength > 0 && @string.Length > maxLength ? @string.Left(maxLength) : @string.Trim();
+						}
+					}
+					this.ExtendedProperties[propertyDefinition.Name] = value;
+				});
 			}
 
 			// return object
@@ -3339,25 +3358,31 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public override JObject ToJson(bool addTypeOfExtendedProperties = false, Action<JObject> onCompleted = null)
 		{
-			// the original object
+			// standard properties
 			var json = (this as T).ToJson() as JObject;
 
-			// extended properties (IBusinessEntity)
-			if (this is IBusinessEntity && this.ExtendedProperties != null && this.ExtendedProperties.Count > 0)
-				this.ExtendedProperties.ForEach(property =>
+			// extended properties
+			if (this is IBusinessEntity && this.ExtendedProperties != null && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity) && repositoryEntity != null && repositoryEntity.ExtendedPropertyDefinitions != null)
+				repositoryEntity.ExtendedPropertyDefinitions.ForEach(propertyDefinition =>
 				{
-					var type = property.Value?.GetType();
-
-					if (addTypeOfExtendedProperties && type != null)
-						json[property.Key + "$type"] = type.IsPrimitiveType() ? type.ToString() : type.GetTypeName();
-
-					var value = type == null || type.IsPrimitiveType()
-						? property.Value
-						: property.Value is RepositoryBase
-							? (property.Value as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, null)
-							: property.Value?.ToJson();
-
-					json.Add(new JProperty(property.Key, value));
+					if (this.ExtendedProperties.TryGetValue(propertyDefinition.Name, out var value) && value != null)
+					{
+						if (addTypeOfExtendedProperties)
+						{
+							var type = value.GetType();
+							json[$"{propertyDefinition.Name}$type"] = type.IsPrimitiveType() ? type.ToString() : type.GetTypeName();
+						}
+						value = value is string @string
+							? propertyDefinition.Mode.Equals(ExtendedPropertyMode.Select) && @string.Contains("#;")
+								? @string.ToArray("#;", true).ToJArray()
+								: propertyDefinition.Mode.Equals(ExtendedPropertyMode.Lookup) && @string.Contains(",")
+									? @string.ToArray(",", true).ToJArray()
+									: value.ToJson()
+							: value is RepositoryBase repositoryObject
+								? repositoryObject.ToJson(addTypeOfExtendedProperties, onCompleted)
+								: value.ToJson();
+					}
+					json[propertyDefinition.Name] = value?.ToJson();
 				});
 
 			// privileges
@@ -3377,10 +3402,7 @@ namespace net.vieapps.Components.Repository
 			if (!string.IsNullOrWhiteSpace(this.RepositoryEntityID))
 				json["RepositoryEntityID"] = new JValue(this.RepositoryEntityID);
 
-			// run the handler on pre-completed
 			onCompleted?.Invoke(json);
-
-			// return the JSON
 			return json;
 		}
 
@@ -3426,7 +3448,7 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public virtual XElement ToXml(bool addTypeOfExtendedProperties, CultureInfo cultureInfo, Action<XElement> onCompleted = null)
 		{
-			// the original object
+			// standard properties
 			var xml = (this as T).ToXml();
 			this.GetPublicAttributes(attribute => attribute.IsDateTimeType() || attribute.IsNumericType()).ForEach(attribute =>
 			{
@@ -3437,22 +3459,28 @@ namespace net.vieapps.Components.Repository
 					element.UpdateNumber(attribute.IsFloatingPointType(), cultureInfo);
 			});
 
-			// extended properties (IBusinessEntity)
-			if (this is IBusinessEntity && this.ExtendedProperties != null && this.ExtendedProperties.Count > 0)
-				this.ExtendedProperties.ForEach(property =>
+			// extended properties
+			if (this is IBusinessEntity && this.ExtendedProperties != null && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity))
+				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(propertyDefinition =>
 				{
-					var type = property.Value?.GetType();
-
-					var value = type == null || type.IsPrimitiveType()
-						? property.Value
-						: property.Value is RepositoryBase
-							? (property.Value as RepositoryBase).ToXml(addTypeOfExtendedProperties, null)
-							: property.Value.ToXml();
-
-					var element = new XElement(property.Key, value);
-
-					if (type != null)
+					if (this.ExtendedProperties.TryGetValue(propertyDefinition.Name, out var value) && value != null)
 					{
+						value = value is string @string
+							? propertyDefinition.Mode.Equals(ExtendedPropertyMode.Select) && @string.Contains("#;")
+								? @string.ToArray("#;", true).Select(val => new XElement("Value", val)).ToArray()
+								: propertyDefinition.Mode.Equals(ExtendedPropertyMode.Lookup) && @string.Contains(",")
+									? @string.ToArray(",", true).Select(val => new XElement("Value", val)).ToArray() as object
+									: @string
+							: value is RepositoryBase repositoryObject
+								? repositoryObject.ToXml(addTypeOfExtendedProperties, onCompleted)
+								: value.GetType().IsClassType()
+									? value.ToXml(onCompleted)
+									: value;
+					}
+					var element = new XElement(propertyDefinition.Name, value);
+					if (value != null)
+					{
+						var type = value.GetType();
 						if (addTypeOfExtendedProperties)
 							element.Add(new XAttribute("$type", type.IsPrimitiveType() ? type.ToString() : type.GetTypeName()));
 						if (type.IsDateTimeType())
@@ -3460,11 +3488,9 @@ namespace net.vieapps.Components.Repository
 						else if (type.IsNumericType())
 							element.UpdateNumber(type.IsFloatingPointType(), cultureInfo);
 					}
-
 					xml.Add(element);
 				});
 
-			// return
 			onCompleted?.Invoke(xml);
 			return xml;
 		}

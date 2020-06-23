@@ -1017,46 +1017,23 @@ namespace net.vieapps.Components.Repository
 		/// Gets the database-type of this property
 		/// </summary>
 		[JsonIgnore, BsonIgnore, XmlIgnore]
-		internal DbType DbType
-		{
-			get
-			{
-				switch (this.Mode)
-				{
-					case ExtendedPropertyMode.YesNo:
-						return typeof(bool).GetDbType();
-
-					case ExtendedPropertyMode.IntegralNumber:
-						return typeof(long).GetDbType();
-
-					case ExtendedPropertyMode.FloatingPointNumber:
-						return typeof(decimal).GetDbType();
-
-					case ExtendedPropertyMode.DateTime:
-						return typeof(DateTime).GetDbType();
-
-					default:
-						return typeof(string).GetDbType();
-				}
-			}
-		}
+		internal DbType DbType => this.Type.GetDbType();
 		#endregion
 
-		#region Name validation
+		#region Validations
 		internal static HashSet<string> ReservedWords { get; } = "ExtendedProperties,Add,External,Procedure,All,Fetch,Public,Alter,File,RaisError,And,FillFactor,Read,Any,For,ReadText,As,Foreign,ReConfigure,Asc,FreeText,References,Authorization,FreeTextTable,Replication,Backup,From,Restore,Begin,Full,Restrict,Between,Function,Return,Break,Goto,Revert,Browse,Grant,Revoke,Bulk,Group,Right,By,Having,Rollback,Cascade,Holdlock,Rowcount,Case,RowGuidCol,Check,Identity,Insert,Rule,Checkpoint,Identitycol,Save,Close,If,Schema,Clustered,In,SecurityAudit,Coalesce,Index,Select,Collate,Inner,SemanticKeyPhraseTable,Column,SemanticSimilarityDetailsTable,Commit,Intersect,SemanticSimilarityTable,Compute,Into,Session,User,Constraint,Is,Set,Contains,Join,Setuser,ContainsTable,Key,Shutdown,Continue,Kill,Some,Convert,Left,Statistics,Create,Like,System,Cross,Lineno,Table,Current,Load,TableSample,Current_Date,Current_Time,Current_Timestamp,Merge,TextSize,National,Then,NoCheck,To,Current_User,NonClustered,Top,Cursor,Not,Tran,Database,Null,Transaction,Dbcc,NullIf,Trigger,Deallocate,Of,Truncate,Declare,Off,Try_Convert,Default,Offsets,Tsequal,Delete,On,Union,Deny,Open,Unique,Desc,OpenDataSource,Unpivot,Disk,Openquery,Update,Distinct,OpenRowset,UpdateText,Distributed,OpenXml,Use,Double,Option,User,Drop,Or,Values,Dump,Order,Varying,Else,Outer,View,End,Over,Waitfor,Errlvl,Percent,When,Escape,Pivot,Where,Except,Plan,While,Exec,Precision,With,Execute,Primary,Exists,Print,WriteText,Exit,Proc".ToLower().ToHashSet();
 
 		/// <summary>
-		/// Validates the name of a custom property definition
+		/// Validates the name of a extended property definition
 		/// </summary>
-		/// <param name="name">The string that presents name of a custom property</param>
+		/// <param name="name">The string that presents name of a extended property</param>
 		/// <remarks>An exception will be thrown if the name is invalid</remarks>
 		public static void Validate(string name)
 		{
 			if (string.IsNullOrWhiteSpace(name))
 				throw new ArgumentNullException("name", "The name is null or empty");
 
-			var validName = name.GetANSIUri().Replace("-", "");
-			if (!validName.Equals(name))
+			if (!name.IsEquals(name.GetANSIUri().Replace("-", "")))
 				throw new InformationInvalidException("The name is contains one or more invalid characters (like space, -, +, ...)");
 
 			if (name.ToUpper()[0] < 'A' || name.ToUpper()[0] > 'Z')
@@ -1064,20 +1041,6 @@ namespace net.vieapps.Components.Repository
 
 			if (ExtendedPropertyDefinition.ReservedWords.Contains(name.ToLower()))
 				throw new InformationInvalidException("The name is system reserved word");
-		}
-
-		/// <summary>
-		/// Validates the name of a custom property definition
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="name">The string that presents name of a custom property</param>
-		/// <remarks>An exception will be thrown if the name is invalid</remarks>
-		public static void Validate<T>(string name) where T : class
-		{
-			ExtendedPropertyDefinition.Validate(name);
-			var attributes = ObjectService.GetProperties(RepositoryMediator.GetEntityDefinition<T>().Type).ToDictionary(info => info.Name.ToLower(), info => info.Name);
-			if (attributes.ContainsKey(name.ToLower()))
-				throw new InformationInvalidException("The name is already used");
 		}
 		#endregion
 

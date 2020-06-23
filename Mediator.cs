@@ -7068,6 +7068,34 @@ namespace net.vieapps.Components.Repository
 
 		internal static string GetMultiParentMappingsAttributeName(this EntityDefinition definition)
 			=> definition?.GetMultiParentMappingsAttribute()?.Name;
+
+		/// <summary>
+		/// Validates all the name of the extended property definitions of an entity definition
+		/// </summary>
+		/// <param name="entityDefinition"></param>
+		/// <param name="repositoryEntityID"></param>
+		/// <remarks>An exception will be thrown if a name is invalid</remarks>
+		public static void ValidateExtendedPropertyDefinitions(this EntityDefinition entityDefinition, string repositoryEntityID)
+		{
+			if (entityDefinition == null || !entityDefinition.BusinessRepositoryEntities.TryGetValue(repositoryEntityID, out var repositoryEntity) || repositoryEntity == null || repositoryEntity.ExtendedPropertyDefinitions == null)
+				return;
+
+			var attributes = entityDefinition.Attributes.Select(attribute => attribute.Name.ToLower()).ToHashSet();
+			repositoryEntity.ExtendedPropertyDefinitions.ForEach(propertyDefinition =>
+			{
+				if (attributes.Contains(propertyDefinition.Name.ToLower()))
+					throw new InformationInvalidException($"The name ({propertyDefinition.Name}) is already used");
+
+				try
+				{
+					ExtendedPropertyDefinition.Validate(propertyDefinition.Name);
+				}
+				catch (Exception ex)
+				{
+					throw new InformationInvalidException($"{propertyDefinition.Name}) => {ex.Message}", ex);
+				}
+			});
+		}
 		#endregion
 
 		#region [Logs]

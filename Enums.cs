@@ -205,12 +205,12 @@ namespace net.vieapps.Components.Repository
 		FloatingPointNumber,
 
 		/// <summary>
-		/// Select one (or more as multiple) from the pre-defined values - stored as small-text, multiple values are separated by hashtag and comma (#;)
+		/// Select (one or more) from the pre-defined values (stored as small-text, multiple values are separated by hashtag and semicolon - [#;])
 		/// </summary>
 		Select,
 
 		/// <summary>
-		/// Lookup identities - stored as medium-text, multiple values are separated comma (;)
+		/// Lookup identities (stored as medium-text, multiple values are separated comma [,])
 		/// </summary>
 		Lookup
 	}
