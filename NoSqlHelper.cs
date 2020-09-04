@@ -10,6 +10,7 @@ using System.Diagnostics;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Attributes;
 using net.vieapps.Components.Utility;
 #endregion
 
@@ -62,7 +63,7 @@ namespace net.vieapps.Components.Repository
 
 			try
 			{
-				var statusDoc = await mongoClient.GetDatabase("admin").RunCommandAsync<BsonDocument>("{ replSetGetStatus: 1 }").ConfigureAwait(false);
+				var statusDoc = await mongoClient.GetDatabase("admin").RunCommandAsync<BsonDocument>("{ replSetGetStatus: 1 }", null, cancellationToken).ConfigureAwait(false);
 				status = statusDoc.Contains("replSet");
 			}
 			catch
@@ -875,6 +876,17 @@ namespace net.vieapps.Components.Repository
 			return new BsonArray(values);
 		}
 
+		static BsonValue ToBsonValue(this ObjectService.AttributeInfo attribute, object value)
+		{
+			if (value == null || !attribute.IsEnum())
+				return BsonValue.Create(value);
+
+			var bsonRepresentation = attribute.GetCustomAttribute<BsonRepresentationAttribute>();
+			return bsonRepresentation != null && bsonRepresentation.Representation.Equals(BsonType.String)
+				? BsonValue.Create(value.ToString())
+				: BsonValue.Create(value);
+		}
+
 		/// <summary>
 		/// Updates document of an object
 		/// </summary>
@@ -917,7 +929,7 @@ namespace net.vieapps.Components.Repository
 			// replace whole document (when got generic of primitive or class type member - workaround)
 			if (useReplace)
 			{
-				collection.ReplaceOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, new ReplaceOptions { IsUpsert = options != null ? options.IsUpsert : true });
+				collection.ReplaceOne(session ?? collection.StartSession(), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, new ReplaceOptions { IsUpsert = options == null || options.IsUpsert });
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
@@ -953,8 +965,8 @@ namespace net.vieapps.Components.Repository
 						: null;
 
 					updater = updater == null
-						? Builders<T>.Update.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value))
-						: updater.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value));
+						? Builders<T>.Update.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : attribute.ToBsonValue(value))
+						: updater.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : attribute.ToBsonValue(value));
 
 					if (RepositoryMediator.IsDebugEnabled)
 						updated += $"\r\n\t+ @{attribute.Name} ({attribute.Type}) ==> [{value ?? "(null)"}]";
@@ -1080,7 +1092,7 @@ namespace net.vieapps.Components.Repository
 			// replace whole document (when got generic of primitive or class type member - workaround)
 			if (useReplace)
 			{
-				await collection.ReplaceOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, new ReplaceOptions { IsUpsert = options != null ? options.IsUpsert : true }, cancellationToken).ConfigureAwait(false);
+				await collection.ReplaceOneAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Builders<T>.Filter.Eq("_id", @object.GetEntityID()), @object, new ReplaceOptions { IsUpsert = options == null || options.IsUpsert }, cancellationToken).ConfigureAwait(false);
 
 				stopwatch.Stop();
 				if (RepositoryMediator.IsDebugEnabled)
@@ -1116,8 +1128,8 @@ namespace net.vieapps.Components.Repository
 						: null;
 
 					updater = updater == null
-						? Builders<T>.Update.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value))
-						: updater.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : BsonValue.Create(value));
+						? Builders<T>.Update.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : attribute.ToBsonValue(value))
+						: updater.Set(attribute.Name, isList ? (value as IEnumerable).ToBsonArray(type) : attribute.ToBsonValue(value));
 
 					if (RepositoryMediator.IsDebugEnabled)
 						updated += $"\r\n\t+ @{attribute.Name} ({attribute.Type}) ==> [{value ?? "(null)"}]";

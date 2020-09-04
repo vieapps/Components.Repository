@@ -1258,12 +1258,12 @@ namespace net.vieapps.Components.Repository
 				if (attribute.Name.IsEquals(definition.PrimaryKey) || (value == null && attribute.IsIgnoredIfNull()))
 					continue;
 
-				columns.Add((string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column) + "=@" + attribute.Name);
+				columns.Add($"{(string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column)}=@{attribute.Name}");
 				parameters.Add(dbProviderFactory.CreateParameter(attribute, value));
 			}
 
 			var statement = $"UPDATE {definition.TableName} SET {columns.Join(", ")} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}";
-			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>("@" + definition.PrimaryKey, @object.GetEntityID(definition.PrimaryKey))));
+			parameters.Add(dbProviderFactory.CreateParameter(new KeyValuePair<string, object>($"@{definition.PrimaryKey}", @object.GetEntityID(definition.PrimaryKey))));
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -1277,7 +1277,7 @@ namespace net.vieapps.Components.Repository
 			var attributes = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions;
 			foreach (var attribute in attributes)
 			{
-				columns.Add(attribute.Column + "=@" + attribute.Name);
+				columns.Add($"{attribute.Column}=@{attribute.Name}");
 				var value = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(attribute.Name)
 					? (@object as IBusinessEntity).ExtendedProperties[attribute.Name]
 					: attribute.GetDefaultValue();

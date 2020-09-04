@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Configuration;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Transactions;
 using net.vieapps.Components.Utility;
 #endregion
@@ -74,9 +75,9 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public Exception Exception { get; internal set; }
 
-		internal Dictionary<string, Dictionary<string, object>> PreviousStateData { get; set; }
+		internal ConcurrentDictionary<string, Dictionary<string, object>> PreviousStateData { get; set; }
 
-		internal Dictionary<string, Dictionary<string, object>> CurrentStateData { get; set; }
+		internal ConcurrentDictionary<string, Dictionary<string, object>> CurrentStateData { get; set; }
 
 		internal TransactionScope SqlTransaction { get; set; }
 
@@ -87,8 +88,8 @@ namespace net.vieapps.Components.Repository
 		internal void Prepare(RepositoryOperation operation = RepositoryOperation.Query, EntityDefinition entityDefinition = null, string aliasTypeName = null, MongoDB.Driver.IClientSessionHandle nosqlSession = null)
 		{
 			this.ID = this.ID ?? UtilityService.NewUUID;
-			this.PreviousStateData = this.PreviousStateData ?? new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
-			this.CurrentStateData = this.CurrentStateData ?? new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
+			this.PreviousStateData = this.PreviousStateData ?? new ConcurrentDictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
+			this.CurrentStateData = this.CurrentStateData ?? new ConcurrentDictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 			this.Operation = operation;
 
 			if (entityDefinition != null)
@@ -225,8 +226,8 @@ namespace net.vieapps.Components.Repository
 			});
 
 			// extended properties
-			if (@object is IBusinessEntity)
-				(@object as IBusinessEntity)?.ExtendedProperties?.ForEach(kvp =>
+			if (@object is IBusinessEntity businessEntity)
+				businessEntity?.ExtendedProperties?.ForEach(kvp =>
 				{
 					try
 					{

@@ -3553,7 +3553,7 @@ namespace net.vieapps.Components.Repository
 		/// Gets or sets the identity of business repository entity (mean business content-type) that associates with
 		/// </summary>
 		[BsonIgnoreIfNull]
-		public string EntityID { get; set; }
+		public string RepositoryEntityID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the create time
@@ -3842,7 +3842,7 @@ namespace net.vieapps.Components.Repository
 			var serviceName = @object.GetAttributeValue<string>("ServiceName");
 			var systemID = @object.GetAttributeValue<string>("SystemID");
 			var repositoryID = @object.GetAttributeValue<string>("RepositoryID");
-			var entityID = @object.GetAttributeValue<string>("EntityID");
+			var repositoryEntityID = @object.GetAttributeValue<string>("RepositoryEntityID");
 			var objectID = @object.GetEntityID();
 			var title = @object.GetAttributeValue<string>("Title");
 
@@ -3856,7 +3856,7 @@ namespace net.vieapps.Components.Repository
 				ServiceName = serviceName,
 				SystemID = systemID,
 				RepositoryID = repositoryID,
-				EntityID = entityID,
+				RepositoryEntityID = repositoryEntityID,
 				Object = @object,
 				Created = DateTime.Now,
 				CreatedID = ""
