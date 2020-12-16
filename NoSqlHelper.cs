@@ -914,10 +914,13 @@ namespace net.vieapps.Components.Repository
 			var useReplace = false;
 			foreach (var name in attributes)
 			{
-				var attribute = !string.IsNullOrWhiteSpace(name)
-					? objAttributes.FirstOrDefault(a => a.Name.IsEquals(name))
-					: null;
+				if (name.StartsWith("ExtendedProperties."))
+				{
+					useReplace = true;
+					break;
+				}
 
+				var attribute = objAttributes.FirstOrDefault(a => a.Name.IsEquals(name));
 				if (attribute != null)
 				{
 					useReplace = attribute.Type.IsClassType() || (attribute.Type.IsGenericListOrHashSet() && attribute.Type.GenericTypeArguments[0].IsClassType()) || (attribute.Type.IsArray && attribute.Type.GetElementType().IsClassType());
@@ -950,10 +953,7 @@ namespace net.vieapps.Components.Repository
 
 			attributes.ForEach(name =>
 			{
-				var attribute = !string.IsNullOrWhiteSpace(name)
-					? objAttributes.FirstOrDefault(a => a.Name.IsEquals(name))
-					: null;
-
+				var attribute = objAttributes.FirstOrDefault(a => a.Name.IsEquals(name));
 				if (attribute != null)
 				{
 					var value = @object.GetAttributeValue(attribute);
@@ -1077,10 +1077,13 @@ namespace net.vieapps.Components.Repository
 			var useReplace = false;
 			foreach (var name in attributes)
 			{
-				var attribute = !string.IsNullOrWhiteSpace(name)
-					? objAttributes.FirstOrDefault(a => a.Name.IsEquals(name))
-					: null;
+				if (name.StartsWith("ExtendedProperties."))
+				{
+					useReplace = true;
+					break;
+				}
 
+				var attribute = objAttributes.FirstOrDefault(a => a.Name.IsEquals(name));
 				if (attribute != null)
 				{
 					useReplace = attribute.Type.IsClassType() || (attribute.Type.IsGenericListOrHashSet() && attribute.Type.GenericTypeArguments[0].IsClassType()) || (attribute.Type.IsArray && attribute.Type.GetElementType().IsClassType());
@@ -1113,10 +1116,7 @@ namespace net.vieapps.Components.Repository
 
 			attributes.ForEach(name =>
 			{
-				var attribute = !string.IsNullOrWhiteSpace(name)
-					? objAttributes.FirstOrDefault(a => a.Name.IsEquals(name))
-					: null;
-
+				var attribute = objAttributes.FirstOrDefault(a => a.Name.IsEquals(name));
 				if (attribute != null)
 				{
 					var value = @object.GetAttributeValue(attribute);

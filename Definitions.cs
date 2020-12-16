@@ -882,6 +882,8 @@ namespace net.vieapps.Components.Repository
 			if (businessRepositoryEntity != null && !string.IsNullOrWhiteSpace(businessRepositoryEntity.ID))
 			{
 				this.BusinessRepositoryEntities[businessRepositoryEntity.ID] = businessRepositoryEntity;
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"A business repository entity was registered => {businessRepositoryEntity.ToJson()}");
 				return true;
 			}
 			return false;
@@ -892,14 +894,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="businessRepositoryEntityID"></param>
 		public bool Unregister(string businessRepositoryEntityID)
-		{
-			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID))
-			{
-				this.BusinessRepositoryEntities.Remove(businessRepositoryEntityID);
-				return true;
-			}
-			return false;
-		}
+			=> !string.IsNullOrWhiteSpace(businessRepositoryEntityID) && this.BusinessRepositoryEntities.Remove(businessRepositoryEntityID);
 
 		/// <summary>
 		/// Unregisters a business repository entity (means a business content-type at run-time)

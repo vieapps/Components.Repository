@@ -604,7 +604,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -688,13 +688,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -836,7 +836,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -985,13 +985,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1076,7 +1076,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1159,13 +1159,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1387,9 +1387,9 @@ namespace net.vieapps.Components.Repository
 							}
 						}
 					}
-					catch (OperationCanceledException ex)
+					catch (OperationCanceledException)
 					{
-						throw ex;
+						throw;
 					}
 					catch (Exception ex)
 					{
@@ -1513,7 +1513,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1637,13 +1637,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1716,6 +1716,10 @@ namespace net.vieapps.Components.Repository
 
 				var currentState = context.SetCurrentState(@object);
 				var dirtyAttributes = context.FindDirty(previousState, currentState);
+
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Object state [{typeof(T)}#{@object.GetEntityID()}]\r\n* Previous:\r\n- {previousState?.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}\r\n* Current:\r\n- {currentState?.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}\r\n* Dirty attributes: {dirtyAttributes?.Join(", ")}");
+
 				if (dirtyAttributes.Count < 1)
 					return false;
 
@@ -1727,7 +1731,7 @@ namespace net.vieapps.Components.Repository
 				}
 
 				// call pre-handlers
-				if (context.CallPreUpdateHandlers(@object, dirtyAttributes, false))
+				if (context.CallPreUpdateHandlers(@object, dirtyAttributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToHashSet(), false))
 					return false;
 
 				// create new version
@@ -1748,29 +1752,28 @@ namespace net.vieapps.Components.Repository
 				}
 
 				// update
-				var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					context.Update(dataSource, @object, updatedAttributes, null);
+					context.Update(dataSource, @object, dirtyAttributes.ToList(), null);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-					context.Update(dataSource, @object, updatedAttributes);
+					context.Update(dataSource, @object, dirtyAttributes.ToList());
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Set(@object) && RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
 
 				// call post-handlers
-				context.CallPostUpdateHandlers(@object, dirtyAttributes, false);
+				context.CallPostUpdateHandlers(@object, dirtyAttributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToHashSet(), false);
 				return true;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1838,6 +1841,9 @@ namespace net.vieapps.Components.Repository
 
 				var currentState = context.SetCurrentState(@object);
 				var dirtyAttributes = context.FindDirty(previousState, currentState);
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Object state [{typeof(T)}#{@object.GetEntityID()}]\r\n* Previous:\r\n- {previousState?.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}\r\n* Current:\r\n- {currentState?.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}\r\n* Dirty attributes: {dirtyAttributes?.Join(", ")}");
+
 				if (dirtyAttributes.Count < 1)
 					return false;
 
@@ -1849,7 +1855,7 @@ namespace net.vieapps.Components.Repository
 				}
 
 				// call pre-handlers
-				if (await context.CallPreUpdateHandlersAsync(@object, dirtyAttributes, false, cancellationToken).ConfigureAwait(false))
+				if (await context.CallPreUpdateHandlersAsync(@object, dirtyAttributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToHashSet(), false, cancellationToken).ConfigureAwait(false))
 					return false;
 
 				// create new version
@@ -1870,34 +1876,33 @@ namespace net.vieapps.Components.Repository
 				}
 
 				// update
-				var updatedAttributes = dirtyAttributes.Select(item => item.StartsWith("ExtendedProperties.") ? item.Replace("ExtendedProperties.", "") : item).ToList();
 				dataSource = dataSource ?? context.GetPrimaryDataSource();
 				if (dataSource == null)
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
-					await context.UpdateAsync(dataSource, @object, updatedAttributes, null, cancellationToken).ConfigureAwait(false);
+					await context.UpdateAsync(dataSource, @object, dirtyAttributes.ToList(), null, cancellationToken).ConfigureAwait(false);
 				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
-					await context.UpdateAsync(dataSource, @object, updatedAttributes, cancellationToken).ConfigureAwait(false);
+					await context.UpdateAsync(dataSource, @object, dirtyAttributes.ToList(), cancellationToken).ConfigureAwait(false);
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
 
 				// call post-handlers
-				await context.CallPostUpdateHandlersAsync(@object, dirtyAttributes, false, cancellationToken).ConfigureAwait(false);
+				await context.CallPostUpdateHandlersAsync(@object, dirtyAttributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToHashSet(), false, cancellationToken).ConfigureAwait(false);
 				return true;
 			}
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -1993,7 +1998,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -2082,13 +2087,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -2166,7 +2171,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -2237,13 +2242,13 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -2332,7 +2337,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -2522,7 +2527,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -2622,13 +2627,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -2826,13 +2831,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -2942,7 +2947,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3042,13 +3047,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3220,7 +3225,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3388,13 +3393,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3486,7 +3491,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3571,13 +3576,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3665,7 +3670,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3740,13 +3745,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3853,7 +3858,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -3982,13 +3987,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4102,7 +4107,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4173,13 +4178,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4294,7 +4299,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4408,13 +4413,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4523,7 +4528,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4570,13 +4575,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4647,7 +4652,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4719,13 +4724,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4831,7 +4836,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -4959,13 +4964,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -5072,7 +5077,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -5140,13 +5145,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -5261,7 +5266,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -5381,13 +5386,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -5502,7 +5507,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -5549,13 +5554,13 @@ namespace net.vieapps.Components.Repository
 			catch (OperationCanceledException ex)
 			{
 				context.Exception = ex;
-				throw ex;
+				throw;
 			}
 			catch (RepositoryOperationException ex)
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw ex;
+				throw;
 			}
 			catch (Exception ex)
 			{

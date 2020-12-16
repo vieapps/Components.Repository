@@ -309,10 +309,15 @@ namespace net.vieapps.Components.Repository
 			this.OriginalPrivileges = this.OriginalPrivileges?.Normalize();
 			this.TrimAll();
 
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Fill data (standard properties) into object [{typeof(T)}#{this.ID}] => {data.ToJson()}");
+
 			// extended properties
 			if (this is IBusinessEntity && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity))
 			{
 				this.ExtendedProperties = this.ExtendedProperties ?? new Dictionary<string, object>();
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Fill data (extended properties) into object [{typeof(T)}#{this.ID}]\r\n Definitions: {repositoryEntity?.ExtendedPropertyDefinitions.ToJArray()}\r\nValues:\r\n- {this.ExtendedProperties.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}");
 				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(propertyDefinition =>
 				{
 					var value = data?.Get(propertyDefinition.Name);
@@ -3881,7 +3886,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public string ObjectID { get; set; }
 
-		internal static new VersionContent Prepare<T>(T @object, Action<VersionContent> onCompleted = null) where T : class
+		internal static VersionContent Prepare<T>(T @object, Action<VersionContent> onCompleted = null) where T : class
 		{
 			var content = ObjectService.CreateInstance<VersionContent>();
 			content.CopyFrom(TrashContent.Prepare(@object));

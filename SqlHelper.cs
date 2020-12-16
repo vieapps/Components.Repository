@@ -472,106 +472,106 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Copy (DataReader)
-		internal static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		#region Copy (DataReader/DataRow)
+		public static void Copy<T>(this T @object, string name, object value, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes, IPropertyChangedNotifier changedNotifier) where T : class
 		{
-			// create object
-			@object = @object ?? ObjectService.CreateInstance<T>();
-
-			if (@object is IBusinessEntity && extendedProperties != null && (@object as IBusinessEntity).ExtendedProperties == null)
-				(@object as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
-
-			// copy data
-			for (var index = 0; index < dataReader.FieldCount; index++)
+			if (standardAttributes != null && standardAttributes.ContainsKey(name))
 			{
-				var name = dataReader.GetName(index);
-				if (standardProperties != null && standardProperties.ContainsKey(name))
+				var attribute = standardAttributes[name];
+				if (value != null)
 				{
-					var attribute = standardProperties[name];
-					var value = dataReader[index];
-					if (value != null)
-					{
-						if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
-							value = DateTime.Parse(value as string);
-						else if (attribute.IsStoredAsJson())
-							try
-							{
-								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(value as string)), attribute.Type);
-							}
-							catch
-							{
-								value = null;
-							}
-						else if (attribute.IsEnum())
-							value = attribute.IsEnumString()
-								? value.ToString().ToEnum(attribute.Type)
-								: value.CastAs<int>();
-					}
-					@object.SetAttributeValue(attribute, value, true);
+					var strValue = value as string;
+					if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
+						value = DateTime.Parse(strValue);
+
+					else if (attribute.IsStoredAsJson())
+						try
+						{
+							value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(strValue)), attribute.Type);
+						}
+						catch
+						{
+							value = null;
+						}
+
+					else if (attribute.IsEnum())
+						value = attribute.IsEnumString()
+							? strValue.ToEnum(attribute.Type)
+							: value.CastAs<int>();
+
+					else if (attribute.IsGenericListOrHashSet())
+						value = strValue != null
+							? attribute.IsGenericList()
+								? strValue.ToList() as object
+								: strValue.ToHashSet()
+							: value;
+
+					else if (attribute.IsStringType() && string.IsNullOrWhiteSpace(strValue) && !attribute.NotNull)
+						value = null;
 				}
-				else if (extendedProperties != null && extendedProperties.ContainsKey(name))
-				{
-					var attribute = extendedProperties[name];
-					var value = dataReader[index];
-					if (value != null && attribute.Type.IsDateTimeType())
-						value = DateTime.Parse(value as string);
-					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value?.CastAs(attribute.Type);
-					if (@object is IPropertyChangedNotifier)
-						(@object as IPropertyChangedNotifier).NotifyPropertyChanged(name);
-				}
+
+				@object.SetAttributeValue(attribute, value, true);
+				changedNotifier?.NotifyPropertyChanged(name);
 			}
 
-			// return object
+			else if (extendedAttributes != null && extendedAttributes.ContainsKey(name))
+			{
+				var attribute = extendedAttributes[name];
+				if (value != null && attribute.Type.IsDateTimeType())
+					value = DateTime.Parse(value as string);
+				(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value?.CastAs(attribute.Type);
+				changedNotifier?.NotifyPropertyChanged(name);
+			}
+		}
+
+		/// <summary>
+		/// Copies data from data-reader into this object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object"></param>
+		/// <param name="dataReader"></param>
+		/// <param name="standardAttributes"></param>
+		/// <param name="extendedAttributes"></param>
+		/// <returns></returns>
+		public static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes) where T : class
+		{
+			@object = @object ?? ObjectService.CreateInstance<T>();
+
+			if (@object is IBusinessEntity businessEntity && businessEntity.ExtendedProperties == null && extendedAttributes != null)
+				businessEntity.ExtendedProperties = new Dictionary<string, object>();
+
+			var changedNotifier = @object is IPropertyChangedNotifier
+				? @object as IPropertyChangedNotifier
+				: null;
+
+			for (var index = 0; index < dataReader.FieldCount; index++)
+				@object.Copy(dataReader.GetName(index), dataReader[index], standardAttributes, extendedAttributes, changedNotifier);
+
 			return @object;
 		}
-		#endregion
 
-		#region Copy (DataRow)
-		internal static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties) where T : class
+		/// <summary>
+		/// Copies data from data-row into this object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object"></param>
+		/// <param name="dataRow"></param>
+		/// <param name="standardAttributes"></param>
+		/// <param name="extendedAttributes"></param>
+		/// <returns></returns>
+		public static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes) where T : class
 		{
 			@object = @object ?? ObjectService.CreateInstance<T>();
 
-			if (@object is IBusinessEntity && extendedProperties != null && (@object as IBusinessEntity).ExtendedProperties == null)
-				(@object as IBusinessEntity).ExtendedProperties = new Dictionary<string, object>();
+			if (@object is IBusinessEntity businessEntity && businessEntity.ExtendedProperties == null && extendedAttributes != null)
+				businessEntity.ExtendedProperties = new Dictionary<string, object>();
+
+			var changedNotifier = @object is IPropertyChangedNotifier
+				? @object as IPropertyChangedNotifier
+				: null;
 
 			for (var index = 0; index < dataRow.Table.Columns.Count; index++)
-			{
-				var name = dataRow.Table.Columns[index].ColumnName;
-				if (standardProperties != null && standardProperties.ContainsKey(name))
-				{
-					var attribute = standardProperties[name];
-					var value = dataRow[name];
-					if (value != null)
-					{
-						if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
-							value = DateTime.Parse(value as string);
-						else if (attribute.IsStoredAsJson())
-							try
-							{
-								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(value as string)), attribute.Type);
-							}
-							catch
-							{
-								value = null;
-							}
-						else if (attribute.IsEnum())
-							value = attribute.IsEnumString()
-								? value.ToString().ToEnum(attribute.Type)
-								: value.CastAs<int>();
-					}
-					@object.SetAttributeValue(attribute, value, true);
-				}
-				else if (extendedProperties != null && extendedProperties.ContainsKey(name))
-				{
-					var attribute = extendedProperties[name];
-					var value = dataRow[name];
-					if (value != null && attribute.Type.IsDateTimeType())
-						value = DateTime.Parse(value as string);
-					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value?.CastAs(attribute.Type);
-					if (@object is IPropertyChangedNotifier)
-						(@object as IPropertyChangedNotifier).NotifyPropertyChanged(name);
-				}
-			}
+				@object.Copy(dataRow.Table.Columns[index].ColumnName, dataRow[dataRow.Table.Columns[index].ColumnName], standardAttributes, extendedAttributes, changedNotifier);
 
 			return @object;
 		}
@@ -1399,7 +1399,7 @@ namespace net.vieapps.Components.Repository
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var standardProperties = definition.Attributes.Where(attribute => !attribute.IsMappings()).ToDictionary(attribute => attribute.Name.ToLower());
-			foreach (var attribute in attributes)
+			foreach (var attribute in attributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToList())
 			{
 				if (!standardProperties.ContainsKey(attribute.ToLower()))
 					continue;
@@ -1427,7 +1427,7 @@ namespace net.vieapps.Components.Repository
 
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var extendedProperties = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name.ToLower());
-			foreach (var attribute in attributes)
+			foreach (var attribute in attributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToList())
 			{
 				if (!extendedProperties.ContainsKey(attribute.ToLower()))
 					continue;

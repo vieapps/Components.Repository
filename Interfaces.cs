@@ -120,27 +120,27 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the identity
 		/// </summary>
-		string ID { get; }
+		string ID { get; set; }
 
 		/// <summary>
 		/// Gets the title
 		/// </summary>
-		string Title { get; }
+		string Title { get; set; }
 
 		/// <summary>
 		/// Gets the identity of a system (at run-time) that the object is belong to
 		/// </summary>
-		string SystemID { get; }
+		string SystemID { get; set; }
 
 		/// <summary>
 		/// Gets the identity of the repository that the object is belong to (means the business module)
 		/// </summary>
-		string RepositoryID { get; }
+		string RepositoryID { get; set; }
 
 		/// <summary>
 		/// Gets the identity of a business repository entity that the object is belong to (means the business content-type)
 		/// </summary>
-		string RepositoryEntityID { get; }
+		string RepositoryEntityID { get; set; }
 
 		/// <summary>
 		/// Gets or sets the collection of extended properties
@@ -165,22 +165,22 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the time when object is created
 		/// </summary>
-		DateTime Created { get; }
+		DateTime Created { get; set; }
 
 		/// <summary>
 		/// Gets the identity of an user who creates this object at the first-time
 		/// </summary>
-		string CreatedID { get; }
+		string CreatedID { get; set; }
 
 		/// <summary>
 		/// Gets the time when object is modified at the last-time
 		/// </summary>
-		DateTime LastModified { get; }
+		DateTime LastModified { get; set; }
 
 		/// <summary>
 		/// Gets the identity of an user who modifies this object at the last-time
 		/// </summary>
-		string LastModifiedID { get; }
+		string LastModifiedID { get; set; }
 	}
 
 	//  --------------------------------------------------------------------------------------------

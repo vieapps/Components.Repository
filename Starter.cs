@@ -72,7 +72,7 @@ namespace net.vieapps.Components.Repository
 					if (tracker == null)
 						RepositoryMediator.WriteLogs($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
 					ex.LoaderExceptions.ForEach(exception => tracker?.Invoke(null, exception));
-					throw ex;
+					throw;
 				}
 			}
 			catch (Exception ex)
@@ -80,7 +80,7 @@ namespace net.vieapps.Components.Repository
 				tracker?.Invoke($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
 				if (tracker == null)
 					RepositoryMediator.WriteLogs($"Error occurred while initializing the assembly: {assembly.GetName().Name}", ex);
-				throw ex;
+				throw;
 			}
 		}
 
@@ -193,7 +193,7 @@ namespace net.vieapps.Components.Repository
 					tracker?.Invoke($"Error occurred while updating the repository => {ex.Message}", ex);
 					if (tracker == null)
 						RepositoryMediator.WriteLogs($"Error occurred while updating the repository => {ex.Message}", ex);
-					throw ex;
+					throw;
 				}
 			else
 			{

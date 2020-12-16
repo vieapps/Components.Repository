@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp2.1;netcoreapp3.1</TargetFrameworks>
-		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
+		<TargetFrameworks>netstandard2.0;netstandard2.1;netcoreapp2.1;netcoreapp3.1;net5.0</TargetFrameworks>
 		<WarningLevel>3</WarningLevel>
-		<NoWarn>IDE0054,IDE0056,IDE0057,IDE0063</NoWarn>
+		<NoWarn>IDE0054,IDE0056,IDE0057,IDE0063,1573,1591</NoWarn>
+		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
 		<DocumentationFile>bin/$(Configuration)/$(TargetFramework)/VIEApps.Components.Repository.xml</DocumentationFile>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
@@ -14,7 +14,7 @@
 		<Version>10.3$(ReleaseVersion)$(ReleaseSuffix)</Version>
 		<Product>VIEApps NGX</Product>
 		<Title>VIEApps NGX Repository</Title>
-		<Description>A tiny polyglot component to help POCO objects work with both NoSQL and SQL databases at the same time on .NET Standard 2.x/.NET Core 2.x+</Description>
+		<Description>A tiny polyglot component to help POCO objects work with both NoSQL and SQL databases at the same time on .NET</Description>
 		<Copyright>© 2020 VIEApps.net</Copyright>
 		<Authors>VIEApps.net</Authors>
 		<Company>VIEApps.net</Company>
@@ -32,7 +32,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Fix bugs of MongoDB replacements</PackageReleaseNotes>
+		<PackageReleaseNotes>Fix bugs: working with extended properties</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -48,12 +48,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.11.1" />
+		<PackageReference Include="MongoDB.Driver" Version="2.11.5" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' != 'true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.2009.3" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.3.2009.3" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.3.2012.2" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.3.2012.2" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' == 'true'">
