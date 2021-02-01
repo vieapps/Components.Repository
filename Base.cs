@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Data;
+using System.Dynamic;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,14 +12,13 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
+using MsgPack.Serialization;
 using MongoDB.Driver;
 using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using net.vieapps.Components.Utility;
 using net.vieapps.Components.Security;
-using System.Dynamic;
 #endregion
 
 namespace net.vieapps.Components.Repository
@@ -26,7 +26,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents the base of a repository entity in a repository
 	/// </summary>
-	[Serializable]
 	public abstract class RepositoryBase : IPropertyChangedNotifier
 	{
 		/// <summary>
@@ -56,19 +55,19 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the searching score for ordering the results
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull, MessagePackIgnore]
 		public virtual double? SearchScore { get; set; }
 
 		/// <summary>
 		/// Gets the name of the service that associates with this entity
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public virtual string ServiceName => RepositoryMediator.GetEntityDefinition(this.GetType())?.RepositoryDefinition?.ServiceName;
 
 		/// <summary>
 		/// Gets the name of the service's object that associates with this entity
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public virtual string ObjectName => RepositoryMediator.GetEntityDefinition(this.GetType())?.ObjectName ?? this.GetType().GetTypeName(true);
 		#endregion
 
@@ -101,35 +100,57 @@ namespace net.vieapps.Components.Repository
 		public virtual string RepositoryEntityID { get; set; }
 
 		/// <summary>
-		/// Gets or sets the collection of extended properties
-		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
-		public virtual Dictionary<string, object> ExtendedProperties { get; set; }
-
-		/// <summary>
 		/// Gets the object that marks as parent of this object
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public virtual RepositoryBase Parent { get; }
+
+		/// <summary>
+		/// Gets or sets the collection of extended properties
+		/// </summary>
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnoreIfNull, MessagePackIgnore]
+		public virtual Dictionary<string, object> ExtendedProperties { get; set; }
+
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public byte[] MsgPackExtendedProperties
+		{
+			get => this.ExtendedProperties != null && this.ExtendedProperties.Count > 0 ? Caching.Helper.SerializeBson(this.ExtendedProperties) : new byte[0];
+			set => this.ExtendedProperties = value != null && value.Length > 0 ? Caching.Helper.DeserializeBson<Dictionary<string, object>>(value) : null;
+		}
 
 		/// <summary>
 		/// Gets or sets the original privileges (means original working permissions)
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull]
+		[JsonIgnore, XmlIgnore, BsonIgnoreIfNull, MessagePackIgnore]
 		[AsJson]
 		[FormControl(Excluded = true)]
 		public virtual Privileges OriginalPrivileges { get; set; }
 
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		public byte[] MsgPackOriginalPrivileges
+		{
+			get => this.OriginalPrivileges != null ? Caching.Helper.SerializeBson(this.OriginalPrivileges) : Array.Empty<byte>();
+			set
+			{
+				this.OriginalPrivileges = value != null && value.Length > 0 ? Caching.Helper.DeserializeBson<Privileges>(value) : null;
+				if (RepositoryMediator.IsTraceEnabled)
+					Task.Run(async () =>
+					{
+						await Task.Delay(123).ConfigureAwait(false);
+						RepositoryMediator.WriteLogs($"The object was deserialized [{this.GetType()}#{this.ID} => {this.Title}]");
+					}).ConfigureAwait(false);
+			}
+		}
+
 		/// <summary>
 		/// The privileges that are combined from original privileges and parent privileges
 		/// </summary>
-		[NonSerialized]
 		protected Privileges _workingPrivileges = null;
 
 		/// <summary>
 		/// Gets the working privileges (means the actual working permissions - that combined with parents' privileges)
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public virtual Privileges WorkingPrivileges
 			=> this._workingPrivileges ?? (this._workingPrivileges = (this.OriginalPrivileges ?? new Privileges()).Combine(this.Parent?.WorkingPrivileges));
 		#endregion
@@ -237,18 +258,14 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region On property changed
-		[field: NonSerialized]
 		public virtual event PropertyChangedEventHandler PropertyChanged;
 
-		[OnDeserialized]
-		void OnDeserialized(StreamingContext context)
-		{
-			this.AssignPropertyChangedEventHandler();
-			this.GetPublicAttributes(attribute => attribute.CanWrite).ForEach(attribute => this.NotifyPropertyChanged(attribute.Name));
-		}
-
 		public virtual void NotifyPropertyChanged([CallerMemberName] string name = "", object sender = null)
-			=> this.PropertyChanged?.Invoke(sender ?? this, new PropertyChangedEventArgs(name));
+		{
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"A property was changed: {name} @ [{this.GetType()}#{this.ID} => {this.Title}]");
+			this.PropertyChanged?.Invoke(sender ?? this, new PropertyChangedEventArgs(name));
+		}
 
 		/// <summary>
 		/// Assigns the event handler to process a property changed
@@ -266,7 +283,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents the base of a repository entity of a repository with helper methods to perform CRUD operations, count, find, and query (full-text search)
 	/// </summary>
-	[Serializable]
 	[DebuggerDisplay("ID = {ID}, Type = {typeof(T).FullName}")]
 	public abstract class RepositoryBase<T> : RepositoryBase where T : class
 	{
@@ -284,7 +300,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the total number of version contents
 		/// </summary>
-		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
+		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public virtual long TotalVersions
 		{
 			get
@@ -305,19 +321,19 @@ namespace net.vieapps.Components.Repository
 		public T Fill(ExpandoObject data, HashSet<string> excluded = null, Action<T> onCompleted = null)
 		{
 			// standard properties
+			if (RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"Fill data (standard properties) into object [{typeof(T)}#{this.ID}] - Excluded: {excluded?.Join(", ") ?? "None"}\r\n{data.ToJson()}");
+
 			this.CopyFrom(data, excluded);
 			this.OriginalPrivileges = this.OriginalPrivileges?.Normalize();
 			this.TrimAll();
 
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Fill data (standard properties) into object [{typeof(T)}#{this.ID}] => {data.ToJson()}");
-
 			// extended properties
-			if (this is IBusinessEntity && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity))
+			if (this is IBusinessEntity && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity) && repositoryEntity?.ExtendedPropertyDefinitions != null)
 			{
 				this.ExtendedProperties = this.ExtendedProperties ?? new Dictionary<string, object>();
 				if (RepositoryMediator.IsTraceEnabled)
-					RepositoryMediator.WriteLogs($"Fill data (extended properties) into object [{typeof(T)}#{this.ID}]\r\n Definitions: {repositoryEntity?.ExtendedPropertyDefinitions.ToJArray()}\r\nValues:\r\n- {this.ExtendedProperties.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}");
+					RepositoryMediator.WriteLogs($"Fill data (extended properties) into object [{typeof(T)}#{this.ID}]\r\nDefinitions: {repositoryEntity?.ExtendedPropertyDefinitions?.ToJArray()}\r\nValues:\r\n- {this.ExtendedProperties?.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}");
 				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(propertyDefinition =>
 				{
 					var value = data?.Get(propertyDefinition.Name);
@@ -326,20 +342,31 @@ namespace net.vieapps.Components.Repository
 						// validate string value
 						if (value is string @string)
 						{
-							var maxLength = 0;
-							switch (propertyDefinition.Mode)
+							if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.IntegralNumber))
+								value = @string.CastAs<long>();
+							else if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.FloatingPointNumber))
+								value = @string.CastAs<decimal>();
+							else if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.YesNo))
+								value = "true".IsEquals(@string);
+							else if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.DateTime))
+								value = DateTime.Parse(@string);
+							else
 							{
-								case ExtendedPropertyMode.SmallText:
-								case ExtendedPropertyMode.Select:
-									maxLength = 250;
-									break;
+								var maxLength = 0;
+								switch (propertyDefinition.Mode)
+								{
+									case ExtendedPropertyMode.SmallText:
+									case ExtendedPropertyMode.Select:
+										maxLength = 250;
+										break;
 
-								case ExtendedPropertyMode.MediumText:
-								case ExtendedPropertyMode.Lookup:
-									maxLength = 4000;
-									break;
+									case ExtendedPropertyMode.MediumText:
+									case ExtendedPropertyMode.Lookup:
+										maxLength = 4000;
+										break;
+								}
+								value = maxLength > 0 && @string.Length > maxLength ? @string.Left(maxLength) : @string.Trim();
 							}
-							value = maxLength > 0 && @string.Length > maxLength ? @string.Left(maxLength) : @string.Trim();
 						}
 
 						// validate multiple values of select (array/list)
@@ -358,6 +385,8 @@ namespace net.vieapps.Components.Repository
 							value = maxLength > 0 && @string.Length > maxLength ? @string.Left(maxLength) : @string.Trim();
 						}
 					}
+
+					// assign value
 					this.ExtendedProperties[propertyDefinition.Name] = value;
 				});
 			}
@@ -3520,7 +3549,6 @@ namespace net.vieapps.Components.Repository
 	//  --------------------------------------------------------------------------------------------
 
 	#region Trash & Version
-	[Serializable]
 	public class TrashContent
 	{
 		public TrashContent() { }
@@ -3575,13 +3603,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		public string Data { get; internal set; }
 
-		[NonSerialized]
 		protected object _Object = null;
 
 		/// <summary>
 		/// Gets the original object
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore]
+		[JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public object Object
 		{
 			get => this._Object ?? (this._Object = !string.IsNullOrWhiteSpace(this.Data) ? Caching.Helper.Deserialize(this.Data.Base64ToBytes().Decompress()) : null);
@@ -3871,7 +3898,6 @@ namespace net.vieapps.Components.Repository
 		}
 	}
 
-	[Serializable]
 	public class VersionContent : TrashContent
 	{
 		public VersionContent() { }

@@ -1,10 +1,7 @@
 ﻿#region Related components
 using System;
 using System.Linq;
-using System.Data;
-using System.Data.Common;
 using System.Diagnostics;
-using System.Configuration;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Transactions;
@@ -115,8 +112,17 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="useTransaction">true to use transaction with default settings (async flow is enabled); false to not</param>
 		/// <param name="nosqlSession">The client session of NoSQL database</param>
-		public RepositoryContext(bool useTransaction = true, MongoDB.Driver.IClientSessionHandle nosqlSession = null)
+		public RepositoryContext(bool useTransaction = true, MongoDB.Driver.IClientSessionHandle nosqlSession = null) : this(null, useTransaction, nosqlSession) { }
+
+		/// <summary>
+		/// Creates new context for working with repositories
+		/// </summary>
+		/// <param name="useTransaction">true to use transaction with default settings (async flow is enabled); false to not</param>
+		/// <param name="nosqlSession">The client session of NoSQL database</param>
+		public RepositoryContext(EntityDefinition entityDefinition, bool useTransaction = true, MongoDB.Driver.IClientSessionHandle nosqlSession = null)
 		{
+			if (entityDefinition != null)
+				this.EntityDefinition = entityDefinition;
 			this.UseTransaction = useTransaction;
 			this.NoSqlSession = nosqlSession;
 			this.Prepare();
@@ -200,27 +206,21 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region State data
-		internal Dictionary<string, object> GetStateData(object @object)
+		internal Dictionary<string, object> GetStateData<T>(T @object) where T : class
 		{
 			// initialize
 			var stateData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+			if (@object == null)
+				return stateData;
 
-			// standard properties
-			@object?.GetProperties(attribute => !attribute.IsIgnored())?.ForEach(attribute =>
+
+			// standard properties && fields
+			var entityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			entityDefinition.Attributes.ForEach(attribute =>
 			{
 				try
 				{
-					stateData[attribute.Name] = @object.GetAttributeValue(attribute.Name);
-				}
-				catch { }
-			});
-
-			// standard fields
-			@object?.GetFields(attribute => !attribute.IsIgnored())?.ForEach(attribute =>
-			{
-				try
-				{
-					stateData[attribute.Name] = @object.GetAttributeValue(attribute.Name);
+					stateData[attribute.Name] = @object.GetAttributeValue(attribute);
 				}
 				catch { }
 			});
@@ -239,7 +239,7 @@ namespace net.vieapps.Components.Repository
 			return stateData;
 		}
 
-		internal Dictionary<string, object> SetPreviousState(object @object, Dictionary<string, object> stateData = null)
+		internal Dictionary<string, object> SetPreviousState<T>(T @object, Dictionary<string, object> stateData = null) where T : class
 		{
 			stateData = stateData ?? this.GetStateData(@object);
 			this.PreviousStateData[@object.GetCacheKey(true)] = stateData;
@@ -251,10 +251,10 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="object">The object that need to get previous state</param>
 		/// <returns></returns>
-		public Dictionary<string, object> GetPreviousState(object @object)
+		public Dictionary<string, object> GetPreviousState<T>(T @object) where T : class
 			=> @object != null && this.PreviousStateData.TryGetValue(@object.GetCacheKey(true), out var stateData) ? stateData : null;
 
-		internal Dictionary<string, object> SetCurrentState(object @object, Dictionary<string, object> stateData = null)
+		internal Dictionary<string, object> SetCurrentState<T>(T @object, Dictionary<string, object> stateData = null) where T : class
 		{
 			stateData = stateData ?? this.GetStateData(@object);
 			this.CurrentStateData[@object.GetCacheKey(true)] = stateData;
@@ -266,7 +266,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="object">The object that need to get current state</param>
 		/// <returns></returns>
-		public Dictionary<string, object> GetCurrentState(object @object)
+		public Dictionary<string, object> GetCurrentState<T>(T @object) where T : class
 			=> @object != null
 				? this.CurrentStateData.TryGetValue(@object.GetCacheKey(true), out var stateData)
 					? stateData

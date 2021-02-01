@@ -473,54 +473,77 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Copy (DataReader/DataRow)
-		public static void Copy<T>(this T @object, string name, object value, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes, IPropertyChangedNotifier changedNotifier) where T : class
+		/// <summary>
+		/// Sets the value of an attribute
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object"></param>
+		/// <param name="name"></param>
+		/// <param name="value"></param>
+		/// <param name="standardAttributes"></param>
+		/// <param name="extendedAttributes"></param>
+		/// <param name="changedNotifier"></param>
+		/// <param name="whenSetAttributeValueGotError"></param>
+		public static void SetAttributeValue<T>(this T @object, string name, object value, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes, IPropertyChangedNotifier changedNotifier = null, Action<T, string, object, Exception> whenSetAttributeValueGotError = null) where T : class
 		{
-			if (standardAttributes != null && standardAttributes.ContainsKey(name))
+			try
 			{
-				var attribute = standardAttributes[name];
-				if (value != null)
+				if (standardAttributes != null && standardAttributes.ContainsKey(name))
 				{
-					var strValue = value as string;
-					if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
-						value = DateTime.Parse(strValue);
+					var attribute = standardAttributes[name];
+					if (value != null)
+					{
+						var strValue = value as string;
+						if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
+							value = DateTime.Parse(strValue);
 
-					else if (attribute.IsStoredAsJson())
-						try
-						{
-							value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(strValue)), attribute.Type);
-						}
-						catch
-						{
+						else if (attribute.IsStoredAsJson())
+							try
+							{
+								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(strValue)), attribute.Type);
+							}
+							catch
+							{
+								value = null;
+							}
+
+						else if (attribute.IsEnum())
+							value = attribute.IsEnumString()
+								? strValue.ToEnum(attribute.Type)
+								: value.CastAs<int>();
+
+						else if (attribute.IsGenericListOrHashSet())
+							value = strValue != null
+								? attribute.IsGenericList()
+									? strValue.ToList() as object
+									: strValue.ToHashSet()
+								: value;
+
+						else if (attribute.IsStringType() && string.IsNullOrWhiteSpace(strValue) && !attribute.NotNull)
 							value = null;
-						}
+					}
 
-					else if (attribute.IsEnum())
-						value = attribute.IsEnumString()
-							? strValue.ToEnum(attribute.Type)
-							: value.CastAs<int>();
-
-					else if (attribute.IsGenericListOrHashSet())
-						value = strValue != null
-							? attribute.IsGenericList()
-								? strValue.ToList() as object
-								: strValue.ToHashSet()
-							: value;
-
-					else if (attribute.IsStringType() && string.IsNullOrWhiteSpace(strValue) && !attribute.NotNull)
-						value = null;
+					@object.SetAttributeValue(attribute, value, true);
+					changedNotifier?.NotifyPropertyChanged(name);
 				}
 
-				@object.SetAttributeValue(attribute, value, true);
-				changedNotifier?.NotifyPropertyChanged(name);
+				else if (extendedAttributes != null && extendedAttributes.ContainsKey(name))
+				{
+					var attribute = extendedAttributes[name];
+					if (value != null && attribute.Type.IsDateTimeType())
+						value = value is DateTime datetime
+							? datetime
+							: DateTime.Parse(value.ToString());
+					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value?.CastAs(attribute.Type);
+					changedNotifier?.NotifyPropertyChanged(name);
+				}
 			}
-
-			else if (extendedAttributes != null && extendedAttributes.ContainsKey(name))
+			catch (Exception ex)
 			{
-				var attribute = extendedAttributes[name];
-				if (value != null && attribute.Type.IsDateTimeType())
-					value = DateTime.Parse(value as string);
-				(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value?.CastAs(attribute.Type);
-				changedNotifier?.NotifyPropertyChanged(name);
+				if (whenSetAttributeValueGotError != null)
+					whenSetAttributeValueGotError(@object, name, value, ex);
+				else
+					throw new RepositoryOperationException($"Cannot set the value of an attribute => {ex.Message} [{@object.GetType()}#{@object.GetEntityID()} :: {name} => {value}]", ex);
 			}
 		}
 
@@ -532,8 +555,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataReader"></param>
 		/// <param name="standardAttributes"></param>
 		/// <param name="extendedAttributes"></param>
+		/// <param name="whenSetAttributeValueGotError"></param>
 		/// <returns></returns>
-		public static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes) where T : class
+		public static T Copy<T>(this T @object, DbDataReader dataReader, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes, Action<T, string, object, Exception> whenSetAttributeValueGotError = null) where T : class
 		{
 			@object = @object ?? ObjectService.CreateInstance<T>();
 
@@ -545,7 +569,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			for (var index = 0; index < dataReader.FieldCount; index++)
-				@object.Copy(dataReader.GetName(index), dataReader[index], standardAttributes, extendedAttributes, changedNotifier);
+				@object.SetAttributeValue(dataReader.GetName(index), dataReader[index], standardAttributes, extendedAttributes, changedNotifier, whenSetAttributeValueGotError);
 
 			return @object;
 		}
@@ -558,8 +582,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataRow"></param>
 		/// <param name="standardAttributes"></param>
 		/// <param name="extendedAttributes"></param>
+		/// <param name="whenSetAttributeValueGotError"></param>
 		/// <returns></returns>
-		public static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes) where T : class
+		public static T Copy<T>(this T @object, DataRow dataRow, Dictionary<string, AttributeInfo> standardAttributes, Dictionary<string, ExtendedPropertyDefinition> extendedAttributes, Action<T, string, object, Exception> whenSetAttributeValueGotError = null) where T : class
 		{
 			@object = @object ?? ObjectService.CreateInstance<T>();
 
@@ -571,7 +596,7 @@ namespace net.vieapps.Components.Repository
 				: null;
 
 			for (var index = 0; index < dataRow.Table.Columns.Count; index++)
-				@object.Copy(dataRow.Table.Columns[index].ColumnName, dataRow[dataRow.Table.Columns[index].ColumnName], standardAttributes, extendedAttributes, changedNotifier);
+				@object.SetAttributeValue(dataRow.Table.Columns[index].ColumnName, dataRow[dataRow.Table.Columns[index].ColumnName], standardAttributes, extendedAttributes, changedNotifier, whenSetAttributeValueGotError);
 
 			return @object;
 		}
@@ -706,7 +731,7 @@ namespace net.vieapps.Components.Repository
 				var mapInfo = attribute.GetMapInfo(definition);
 				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, token).ConfigureAwait(false);
 				@object.SetAttributeValue(attribute, attribute.IsGenericHashSet() ? mapValues.ToHashSet() as object : mapValues);
-			}, cancellationToken, true, false).ConfigureAwait(false); 
+			}, cancellationToken, true, false).ConfigureAwait(false);
 		}
 		#endregion
 
@@ -1336,6 +1361,7 @@ namespace net.vieapps.Components.Repository
 				{
 					throw new RepositoryOperationException($"Could not perform REPLACE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
+				command?.Dispose();
 			}
 		}
 
@@ -1387,17 +1413,47 @@ namespace net.vieapps.Components.Repository
 				{
 					throw new RepositoryOperationException($"Could not perform REPLACE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 				}
+				command?.Dispose();
 			}
 		}
 		#endregion
 
 		#region Update
-		static Tuple<string, List<DbParameter>> PrepareUpdateOrigin<T>(this T @object, List<string> attributes, DbProviderFactory dbProviderFactory) where T : class
+		static Tuple<List<string>, List<DbParameter>> PrepareUpdateOrigin<T>(this IDictionary<string, object> values, Dictionary<string, AttributeInfo> attributes, DbProviderFactory dbProviderFactory) where T : class
 		{
 			var columns = new List<string>();
 			var parameters = new List<DbParameter>();
+			attributes.ForEach(kvp =>
+			{
+				var name = kvp.Key;
+				var column = string.IsNullOrEmpty(kvp.Value.Column) ? name : kvp.Value.Column;
+				if (values.TryGetValue(name, out var value))
+					if (value != null || (value == null && !kvp.Value.IsIgnoredIfNull()))
+					{
+						columns.Add($"{column}=@{name}");
+						parameters.Add(dbProviderFactory.CreateParameter(kvp.Value, value));
+					}
+			});
+			return new Tuple<List<string>, List<DbParameter>>(columns, parameters);
+		}
 
+		static Tuple<string, List<DbParameter>> PrepareUpdateOrigin<T>(this T @object, List<string> attributes, DbProviderFactory dbProviderFactory) where T : class
+		{
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
+
+			var included = attributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToHashSet();
+			var standardProperties = definition.Attributes.Where(attribute => !attribute.IsMappings() && included.Contains(attribute.Name)).ToDictionary(attribute => attribute.Name);
+
+			var values = new Dictionary<string, object>();
+			standardProperties.ForEach(kvp => values[kvp.Key] = @object.GetAttributeValue(kvp.Value));
+			var data = values.PrepareUpdateOrigin<T>(standardProperties, dbProviderFactory);
+			var columns = data.Item1;
+			var parameters = data.Item2;
+
+			/*
+			var columns = new List<string>();
+			var parameters = new List<DbParameter>();
+
 			var standardProperties = definition.Attributes.Where(attribute => !attribute.IsMappings()).ToDictionary(attribute => attribute.Name.ToLower());
 			foreach (var attribute in attributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToList())
 			{
@@ -1411,6 +1467,7 @@ namespace net.vieapps.Components.Repository
 				columns.Add((string.IsNullOrEmpty(standardProperties[attribute.ToLower()].Column) ? standardProperties[attribute.ToLower()].Name : standardProperties[attribute.ToLower()].Column) + "=@" + standardProperties[attribute.ToLower()].Name);
 				parameters.Add(dbProviderFactory.CreateParameter(standardProperties[attribute.ToLower()], value));
 			}
+			*/
 
 			var statement = columns.Count > 0
 				? $"UPDATE {definition.TableName} SET {columns.Join(", ")} WHERE {definition.PrimaryKey}=@{definition.PrimaryKey}"
@@ -1420,12 +1477,41 @@ namespace net.vieapps.Components.Repository
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
-		static Tuple<string, List<DbParameter>> PrepareUpdateExtent<T>(this T @object, List<string> attributes, DbProviderFactory dbProviderFactory) where T : class
+		static Tuple<List<string>, List<DbParameter>> PrepareUpdateExtent<T>(this IDictionary<string, object> values, Dictionary<string, ExtendedPropertyDefinition> attributes, DbProviderFactory dbProviderFactory) where T : class
 		{
 			var columns = new List<string>();
 			var parameters = new List<DbParameter>();
+			attributes.ForEach(kvp =>
+			{
+				if (values.TryGetValue(kvp.Key, out var value))
+				{
+					columns.Add($"{kvp.Value.Column}=@{kvp.Key}");
+					parameters.Add(dbProviderFactory.CreateParameter(kvp.Value, value));
+				}
+			});
+			return new Tuple<List<string>, List<DbParameter>>(columns, parameters);
+		}
 
+		static Tuple<string, List<DbParameter>> PrepareUpdateExtent<T>(this T @object, List<string> attributes, DbProviderFactory dbProviderFactory) where T : class
+		{
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
+
+			var extendedProperties = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name);
+			var values = new Dictionary<string, object>();
+			extendedProperties.ForEach(kvp =>
+			{
+				values[kvp.Key] = (@object as IBusinessEntity).ExtendedProperties != null && (@object as IBusinessEntity).ExtendedProperties.ContainsKey(kvp.Key)
+					? (@object as IBusinessEntity).ExtendedProperties[kvp.Key]
+					: extendedProperties[kvp.Key].GetDefaultValue();
+			});
+			var data = values.PrepareUpdateExtent<T>(extendedProperties, dbProviderFactory);
+			var columns = data.Item1;
+			var parameters = data.Item2;
+
+			/*
+			var columns = new List<string>();
+			var parameters = new List<DbParameter>();
+
 			var extendedProperties = definition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => attribute.Name.ToLower());
 			foreach (var attribute in attributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToList())
 			{
@@ -1438,6 +1524,7 @@ namespace net.vieapps.Components.Repository
 					: extendedProperties[attribute.ToLower()].GetDefaultValue();
 				parameters.Add(dbProviderFactory.CreateParameter(extendedProperties[attribute.ToLower()], value));
 			}
+			*/
 
 			var statement = columns.Count > 0
 				? $"UPDATE {definition.RepositoryDefinition.ExtendedPropertiesTableName} SET {columns.Join(", ")} WHERE ID=@ID"
@@ -1460,7 +1547,7 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 			else if (attributes == null || attributes.Count < 1)
-				throw new ArgumentException("No attribute to update", nameof(attributes));
+				throw new ArgumentException("No valid update", nameof(attributes));
 
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
@@ -1497,6 +1584,7 @@ namespace net.vieapps.Components.Repository
 				{
 					throw new RepositoryOperationException($"Could not perform UPDATE command [{typeof(T)}#{@object?.GetEntityID()}]", command == null ? "" : command.GetInfo(), ex);
 				}
+				command?.Dispose();
 			}
 		}
 
@@ -1515,7 +1603,7 @@ namespace net.vieapps.Components.Repository
 			if (@object == null)
 				throw new ArgumentNullException(nameof(@object), "Cannot update new because the object is null");
 			else if (attributes == null || attributes.Count < 1)
-				throw new ArgumentException("No attribute to update", nameof(attributes));
+				throw new ArgumentException("No valid update", nameof(attributes));
 
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
@@ -1552,6 +1640,7 @@ namespace net.vieapps.Components.Repository
 				{
 					throw new RepositoryOperationException($"Could not perform UPDATE command [{typeof(T)}#{@object?.GetEntityID()}]", command == null ? "" : command.GetInfo(), ex);
 				}
+				command?.Dispose();
 			}
 		}
 		#endregion
@@ -1837,17 +1926,15 @@ namespace net.vieapps.Components.Repository
 						statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					command.ExecuteNonQuery();
-					if (RepositoryMediator.IsDebugEnabled)
-						info += "\r\n" + command.GetInfo();
+					info += "\r\n" + command.GetInfo();
 
 					stopwatch.Stop();
-					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new[]
-						{
-							$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
-							$"Execution times: {stopwatch.GetElapsedTimes()}",
-							info
-						});
+					RepositoryMediator.WriteLogs(new[]
+					{
+						$"SQL: Perform DELETE MANY command successful [{typeof(T)}] @ {dataSource.Name}",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 				}
 				catch (Exception ex)
 				{
@@ -1898,17 +1985,15 @@ namespace net.vieapps.Components.Repository
 						statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-					if (RepositoryMediator.IsDebugEnabled)
-						info += "\r\n" + command.GetInfo();
+					info += "\r\n" + command.GetInfo();
 
 					stopwatch.Stop();
-					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new[]
-						{
-							$"SQL: Perform DELETE command successful [{typeof(T)}] @ {dataSource.Name}",
-							$"Execution times: {stopwatch.GetElapsedTimes()}",
-							info
-						});
+					RepositoryMediator.WriteLogs(new[]
+					{
+						$"SQL: Perform DELETE MANY command successful [{typeof(T)}] @ {dataSource.Name}",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 				}
 				catch (Exception ex)
 				{
@@ -2317,7 +2402,7 @@ namespace net.vieapps.Components.Repository
 				results = context.Select(dataSource, null, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
-			
+
 			if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
@@ -3368,6 +3453,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
+						RepositoryMediator.WriteLogs(new[]
+						{
+							$"STARTER: Error occurred while creating new SQL table [{context.EntityDefinition.TableName}] @ {dataSource.Name} => {ex.Message}",
+							$"SQL Command: {sql}"
+						}, ex, LogLevel.Error);
 						throw new RepositoryOperationException("Error occurred while creating new SQL table", sql, ex);
 					}
 				}
@@ -3485,6 +3575,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
+						RepositoryMediator.WriteLogs(new[]
+						{
+							$"STARTER: Error occurred while creating new indexes of SQL table [{context.EntityDefinition.TableName}] @ {dataSource.Name} => {ex.Message}",
+							$"SQL Command: {sql}"
+						}, ex, LogLevel.Error);
 						throw new RepositoryOperationException("Error occurred while creating new indexes of SQL table", sql, ex);
 					}
 				}
@@ -3516,6 +3611,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
+						RepositoryMediator.WriteLogs(new[]
+						{
+							$"STARTER: Error occurred while creating the default full-text catalog of Microsoft SQL Server => {ex.Message}",
+							$"SQL Command: {sql}"
+						}, ex, LogLevel.Error);
 						throw new RepositoryOperationException("Error occurred while creating the default full-text catalog of Microsoft SQL Server", command.CommandText, ex);
 					}
 				}
@@ -3554,6 +3654,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
+						RepositoryMediator.WriteLogs(new[]
+						{
+							$"STARTER: Error occurred while creating new full-text indexes of SQL table [{context.EntityDefinition.TableName}] @ {dataSource.Name} => {ex.Message}",
+							$"SQL Command: {sql}"
+						}, ex, LogLevel.Error);
 						throw new RepositoryOperationException("Error occurred while creating new full-text indexes of SQL table", sql, ex);
 					}
 				}
@@ -3569,8 +3674,8 @@ namespace net.vieapps.Components.Repository
 					sql = $"CREATE TABLE [{tableName}] ("
 						+ $"[{linkColumn}] {typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)} NOT  NULL, "
 						+ $"[{mapColumn}] {typeof(string).GetDbTypeString(dbProviderFactory, 32, true, false)} NOT  NULL, "
-						+ $"CONSTRAINT [PK_{tableName}] PRIMARY KEY CLUSTERED ([{linkColumn}] ASC, [{mapColumn}] ASC "
-						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]";
+						+ $"CONSTRAINT [PK_{tableName}] PRIMARY KEY CLUSTERED ([{linkColumn}] ASC, [{mapColumn}] ASC) "
+						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY]";
 					break;
 
 				case "MySQL":
@@ -3591,7 +3696,7 @@ namespace net.vieapps.Components.Repository
 					{
 						var command = connection.CreateCommand(sql);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						tracker?.Invoke($"Create SQL mapping table successful [{tableName}] @ {dataSource.Name}SQL Command: {sql}", null);
+						tracker?.Invoke($"Create SQL mapping table successful [{tableName}] @ {dataSource.Name}\r\nSQL Command: {sql}", null);
 						if (tracker == null && RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs(new[]
 							{
@@ -3601,6 +3706,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
+						RepositoryMediator.WriteLogs(new[]
+						{
+							$"STARTER: Error occurred while creating new SQL mapping table [{tableName}] @ {dataSource.Name} => {ex.Message}",
+							$"SQL Command: {sql}"
+						}, ex, LogLevel.Error);
 						throw new RepositoryOperationException("Error occurred while creating new SQL mapping table", sql, ex);
 					}
 				}
@@ -3611,6 +3721,31 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			var dbProviderFactoryName = dbProviderFactory.GetName();
 			var tableName = context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName;
+
+			var sql = "";
+			var isExisted = false;
+			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
+			{
+				sql = dbProviderFactory.IsPostgreSQL()
+					? $"SELECT COUNT(tablename) FROM pg_tables WHERE schemaname='public' AND tablename='{tableName.Replace("'", "''").ToLower()}'"
+					: $"SELECT COUNT(table_name) FROM information_schema.tables WHERE table_name='{tableName.Replace("'", "''")}'";
+				try
+				{
+					var command = connection.CreateCommand(sql);
+					isExisted = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>() > 0;
+				}
+				catch (Exception ex)
+				{
+					RepositoryMediator.WriteLogs(new[]
+					{
+						$"STARTER: Error occurred while checking existed of SQL table => {ex.Message}",
+						$"SQL Command: {sql}"
+					}, ex, LogLevel.Error);
+					throw new RepositoryOperationException("Error occurred while checking existed of SQL table ", sql, ex);
+				}
+			}
+			if (isExisted)
+				return;
 
 			var columns = new Dictionary<string, Tuple<Type, int>>
 			{
@@ -3648,7 +3783,6 @@ namespace net.vieapps.Components.Repository
 			for (var index = 1; index <= max; index++)
 				columns.Add($"FloatingPointNumber{index}", new Tuple<Type, int>(typeof(decimal), 0));
 
-			var sql = "";
 			switch (dbProviderFactoryName)
 			{
 				case "SQLServer":
@@ -3664,7 +3798,7 @@ namespace net.vieapps.Components.Repository
 								+ (kvp.Key.EndsWith("ID") ? " NOT" : "") + " NULL";
 						}).Join(", ")
 						+ $", CONSTRAINT [PK_{tableName}] PRIMARY KEY CLUSTERED ([ID] ASC) "
-						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY];\n"
+						+ "WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, IGNORE_DUP_KEY=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=ON) ON [PRIMARY]) ON [PRIMARY];\n"
 						+ $"CREATE NONCLUSTERED INDEX [IDX_{tableName}] ON [{tableName}] ([ID] ASC, [SystemID] ASC, [RepositoryID] ASC, [RepositoryEntityID] ASC)"
 						+ " WITH (PAD_INDEX=OFF, STATISTICS_NORECOMPUTE=OFF, SORT_IN_TEMPDB=OFF, DROP_EXISTING=OFF, ONLINE=OFF, ALLOW_ROW_LOCKS=ON, ALLOW_PAGE_LOCKS=OFF) ON [PRIMARY];";
 					columns.ForEach((kvp, index) =>
@@ -3723,6 +3857,11 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
+						RepositoryMediator.WriteLogs(new[]
+						{
+							$"STARTER: Error occurred while creating new SQL table of extended properties [{context.EntityDefinition.TableName}] @ {dataSource.Name} => {ex.Message}",
+							$"SQL Command: {sql}"
+						}, ex, LogLevel.Error);
 						throw new RepositoryOperationException("Error occurred while creating new SQL table of extended properties", sql, ex);
 					}
 				}
@@ -3746,6 +3885,11 @@ namespace net.vieapps.Components.Repository
 				}
 				catch (Exception ex)
 				{
+					RepositoryMediator.WriteLogs(new[]
+					{
+						$"STARTER: Error occurred while checking existed of SQL table => {ex.Message}",
+						$"SQL Command: {sql}"
+					}, ex, LogLevel.Error);
 					throw new RepositoryOperationException("Error occurred while checking existed of SQL table ", sql, ex);
 				}
 			}

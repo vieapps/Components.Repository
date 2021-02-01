@@ -1,21 +1,10 @@
 ﻿#region Related components
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
-using System.Xml.Serialization;
-using System.Xml.Linq;
-
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
 using MongoDB.Driver;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
-using net.vieapps.Components.Utility;
 using net.vieapps.Components.Security;
 #endregion
 
@@ -118,32 +107,32 @@ namespace net.vieapps.Components.Repository
 	public interface IBusinessEntity
 	{
 		/// <summary>
-		/// Gets the identity
+		/// Gets or Sets the identity
 		/// </summary>
 		string ID { get; set; }
 
 		/// <summary>
-		/// Gets the title
+		/// Gets or Sets the title
 		/// </summary>
 		string Title { get; set; }
 
 		/// <summary>
-		/// Gets the identity of a system (at run-time) that the object is belong to
+		/// Gets or Sets the identity of a system (at run-time) that the object is belong to
 		/// </summary>
 		string SystemID { get; set; }
 
 		/// <summary>
-		/// Gets the identity of the repository that the object is belong to (means the business module)
+		/// Gets or Sets the identity of the repository that the object is belong to (means the business module)
 		/// </summary>
 		string RepositoryID { get; set; }
 
 		/// <summary>
-		/// Gets the identity of a business repository entity that the object is belong to (means the business content-type)
+		/// Gets or Sets the identity of a business repository entity that the object is belong to (means the business content-type)
 		/// </summary>
 		string RepositoryEntityID { get; set; }
 
 		/// <summary>
-		/// Gets or sets the collection of extended properties
+		/// Gets or Sets the collection of extended properties
 		/// </summary>
 		Dictionary<string, object> ExtendedProperties { get; set; }
 
@@ -153,7 +142,7 @@ namespace net.vieapps.Components.Repository
 		IBusinessEntity Parent { get; }
 
 		/// <summary>
-		/// Gets or sets the original privileges (means original working permissions) of this object
+		/// Gets or Sets the original privileges (means original working permissions) of this object
 		/// </summary>
 		Privileges OriginalPrivileges { get; set; }
 
@@ -163,7 +152,7 @@ namespace net.vieapps.Components.Repository
 		Privileges WorkingPrivileges { get; }
 
 		/// <summary>
-		/// Gets the time when object is created
+		/// Gets or Sets the time when object is created
 		/// </summary>
 		DateTime Created { get; set; }
 
@@ -173,12 +162,12 @@ namespace net.vieapps.Components.Repository
 		string CreatedID { get; set; }
 
 		/// <summary>
-		/// Gets the time when object is modified at the last-time
+		/// Gets or Sets the time when object is modified at the last-time
 		/// </summary>
 		DateTime LastModified { get; set; }
 
 		/// <summary>
-		/// Gets the identity of an user who modifies this object at the last-time
+		/// Gets or Sets the identity of an user who modifies this object at the last-time
 		/// </summary>
 		string LastModifiedID { get; set; }
 	}
@@ -191,9 +180,9 @@ namespace net.vieapps.Components.Repository
 	public interface IAliasEntity : IBusinessEntity
 	{
 		/// <summary>
-		/// Gets the alias of this business entity
+		/// Gets or Sets the alias of this business entity
 		/// </summary>
-		string Alias { get; }
+		string Alias { get; set; }
 
 		/// <summary>
 		/// Gets a business entity by an alias
@@ -263,17 +252,17 @@ namespace net.vieapps.Components.Repository
 	public interface ISortBy
 	{
 		/// <summary>
-		/// Gets or sets the attribute for sorting
+		/// Gets or Sets the attribute for sorting
 		/// </summary>
 		string Attribute { get; set; }
 
 		/// <summary>
-		/// Gets or sets the mode for sorting
+		/// Gets or Sets the mode for sorting
 		/// </summary>
 		SortMode Mode { get; set; }
 
 		/// <summary>
-		/// Gets or sets the next-sibling
+		/// Gets or Sets the next-sibling
 		/// </summary>
 		ISortBy ThenBy { get; set; }
 
@@ -299,7 +288,7 @@ namespace net.vieapps.Components.Repository
 	{
 
 		/// <summary>
-		/// Gets or sets the next-sibling
+		/// Gets or Sets the next-sibling
 		/// </summary>
 		new ISortBy<T> ThenBy { get; set; }
 

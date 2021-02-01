@@ -10,6 +10,7 @@ using System.Linq;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using System.Dynamic;
+using MsgPack.Serialization;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -24,7 +25,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a filtering expression for using with comparing operators
 	/// </summary>
-	[Serializable]
 	public class FilterBy : IFilterBy
 	{
 		/// <summary>
@@ -118,7 +118,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a filtering expression for using with comparing operators
 	/// </summary>
-	[Serializable]
 	public class FilterBy<T> : FilterBy, IFilterBy<T> where T : class
 	{
 		/// <summary>
@@ -143,7 +142,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the filtering expression that mark as parent of this expression
 		/// </summary>
-		[JsonIgnore, XmlIgnore, BsonIgnore]
+		[JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public FilterBys<T> Parent { get; internal set; }
 
 		object GetValue(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
@@ -438,7 +437,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a filtering expression for using with with combining operators (AND/OR)
 	/// </summary>
-	[Serializable]
 	public class FilterBys : IFilterBy
 	{
 		/// <summary>
@@ -476,6 +474,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of child expressions
 		/// </summary>
+		[MessagePackIgnore]
 		public List<IFilterBy> Children { get; }
 
 		/// <summary>
@@ -530,7 +529,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a filtering expression for using with with combining operators (AND/OR)
 	/// </summary>
-	[Serializable]
 	public class FilterBys<T> : FilterBys, IFilterBy<T> where T : class
 	{
 		/// <summary>
@@ -562,7 +560,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the filtering expression that mark as parent of this expression
 		/// </summary>
-		[JsonIgnore, XmlIgnore]
+		[JsonIgnore, XmlIgnore, MessagePackIgnore]
 		public FilterBys<T> Parent { get; internal set; }
 
 		/// <summary>
@@ -867,7 +865,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a sorting expression
 	/// </summary>
-	[Serializable]
 	public class SortBy : ISortBy
 	{
 		/// <summary>
@@ -901,6 +898,7 @@ namespace net.vieapps.Components.Repository
 		[JsonConverter(typeof(StringEnumConverter)), BsonRepresentation(BsonType.String)]
 		public SortMode Mode { get; set; }
 
+		[MessagePackIgnore]
 		public ISortBy ThenBy { get; set; }
 
 		public void Parse(JObject json)
@@ -945,7 +943,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a sorting expression
 	/// </summary>
-	[Serializable]
 	public class SortBy<T> : SortBy, ISortBy<T> where T : class
 	{
 		/// <summary>
@@ -971,6 +968,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets or sets the next-sibling
 		/// </summary>
+		[MessagePackIgnore]
 		public new ISortBy<T> ThenBy
 		{
 			get => this._thenBy ?? (this._thenBy = base.ThenBy != null && base.ThenBy is ISortBy<T> ? base.ThenBy as ISortBy<T> : null);

@@ -1,11 +1,8 @@
-﻿using System;
-
-namespace net.vieapps.Components.Repository
+﻿namespace net.vieapps.Components.Repository
 {
 	/// <summary>
 	/// Presents the working mode of a repository
 	/// </summary>
-	[Serializable]
 	public enum RepositoryMode
 	{
 		/// <summary>
@@ -24,7 +21,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents the operation of a repository's context
 	/// </summary>
-	[Serializable]
 	public enum RepositoryOperation
 	{
 		/// <summary>
@@ -54,7 +50,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents the operator of a group of comparing expressions
 	/// </summary>
-	[Serializable]
 	public enum GroupOperator
 	{
 		/// <summary>
@@ -73,7 +68,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents the operation of a comparing expression
 	/// </summary>
-	[Serializable]
 	public enum CompareOperator
 	{
 		/// <summary>
@@ -147,7 +141,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents the sorting mode of a sorting expression
 	/// </summary>
-	[Serializable]
 	public enum SortMode
 	{
 		/// <summary>
@@ -166,7 +159,6 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents the data mode of an extended property
 	/// </summary>
-	[Serializable]
 	public enum ExtendedPropertyMode
 	{
 		/// <summary>

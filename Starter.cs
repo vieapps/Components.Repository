@@ -1,16 +1,12 @@
 ﻿#region Related components
 using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Xml;
 using System.Linq;
 using System.Reflection;
+using System.Configuration;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-
+using System.Collections.Generic;
 using net.vieapps.Components.Utility;
 #endregion
 
@@ -232,8 +228,10 @@ namespace net.vieapps.Components.Repository
 					.GetReferencedAssemblies()
 					.Where(an => !an.Name.IsStartsWith("api-ms") && !an.Name.IsStartsWith("clr") && !an.Name.IsStartsWith("mscor") && !an.Name.IsStartsWith("sos") && !an.Name.IsStartsWith("lib")
 						&& !an.Name.IsStartsWith("System") && !an.Name.IsStartsWith("Microsoft") && !an.Name.IsStartsWith("Windows") && !an.Name.IsEquals("NETStandard")
-						&& !an.Name.IsStartsWith("Newtonsoft") && !an.Name.IsStartsWith("WampSharp") && !an.Name.IsStartsWith("Castle.") && !an.Name.IsStartsWith("StackExchange.")
-						&& !an.Name.IsStartsWith("MongoDB") && !an.Name.IsStartsWith("MySql") && !an.Name.IsStartsWith("Npgsql") && !an.Name.IsStartsWith("VIEApps.Components")
+						&& !an.Name.IsStartsWith("Newtonsoft") && !an.Name.IsStartsWith("WampSharp") && !an.Name.IsStartsWith("Enyim.") && !an.Name.IsStartsWith("StackExchange.")
+						&& !an.Name.IsStartsWith("Serilog") && !an.Name.IsStartsWith("MsgPack") && !an.Name.IsStartsWith("ExcelData")
+						&& !an.Name.IsStartsWith("MongoDB") && !an.Name.IsStartsWith("MySql") && !an.Name.IsStartsWith("Npgsql")
+						&& !an.Name.IsEndsWith(".Abstractions") && !an.Name.IsStartsWith("VIEApps.Components")
 					)
 					.Select(an => Assembly.Load(an))
 				),

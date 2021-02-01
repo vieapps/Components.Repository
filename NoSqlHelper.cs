@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -878,10 +879,10 @@ namespace net.vieapps.Components.Repository
 
 		static BsonValue ToBsonValue(this ObjectService.AttributeInfo attribute, object value)
 		{
-			if (value == null || !attribute.IsEnum())
-				return BsonValue.Create(value);
+			if (value == null)
+				return null;
 
-			var bsonRepresentation = attribute.GetCustomAttribute<BsonRepresentationAttribute>();
+			var bsonRepresentation = attribute.IsEnum() ? attribute.GetCustomAttribute<BsonRepresentationAttribute>() : null;
 			return bsonRepresentation != null && bsonRepresentation.Representation.Equals(BsonType.String)
 				? BsonValue.Create(value.ToString())
 				: BsonValue.Create(value);
@@ -941,7 +942,7 @@ namespace net.vieapps.Components.Repository
 						$"NoSQL: updated attributes got a generic primitive or a class type, then switch to use Replace instead of Update",
 						$"- Execution times: {stopwatch.GetElapsedTimes()}",
 						$"- Updated attributes: [{attributes.ToString(", ")}]",
-						$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
+						$"- Objects' data for replacing:\r\n\t" + objAttributes.Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n\t+ ExtendedProperties: " + @object.GetAttributeValue("ExtendedProperties")?.ToJson(null).ToString(Newtonsoft.Json.Formatting.None)
 					});
 
 				return;
@@ -1104,7 +1105,7 @@ namespace net.vieapps.Components.Repository
 						$"NoSQL: updated attributes got a generic primitive or a class type, then switch to use Replace instead of Update",
 						$"- Execution times: {stopwatch.GetElapsedTimes()}",
 						$"- Updated attributes: [{attributes.ToString(", ")}]",
-						$"- Objects' data for replacing:\r\n\t" + @object.GetProperties(attribute => !attribute.IsIgnored()).Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t")
+						$"- Objects' data for replacing:\r\n\t" + objAttributes.Select(attribute => $"+ @{attribute.Name} ({attribute.Type.GetTypeName(true)}) => [{@object.GetAttributeValue(attribute) ?? "(null)"}]").ToString("\r\n\t") + "\r\n\t+ ExtendedProperties: " + @object.GetAttributeValue("ExtendedProperties")?.ToJson(null).ToString(Newtonsoft.Json.Formatting.None)
 					});
 
 				return;
@@ -2286,8 +2287,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					tracker?.Invoke($"Error occurred while creating index of No SQL => {ex.Message}", ex);
-					if (tracker == null)
-						RepositoryMediator.WriteLogs($"Error occurred while creating index of No SQL => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while creating index of No SQL => {ex.Message}", ex, LogLevel.Error);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -2310,8 +2310,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					tracker?.Invoke($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
-					if (tracker == null)
-						RepositoryMediator.WriteLogs($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while creating unique index of No SQL => {ex.Message}", ex, LogLevel.Error);
 				}
 			}, cancellationToken, true, false).ConfigureAwait(false);
 
@@ -2334,8 +2333,7 @@ namespace net.vieapps.Components.Repository
 				catch (Exception ex)
 				{
 					tracker?.Invoke($"Error occurred while creating text index of No SQL => {ex.Message}", ex);
-					if (tracker == null)
-						RepositoryMediator.WriteLogs($"Error occurred while creating text index of No SQL => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while creating text index of No SQL => {ex.Message}", ex, LogLevel.Error);
 				}
 			}
 

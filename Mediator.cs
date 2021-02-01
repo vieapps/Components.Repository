@@ -1,8 +1,6 @@
 ﻿#region Related components
 using System;
-using System.IO;
 using System.Data;
-using System.Data.Common;
 using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
@@ -12,13 +10,11 @@ using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
 using System.Collections.Generic;
-using MongoDB.Driver;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
+using Newtonsoft.Json.Linq;
 using net.vieapps.Components.Caching;
 using net.vieapps.Components.Utility;
-using net.vieapps.Components.Security;
 #endregion
 
 #if !SIGN
@@ -594,7 +590,7 @@ namespace net.vieapps.Components.Repository
 
 				// update in cache storage
 				if (context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Set(@object) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 
 				// call post-handlers
 				context.CallPostCreateHandlers(@object, false);
@@ -610,7 +606,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw new RepositoryOperationException($"Error occurred while creating new [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while creating new [{typeof(T)}#{@object?.GetEntityID()}]", ex.Message.IsContains("duplicate key") ? new InformationExistedException("A key was existed", ex) : ex);
 			}
 		}
 
@@ -679,7 +675,7 @@ namespace net.vieapps.Components.Repository
 
 				// update in cache storage
 				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 
 				// call post-handlers
 				await context.CallPostCreateHandlersAsync(@object, false, cancellationToken).ConfigureAwait(false);
@@ -700,7 +696,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw new RepositoryOperationException($"Error occurred while creating new [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while creating new [{typeof(T)}#{@object?.GetEntityID()}]", ex.Message.IsContains("duplicate key") ? new InformationExistedException("A key was existed", ex) : ex);
 			}
 		}
 
@@ -764,12 +760,18 @@ namespace net.vieapps.Components.Repository
 				var @object = processCache && context.EntityDefinition.Cache != null
 					? context.EntityDefinition.Cache.Fetch<T>(id)
 					: null;
+				if (@object != null && !@object.GetType().Equals(context.EntityDefinition.Type))
+				{
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"GET: Wrong cached [{context.EntityDefinition.Type.GetTypeName()} != {@object.GetTypeName()}]");
+					@object = null;
+				}
 
 				// auto sync
 				if (@object != null)
 				{
 					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"GET: The cached object is found [{@object.GetCacheKey(false)}]");
+						RepositoryMediator.WriteLogs($"GET: The cached object is found [{@object.GetCacheKey()}]");
 					if (context.EntityDefinition.AutoSync)
 						Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName)).ConfigureAwait(false);
 				}
@@ -819,7 +821,7 @@ namespace net.vieapps.Components.Repository
 
 					// update into cache storage
 					if (@object != null && processCache && context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Set(@object) && RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"GET: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+						RepositoryMediator.WriteLogs($"GET: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
 
 				// update state & call post-handlers
@@ -907,6 +909,12 @@ namespace net.vieapps.Components.Repository
 				var @object = processCache && context.EntityDefinition.Cache != null
 					? await context.EntityDefinition.Cache.FetchAsync<T>(id, cancellationToken).ConfigureAwait(false)
 					: null;
+				if (@object != null && !@object.GetType().Equals(context.EntityDefinition.Type))
+				{
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"GET: Wrong cached [{context.EntityDefinition.Type.GetTypeName()} != {@object.GetTypeName()}]");
+					@object = null;
+				}
 
 				// auto sync
 				if (@object != null)
@@ -969,7 +977,7 @@ namespace net.vieapps.Components.Repository
 
 					// update into cache storage
 					if (@object != null && processCache && context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"GET: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+						RepositoryMediator.WriteLogs($"GET: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
 
 				// update state & call post-handlers
@@ -1224,16 +1232,26 @@ namespace net.vieapps.Components.Repository
 		{
 			// check
 			if (definition == null || string.IsNullOrWhiteSpace(id) || !id.IsValidUUID())
+			{
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"GET (by definition): The definition or identity is invalid [ID: {id ?? "N/A"} - Def: {definition?.ToJson()}]");
 				return null;
+			}
 
 			// get cached object
 			var @object = definition.Cache?.Get(definition.Type.GetTypeName(true) + "#" + id.Trim().ToLower());
+			if (@object != null && !@object.GetType().Equals(definition.Type))
+			{
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"GET (by definition): Wrong cached [{definition.Type.GetTypeName()} != {@object.GetTypeName()}]");
+				@object = null;
+			}
 
 			// auto sync
 			if (@object != null)
 			{
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"GET (by definition): The cached object is found [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"GET (by definition): The cached object is found [{@object.GetCacheKey()}]");
 
 				if (definition.AutoSync)
 					Task.Run(() => RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null)).ConfigureAwait(false);
@@ -1284,7 +1302,7 @@ namespace net.vieapps.Components.Repository
 
 				// update into cache storage
 				if (@object != null && definition.Cache != null && definition.Cache.Set(@object) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"GET (by definition): Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"GET (by definition): Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 			}
 
 			// return
@@ -1326,18 +1344,28 @@ namespace net.vieapps.Components.Repository
 		{
 			// check
 			if (definition == null || string.IsNullOrWhiteSpace(id) || !id.IsValidUUID())
+			{
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"GET (by definition): The definition or identity is invalid [ID: {id ?? "N/A"} - Def: {definition?.ToJson()}]");
 				return null;
+			}
 
 			// get cached object
 			var @object = definition.Cache != null
 				? await definition.Cache.GetAsync(definition.Type.GetTypeName(true) + "#" + id.Trim().ToLower(), cancellationToken).ConfigureAwait(false)
 				: null;
+			if (@object != null && !@object.GetType().Equals(definition.Type))
+			{
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs($"GET (by definition): Wrong cached [{definition.Type.GetTypeName()} != {@object.GetTypeName()}]");
+				@object = null;
+			}
 
 			// auto sync
 			if (@object != null)
 			{
 				if (RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"GET (by definition): The cached object is found [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"GET (by definition): The cached object is found [{@object.GetCacheKey()}]");
 
 				if (definition.AutoSync)
 				{
@@ -1398,7 +1426,7 @@ namespace net.vieapps.Components.Repository
 
 				// update into cache storage
 				if (@object != null && definition.Cache != null && await definition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"GET (by definition): Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"GET (by definition): Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 			}
 
 			// return the instance of object
@@ -1503,7 +1531,7 @@ namespace net.vieapps.Components.Repository
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Set(@object) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 
 				// call post-handlers
 				context.CallPostUpdateHandlers(@object, dirtyAttributes, false);
@@ -1519,7 +1547,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T)}#{@object?.GetEntityID()}]", ex.Message.IsContains("duplicate key") ? new InformationExistedException("A key was existed", ex) : ex);
 			}
 		}
 
@@ -1628,7 +1656,7 @@ namespace net.vieapps.Components.Repository
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 
 				// call post-handlers
 				await context.CallPostUpdateHandlersAsync(@object, dirtyAttributes, false, cancellationToken).ConfigureAwait(false);
@@ -1649,7 +1677,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while replacing object [{typeof(T)}#{@object?.GetEntityID()}]", ex.Message.IsContains("duplicate key") ? new InformationExistedException("A key was existed", ex) : ex);
 			}
 		}
 
@@ -1763,7 +1791,7 @@ namespace net.vieapps.Components.Repository
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Set(@object) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 
 				// call post-handlers
 				context.CallPostUpdateHandlers(@object, dirtyAttributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToHashSet(), false);
@@ -1779,7 +1807,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T)}#{@object?.GetEntityID()}]", ex.Message.IsContains("duplicate key") ? new InformationExistedException("A key was existed", ex) : ex);
 			}
 		}
 
@@ -1887,7 +1915,7 @@ namespace net.vieapps.Components.Repository
 
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(@object, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 
 				// call post-handlers
 				await context.CallPostUpdateHandlersAsync(@object, dirtyAttributes.Select(name => name.StartsWith("ExtendedProperties.") ? name.Replace("ExtendedProperties.", "") : name).ToHashSet(), false, cancellationToken).ConfigureAwait(false);
@@ -1908,7 +1936,7 @@ namespace net.vieapps.Components.Repository
 			{
 				context.Exception = ex;
 				RepositoryMediator.WriteLogs(ex);
-				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
+				throw new RepositoryOperationException($"Error occurred while updating object [{typeof(T)}#{@object?.GetEntityID()}]", ex.Message.IsContains("duplicate key") ? new InformationExistedException("A key was existed", ex) : ex);
 			}
 		}
 
@@ -1988,7 +2016,7 @@ namespace net.vieapps.Components.Repository
 
 				// remove from cache storage
 				if (context.EntityDefinition.Cache != null && context.EntityDefinition.Cache.Remove(@object) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey()}]");
 
 				// call post-handlers
 				context.CallPostDeleteHandlers(@object);
@@ -2078,7 +2106,7 @@ namespace net.vieapps.Components.Repository
 
 				// remove from cache storage
 				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.RemoveAsync(@object, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
-					RepositoryMediator.WriteLogs($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey(false)}]");
+					RepositoryMediator.WriteLogs($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey()}]");
 
 				// call post-handlers
 				await context.CallPostDeleteHandlersAsync(@object, cancellationToken).ConfigureAwait(false);
@@ -6206,17 +6234,75 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="element"></param>
 		/// <param name="cultureInfo"></param>
+		/// <param name="customFormat"></param>
 		/// <param name="onCompleted"></param>
 		/// <returns></returns>
-		public static XElement UpdateDateTime(this XElement element, CultureInfo cultureInfo, Action<XElement> onCompleted = null)
+		public static XElement UpdateDateTime(this XElement element, CultureInfo cultureInfo, string customFormat = null, Action<XElement> onCompleted = null)
 		{
 			if (element != null && DateTime.TryParse(element.Value, out var value))
 			{
-				element.Add(new XAttribute("Full", value.ToString("hh:mm tt @ dddd - dd MMMM, yyyy", cultureInfo)));
-				element.Add(new XAttribute("Long", value.ToString("dd/MM/yyyy HH:mm:ss")), new XAttribute("LongAlternative", value.ToString("MM/dd/yyyy HH:mm:ss")));
-				element.Add(new XAttribute("Short", value.ToString("hh:mm tt @ dd/MM/yyyy", cultureInfo)), new XAttribute("ShortAlternative", value.ToString("hh:mm tt @ MM/dd/yyyy", cultureInfo)));
-				element.Add(new XAttribute("DateOnly", value.ToString("dd/MM/yyyy")), new XAttribute("DateOnlyAlternative", value.ToString("MM/dd/yyyy")));
-				element.Add(new XAttribute("TimeOnly", value.ToString("HH:mm:ss")), new XAttribute("TimeOnlyAlternative", value.ToString("hh:mm tt", cultureInfo)));
+				var attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Full"));
+				if (attribute == null)
+					element.Add(new XAttribute("Full", value.ToString("hh:mm tt @ dddd - dd MMMM, yyyy", cultureInfo)));
+				else
+					attribute.Value = value.ToString("hh:mm tt @ dddd - dd MMMM, yyyy", cultureInfo);
+
+				attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Long"));
+				if (attribute == null)
+					element.Add(new XAttribute("Long", value.ToString("dd/MM/yyyy HH:mm:ss")));
+				else
+					attribute.Value = value.ToString("dd/MM/yyyy HH:mm:ss", cultureInfo);
+
+				attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("LongAlternative"));
+				if (attribute == null)
+					element.Add(new XAttribute("LongAlternative", value.ToString("MM/dd/yyyy HH:mm:ss")));
+				else
+					attribute.Value = value.ToString("MM/dd/yyyy HH:mm:ss", cultureInfo);
+
+				attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Short"));
+				if (attribute == null)
+					element.Add(new XAttribute("Short", value.ToString("hh:mm tt @ dd/MM/yyyy", cultureInfo)), new XAttribute("ShortAlternative", value.ToString("hh:mm tt @ MM/dd/yyyy", cultureInfo)));
+				else
+					attribute.Value = value.ToString("hh:mm tt @ dd/MM/yyyy", cultureInfo);
+
+				attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("ShortAlternative"));
+				if (attribute == null)
+					element.Add(new XAttribute(new XAttribute("ShortAlternative", value.ToString("hh:mm tt @ MM/dd/yyyy", cultureInfo))));
+				else
+					attribute.Value = value.ToString("hh:mm tt @ MM/dd/yyyy", cultureInfo);
+
+				attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("DateOnly"));
+				if (attribute == null)
+					element.Add(new XAttribute("DateOnly", value.ToString("dd/MM/yyyy")), new XAttribute("DateOnlyAlternative", value.ToString("MM/dd/yyyy")));
+				else
+					attribute.Value = value.ToString("dd/MM/yyyy", cultureInfo);
+
+				attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("DateOnlyAlternative"));
+				if (attribute == null)
+					element.Add(new XAttribute("DateOnlyAlternative", value.ToString("MM/dd/yyyy")));
+				else
+					attribute.Value = value.ToString("MM/dd/yyyy", cultureInfo);
+
+				attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("TimeOnly"));
+				if (attribute == null)
+					element.Add(new XAttribute("TimeOnly", value.ToString("HH:mm:ss")));
+				else
+					attribute.Value = value.ToString("HH:mm:ss", cultureInfo);
+
+				attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("TimeOnlyAlternative"));
+				if (attribute == null)
+					element.Add(new XAttribute("TimeOnlyAlternative", value.ToString("hh:mm tt", cultureInfo)));
+				else
+					attribute.Value = value.ToString("hh:mm tt", cultureInfo);
+
+				if (!string.IsNullOrWhiteSpace(customFormat))
+				{
+					attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Custom"));
+					if (attribute == null)
+						element.Add(new XAttribute("Custom", value.ToString(customFormat)));
+					else
+						attribute.Value = value.ToString(customFormat);
+				}
 			}
 			onCompleted?.Invoke(element);
 			return element;
@@ -6228,18 +6314,53 @@ namespace net.vieapps.Components.Repository
 		/// <param name="element"></param>
 		/// <param name="isFloatingPointNumber"></param>
 		/// <param name="cultureInfo"></param>
+		/// <param name="customFormat"></param>
 		/// <param name="onCompleted"></param>
 		/// <returns></returns>
-		public static XElement UpdateNumber(this XElement element, bool isFloatingPointNumber, CultureInfo cultureInfo, Action<XElement> onCompleted = null)
+		public static XElement UpdateNumber(this XElement element, bool isFloatingPointNumber, CultureInfo cultureInfo, string customFormat = null, Action<XElement> onCompleted = null)
 		{
 			if (element != null)
 			{
 				if (isFloatingPointNumber && Decimal.TryParse(element.Value, out var floatingNumber))
-					element.Add(new XAttribute("Formatted", floatingNumber.ToString("###,###,###,###,##0.##", cultureInfo)));
+				{
+					var attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Formatted"));
+					if (attribute == null)
+						element.Add(new XAttribute("Formatted", floatingNumber.ToString("###,###,###,###,##0.##", cultureInfo)));
+					else
+						attribute.Value = floatingNumber.ToString("###,###,###,###,##0.##", cultureInfo);
+					if (!string.IsNullOrWhiteSpace(customFormat))
+					{
+						attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Custom"));
+						if (attribute == null)
+							element.Add(new XAttribute("Custom", floatingNumber.ToString(customFormat)));
+						else
+							attribute.Value = floatingNumber.ToString(customFormat);
+					}
+				}
 				else if (!isFloatingPointNumber && Int64.TryParse(element.Value, out var integralNumber))
-					element.Add(new XAttribute("Formatted", integralNumber.ToString("###,###,###,###,##0", cultureInfo)));
-				else
-					element.Add(new XAttribute("Formatted", Decimal.TryParse(element.Value, out var number) ? number.ToString("###,###,###,###,##0.##", cultureInfo) : "unknown"));
+				{
+					var attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Formatted"));
+					if (attribute == null)
+						element.Add(new XAttribute("Formatted", integralNumber.ToString("###,###,###,###,##0", cultureInfo)));
+					else
+						attribute.Value = integralNumber.ToString("###,###,###,###,##0", cultureInfo);
+					if (!string.IsNullOrWhiteSpace(customFormat))
+					{
+						attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Custom"));
+						if (attribute == null)
+							element.Add(new XAttribute("Custom", integralNumber.ToString(customFormat)));
+						else
+							attribute.Value = integralNumber.ToString(customFormat);
+					}
+				}
+				else if (Decimal.TryParse(element.Value, out var number))
+				{
+					var attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Formatted"));
+					if (attribute == null)
+						element.Add(new XAttribute("Formatted",  number.ToString("###,###,###,###,##0.##", cultureInfo)));
+					else
+						attribute.Value = number.ToString("###,###,###,###,##0.##", cultureInfo);
+				}
 			}
 			onCompleted?.Invoke(element);
 			return element;
@@ -6393,11 +6514,11 @@ namespace net.vieapps.Components.Repository
 					{
 						selectValues = attribute.IsNullable()
 							? attribute.IsEnumString()
-								? Enum.GetNames(attribute.Type.GetEnumUnderlyingType() ?? attribute.Type).Join(",")
-								: Enum.GetValues(attribute.Type.GetEnumUnderlyingType() ?? attribute.Type).ToEnumerable().Select(e => e.ToString()).Join(",")
+								? Enum.GetNames(attribute.Type.GetEnumUnderlyingType() ?? attribute.Type).Join("#;")
+								: Enum.GetValues(attribute.Type.GetEnumUnderlyingType() ?? attribute.Type).ToEnumerable().Select(e => e.ToString()).Join("#;")
 							: attribute.IsEnumString()
-								? Enum.GetNames(attribute.Type).Join(",")
-								: Enum.GetValues(attribute.Type).ToEnumerable().Select(e => e.ToString()).Join(",");
+								? Enum.GetNames(attribute.Type).Join("#;")
+								: Enum.GetValues(attribute.Type).ToEnumerable().Select(e => e.ToString()).Join("#;");
 					}
 					catch (Exception ex)
 					{

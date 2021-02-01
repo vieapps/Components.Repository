@@ -2,15 +2,13 @@
 using System;
 using System.Data;
 using System.Linq;
-using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Configuration;
 using System.Reflection;
-using System.Diagnostics;
 using System.Dynamic;
+using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Converters;
@@ -24,12 +22,14 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a respository definition (means a module definition)
 	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Type?.FullName}")]
+	[DebuggerDisplay("Name = {Type?.FullName}")]
 	public class RepositoryDefinition
 	{
-		public RepositoryDefinition() : this(null) { }
+		public RepositoryDefinition()
+			: this(null) { }
 
-		public RepositoryDefinition(Type type) => this.Type = type;
+		public RepositoryDefinition(Type type)
+			=> this.Type = type;
 
 		#region Properties
 		/// <summary>
@@ -298,7 +298,10 @@ namespace net.vieapps.Components.Repository
 		{
 			if (businessRepository != null && !string.IsNullOrWhiteSpace(businessRepository.ID))
 			{
+				var existed = this.BusinessRepositories.ContainsKey(businessRepository.ID);
 				this.BusinessRepositories[businessRepository.ID] = businessRepository;
+				if (!existed && RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"A business repository (a run-time business module) was registered\r\n{businessRepository.ToJson()}");
 				return true;
 			}
 			return false;
@@ -309,21 +312,19 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="businessRepositoryID"></param>
 		public bool Unregister(string businessRepositoryID)
-		{
-			if (!string.IsNullOrWhiteSpace(businessRepositoryID))
-			{
-				this.BusinessRepositories.Remove(businessRepositoryID);
-				return true;
-			}
-			return false;
-		}
+			=> !string.IsNullOrWhiteSpace(businessRepositoryID) && this.BusinessRepositories.Remove(businessRepositoryID);
 
 		/// <summary>
 		/// Unregisters a business repository (means a business module at run-time)
 		/// </summary>
 		/// <param name="businessRepository"></param>
 		public bool Unregister(IBusinessRepository businessRepository)
-			=> this.Unregister(businessRepository?.ID);
+		{
+			var success = this.Unregister(businessRepository?.ID);
+			if (success && RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"A business repository (a run-time business module) was uregistered\r\n{businessRepository?.ToJson()}");
+			return success;
+		}
 		#endregion
 
 	}
@@ -333,12 +334,14 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a repository entity definition (means a content-type definition)
 	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Type?.FullName}")]
+	[DebuggerDisplay("Name = {Type?.FullName}")]
 	public class EntityDefinition
 	{
-		public EntityDefinition() : this(null) { }
+		public EntityDefinition()
+			: this(null) { }
 
-		public EntityDefinition(Type type) => this.Type = type;
+		public EntityDefinition(Type type)
+			=> this.Type = type;
 
 		#region Properties
 		/// <summary>
@@ -761,18 +764,8 @@ namespace net.vieapps.Components.Repository
 			if (RepositoryMediator.EntityDefinitions.TryAdd(type, definition))
 			{
 				var log = $"The repository entity definition was registered [{definition.Type.GetTypeName()}{(string.IsNullOrWhiteSpace(definition.Title) ? "" : $" => {definition.Title}")}]" + "\r\n" +
-				$"- Attributes: " + "\r\n" + definition.Attributes.ToJArray(attribute => new JObject
-				{
-					{ "Name", attribute.Name },
-					{ "Type", attribute.Type.GetTypeName(true) },
-					{ "MinLength", attribute.MinLength },
-					{ "MaxLength", attribute.MaxLength },
-					{ "MinValue", attribute.MinValue },
-					{ "MaxValue", attribute.MaxValue },
-					{ "NotNull", attribute.NotNull },
-					{ "NotEmpty", attribute.NotEmpty },
-					{ "CLOB", attribute.IsCLOB }
-				}).ToString(Newtonsoft.Json.Formatting.Indented);
+				$"- Attributes: {definition.Attributes.Select(attribute => $"{attribute.Name} ({attribute.Type.GetTypeName(true)})").Join(", ")}\r\n" +
+				$"- Parent: {definition.ParentType?.GetTypeName() ?? "None"}";
 				tracker?.Invoke(log, null);
 				if (tracker == null && RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs(log);
@@ -881,9 +874,10 @@ namespace net.vieapps.Components.Repository
 		{
 			if (businessRepositoryEntity != null && !string.IsNullOrWhiteSpace(businessRepositoryEntity.ID))
 			{
+				var existed = this.BusinessRepositoryEntities.ContainsKey(businessRepositoryEntity.ID);
 				this.BusinessRepositoryEntities[businessRepositoryEntity.ID] = businessRepositoryEntity;
-				if (RepositoryMediator.IsTraceEnabled)
-					RepositoryMediator.WriteLogs($"A business repository entity was registered => {businessRepositoryEntity.ToJson()}");
+				if (!existed && RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"A business repository entity (a run-time business content-type) was registered\r\n{businessRepositoryEntity.ToJson()}");
 				return true;
 			}
 			return false;
@@ -901,7 +895,12 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="businessRepositoryEntity"></param>
 		public bool Unregister(IBusinessRepositoryEntity businessRepositoryEntity)
-			=> this.Unregister(businessRepositoryEntity?.ID);
+		{
+			var success = this.Unregister(businessRepositoryEntity?.ID);
+			if (success && RepositoryMediator.IsTraceEnabled)
+				RepositoryMediator.WriteLogs($"A business repository entity (a run-time business content-type) was uregistered\r\n{businessRepositoryEntity?.ToJson()}");
+			return success;
+		}
 		#endregion
 
 	}
@@ -911,12 +910,14 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents information of an attribute of a repository entity
 	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Name}")]
+	[DebuggerDisplay("Name = {Name}")]
 	public class AttributeInfo : ObjectService.AttributeInfo
 	{
-		public AttributeInfo() : this(null) { }
+		public AttributeInfo()
+			: this(null) { }
 
-		public AttributeInfo(ObjectService.AttributeInfo derived) : base(derived?.Name, derived?.Info) { }
+		public AttributeInfo(ObjectService.AttributeInfo derived)
+			: base(derived?.Name, derived?.Info) { }
 
 		public string Column { get; internal set; }
 
@@ -940,7 +941,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a definition of an extended property of an entity in a respository 
 	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
+	[DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
 	public sealed class ExtendedPropertyDefinition
 	{
 		public ExtendedPropertyDefinition() { }
@@ -1052,7 +1053,7 @@ namespace net.vieapps.Components.Repository
 	/// <summary>
 	/// Presents a data source
 	/// </summary>
-	[Serializable, DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
+	[DebuggerDisplay("Name = {Name}, Mode = {Mode}")]
 	public class DataSource
 	{
 		public DataSource() { }
