@@ -1,15 +1,9 @@
 ﻿#region Related components
 using System;
 using System.Data;
-using System.Data.Common;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml;
 using System.Linq;
-using System.Xml.Linq;
 using System.Xml.Serialization;
-using System.Dynamic;
 using MsgPack.Serialization;
 using MongoDB.Driver;
 using MongoDB.Bson;
@@ -110,7 +104,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		public override string ToString()
-			=> this.ToString(Newtonsoft.Json.Formatting.None);
+			=> this.ToString(Formatting.None);
 	}
 
 	// ------------------------------------------
@@ -513,7 +507,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="formatting"></param>
 		/// <returns></returns>
-		public string ToString(Newtonsoft.Json.Formatting formatting)
+		public string ToString(Formatting formatting)
 			=> this.ToJson().ToString(formatting);
 
 		/// <summary>
@@ -521,7 +515,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		public override string ToString()
-			=> this.ToString(Newtonsoft.Json.Formatting.None);
+			=> this.ToString(Formatting.None);
 	}
 
 	// ------------------------------------------
@@ -927,7 +921,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="formatting"></param>
 		/// <returns></returns>
-		public string ToString(Newtonsoft.Json.Formatting formatting)
+		public string ToString(Formatting formatting)
 			=> this.ToJson().ToString(formatting);
 
 		/// <summary>
@@ -935,7 +929,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <returns></returns>
 		public override string ToString()
-			=> this.ToString(Newtonsoft.Json.Formatting.None);
+			=> this.ToString(Formatting.None);
 	}
 
 	// ------------------------------------------

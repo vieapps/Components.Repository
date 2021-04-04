@@ -347,10 +347,15 @@ namespace net.vieapps.Components.Repository
 		static SortDefinition<T> CreateSortDefinition<T>(this string scoreProperty) where T : class
 			=> Builders<T>.Sort.MetaTextScore(scoreProperty ?? "SearchScore");
 
+		static SortDefinition<T> CreateSortDefinition<T>(this SortDefinition<T> sort, string scoreProperty) where T : class
+			=> sort != null
+				? sort.MetaTextScore(scoreProperty ?? "SearchScore")
+				: NoSqlHelper.CreateSortDefinition<T>(scoreProperty);
+
 		static ProjectionDefinition<T> CreateProjectionDefinition<T>(this IEnumerable<string> attributes) where T : class
 		{
 			ProjectionDefinition<T> projection = null;
-			if (attributes == null || attributes.Count() < 1)
+			if (attributes == null || !attributes.Any())
 				projection = Builders<T>.Projection.Include("_id");
 			else
 				attributes.ForEach(attribute => projection = projection == null ? Builders<T>.Projection.Include(attribute) : projection.Include(attribute));
@@ -359,6 +364,11 @@ namespace net.vieapps.Components.Repository
 
 		static ProjectionDefinition<T> CreateProjectionDefinition<T>(this string scoreProperty) where T : class
 			=> Builders<T>.Projection.MetaTextScore(scoreProperty ?? "SearchScore");
+
+		static ProjectionDefinition<T> CreateProjectionDefinition<T>(this IEnumerable<string> attributes, string scoreProperty) where T : class
+			=> attributes != null && attributes.Any()
+				? NoSqlHelper.CreateProjectionDefinition<T>(attributes).MetaTextScore(scoreProperty ?? "SearchScore")
+				: NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty);
 
 		static IFindFluent<T, T> CreateFindFluent<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
@@ -375,8 +385,18 @@ namespace net.vieapps.Components.Repository
 		static IFindFluent<T, BsonDocument> CreateSelectFluent<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 			=> collection.CreateFindFluent(session, filter, sort, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(attributes));
 
+		static IFindFluent<T, T> CreateSearchFluent<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, IEnumerable<string> attributes, int pageSize, int pageNumber, FindOptions options = null) where T : class
+		{
+			var filterBy = filter != null && !filter.Equals(Builders<T>.Filter.Empty)
+				? query.CreateFilterDefinition<T>() & filter
+				: query.CreateFilterDefinition<T>();
+			var sortBy = NoSqlHelper.CreateSortDefinition<T>(sort, scoreProperty);
+			var projection = NoSqlHelper.CreateProjectionDefinition<T>(attributes, scoreProperty);
+			return collection.CreateFindFluent(session, filterBy, sortBy, pageSize, pageNumber, options).Project<T>(projection);
+		}
+
 		static IFindFluent<T, T> CreateSearchFluent<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
-			=> collection.CreateFindFluent(session, filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>(), NoSqlHelper.CreateSortDefinition<T>(scoreProperty), pageSize, pageNumber, options).Project<T>(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
+			=> collection.CreateSearchFluent(session, query, filter, null, scoreProperty, null, pageSize, pageNumber, options);
 		#endregion
 
 		#region Create
@@ -1835,16 +1855,17 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
 		/// <param name="session">The working session</param>
-		/// <param name="scoreProperty"></param>
 		/// <param name="query"></param>
 		/// <param name="filter"></param>
+		/// <param name="sort"></param>
+		/// <param name="scoreProperty"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
 		/// <param name="options"></param>
 		/// <returns></returns>
-		public static List<T> Search<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
+		public static List<T> Search<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
-			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), scoreProperty, query, filter, pageSize, pageNumber, options);
+			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), query, filter, sort, scoreProperty, null, pageSize, pageNumber, options);
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Search [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
 			return searchFluent.ToList();
@@ -1855,44 +1876,47 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
-		/// <param name="scoreProperty"></param>
 		/// <param name="query"></param>
 		/// <param name="filter"></param>
+		/// <param name="sort"></param>
+		/// <param name="scoreProperty"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
 		/// <param name="options"></param>
 		/// <returns></returns>
-		public static List<T> Search<T>(this IMongoCollection<T> collection, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
-			=> collection.Search(null, scoreProperty, query, filter, pageSize, pageNumber, options);
+		public static List<T> Search<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null) where T : class
+			=> collection.Search(null, query, filter, sort, scoreProperty, pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
-		/// <param name="scoreProperty"></param>
 		/// <param name="query"></param>
+		/// <param name="filter"></param>
+		/// <param name="sort"></param>
+		/// <param name="pageSize"></param>
+		/// <param name="pageNumber"></param>
+		/// <param name="options"></param>
+		/// <returns></returns>
+		public static List<T> Search<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
+			=> collection.Search(query, filter, sort, null, pageSize, pageNumber, options);
+
+		/// <summary>
+		/// Searchs all the matched documents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="collection"></param>
+		/// <param name="query"></param>
+		/// <param name="sort"></param>
+		/// <param name="scoreProperty"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
-			=> collection.Search(scoreProperty, query, NoSqlHelper.CreateFilterDefinition<T>(null, businessRepositoryEntityID), pageSize, pageNumber, options);
-
-		/// <summary>
-		/// Searchs all the matched documents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="collection"></param>
-		/// <param name="query"></param>
-		/// <param name="filter"></param>
-		/// <param name="pageSize"></param>
-		/// <param name="pageNumber"></param>
-		/// <param name="options"></param>
-		/// <returns></returns>
-		public static List<T> Search<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
-			=> collection.Search(null, query, filter, pageSize, pageNumber, options);
+		public static List<T> Search<T>(this IMongoCollection<T> collection, string query, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
+			=> collection.Search(query, NoSqlHelper.CreateFilterDefinition<T>(null, businessRepositoryEntityID), sort, scoreProperty, pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1901,31 +1925,33 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for searching</param>
 		/// <param name="query">The text query for searching</param>
-		/// <param name="filter">The additional filter</param>
+		/// <param name="filter">The additional filtering expression</param>
+		/// <param name="sort">The additional sorting expression</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).Search(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), pageSize, pageNumber, options);
+		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
+			=> context.GetCollection<T>(dataSource).Search(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), sort?.GetNoSqlStatement(), null, pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
-		/// <param name="scoreProperty"></param>
 		/// <param name="query"></param>
 		/// <param name="filter"></param>
+		/// <param name="sort"></param>
+		/// <param name="scoreProperty"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static async Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber, options);
+			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), query, filter, sort, scoreProperty, null, pageSize, pageNumber, options);
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Search [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
 			return await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -1936,47 +1962,50 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
-		/// <param name="scoreProperty"></param>
 		/// <param name="query"></param>
 		/// <param name="filter"></param>
+		/// <param name="sort"></param>
+		/// <param name="scoreProperty"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> collection.SearchAsync(null, scoreProperty, query, filter, pageSize, pageNumber, options, cancellationToken);
+		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> collection.SearchAsync(null, query, filter, sort, scoreProperty, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched documents
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
-		/// <param name="scoreProperty"></param>
 		/// <param name="query"></param>
+		/// <param name="filter"></param>
+		/// <param name="sort"></param>
+		/// <param name="pageSize"></param>
+		/// <param name="pageNumber"></param>
+		/// <param name="options">The options</param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> collection.SearchAsync(query, filter, sort, null, pageSize, pageNumber, options, cancellationToken);
+
+		/// <summary>
+		/// Searchs all the matched documents
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="collection"></param>
+		/// <param name="query"></param>
+		/// <param name="sort"></param>
+		/// <param name="scoreProperty"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string scoreProperty, string query, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> collection.SearchAsync(scoreProperty, query, NoSqlHelper.CreateFilterDefinition<T>(null, businessRepositoryEntityID), pageSize, pageNumber, options, cancellationToken);
-
-		/// <summary>
-		/// Searchs all the matched documents
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="collection"></param>
-		/// <param name="query"></param>
-		/// <param name="filter"></param>
-		/// <param name="pageSize"></param>
-		/// <param name="pageNumber"></param>
-		/// <param name="options">The options</param>
-		/// <param name="cancellationToken"></param>
-		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> collection.SearchAsync(null, query, filter, pageSize, pageNumber, options, cancellationToken);
+		public static Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, string query, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> collection.SearchAsync(query, NoSqlHelper.CreateFilterDefinition<T>(null, businessRepositoryEntityID), sort, scoreProperty, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched documents
@@ -1985,15 +2014,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for searching</param>
 		/// <param name="query">The text query for searching</param>
-		/// <param name="filter">The additional filter</param>
+		/// <param name="filter">The additional filtering expression</param>
+		/// <param name="sort">The additional sorting expression</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> context.GetCollection<T>(dataSource).SearchAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), pageSize, pageNumber, options, cancellationToken);
+		public static Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).SearchAsync(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), sort?.GetNoSqlStatement(), null, pageSize, pageNumber, options, cancellationToken);
 		#endregion
 
 		#region Search (identities)
@@ -2003,16 +2033,17 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="collection"></param>
 		/// <param name="session">The working session</param>
-		/// <param name="scoreProperty"></param>
 		/// <param name="query"></param>
 		/// <param name="filter"></param>
+		/// <param name="sort"></param>
+		/// <param name="scoreProperty"></param>
 		/// <param name="pageSize"></param>
 		/// <param name="pageNumber"></param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
+		public static List<string> SearchIdentities<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
-			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), scoreProperty, query, filter, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
+			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), query, filter, sort, scoreProperty, null, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
 			return searchFluent.ToList().Select(doc => doc["_id"].AsString).ToList();
@@ -2029,7 +2060,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="pageNumber"></param>
 		/// <returns></returns>
 		public static List<string> SearchIdentities<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, int pageSize, int pageNumber) where T : class
-			=> collection.SearchIdentities(null, null, query, filter, pageSize, pageNumber);
+			=> collection.SearchIdentities(null, query, filter, null, null, pageSize, pageNumber);
 
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
@@ -2038,14 +2069,15 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for searching</param>
 		/// <param name="query">The text query for searching</param>
-		/// <param name="filter">The additional filter</param>
+		/// <param name="filter">The additional filtering expression</param>
+		/// <param name="sort">The additional sorting expression</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
-			=> context.GetCollection<T>(dataSource).SearchIdentities(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), pageSize, pageNumber, options);
+		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null) where T : class
+			=> context.GetCollection<T>(dataSource).SearchIdentities(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), sort?.GetNoSqlStatement(), null, pageSize, pageNumber, options);
 
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
@@ -2061,9 +2093,9 @@ namespace net.vieapps.Components.Repository
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static async Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), scoreProperty, query, filter, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
+			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), query, filter, sort, scoreProperty, null, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
 			return (await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false)).Select(doc => doc["_id"].AsString).ToList();
@@ -2082,7 +2114,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
 		public static Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> collection.SearchIdentitiesAsync(null, null, query, filter, pageSize, pageNumber, options, cancellationToken);
+			=> collection.SearchIdentitiesAsync(null, query, filter, null, null, pageSize, pageNumber, options, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched documents and return the collection of identities
@@ -2091,15 +2123,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for searching</param>
 		/// <param name="query">The text query for searching</param>
-		/// <param name="filter">The additional filter</param>
+		/// <param name="filter">The additional filtering expression</param>
+		/// <param name="sort">The additional sorting expression</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="options">The options</param>
 		/// <param name="cancellationToken"></param>
 		/// <returns></returns>
-		public static Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
-			=> context.GetCollection<T>(dataSource).SearchIdentitiesAsync(context.NoSqlSession, null, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), pageSize, pageNumber, options, cancellationToken);
+		public static Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).SearchIdentitiesAsync(context.NoSqlSession, query, NoSqlHelper.CreateFilterDefinition(filter, businessRepositoryEntityID), sort?.GetNoSqlStatement(), null, pageSize, pageNumber, options, cancellationToken);
 		#endregion
 
 		#region Count (searching)

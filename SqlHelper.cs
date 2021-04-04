@@ -2789,7 +2789,7 @@ namespace net.vieapps.Components.Repository
 			return searchTerms;
 		}
 
-		static Tuple<string, List<DbParameter>> PrepareSearch<T>(this DbProviderFactory dbProviderFactory, IEnumerable<string> attributes, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, string searchInColumns = "*") where T : class
+		static Tuple<string, List<DbParameter>> PrepareSearch<T>(this DbProviderFactory dbProviderFactory, string query, IFilterBy<T> filter, SortBy<T> sort, IEnumerable<string> attributes, int pageSize, int pageNumber, string businessRepositoryEntityID = null, string searchInColumns = "*") where T : class
 		{
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
@@ -2801,7 +2801,7 @@ namespace net.vieapps.Components.Repository
 			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, false, definition, null, propertiesInfo);
 
 			// fields/columns (SELECT)
-			var fields = (attributes != null && attributes.Count() > 0
+			var fields = (attributes != null && attributes.Any()
 					? attributes
 					: standardProperties
 						.Select(item => item.Value.Name)
@@ -2829,7 +2829,9 @@ namespace net.vieapps.Components.Repository
 				: "";
 
 			// ordering expressions (ORDER BY)
-			var orderby = "";
+			var orderby = "SearchScore DESC";
+			if (sort != null)
+				orderby = sort.GetSqlStatement(standardProperties, extendedProperties) + ", " + orderby;
 
 			// searching terms
 			var searchTerms = dbProviderFactory.GetSearchTerms(new SearchQuery(query));
@@ -2840,7 +2842,6 @@ namespace net.vieapps.Components.Repository
 				fields.Add("SearchScore");
 				columns.Add("Search.[RANK] AS SearchScore");
 				tables += $" INNER JOIN CONTAINSTABLE ({definition.TableName}, {searchInColumns}, {searchTerms}) AS Search ON Origin.{definition.PrimaryKey}=Search.[KEY]";
-				orderby = "SearchScore DESC";
 			}
 
 			// MySQL
@@ -2848,15 +2849,10 @@ namespace net.vieapps.Components.Repository
 			{
 				searchInColumns = !searchInColumns.Equals("*")
 					? searchInColumns
-					: standardProperties
-						.Where(attribute => attribute.Value.IsSearchable())
-						.Select(attribute => "Origin." + attribute.Value.Name)
-						.Join(", ");
-
+					: standardProperties.Where(attribute => attribute.Value.IsSearchable()).Select(attribute => "Origin." + attribute.Value.Name).Join(", ");
 				fields.Add("SearchScore");
 				columns.Add($"(MATCH({searchInColumns}) AGAINST ({searchTerms} IN BOOLEAN MODE) AS SearchScore");
 				where += (!where.Equals("") ? " AND " : " WHERE ") + "SearchScore > 0";
-				orderby = "SearchScore DESC";
 			}
 
 			// PostgreSQL
@@ -2864,15 +2860,10 @@ namespace net.vieapps.Components.Repository
 			{
 				searchInColumns = !searchInColumns.Equals("*")
 					? searchInColumns
-					: standardProperties
-						.Where(attribute => attribute.Value.IsSearchable())
-						.Select(attribute => "Origin." + attribute.Value.Name)
-						.Join(" || ");
-
+					: standardProperties.Where(attribute => attribute.Value.IsSearchable()).Select(attribute => "Origin." + attribute.Value.Name).Join(" || ");
 				fields.Add("SearchScore");
 				columns.Add($"ts_rank_cd(to_tsvector('english', {searchInColumns} || ' '), to_tsquery('{searchTerms.Replace("'", "''")}')) AS SearchScore");
 				where += (!where.Equals("") ? " AND " : " WHERE ") + $"to_tsvector('english', {searchInColumns} || ' ') @@ to_tsquery('{searchTerms.Replace("'", "''")}')";
-				orderby = "SearchScore DESC";
 			}
 
 			// statement
@@ -2891,9 +2882,7 @@ namespace net.vieapps.Components.Repository
 					{
 						var info = order.ToArray(' ');
 						if (extendedProperties != null && extendedProperties.ContainsKey(info[0].ToLower()))
-							orderby += (orderby.Equals("") ? "" : ", ")
-								+ extendedProperties[info[0]].Column
-								+ (info.Length > 1 ? " " + info[1] : "");
+							orderby += (orderby.Equals("") ? "" : ", ") + extendedProperties[info[0]].Column + (info.Length > 1 ? " " + info[1] : "");
 						else
 							orderby += (orderby.Equals("") ? "" : ", ") + order;
 					});
@@ -2930,12 +2919,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for searching</param>
 		/// <param name="query">The text query for searching</param>
-		/// <param name="filter">The additional filter</param>
+		/// <param name="filter">The additional filtering expression</param>
+		/// <param name="sort">The additional sorting expression</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
+		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
@@ -2947,7 +2937,7 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var statement = dbProviderFactory.PrepareSearch(null, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+				var statement = dbProviderFactory.PrepareSearch(query, filter, sort, null, pageSize, pageNumber, businessRepositoryEntityID);
 				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
@@ -2996,12 +2986,8 @@ namespace net.vieapps.Components.Repository
 						info
 					});
 
-				var results = dataTable.Rows
-					.ToList()
-					.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
-					.ToList();
-
-				if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
+				var results = dataTable.Rows.ToList().Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties)).ToList();
+				if (results.Count > 0 && context.EntityDefinition.Attributes.Any(attribute => attribute.IsMappings()))
 					results.ForEach(@object => @object.GetMappings(connection, dbProviderFactory));
 
 				return results;
@@ -3015,13 +3001,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for searching</param>
 		/// <param name="query">The text query for searching</param>
-		/// <param name="filter">The additional filter</param>
+		/// <param name="filter">The additional filtering expression</param>
+		/// <param name="sort">The additional sorting expression</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
@@ -3033,7 +3020,7 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var statement = dbProviderFactory.PrepareSearch(null, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+				var statement = dbProviderFactory.PrepareSearch(query, filter, sort, null, pageSize, pageNumber, businessRepositoryEntityID);
 				DataTable dataTable = null;
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
@@ -3106,12 +3093,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for searching</param>
 		/// <param name="query">The text query for searching</param>
-		/// <param name="filter">The additional filter</param>
+		/// <param name="filter">The additional filtering expression</param>
+		/// <param name="sort">The additional sorting expression</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns></returns>
-		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
+		public static List<string> SearchIdentities<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var info = "";
@@ -3124,7 +3112,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
 				var identities = new List<string>();
-				var statement = dbProviderFactory.PrepareSearch(new List<string> { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+				var statement = dbProviderFactory.PrepareSearch(query, filter, sort, new[] { context.EntityDefinition.PrimaryKey }, pageSize, pageNumber, businessRepositoryEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)
@@ -3187,13 +3175,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The working context</param>
 		/// <param name="dataSource">The data source for searching</param>
 		/// <param name="query">The text query for searching</param>
-		/// <param name="filter">The additional filter</param>
+		/// <param name="filter">The additional filtering expression</param>
+		/// <param name="sort">The additional sorting expression</param>
 		/// <param name="pageSize">The size of one page</param>
 		/// <param name="pageNumber">The number of the page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
+		public static async Task<List<string>> SearchIdentitiesAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var stopwatch = Stopwatch.StartNew();
 			var info = "";
@@ -3206,7 +3195,7 @@ namespace net.vieapps.Components.Repository
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
 				var identities = new List<string>();
-				var statement = dbProviderFactory.PrepareSearch(new List<string> { context.EntityDefinition.PrimaryKey }, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+				var statement = dbProviderFactory.PrepareSearch(query, filter, sort, new[] { context.EntityDefinition.PrimaryKey }, pageSize, pageNumber, businessRepositoryEntityID);
 
 				// got ROW_NUMBER or LIMIT ... OFFSET
 				if (dbProviderFactory.IsGotRowNumber() || dbProviderFactory.IsGotLimitOffset() || pageSize < 1)

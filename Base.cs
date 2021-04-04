@@ -2834,12 +2834,13 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Search<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
-			=> RepositoryMediator.Search(context, dataSource, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+		public static List<TEntity> Search<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
+			=> RepositoryMediator.Search(context, dataSource, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
@@ -2847,15 +2848,16 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Search<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
+		public static List<TEntity> Search<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return RepositoryBase<T>.Search<TEntity>(context, dataSource, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+				return RepositoryBase<T>.Search<TEntity>(context, dataSource, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID);
 			}
 		}
 
@@ -2865,24 +2867,26 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Search<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
-			=> RepositoryMediator.Search(aliasTypeName, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+		public static List<TEntity> Search<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
+			=> RepositoryMediator.Search(aliasTypeName, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
 		/// </summary>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<TEntity> Search<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
-			=> RepositoryBase<T>.Search<TEntity>("", query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+		public static List<TEntity> Search<TEntity>(string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
+			=> RepositoryBase<T>.Search<TEntity>("", query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
@@ -2890,24 +2894,26 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<T> Search(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID)
-			=> RepositoryBase<T>.Search<T>(aliasTypeName, query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+		public static List<T> Search(string aliasTypeName, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID)
+			=> RepositoryBase<T>.Search<T>(aliasTypeName, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
 		/// </summary>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <returns>The collection of objects</returns>
-		public static List<T> Search(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID = null)
-			=> RepositoryBase<T>.Search("", query, filter, pageSize, pageNumber, businessRepositoryEntityID);
+		public static List<T> Search(string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null)
+			=> RepositoryBase<T>.Search("", query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
@@ -2916,13 +2922,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
-			=> RepositoryMediator.SearchAsync(context, dataSource, query, filter, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
+		public static Task<List<TEntity>> SearchAsync<TEntity>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
+			=> RepositoryMediator.SearchAsync(context, dataSource, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
@@ -2930,16 +2937,17 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static async Task<List<TEntity>> SearchAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
+		public static async Task<List<TEntity>> SearchAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return await RepositoryBase<T>.SearchAsync<TEntity>(context, dataSource, query, filter, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
+				return await RepositoryBase<T>.SearchAsync<TEntity>(context, dataSource, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
 			}
 		}
 
@@ -2949,26 +2957,28 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
-			=> RepositoryMediator.SearchAsync(aliasTypeName, query, filter, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
+		public static Task<List<TEntity>> SearchAsync<TEntity>(string aliasTypeName, string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
+			=> RepositoryMediator.SearchAsync(aliasTypeName, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
 		/// </summary>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
-			=> RepositoryBase<T>.SearchAsync<TEntity>("", query, filter, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
+		public static Task<List<TEntity>> SearchAsync<TEntity>(string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
+			=> RepositoryBase<T>.SearchAsync<TEntity>("", query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
@@ -2976,38 +2986,41 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string aliasTypeName, string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default)
-			=> RepositoryBase<T>.SearchAsync<T>(aliasTypeName, query, filter, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
+		public static Task<List<T>> SearchAsync(string aliasTypeName, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default)
+			=> RepositoryBase<T>.SearchAsync<T>(aliasTypeName, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
 		/// </summary>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default)
-			=> RepositoryBase<T>.SearchAsync("", query, filter, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
+		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default)
+			=> RepositoryBase<T>.SearchAsync("", query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken);
 
 		/// <summary>
 		/// Searchs all the matched objects (using full-text search)
 		/// </summary>
 		/// <param name="query">The expression for searching objects</param>
 		/// <param name="filter">The expression for filtering objects</param>
+		/// <param name="sort">The expression for sorting objects</param>
 		/// <param name="pageSize">The integer number that presents size of one page</param>
 		/// <param name="pageNumber">The integer number that presents the number of page</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns>The collection of objects</returns>
-		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, int pageSize, int pageNumber, CancellationToken cancellationToken = default)
-			=> RepositoryBase<T>.SearchAsync("", query, filter, pageSize, pageNumber, null, cancellationToken);
+		public static Task<List<T>> SearchAsync(string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, CancellationToken cancellationToken = default)
+			=> RepositoryBase<T>.SearchAsync("", query, filter, sort, pageSize, pageNumber, null, cancellationToken);
 		#endregion
 
 		#region [Static] Count (searching)
