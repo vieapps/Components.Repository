@@ -1,6 +1,5 @@
 ﻿#region Related components
 using System;
-using System.Linq;
 using Newtonsoft.Json;
 using net.vieapps.Components.Utility;
 #endregion
