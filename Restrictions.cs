@@ -369,19 +369,19 @@ namespace net.vieapps.Components.Repository
 					case CompareOperator.Contains:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(field, "")
-							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"/.*{value}.*/"));
+							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"{value}", "i"));
 						break;
 
 					case CompareOperator.StartsWith:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(field, "")
-							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"^{value}"));
+							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"^{value}", "im"));
 						break;
 
 					case CompareOperator.EndsWith:
 						filter = value == null || !value.GetType().IsStringType() || value.Equals("")
 							? Builders<T>.Filter.Eq(field, "")
-							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"{value}$"));
+							: Builders<T>.Filter.Regex(field, new BsonRegularExpression($"{value}$", "im"));
 						break;
 
 					case CompareOperator.IsNull:
