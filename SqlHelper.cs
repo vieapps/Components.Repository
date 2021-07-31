@@ -34,10 +34,15 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static DbProviderFactory GetProviderFactory(this DataSource dataSource)
 		{
-			var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
-				? RepositoryMediator.GetConnectionStringSettings(dataSource)
-				: null;
-			return DbProvider.GetFactory(!string.IsNullOrWhiteSpace(connectionStringSettings?.ProviderName) ? connectionStringSettings.ProviderName : "System.Data.SqlClient");
+			var providerName = dataSource?.ProviderName;
+			if (string.IsNullOrWhiteSpace(providerName))
+			{
+				var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
+					? RepositoryMediator.GetConnectionStringSettings(dataSource)
+					: null;
+				providerName = connectionStringSettings?.ProviderName ?? "System.Data.SqlClient";
+			}
+			return DbProvider.GetFactory(providerName);
 		}
 
 		static bool IsSQLServer(this DbProviderFactory dbProviderFactory)
@@ -47,7 +52,7 @@ namespace net.vieapps.Components.Repository
 			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("OracleClientFactory");
 
 		static bool IsMySQL(this DbProviderFactory dbProviderFactory)
-			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("MySqlClientFactory");
+			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("MySqlConnectorFactory");
 
 		static bool IsPostgreSQL(this DbProviderFactory dbProviderFactory)
 			=> (dbProviderFactory?.GetTypeName(true) ?? "").Equals("NpgsqlFactory");
@@ -89,7 +94,7 @@ namespace net.vieapps.Components.Repository
 		{
 			var connection = dbProviderFactory.CreateConnection();
 			connection.ConnectionString = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
-				? dataSource.ConnectionString ?? RepositoryMediator.GetConnectionStringSettings(dataSource)?.ConnectionString.Replace(StringComparison.OrdinalIgnoreCase, "{database}", dataSource.DatabaseName).Replace(StringComparison.OrdinalIgnoreCase, "{DatabaseName}", dataSource.DatabaseName)
+				? dataSource.GetConnectionString()?.Replace(StringComparison.OrdinalIgnoreCase, "{database}", dataSource.DatabaseName).Replace(StringComparison.OrdinalIgnoreCase, "{DatabaseName}", dataSource.DatabaseName)
 				: null;
 			if (openWhenItsCreated)
 			{
@@ -432,7 +437,15 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Parameter
-		internal static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, string name, DbType dbType, object value)
+		/// <summary>
+		/// Creates a parameter
+		/// </summary>
+		/// <param name="dbProviderFactory"></param>
+		/// <param name="name"></param>
+		/// <param name="dbType"></param>
+		/// <param name="value"></param>
+		/// <returns></returns>
+		public static DbParameter CreateParameter(this DbProviderFactory dbProviderFactory, string name, DbType dbType, object value)
 		{
 			var parameter = dbProviderFactory.CreateParameter();
 			parameter.ParameterName = (!name.IsStartsWith("@") ? "@" : "") + name;

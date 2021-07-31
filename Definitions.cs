@@ -1083,6 +1083,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets the name of the database (for working with database server)
 		/// </summary>
 		public string DatabaseName { get; internal set; }
+
+		/// <summary>
+		/// Gets the name of the database provider (for working with SQL database server)
+		/// </summary>
+		public string ProviderName { get; internal set; }
 		#endregion
 
 		#region Helper methods
@@ -1111,12 +1116,18 @@ namespace net.vieapps.Components.Repository
 			dataSource.ConnectionString = settings["connectionString"] != null
 				? (settings["connectionString"] as JValue).Value as string
 				: null;
+			dataSource.ConnectionString = string.IsNullOrWhiteSpace(dataSource.ConnectionString) ? null : dataSource.ConnectionString.Trim();
 
 			// name of database
 			if (settings["databaseName"] != null)
 				dataSource.DatabaseName = (settings["databaseName"] as JValue).Value as string;
 			else if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 				throw new ArgumentNullException("databaseName", "[databaseName] attribute of settings");
+
+			if (settings["providerName"] != null)
+				dataSource.ProviderName = (settings["providerName"] as JValue).Value as string;
+			else if (dataSource.Mode.Equals(RepositoryMode.SQL) && !string.IsNullOrWhiteSpace(dataSource.ConnectionStringName))
+				dataSource.ProviderName = RepositoryMediator.GetConnectionStringSettings(dataSource)?.ProviderName;
 
 			return dataSource;
 		}

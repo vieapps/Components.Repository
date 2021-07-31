@@ -163,9 +163,9 @@ namespace net.vieapps.Components.Repository
 				if (!RepositoryMediator.DataSources.ContainsKey(dataSource.Name))
 					RepositoryMediator.DataSources.Add(dataSource.Name, dataSource);
 			});
-			tracker?.Invoke($"Construct {RepositoryMediator.DataSources.Count} data sources [{RepositoryMediator.DataSources.Select(kvp => kvp.Key).ToString(", ")}]", null);
+			tracker?.Invoke($"Construct {RepositoryMediator.DataSources.Count} data sources [{RepositoryMediator.DataSources.ToString(", ", kvp => $"{kvp.Key} ({kvp.Value.Mode}/{kvp.Value.DatabaseName})")}]", null);
 			if (tracker == null && RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs($"Construct {RepositoryMediator.DataSources.Count} data sources [{RepositoryMediator.DataSources.Select(kvp => kvp.Key).ToString(", ")}]", null);
+				RepositoryMediator.WriteLogs($"Construct {RepositoryMediator.DataSources.Count} data sources [{RepositoryMediator.DataSources.ToString(", ", kvp => $"{kvp.Key} ({kvp.Value.Mode}/{kvp.Value.DatabaseName})")}]", null);
 		}
 
 		/// <summary>
