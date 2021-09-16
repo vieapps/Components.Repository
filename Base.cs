@@ -342,10 +342,8 @@ namespace net.vieapps.Components.Repository
 						// validate string value
 						if (value is string @string)
 						{
-							if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.IntegralNumber))
-								value = @string.CastAs<long>();
-							else if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.FloatingPointNumber))
-								value = @string.CastAs<decimal>();
+							if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.IntegralNumber) || propertyDefinition.Mode.Equals(ExtendedPropertyMode.FloatingPointNumber))
+								value = @string.CastAs(propertyDefinition.Type);
 							else if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.YesNo))
 								value = "true".IsEquals(@string);
 							else if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.DateTime))
@@ -3298,7 +3296,7 @@ namespace net.vieapps.Components.Repository
 			value = null;
 			try
 			{
-				var attributes = this.GetProperties().ToDictionary(attribute => attribute.Name, StringComparer.OrdinalIgnoreCase);
+				var attributes = this.GetPublicProperties().ToDictionary(attribute => attribute.Name, StringComparer.OrdinalIgnoreCase);
 				if (attributes.ContainsKey(name))
 				{
 					value = (this as T).GetAttributeValue(name);
@@ -3367,7 +3365,7 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				var attributes = this.GetProperties().ToDictionary(attribute => attribute.Name);
+				var attributes = this.GetPublicProperties().ToDictionary(attribute => attribute.Name);
 				if (attributes.ContainsKey(name))
 				{
 					this.SetAttributeValue(attributes[name], value, true);
@@ -3791,7 +3789,7 @@ namespace net.vieapps.Components.Repository
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
-					var attributes = ObjectService.GetProperties(typeof(T))
+					var attributes = RepositoryMediator.GetPublicProperties<T>()
 						.Where(attribute => attribute.Info.GetCustomAttributes(typeof(JsonIgnoreAttribute), true).Length < 0)
 						.ToList();
 					var command = connection.CreateCommand(
@@ -3818,7 +3816,7 @@ namespace net.vieapps.Components.Repository
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
-					var attributes = ObjectService.GetProperties(typeof(T))
+					var attributes = RepositoryMediator.GetPublicProperties<T>()
 						.Where(attribute => attribute.Info.GetCustomAttributes(typeof(JsonIgnoreAttribute), true).Length < 0)
 						.ToList();
 					var command = connection.CreateCommand(

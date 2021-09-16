@@ -6363,7 +6363,7 @@ namespace net.vieapps.Components.Repository
 				{
 					var attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Formatted"));
 					if (attribute == null)
-						element.Add(new XAttribute("Formatted",  number.ToString("###,###,###,###,##0.##", cultureInfo)));
+						element.Add(new XAttribute("Formatted", number.ToString("###,###,###,###,##0.##", cultureInfo)));
 					else
 						attribute.Value = number.ToString("###,###,###,###,##0.##", cultureInfo);
 				}
@@ -6423,7 +6423,7 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 
-		static JObject GenerateControlOptions<T>(this AttributeInfo attribute, string controlType, string label, string description, string placeHolder) where T : class
+		static JObject GenerateControlOptions(this Type type, AttributeInfo attribute, string controlType, string label, string description, string placeHolder)
 		{
 			var info = attribute.GetCustomAttribute<FormControlAttribute>();
 			var hidden = info != null ? info.Hidden : attribute.GetCustomAttribute<PrimaryKeyAttribute>() != null;
@@ -6542,19 +6542,19 @@ namespace net.vieapps.Components.Repository
 
 			if ("Lookup".IsEquals(controlType) && info != null)
 			{
-				var definition = RepositoryMediator.GetEntityDefinition<T>(false);
-				var objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : typeof(T).GetTypeName(true);
+				var definition = RepositoryMediator.GetEntityDefinition(type, false);
+				var objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : type.GetTypeName(true);
 				if (attribute.IsParentMapping() || attribute.IsMultipleParentMappings())
 				{
 					var parentType = definition.ParentType;
 					definition = RepositoryMediator.GetEntityDefinition(parentType, false);
-					objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : (parentType ?? typeof(T)).GetTypeName(true);
+					objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : (parentType ?? type).GetTypeName(true);
 				}
 				else if (attribute.IsChildrenMappings())
 				{
 					var childType = attribute.GetCustomAttribute<ChildrenMappingsAttribute>().Type;
 					definition = RepositoryMediator.GetEntityDefinition(childType, false);
-					objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : (childType ?? typeof(T)).GetTypeName(true);
+					objectName = definition != null ? $"{definition.ObjectNamePrefix ?? ""}{definition.ObjectName ?? ""}{definition.ObjectNameSuffix ?? ""}" : (childType ?? type).GetTypeName(true);
 				}
 				options["LookupOptions"] = new JObject
 				{
@@ -6580,17 +6580,17 @@ namespace net.vieapps.Components.Repository
 			return options;
 		}
 
-		static string NormalizeLabel<T>(this string attributeName, string label) where T : class
+		static string NormalizeLabel(this Type type, string attributeName, string label)
 		{
 			if (string.IsNullOrWhiteSpace(label))
 				return null;
 
 			label = label.Replace(StringComparison.OrdinalIgnoreCase, "[name]", attributeName).Replace(StringComparison.OrdinalIgnoreCase, "[nameLower]", attributeName.ToLower());
-			label = label.Replace(StringComparison.OrdinalIgnoreCase, "[type]", typeof(T).GetTypeName(true)).Replace(StringComparison.OrdinalIgnoreCase, "[typeLower]", typeof(T).GetTypeName(true).ToLower());
+			label = label.Replace(StringComparison.OrdinalIgnoreCase, "[type]", type.GetTypeName(true)).Replace(StringComparison.OrdinalIgnoreCase, "[typeLower]", type.GetTypeName(true).ToLower());
 			return label;
 		}
 
-		static JToken GenerateFormControl<T>(this AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null) where T : class
+		static JToken GenerateFormControl(this Type type, AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null)
 		{
 			var info = attribute.GetCustomAttribute<FormControlAttribute>();
 
@@ -6610,13 +6610,13 @@ namespace net.vieapps.Components.Repository
 			var attributeName = $"{(string.IsNullOrWhiteSpace(parentName) ? "" : $"{parentName}.")}{attribute.Name}";
 			var label = hidden
 				? null
-				: attributeName.NormalizeLabel<T>(info?.Label ?? parentLabel ?? attribute.Name);
+				: type.NormalizeLabel(attributeName, info?.Label ?? parentLabel ?? attribute.Name);
 			var description = hidden
 				? null
-				: attributeName.NormalizeLabel<T>(info?.Description ?? parentDescription);
+				: type.NormalizeLabel(attributeName, info?.Description ?? parentDescription);
 			var placeHolder = hidden
 				? null
-				: attributeName.NormalizeLabel<T>(info?.PlaceHolder ?? parentPlaceHolder);
+				: type.NormalizeLabel(attributeName, info?.PlaceHolder ?? parentPlaceHolder);
 
 			if (attribute.IsClassType() && !attribute.IsMappings())
 			{
@@ -6626,7 +6626,7 @@ namespace net.vieapps.Components.Repository
 					var complexSubControls = new JArray();
 					RepositoryMediator.GetFormAttributes(attribute.GetGenericTypeArguments().First()).ForEach((subAttribute, subIndex) =>
 					{
-						var subControl = subAttribute.GenerateFormControl<T>(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
+						var subControl = type.GenerateFormControl(subAttribute, subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
 						if (subControl != null)
 							complexSubControls.Add(subControl);
 					});
@@ -6644,7 +6644,7 @@ namespace net.vieapps.Components.Repository
 				else
 					RepositoryMediator.GetFormAttributes(attribute.IsGenericListOrHashSet() ? attribute.GetGenericTypeArguments().First() : attribute.Type).ForEach((subAttribute, subIndex) =>
 					{
-						var subControl = subAttribute.GenerateFormControl<T>(subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
+						var subControl = type.GenerateFormControl(subAttribute, subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
 						if (subControl != null)
 							subControls.Add(subControl);
 					});
@@ -6704,7 +6704,7 @@ namespace net.vieapps.Components.Repository
 				{ "Order", order },
 				{ "Type", controlType },
 				{ "Extras", new JObject() },
-				{ "Options", attribute.GenerateControlOptions<T>(controlType, label, description, placeHolder) }
+				{ "Options", type.GenerateControlOptions(attribute, controlType, label, description, placeHolder) }
 			};
 
 			var required = !isPrimaryKey && (attribute.NotNull || (attribute.NotEmpty != null && attribute.NotEmpty.Value) || (info != null && info.Required));
@@ -6752,31 +6752,22 @@ namespace net.vieapps.Components.Repository
 		}
 
 		/// <summary>
-		/// Generates the form controls from this object attribute
-		/// </summary>
-		/// <param name="attribute"></param>
-		/// <param name="index"></param>
-		/// <returns></returns>
-		public static JToken GenerateFormControl<T>(this ObjectService.AttributeInfo attribute, int index = 0) where T : class
-			=> new AttributeInfo(attribute).GenerateFormControl<T>(index);
-
-		/// <summary>
 		/// Generates the form controls of this type
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
+		/// <param name="type"></param>
 		/// <returns></returns>
-		public static JToken GenerateFormControls<T>() where T : class
+		public static JToken GenerateFormControls(Type type)
 		{
 			var controls = new JArray();
-			var attributes = RepositoryMediator.GetFormAttributes(typeof(T));
+			var attributes = RepositoryMediator.GetFormAttributes(type);
 			if (RepositoryMediator.IsDebugEnabled)
-				RepositoryMediator.WriteLogs($"Start to generate form controls ({typeof(T).GetTypeName(true)}) => {attributes.Select(attribute => attribute.Name).Join(", ")}]");
+				RepositoryMediator.WriteLogs($"Start to generate form controls ({type.GetTypeName(true)}) => {attributes.Select(attribute => attribute.Name).Join(", ")}]");
 
 			attributes.ForEach((attribute, index) =>
 			{
 				try
 				{
-					var control = attribute.GenerateFormControl<T>(index);
+					var control = type.GenerateFormControl(attribute, index);
 					if (control != null)
 						controls.Add(control);
 				}
@@ -6787,6 +6778,14 @@ namespace net.vieapps.Components.Repository
 			});
 			return controls;
 		}
+
+		/// <summary>
+		/// Generates the form controls of this type
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		public static JToken GenerateFormControls<T>() where T : class
+			=> RepositoryMediator.GenerateFormControls(typeof(T));
 		#endregion
 
 		#region Caching extension methods
@@ -7076,13 +7075,25 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Property extension methods
+		internal static List<ObjectService.AttributeInfo> GetPublicProperties(this Type type, Func<ObjectService.AttributeInfo, bool> predicate = null)
+		{
+			var attributes = ObjectService.GetAttributes(type, attribute => attribute.IsProperty && attribute.IsPublic);
+			return predicate != null ? attributes?.Where(attribute => predicate(attribute)).ToList() : attributes;
+		}
+
+		internal static List<ObjectService.AttributeInfo> GetPublicProperties<T>(Func<ObjectService.AttributeInfo, bool> predicate = null) where T : class
+			=> RepositoryMediator.GetPublicProperties(typeof(T), predicate);
+
+		internal static List<ObjectService.AttributeInfo> GetPublicProperties(this object @object, Func<ObjectService.AttributeInfo, bool> predicate = null)
+			=> RepositoryMediator.GetPublicProperties(@object?.GetType(), predicate);
+
 		internal static Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessRepositoryEntityID, EntityDefinition definition = null, bool lowerCaseKeys = false) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition(typeof(T));
 
 			var standardProperties = definition != null
 				? definition.Attributes.Where(attribute => !attribute.IsMappings()).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
-				: ObjectService.GetProperties(typeof(T)).ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name, attribute => new AttributeInfo(attribute));
+				: RepositoryMediator.GetPublicProperties<T>().ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name, attribute => new AttributeInfo(attribute));
 
 			var extendedProperties = definition != null && definition.Type.CreateInstance().IsGotExtendedProperties(businessRepositoryEntityID, definition)
 				? definition.BusinessRepositoryEntities[businessRepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)

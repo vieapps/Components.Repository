@@ -913,11 +913,9 @@ namespace net.vieapps.Components.Repository
 	[DebuggerDisplay("Name = {Name}")]
 	public class AttributeInfo : ObjectService.AttributeInfo
 	{
-		public AttributeInfo()
-			: this(null) { }
+		public AttributeInfo() : this(null) { }
 
-		public AttributeInfo(ObjectService.AttributeInfo derived)
-			: base(derived?.Name, derived?.Info) { }
+		public AttributeInfo(ObjectService.AttributeInfo derived) : base(derived?.Info) { }
 
 		public string Column { get; internal set; }
 
@@ -982,10 +980,10 @@ namespace net.vieapps.Components.Repository
 
 		#region Properties [Helper]
 		/// <summary>
-		/// Gets the type of this property
+		/// Gets the runtime-type of this property
 		/// </summary>
 		[JsonIgnore, BsonIgnore, XmlIgnore]
-		internal Type Type
+		public Type Type
 		{
 			get
 			{
@@ -1013,11 +1011,14 @@ namespace net.vieapps.Components.Repository
 		/// Gets the database-type of this property
 		/// </summary>
 		[JsonIgnore, BsonIgnore, XmlIgnore]
-		internal DbType DbType => this.Type.GetDbType();
+		public DbType DbType => this.Type.GetDbType();
 		#endregion
 
 		#region Validations
-		internal static HashSet<string> ReservedWords { get; } = "ExtendedProperties,Add,External,Procedure,All,Fetch,Public,Alter,File,RaisError,And,FillFactor,Read,Any,For,ReadText,As,Foreign,ReConfigure,Asc,FreeText,References,Authorization,FreeTextTable,Replication,Backup,From,Restore,Begin,Full,Restrict,Between,Function,Return,Break,Goto,Revert,Browse,Grant,Revoke,Bulk,Group,Right,By,Having,Rollback,Cascade,Holdlock,Rowcount,Case,RowGuidCol,Check,Identity,Insert,Rule,Checkpoint,Identitycol,Save,Close,If,Schema,Clustered,In,SecurityAudit,Coalesce,Index,Select,Collate,Inner,SemanticKeyPhraseTable,Column,SemanticSimilarityDetailsTable,Commit,Intersect,SemanticSimilarityTable,Compute,Into,Session,User,Constraint,Is,Set,Contains,Join,Setuser,ContainsTable,Key,Shutdown,Continue,Kill,Some,Convert,Left,Statistics,Create,Like,System,Cross,Lineno,Table,Current,Load,TableSample,Current_Date,Current_Time,Current_Timestamp,Merge,TextSize,National,Then,NoCheck,To,Current_User,NonClustered,Top,Cursor,Not,Tran,Database,Null,Transaction,Dbcc,NullIf,Trigger,Deallocate,Of,Truncate,Declare,Off,Try_Convert,Default,Offsets,Tsequal,Delete,On,Union,Deny,Open,Unique,Desc,OpenDataSource,Unpivot,Disk,Openquery,Update,Distinct,OpenRowset,UpdateText,Distributed,OpenXml,Use,Double,Option,User,Drop,Or,Values,Dump,Order,Varying,Else,Outer,View,End,Over,Waitfor,Errlvl,Percent,When,Escape,Pivot,Where,Except,Plan,While,Exec,Precision,With,Execute,Primary,Exists,Print,WriteText,Exit,Proc".ToLower().ToHashSet();
+		/// <summary>
+		/// Gets the collection of reserved words (means the excluded attributes)
+		/// </summary>
+		public static HashSet<string> ReservedWords { get; } = "ExtendedProperties,Add,External,Procedure,All,Fetch,Public,Alter,File,RaisError,And,FillFactor,Read,Any,For,ReadText,As,Foreign,ReConfigure,Asc,FreeText,References,Authorization,FreeTextTable,Replication,Backup,From,Restore,Begin,Full,Restrict,Between,Function,Return,Break,Goto,Revert,Browse,Grant,Revoke,Bulk,Group,Right,By,Having,Rollback,Cascade,Holdlock,Rowcount,Case,RowGuidCol,Check,Identity,Insert,Rule,Checkpoint,Identitycol,Save,Close,If,Schema,Clustered,In,SecurityAudit,Coalesce,Index,Select,Collate,Inner,SemanticKeyPhraseTable,Column,SemanticSimilarityDetailsTable,Commit,Intersect,SemanticSimilarityTable,Compute,Into,Session,User,Constraint,Is,Set,Contains,Join,Setuser,ContainsTable,Key,Shutdown,Continue,Kill,Some,Convert,Left,Statistics,Create,Like,System,Cross,Lineno,Table,Current,Load,TableSample,Current_Date,Current_Time,Current_Timestamp,Merge,TextSize,National,Then,NoCheck,To,Current_User,NonClustered,Top,Cursor,Not,Tran,Database,Null,Transaction,Dbcc,NullIf,Trigger,Deallocate,Of,Truncate,Declare,Off,Try_Convert,Default,Offsets,Tsequal,Delete,On,Union,Deny,Open,Unique,Desc,OpenDataSource,Unpivot,Disk,Openquery,Update,Distinct,OpenRowset,UpdateText,Distributed,OpenXml,Use,Double,Option,User,Drop,Or,Values,Dump,Order,Varying,Else,Outer,View,End,Over,Waitfor,Errlvl,Percent,When,Escape,Pivot,Where,Except,Plan,While,Exec,Precision,With,Execute,Primary,Exists,Print,WriteText,Exit,Proc".ToLower().ToHashSet();
 
 		/// <summary>
 		/// Validates the name of a extended property definition
@@ -1041,9 +1042,11 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Helper methods
-		public object GetDefaultValue() => null;
+		public object GetDefaultValue()
+			=> this.DefaultValue?.CastAs(this.Type);
 
-		public override string ToString() => this.ToJson().ToString(Newtonsoft.Json.Formatting.None);
+		public override string ToString()
+			=> this.ToJson().ToString(Formatting.None);
 		#endregion
 
 	}
