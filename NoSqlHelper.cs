@@ -929,7 +929,7 @@ namespace net.vieapps.Components.Repository
 			var stopwatch = Stopwatch.StartNew();
 
 			// get collection of all attributes
-			var objAttributes = @object.GetAttributes();
+			var objAttributes = RepositoryMediator.GetEntityDefinition<T>().Attributes;
 
 			// check to use replace (when got generic of primitive or class type member - workaround)
 			var useReplace = false;
@@ -1092,7 +1092,7 @@ namespace net.vieapps.Components.Repository
 			var stopwatch = Stopwatch.StartNew();
 
 			// get collection of all attributes
-			var objAttributes = @object.GetAttributes();
+			var objAttributes = RepositoryMediator.GetEntityDefinition<T>().Attributes;
 
 			// check to use replace (when got generic of primitive or class type member - workaround)
 			var useReplace = false;

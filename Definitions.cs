@@ -614,7 +614,7 @@ namespace net.vieapps.Components.Repository
 				else if (parentMappings.First().Type == null)
 					throw new InformationRequiredException($"The attribute [{parentMappings.First().Name}] must have the type of parent entity definition");
 			}
-			else if (properties.Count(attribute => attribute.IsMultipleParentMappings()) > 0)
+			else if (properties.Any(attribute => attribute.IsMultipleParentMappings()))
 				throw new InformationInvalidException($"The type [{type}] got multiple parent mappings but got no information of the parent entity definition");
 
 			// verify the alias
