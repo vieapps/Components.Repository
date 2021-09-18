@@ -693,14 +693,6 @@ namespace net.vieapps.Components.Repository
 			=> definition != null && definition.Type != null && definition.Type.IsStringType() && definition.Mode.Equals(ExtendedPropertyMode.LargeText);
 
 		/// <summary>
-		/// Gets the state that determines this attribute is enum-string or not
-		/// </summary>
-		/// <param name="attribute"></param>
-		/// <returns></returns>
-		public static bool IsEnumString(this ObjectService.AttributeInfo attribute)
-			=> attribute != null && attribute.IsEnum() && typeof(Newtonsoft.Json.Converters.StringEnumConverter).Equals(attribute.GetCustomAttribute<JsonConverterAttribute>()?.ConverterType);
-
-		/// <summary>
 		/// Gets the state that determines this date-time attribute is be stored as string or not
 		/// </summary>
 		/// <param name="attribute"></param>

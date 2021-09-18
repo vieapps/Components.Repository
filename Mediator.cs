@@ -6432,7 +6432,7 @@ namespace net.vieapps.Components.Repository
 				? info.LookupType
 				: !string.IsNullOrWhiteSpace(info?.DataType)
 					? info.DataType
-					: attribute.IsEnum() || attribute.IsEnumString()
+					: attribute.IsEnum() || attribute.IsStringEnum()
 						? "text"
 						: "DatePicker".IsEquals(controlType)
 							? "date"
@@ -6513,17 +6513,17 @@ namespace net.vieapps.Components.Repository
 					{ "AllowTimes", info.DatePickerWithTimes }
 				};
 
-			if ("Select".IsEquals(controlType) || attribute.IsEnum() || attribute.IsEnumString())
+			if ("Select".IsEquals(controlType) || attribute.IsEnum() || attribute.IsStringEnum())
 			{
 				var selectValues = info?.SelectValues;
-				if (selectValues == null && (attribute.IsEnum() || attribute.IsEnumString()))
+				if (selectValues == null && (attribute.IsEnum() || attribute.IsStringEnum()))
 					try
 					{
 						selectValues = attribute.IsNullable()
-							? attribute.IsEnumString()
+							? attribute.IsStringEnum()
 								? Enum.GetNames(attribute.Type.GetEnumUnderlyingType() ?? attribute.Type).Join("#;")
 								: Enum.GetValues(attribute.Type.GetEnumUnderlyingType() ?? attribute.Type).ToEnumerable().Select(e => e.ToString()).Join("#;")
-							: attribute.IsEnumString()
+							: attribute.IsStringEnum()
 								? Enum.GetNames(attribute.Type).Join("#;")
 								: Enum.GetValues(attribute.Type).ToEnumerable().Select(e => e.ToString()).Join("#;");
 					}
@@ -6679,7 +6679,7 @@ namespace net.vieapps.Components.Repository
 				? info.ControlType
 				: attribute.IsLargeString()
 					? "TextEditor"
-					: attribute.IsEnum() || attribute.IsEnumString()
+					: attribute.IsEnum() || attribute.IsStringEnum()
 						? "Select"
 						: attribute.IsMappings()
 							? "Lookup"

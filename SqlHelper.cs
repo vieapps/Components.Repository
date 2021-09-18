@@ -241,7 +241,7 @@ namespace net.vieapps.Components.Repository
 				: attribute.IsStoredAsJson()
 					? DbType.String
 					: attribute.Type.IsEnum
-						? attribute.IsEnumString()
+						? attribute.IsStringEnum()
 							? DbType.String
 							: DbType.Int32
 					: attribute.Type.GetDbType();
@@ -393,7 +393,7 @@ namespace net.vieapps.Components.Repository
 					: (attribute.IsCLOB != null && attribute.IsCLOB.Value) || attribute.IsStoredAsJson()
 						? typeof(string).GetDbTypeString(dbProviderFactory, 0, false, true)
 						: attribute.Type.IsEnum
-							? attribute.IsEnumString()
+							? attribute.IsStringEnum()
 								? typeof(string).GetDbTypeString(dbProviderFactory, 50, false, false)
 								: typeof(int).GetDbTypeString(dbProviderFactory, 0, false, false)
 							: attribute.Type.GetDbTypeString(dbProviderFactory, attribute.MaxLength != null ? attribute.MaxLength.Value : 0);
@@ -521,7 +521,7 @@ namespace net.vieapps.Components.Repository
 							}
 
 						else if (attribute.IsEnum())
-							value = attribute.IsEnumString()
+							value = attribute.IsStringEnum()
 								? strValue.ToEnum(attribute.Type)
 								: value.CastAs<int>();
 

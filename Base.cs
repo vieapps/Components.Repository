@@ -242,7 +242,7 @@ namespace net.vieapps.Components.Repository
 		public abstract void ParseXml(XContainer xml, Action<XContainer> onCompleted);
 
 		/// <summary>
-		/// Converts this object to JSON string
+		/// Converts this object to string (JSON format)
 		/// </summary>
 		/// <param name="formatting"></param>
 		/// <returns></returns>
@@ -250,7 +250,7 @@ namespace net.vieapps.Components.Repository
 			=> this.ToJson().ToString(formatting);
 
 		/// <summary>
-		/// Converts this object to JSON string
+		/// Converts this object to string (JSON format)
 		/// </summary>
 		/// <returns></returns>
 		public override string ToString()
