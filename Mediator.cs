@@ -6444,13 +6444,14 @@ namespace net.vieapps.Components.Repository
 			if (!string.IsNullOrWhiteSpace(dataType))
 				options["Type"] = dataType;
 
+			options["Label"] = label;
+			if (description != null)
+				options["Description"] = description;
+			if (placeHolder != null)
+				options["PlaceHolder"] = placeHolder;
+
 			if (!hidden)
 			{
-				options["Label"] = label;
-				if (description != null)
-					options["Description"] = description;
-				if (placeHolder != null)
-					options["PlaceHolder"] = placeHolder;
 				if (info != null && info.Disabled)
 					options["Disabled"] = true;
 				if (info != null && info.ReadOnly)
@@ -6608,15 +6609,9 @@ namespace net.vieapps.Components.Repository
 			var order = info != null && info.Order > -1 ? info.Order : index;
 
 			var attributeName = $"{(string.IsNullOrWhiteSpace(parentName) ? "" : $"{parentName}.")}{attribute.Name}";
-			var label = hidden
-				? null
-				: type.NormalizeLabel(attributeName, info?.Label ?? parentLabel ?? attribute.Name);
-			var description = hidden
-				? null
-				: type.NormalizeLabel(attributeName, info?.Description ?? parentDescription);
-			var placeHolder = hidden
-				? null
-				: type.NormalizeLabel(attributeName, info?.PlaceHolder ?? parentPlaceHolder);
+			var label = type.NormalizeLabel(attributeName, info?.Label ?? parentLabel ?? attribute.Name);
+			var description = type.NormalizeLabel(attributeName, info?.Description ?? parentDescription);
+			var placeHolder = type.NormalizeLabel(attributeName, info?.PlaceHolder ?? parentPlaceHolder);
 
 			if (attribute.IsClassType() && !attribute.IsMappings())
 			{
@@ -6655,9 +6650,7 @@ namespace net.vieapps.Components.Repository
 					{ "Order", order },
 					{ "Type", info?.ControlType },
 					{ "Extras", new JObject() },
-					{ "Options", hidden
-						? new JObject()
-						: new JObject
+					{ "Options", new JObject
 						{
 							{ "Label", label },
 							{ "Description", description }
@@ -6723,9 +6716,7 @@ namespace net.vieapps.Components.Repository
 					{ "Name", attribute.Name },
 					{ "Order", order },
 					{ "Extras", new JObject() },
-					{ "Options", hidden
-						? new JObject()
-						: new JObject
+					{ "Options", new JObject
 						{
 							{ "Label", label },
 							{ "Description", description }
@@ -6755,8 +6746,9 @@ namespace net.vieapps.Components.Repository
 		/// Generates the form controls of this type
 		/// </summary>
 		/// <param name="type"></param>
+		/// <param name="onCompleted"></param>
 		/// <returns></returns>
-		public static JToken GenerateFormControls(Type type)
+		public static JToken GenerateFormControls(Type type, Action<JToken> onCompleted = null)
 		{
 			var controls = new JArray();
 			var attributes = RepositoryMediator.GetFormAttributes(type);
@@ -6776,6 +6768,7 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs($"Error occurred while generating form control [{attribute.Name}] => {ex.Message}", ex, LogLevel.Error);
 				}
 			});
+			onCompleted?.Invoke(controls);
 			return controls;
 		}
 
