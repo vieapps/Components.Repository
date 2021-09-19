@@ -114,8 +114,8 @@ namespace net.vieapps.Components.Repository
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
 		public byte[] MsgPackExtendedProperties
 		{
-			get => this.ExtendedProperties != null && this.ExtendedProperties.Count > 0 ? Caching.Helper.SerializeBson(this.ExtendedProperties) : new byte[0];
-			set => this.ExtendedProperties = value != null && value.Length > 0 ? Caching.Helper.DeserializeBson<Dictionary<string, object>>(value) : null;
+			get => this.ExtendedProperties != null && this.ExtendedProperties.Any() ? Caching.Helper.SerializeBson(this.ExtendedProperties) : Array.Empty<byte>();
+			set => this.ExtendedProperties = value != null && value.Any() ? Caching.Helper.DeserializeBson<Dictionary<string, object>>(value) : null;
 		}
 
 		/// <summary>
@@ -132,7 +132,7 @@ namespace net.vieapps.Components.Repository
 			get => this.OriginalPrivileges != null ? Caching.Helper.SerializeBson(this.OriginalPrivileges) : Array.Empty<byte>();
 			set
 			{
-				this.OriginalPrivileges = value != null && value.Length > 0 ? Caching.Helper.DeserializeBson<Privileges>(value) : null;
+				this.OriginalPrivileges = value != null && value.Any() ? Caching.Helper.DeserializeBson<Privileges>(value) : null;
 				if (RepositoryMediator.IsTraceEnabled)
 					Task.Run(async () =>
 					{
@@ -242,6 +242,14 @@ namespace net.vieapps.Components.Repository
 		public abstract void ParseXml(XContainer xml, Action<XContainer> onCompleted);
 
 		/// <summary>
+		/// Serializes this object to ExpandoObject
+		/// </summary>
+		/// <param name="onCompleted">The action to run on completed</param>
+		/// <returns></returns>
+		public virtual ExpandoObject ToExpandoObject(Action<ExpandoObject> onCompleted)
+			=> this.ToJson().ToExpandoObject(onCompleted);
+
+		/// <summary>
 		/// Converts this object to string (JSON format)
 		/// </summary>
 		/// <param name="formatting"></param>
@@ -258,7 +266,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region On property changed
-		public virtual event PropertyChangedEventHandler PropertyChanged;
+		public event PropertyChangedEventHandler PropertyChanged;
 
 		public virtual void NotifyPropertyChanged([CallerMemberName] string name = "", object sender = null)
 		{
@@ -334,24 +342,24 @@ namespace net.vieapps.Components.Repository
 				this.ExtendedProperties = this.ExtendedProperties ?? new Dictionary<string, object>();
 				if (RepositoryMediator.IsTraceEnabled)
 					RepositoryMediator.WriteLogs($"Fill data (extended properties) into object [{typeof(T)}#{this.ID}]\r\nDefinitions: {repositoryEntity?.ExtendedPropertyDefinitions?.ToJArray()}\r\nValues:\r\n- {this.ExtendedProperties?.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}");
-				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(propertyDefinition =>
+				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(definition =>
 				{
-					var value = data?.Get(propertyDefinition.Name);
+					var value = data?.Get(definition.Name);
 					if (value != null)
 					{
 						// validate string value
 						if (value is string @string)
 						{
-							if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.IntegralNumber) || propertyDefinition.Mode.Equals(ExtendedPropertyMode.FloatingPointNumber))
-								value = @string.CastAs(propertyDefinition.Type);
-							else if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.YesNo))
+							if (definition.Mode.Equals(ExtendedPropertyMode.IntegralNumber) || definition.Mode.Equals(ExtendedPropertyMode.FloatingPointNumber))
+								value = @string.CastAs(definition.Type);
+							else if (definition.Mode.Equals(ExtendedPropertyMode.YesNo))
 								value = "true".IsEquals(@string);
-							else if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.DateTime))
+							else if (definition.Mode.Equals(ExtendedPropertyMode.DateTime))
 								value = DateTime.Parse(@string);
 							else
 							{
 								var maxLength = 0;
-								switch (propertyDefinition.Mode)
+								switch (definition.Mode)
 								{
 									case ExtendedPropertyMode.SmallText:
 									case ExtendedPropertyMode.Select:
@@ -368,7 +376,7 @@ namespace net.vieapps.Components.Repository
 						}
 
 						// validate multiple values of select (array/list)
-						if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.Select) && value is List<string> selectValues)
+						else if (definition.Mode.Equals(ExtendedPropertyMode.Select) && value is IEnumerable<string> selectValues)
 						{
 							var maxLength = 250;
 							@string = selectValues.Where(val => !string.IsNullOrWhiteSpace(val)).Join("#;");
@@ -376,16 +384,16 @@ namespace net.vieapps.Components.Repository
 						}
 
 						// validate multiple values of lookup (array/list)
-						if (propertyDefinition.Mode.Equals(ExtendedPropertyMode.Lookup) && value is List<string> lookupValues)
+						else if (definition.Mode.Equals(ExtendedPropertyMode.Lookup) && value is IEnumerable<string> lookupValues)
 						{
 							var maxLength = 4000;
-							@string = lookupValues.Where(val => !string.IsNullOrWhiteSpace(val)).Join(",");
+							@string = lookupValues.Where(val => !string.IsNullOrWhiteSpace(val)).Join("#;");
 							value = maxLength > 0 && @string.Length > maxLength ? @string.Left(maxLength) : @string.Trim();
 						}
 					}
 
 					// assign value
-					this.ExtendedProperties[propertyDefinition.Name] = value;
+					this.ExtendedProperties[definition.Name] = value;
 				});
 			}
 
@@ -413,7 +421,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="onCompleted">The action to run when completed</param>
 		/// <returns></returns>
 		public static T CreateInstance(ExpandoObject data, HashSet<string> excluded = null, Action<T> onCompleted = null)
-			=> (ObjectService.CreateInstance<T>() as RepositoryBase<T>).Fill(data, excluded, onCompleted);
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, onCompleted);
 
 		/// <summary>
 		/// Create new an instance and fill data into objects' properties
@@ -423,7 +431,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="onCompleted">The action to run when completed</param>
 		/// <returns></returns>
 		public static T CreateInstance(JToken data, HashSet<string> excluded = null, Action<T> onCompleted = null)
-			=> (ObjectService.CreateInstance<T>() as RepositoryBase<T>).Fill(data, excluded, onCompleted);
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, onCompleted);
 		#endregion
 
 		#region [Static] Create
@@ -3408,26 +3416,22 @@ namespace net.vieapps.Components.Repository
 
 			// extended properties
 			if (this is IBusinessEntity && this.ExtendedProperties != null && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity) && repositoryEntity != null && repositoryEntity.ExtendedPropertyDefinitions != null)
-				repositoryEntity.ExtendedPropertyDefinitions.ForEach(propertyDefinition =>
+				repositoryEntity.ExtendedPropertyDefinitions.ForEach(definition =>
 				{
-					if (this.ExtendedProperties.TryGetValue(propertyDefinition.Name, out var value) && value != null)
-					{
-						if (addTypeOfExtendedProperties)
-						{
-							var type = value.GetType();
-							json[$"{propertyDefinition.Name}$type"] = type.IsPrimitiveType() ? type.ToString() : type.GetTypeName();
-						}
+					if (this.ExtendedProperties.TryGetValue(definition.Name, out var value) && value != null)
 						value = value is string @string
-							? propertyDefinition.Mode.Equals(ExtendedPropertyMode.Select) && @string.Contains("#;")
-								? @string.ToArray("#;", true).ToJArray()
-								: propertyDefinition.Mode.Equals(ExtendedPropertyMode.Lookup) && @string.Contains(",")
-									? @string.ToArray(",", true).ToJArray()
-									: value.ToJson()
+							? (definition.Mode.Equals(ExtendedPropertyMode.Select) || definition.Mode.Equals(ExtendedPropertyMode.Lookup)) && @string.Contains(";")
+								? @string.ToArray(@string.Contains("#;") ? "#;" : ";", true).ToJArray() as object
+								: @string
 							: value is RepositoryBase repositoryObject
-								? repositoryObject.ToJson(addTypeOfExtendedProperties, onCompleted)
+								? repositoryObject.ToJson(addTypeOfExtendedProperties, null)
 								: value.ToJson();
+					json[definition.Name] = value?.ToJson();
+					if (addTypeOfExtendedProperties && value != null)
+					{
+						var type = value.GetType();
+						json[$"{definition.Name}$type"] = type.IsPrimitiveType() ? type.ToString() : type.GetTypeName();
 					}
-					json[propertyDefinition.Name] = value?.ToJson();
 				});
 
 			// privileges
@@ -3506,23 +3510,19 @@ namespace net.vieapps.Components.Repository
 
 			// extended properties
 			if (this is IBusinessEntity && this.ExtendedProperties != null && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity))
-				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(propertyDefinition =>
+				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(definition =>
 				{
-					if (this.ExtendedProperties.TryGetValue(propertyDefinition.Name, out var value) && value != null)
-					{
+					if (this.ExtendedProperties.TryGetValue(definition.Name, out var value) && value != null)
 						value = value is string @string
-							? propertyDefinition.Mode.Equals(ExtendedPropertyMode.Select) && @string.Contains("#;")
-								? @string.ToArray("#;", true).Select(val => new XElement("Value", val)).ToArray()
-								: propertyDefinition.Mode.Equals(ExtendedPropertyMode.Lookup) && @string.Contains(",")
-									? @string.ToArray(",", true).Select(val => new XElement("Value", val)).ToArray() as object
-									: @string
+							? (definition.Mode.Equals(ExtendedPropertyMode.Select) || definition.Mode.Equals(ExtendedPropertyMode.Lookup)) && @string.Contains(";")
+								? @string.ToArray(@string.Contains("#;") ? "#;" : ";", true).Select(val => new XElement("Value", val)).ToArray() as object
+								: @string
 							: value is RepositoryBase repositoryObject
 								? repositoryObject.ToXml(addTypeOfExtendedProperties, onCompleted)
-								: value.GetType().IsClassType()
+								: value.IsClassType()
 									? value.ToXml(onCompleted)
 									: value;
-					}
-					var element = new XElement(propertyDefinition.Name, value);
+					var element = new XElement(definition.Name, value);
 					if (value != null)
 					{
 						var type = value.GetType();
@@ -3535,6 +3535,25 @@ namespace net.vieapps.Components.Repository
 					}
 					xml.Add(element);
 				});
+
+			/*
+			// privileges
+			if (this.WorkingPrivileges != null && !this.WorkingPrivileges.IsInheritFromParent() && xml.Element("Privileges") == null)
+				xml.Add(new XElement("Privileges", this.WorkingPrivileges.ToXml()));
+
+			if (this.OriginalPrivileges != null && !this.OriginalPrivileges.IsInheritFromParent() && xml.Element("OriginalPrivileges") == null)
+				xml.Add(new XElement("OriginalPrivileges", this.OriginalPrivileges.ToXml()));
+			*/
+
+			// system management properties
+			if (!string.IsNullOrWhiteSpace(this.SystemID))
+				xml.Add(new XElement("SystemID", this.SystemID));
+
+			if (!string.IsNullOrWhiteSpace(this.RepositoryID))
+				xml.Add(new XElement("RepositoryID", this.RepositoryID));
+
+			if (!string.IsNullOrWhiteSpace(this.RepositoryEntityID))
+				xml.Add(new XElement("RepositoryEntityID", this.RepositoryEntityID));
 
 			onCompleted?.Invoke(xml);
 			return xml;
@@ -3950,11 +3969,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="y"></param>
 		/// <returns></returns>
 		public virtual bool Equals(T x, T y)
-			=> x == null || y == null
-				? false
-				: object.ReferenceEquals(x, y)
-					? true
-					: (x.GetEntityID() ?? "").IsEquals(y.GetEntityID());
+			=> x != null && y != null && (ReferenceEquals(x, y) ? true : (x.GetEntityID() ?? "").IsEquals(y.GetEntityID()));
 
 		/// <summary>
 		/// If Equals() returns true for a pair of objects,  then GetHashCode() must return the same value for these objects
@@ -3962,9 +3977,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object"></param>
 		/// <returns></returns>
 		public virtual int GetHashCode(T @object)
-			=> @object == null
-				? -1
-				: (@object.GetEntityID() ?? "").GetHashCode();
+			=> @object == null ? -1 : (@object.GetEntityID() ?? "").GetHashCode();
 	}
 	#endregion
 

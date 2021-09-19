@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
+using System.Dynamic;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -6146,7 +6147,34 @@ namespace net.vieapps.Components.Repository
 				}, cancellationToken, false).ConfigureAwait(false);
 		#endregion
 
-		#region JSON/XML conversions
+		#region JSON/XML/ExpandoObject conversions
+		/// <summary>
+		/// Serializes this object to JSON
+		/// </summary>
+		/// <param name="object"></param>
+		/// <param name="onCompleted"></param>
+		/// <returns></returns>
+		public static JToken ToJson(this IBusinessEntity @object, Action<JToken> onCompleted = null)
+			=> @object is RepositoryBase bizObject ? bizObject.ToJson(onCompleted) : (@object as object)?.ToJson(onCompleted);
+
+		/// <summary>
+		/// Serializes this object to ExpandoObject
+		/// </summary>
+		/// <param name="object"></param>
+		/// <param name="onCompleted"></param>
+		/// <returns></returns>
+		public static ExpandoObject ToExpandoObject(this IBusinessEntity @object, Action<ExpandoObject> onCompleted = null)
+			=> @object is RepositoryBase bizObject ? bizObject.ToExpandoObject(onCompleted) : (@object as object)?.ToExpandoObject(onCompleted);
+
+		/// <summary>
+		/// Serializes this object to XML
+		/// </summary>
+		/// <param name="object"></param>
+		/// <param name="onCompleted"></param>
+		/// <returns></returns>
+		public static XElement ToXml(this IBusinessEntity @object, Action<XElement> onCompleted = null)
+			=> @object is RepositoryBase bizObject ? bizObject.ToXml(onCompleted) : (@object as object)?.ToXml(onCompleted);
+
 		/// <summary>
 		/// Serializes the collection of objects to an array of JSON objects
 		/// </summary>
@@ -6156,7 +6184,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="onItemCompleted">The action to run on item completed</param>
 		/// <returns></returns>
 		public static JArray ToJsonArray<T>(this List<T> objects, bool addTypeOfExtendedProperties = false, Action<JObject> onItemCompleted = null) where T : class
-			=> objects != null && objects.Count > 0
+			=> objects != null && objects.Any()
 				? objects.ToJArray(@object => @object is RepositoryBase ? (@object as RepositoryBase)?.ToJson(addTypeOfExtendedProperties, onItemCompleted) : @object?.ToJson())
 				: new JArray();
 
@@ -6414,12 +6442,12 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				return RepositoryMediator.GetEntityDefinition(type)?.FormAttributes ?? type.GetPublicAttributes().Select(attribute => new AttributeInfo(attribute)).ToList();
+				return RepositoryMediator.GetEntityDefinition(type)?.FormAttributes ?? type.GetPublicAttributes(attribute => !attribute.IsStatic).Select(attribute => new AttributeInfo(attribute)).ToList();
 			}
 			catch (Exception ex)
 			{
 				RepositoryMediator.WriteLogs($"Error occurred while preparing attributes to generate form controls => {ex.Message}", ex, LogLevel.Error);
-				return type.GetPublicAttributes().Select(attribute => new AttributeInfo(attribute)).ToList();
+				return type.GetPublicAttributes(attribute => !attribute.IsStatic).Select(attribute => new AttributeInfo(attribute)).ToList();
 			}
 		}
 
@@ -6616,10 +6644,10 @@ namespace net.vieapps.Components.Repository
 			if (attribute.IsClassType() && !attribute.IsMappings())
 			{
 				var subControls = new JArray();
-				if (attribute.IsGenericListOrHashSet() && attribute.GetGenericTypeArguments().First().IsClassType())
+				if (attribute.IsGenericListOrHashSet() && attribute.GetFirstGenericTypeArgument().IsClassType())
 				{
 					var complexSubControls = new JArray();
-					RepositoryMediator.GetFormAttributes(attribute.GetGenericTypeArguments().First()).ForEach((subAttribute, subIndex) =>
+					RepositoryMediator.GetFormAttributes(attribute.GetFirstGenericTypeArgument()).ForEach((subAttribute, subIndex) =>
 					{
 						var subControl = type.GenerateFormControl(subAttribute, subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
 						if (subControl != null)
@@ -6637,7 +6665,7 @@ namespace net.vieapps.Components.Repository
 					});
 				}
 				else
-					RepositoryMediator.GetFormAttributes(attribute.IsGenericListOrHashSet() ? attribute.GetGenericTypeArguments().First() : attribute.Type).ForEach((subAttribute, subIndex) =>
+					RepositoryMediator.GetFormAttributes(attribute.IsGenericListOrHashSet() ? attribute.GetFirstGenericTypeArgument() : attribute.Type).ForEach((subAttribute, subIndex) =>
 					{
 						var subControl = type.GenerateFormControl(subAttribute, subIndex, attributeName, info?.Label ?? parentLabel, info?.Description ?? parentDescription, info?.PlaceHolder ?? parentPlaceHolder);
 						if (subControl != null)
