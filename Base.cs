@@ -329,20 +329,32 @@ namespace net.vieapps.Components.Repository
 		public T Fill(ExpandoObject data, HashSet<string> excluded = null, Action<T> onCompleted = null)
 		{
 			// standard properties
+			this.CopyFrom(data, excluded).TrimAll().OriginalPrivileges = this.OriginalPrivileges?.Normalize();
 			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Fill data (standard properties) into object [{typeof(T)}#{this.ID}] - Excluded: {excluded?.Join(", ") ?? "None"}\r\n{data.ToJson()}");
-
-			this.CopyFrom(data, excluded);
-			this.OriginalPrivileges = this.OriginalPrivileges?.Normalize();
-			this.TrimAll();
+			{
+				var attributes = new JObject();
+				this.GetPublicAttributes(attribute => !attribute.IsStatic && attribute.CanWrite && (excluded == null || !excluded.Contains(attribute.Name))).ForEach(attribute =>
+				{
+					if (data.TryGet(attribute.Name, out var expandoValue))
+					{
+						var expandoJson = expandoValue?.ToJson();
+						var objectJson = this.GetAttributeValue(attribute)?.ToJson();
+						attributes[attribute.Name] = new JObject
+						{
+							{ "IsEquals", objectJson?.ToString() == expandoJson?.ToString() },
+							{ "Source", expandoJson },
+							{ "Filled", objectJson }
+						};
+					}
+				});
+				RepositoryMediator.WriteLogs($"Fill data into object [{typeof(T)}#{this.ID}] - Excluded: {excluded?.Join(", ") ?? "None"}\r\nComparing sheets:\r\n{attributes}");
+			}
 
 			// extended properties
 			if (this is IBusinessEntity && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity) && repositoryEntity?.ExtendedPropertyDefinitions != null)
 			{
 				this.ExtendedProperties = this.ExtendedProperties ?? new Dictionary<string, object>();
-				if (RepositoryMediator.IsTraceEnabled)
-					RepositoryMediator.WriteLogs($"Fill data (extended properties) into object [{typeof(T)}#{this.ID}]\r\nDefinitions: {repositoryEntity?.ExtendedPropertyDefinitions?.ToJArray()}\r\nValues:\r\n- {this.ExtendedProperties?.Select(kvp => $"{kvp.Key}: {kvp.Value}").Join("\r\n- ")}");
-				repositoryEntity?.ExtendedPropertyDefinitions?.ForEach(definition =>
+				repositoryEntity.ExtendedPropertyDefinitions.ForEach(definition =>
 				{
 					var value = data?.Get(definition.Name);
 					if (value != null)
@@ -399,6 +411,23 @@ namespace net.vieapps.Components.Repository
 
 			// return object
 			onCompleted?.Invoke(this as T);
+			if (RepositoryMediator.IsTraceEnabled)
+			{
+				var json = new JObject();
+				this.GetPublicAttributes(attribute => !attribute.IsStatic && attribute.CanWrite).ForEach(attribute =>
+				{
+					try
+					{
+						var value = this.GetAttributeValue(attribute.Name);
+						json[attribute.Name] = value?.ToJson();
+					}
+					catch
+					{
+						json[attribute.Name] = new JValue("(binary or unknown)");
+					}
+				});
+				RepositoryMediator.WriteLogs($"The object has been filled [{typeof(T)}#{this.ID}]\r\n{json}");
+			}
 			return this as T;
 		}
 
@@ -3304,15 +3333,15 @@ namespace net.vieapps.Components.Repository
 			value = null;
 			try
 			{
-				var attributes = this.GetPublicProperties().ToDictionary(attribute => attribute.Name, StringComparer.OrdinalIgnoreCase);
+				var attributes = this.GetPublicProperties(attribute => attribute.CanRead).ToDictionary(attribute => attribute.Name, StringComparer.OrdinalIgnoreCase);
 				if (attributes.ContainsKey(name))
 				{
-					value = (this as T).GetAttributeValue(name);
+					value = this.GetAttributeValue(name);
 					return true;
 				}
-				else if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null && (this as IBusinessEntity).ExtendedProperties.ContainsKey(name))
+				else if (this is IBusinessEntity && this.ExtendedProperties != null && this.ExtendedProperties.ContainsKey(name))
 				{
-					value = (this as IBusinessEntity).ExtendedProperties[name];
+					value = this.ExtendedProperties[name];
 					return true;
 				}
 			}
@@ -3329,9 +3358,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="name">The name of the property</param>
 		/// <returns></returns>
 		public override object GetProperty(string name)
-			=> this.TryGetProperty(name, out object value)
-				? value
-				: null;
+			=> this.TryGetProperty(name, out object value) ? value : null;
 
 		/// <summary>
 		/// Gets the value of a specified property
@@ -3360,9 +3387,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="name">The name of the property</param>
 		/// <returns></returns>
 		public virtual TValue GetProperty<TValue>(string name)
-			=> this.TryGetProperty(name, out TValue value)
-				? value
-				: default;
+			=> this.TryGetProperty(name, out TValue value) ? value : default;
 
 		/// <summary>
 		/// Gets the value of a specified property
@@ -3373,15 +3398,15 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				var attributes = this.GetPublicProperties().ToDictionary(attribute => attribute.Name);
+				var attributes = this.GetPublicProperties(attribute => attribute.CanWrite).ToDictionary(attribute => attribute.Name);
 				if (attributes.ContainsKey(name))
 				{
 					this.SetAttributeValue(attributes[name], value, true);
 					return true;
 				}
-				else if (this is IBusinessEntity && (this as IBusinessEntity).ExtendedProperties != null)
+				else if (this is IBusinessEntity && this.ExtendedProperties != null)
 				{
-					(this as IBusinessEntity).ExtendedProperties[name] = value;
+					this.ExtendedProperties[name] = value;
 					this.NotifyPropertyChanged(name);
 					return true;
 				}

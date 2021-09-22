@@ -7098,7 +7098,7 @@ namespace net.vieapps.Components.Repository
 		#region Property extension methods
 		internal static List<ObjectService.AttributeInfo> GetPublicProperties(this Type type, Func<ObjectService.AttributeInfo, bool> predicate = null)
 		{
-			var attributes = ObjectService.GetAttributes(type, attribute => attribute.IsProperty && attribute.IsPublic);
+			var attributes = ObjectService.GetAttributes(type, attribute => attribute.IsProperty && attribute.IsPublic && !attribute.IsStatic);
 			return predicate != null ? attributes?.Where(attribute => predicate(attribute)).ToList() : attributes;
 		}
 
