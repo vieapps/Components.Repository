@@ -2416,7 +2416,7 @@ namespace net.vieapps.Components.Repository
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
 
-			if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
+			if (results.Any() && context.EntityDefinition.Attributes.Any(attribute => attribute.IsMappings()))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -2484,15 +2484,12 @@ namespace net.vieapps.Components.Repository
 					.Select(data => ObjectService.CreateInstance<T>().Copy(data, standardProperties, extendedProperties))
 					.ToList();
 
-			if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
+			if (results.Any() && context.EntityDefinition.Attributes.Any(attribute => attribute.IsMappings()))
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
-					await results.ForEachAsync(async (@object, token) =>
-					{
-						await @object.GetMappingsAsync(connection, dbProviderFactory, token).ConfigureAwait(false);
-					}, cancellationToken).ConfigureAwait(false);
+					await results.ForEachAsync(async @object => await @object.GetMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 				}
 			}
 

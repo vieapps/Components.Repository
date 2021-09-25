@@ -142,47 +142,47 @@ namespace net.vieapps.Components.Repository
 
 					// ensure schemas (SQL)
 					if ("true".IsEquals(config.Attributes["ensureSchemas"]?.Value))
-						Task.Run(async () => await RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
+						Task.Run(async () => await RepositoryMediator.EntityDefinitions.ForEachAsync(async definition =>
 						{
 							var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
 							primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.SQL)
 								? primaryDataSource
 								: null;
-							await RepositoryStarter.EnsureSqlSchemasAsync(definition, primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
+							await RepositoryStarter.EnsureSqlSchemasAsync(definition, primaryDataSource, tracker).ConfigureAwait(false);
 
 							var secondaryDataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
 							secondaryDataSource = secondaryDataSource != null && secondaryDataSource.Mode.Equals(RepositoryMode.SQL)
 								? secondaryDataSource
 								: null;
-							await RepositoryStarter.EnsureSqlSchemasAsync(definition, secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
+							await RepositoryStarter.EnsureSqlSchemasAsync(definition, secondaryDataSource, tracker).ConfigureAwait(false);
 
 							await RepositoryMediator.GetSyncDataSources(null, definition)
 								.Where(dataSource => dataSource.Mode.Equals(RepositoryMode.SQL) && !dataSource.Name.IsEquals(primaryDataSource?.Name) && !dataSource.Name.IsEquals(secondaryDataSource?.Name))
-								.ForEachAsync(async (dataSource, token) => await RepositoryStarter.EnsureSqlSchemasAsync(definition, dataSource, tracker, token).ConfigureAwait(false), cancellationToken, true, false)
+								.ForEachAsync(async dataSource => await RepositoryStarter.EnsureSqlSchemasAsync(definition, dataSource, tracker).ConfigureAwait(false), true, false)
 								.ConfigureAwait(false);
-						}, CancellationToken.None, true, false)).ConfigureAwait(false);
+						}, true, false)).ConfigureAwait(false);
 
 					// ensure indexes (NoSQL)
 					if ("true".IsEquals(config.Attributes["ensureIndexes"]?.Value))
-						Task.Run(async () => await RepositoryMediator.EntityDefinitions.ForEachAsync(async (definition, cancellationToken) =>
+						Task.Run(async () => await RepositoryMediator.EntityDefinitions.ForEachAsync(async definition =>
 						{
 							var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
 							primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 								? primaryDataSource
 								: null;
-							await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, primaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
+							await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, primaryDataSource, tracker).ConfigureAwait(false);
 
 							var secondaryDataSource = RepositoryMediator.GetSecondaryDataSource(null, definition);
 							secondaryDataSource = secondaryDataSource != null && secondaryDataSource.Mode.Equals(RepositoryMode.NoSQL)
 								? secondaryDataSource
 								: null;
-							await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, secondaryDataSource, tracker, cancellationToken).ConfigureAwait(false);
+							await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, secondaryDataSource, tracker).ConfigureAwait(false);
 
 							await RepositoryMediator.GetSyncDataSources(null, definition)
 								.Where(dataSource => dataSource.Mode.Equals(RepositoryMode.NoSQL) && !dataSource.Name.IsEquals(primaryDataSource?.Name) && !dataSource.Name.IsEquals(secondaryDataSource?.Name))
-								.ForEachAsync(async (dataSource, token) => await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, dataSource, tracker, token).ConfigureAwait(false), cancellationToken, true, false)
+								.ForEachAsync(async dataSource => await RepositoryStarter.EnsureNoSqlIndexesAsync(definition, dataSource, tracker).ConfigureAwait(false), true, false)
 								.ConfigureAwait(false);
-						}, CancellationToken.None, true, false)).ConfigureAwait(false);
+						}, true, false)).ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
@@ -228,7 +228,7 @@ namespace net.vieapps.Components.Repository
 					.GetReferencedAssemblies()
 					.Where(an => !an.Name.IsStartsWith("api-ms") && !an.Name.IsStartsWith("clr") && !an.Name.IsStartsWith("mscor") && !an.Name.IsStartsWith("sos") && !an.Name.IsStartsWith("lib")
 						&& !an.Name.IsStartsWith("System") && !an.Name.IsStartsWith("Microsoft") && !an.Name.IsStartsWith("Windows") && !an.Name.IsEquals("NETStandard")
-						&& !an.Name.IsStartsWith("Newtonsoft") && !an.Name.IsStartsWith("WampSharp") && !an.Name.IsStartsWith("Enyim.") && !an.Name.IsStartsWith("StackExchange.")
+						&& !an.Name.IsStartsWith("Newtonsoft") && !an.Name.IsStartsWith("WampSharp") && !an.Name.IsStartsWith("StackExchange.")
 						&& !an.Name.IsStartsWith("Serilog") && !an.Name.IsStartsWith("MsgPack") && !an.Name.IsStartsWith("ExcelData")
 						&& !an.Name.IsStartsWith("MongoDB") && !an.Name.IsStartsWith("MySql") && !an.Name.IsStartsWith("Npgsql")
 						&& !an.Name.IsEndsWith(".Abstractions") && !an.Name.IsStartsWith("VIEApps.Components")

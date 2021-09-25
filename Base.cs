@@ -336,16 +336,21 @@ namespace net.vieapps.Components.Repository
 				this.GetPublicAttributes(attribute => !attribute.IsStatic && attribute.CanWrite && (excluded == null || !excluded.Contains(attribute.Name))).ForEach(attribute =>
 				{
 					if (data.TryGet(attribute.Name, out var expandoValue))
-					{
-						var expandoJson = expandoValue?.ToJson();
-						var objectJson = this.GetAttributeValue(attribute)?.ToJson();
-						attributes[attribute.Name] = new JObject
+						try
 						{
-							{ "IsEquals", objectJson?.ToString() == expandoJson?.ToString() },
-							{ "Source", expandoJson },
-							{ "Filled", objectJson }
-						};
-					}
+							var expandoJson = expandoValue?.ToJson();
+							var objectJson = this.GetAttributeValue(attribute)?.ToJson();
+							attributes[attribute.Name] = new JObject
+							{
+								{ "IsEquals", objectJson?.ToString() == expandoJson?.ToString() },
+								{ "Source", expandoJson },
+								{ "Filled", objectJson }
+							};
+						}
+						catch
+						{
+							attributes[attribute.Name] = new JValue("(binary or unknown)");
+						}
 				});
 				RepositoryMediator.WriteLogs($"Fill data into object [{typeof(T)}#{this.ID}] - Excluded: {excluded?.Join(", ") ?? "None"}\r\nComparing sheets:\r\n{attributes}");
 			}
@@ -418,8 +423,7 @@ namespace net.vieapps.Components.Repository
 				{
 					try
 					{
-						var value = this.GetAttributeValue(attribute.Name);
-						json[attribute.Name] = value?.ToJson();
+						json[attribute.Name] = this.GetAttributeValue(attribute.Name)?.ToJson();
 					}
 					catch
 					{
@@ -3725,6 +3729,7 @@ namespace net.vieapps.Components.Repository
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
+				var type = typeof(T);
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
@@ -3745,7 +3750,7 @@ namespace net.vieapps.Components.Repository
 						var dataSet = new DataSet();
 						var dataAdapter = dbProviderFactory.CreateDataAdapter();
 						dataAdapter.SelectCommand = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
-						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
+						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, type.GetTypeName(true));
 						dataTable = dataSet.Tables[0];
 					}
 
@@ -3753,7 +3758,7 @@ namespace net.vieapps.Components.Repository
 						.ToList()
 						.Select(dataRow =>
 						{
-							var @object = ObjectService.CreateInstance<T>();
+							var @object = type.CreateInstance<T>();
 							for (var index = 0; index < dataRow.Table.Columns.Count; index++)
 								try
 								{
@@ -3777,6 +3782,7 @@ namespace net.vieapps.Components.Repository
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
+				var type = typeof(T);
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
@@ -3797,7 +3803,7 @@ namespace net.vieapps.Components.Repository
 						var dataSet = new DataSet();
 						var dataAdapter = dbProviderFactory.CreateDataAdapter();
 						dataAdapter.SelectCommand = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
-						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, typeof(T).GetTypeName(true));
+						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, type.GetTypeName(true));
 						dataTable = dataSet.Tables[0];
 					}
 
@@ -3805,7 +3811,7 @@ namespace net.vieapps.Components.Repository
 						.ToList()
 						.Select(dataRow =>
 						{
-							var @object = ObjectService.CreateInstance<T>();
+							var @object = type.CreateInstance<T>();
 							for (var index = 0; index < dataRow.Table.Columns.Count; index++)
 								try
 								{
@@ -3969,8 +3975,7 @@ namespace net.vieapps.Components.Repository
 
 		internal static VersionContent Prepare<T>(T @object, Action<VersionContent> onCompleted = null) where T : class
 		{
-			var content = ObjectService.CreateInstance<VersionContent>();
-			content.CopyFrom(TrashContent.Prepare(@object));
+			var content = ObjectService.CreateInstance<VersionContent>().CopyFrom(TrashContent.Prepare(@object));
 			content.ID = UtilityService.NewUUID;
 			content.ObjectID = @object.GetEntityID();
 			onCompleted?.Invoke(content);
