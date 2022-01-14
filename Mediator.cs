@@ -872,13 +872,14 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static T Get<T>(string aliasTypeName, string id, bool processSecondaryWhenNotFound = true) where T : class
+		public static T Get<T>(string aliasTypeName, string id, bool processCache = true, bool processSecondaryWhenNotFound = true) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return RepositoryMediator.Get<T>(context, aliasTypeName, id, true, processSecondaryWhenNotFound);
+				return RepositoryMediator.Get<T>(context, aliasTypeName, id, processCache, processSecondaryWhenNotFound);
 			}
 		}
 
@@ -1035,13 +1036,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static async Task<T> GetAsync<T>(string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where T : class
+		public static async Task<T> GetAsync<T>(string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processCache = true, bool processSecondaryWhenNotFound = true) where T : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, true, cancellationToken, true, processSecondaryWhenNotFound).ConfigureAwait(false);
+				return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, true, cancellationToken, processCache, processSecondaryWhenNotFound).ConfigureAwait(false);
 			}
 		}
 		#endregion

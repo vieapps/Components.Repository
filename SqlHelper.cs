@@ -501,19 +501,20 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
+				value = value == DBNull.Value ? null : value;
+
 				if (standardAttributes != null && standardAttributes.ContainsKey(name))
 				{
 					var attribute = standardAttributes[name];
-					if (value != null)
+					if (value is string @string)
 					{
-						var strValue = value as string;
 						if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
-							value = DateTime.Parse(strValue);
+							value = DateTime.Parse(@string);
 
 						else if (attribute.IsStoredAsJson())
 							try
 							{
-								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(strValue)), attribute.Type);
+								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(@string)), attribute.Type);
 							}
 							catch
 							{
@@ -522,21 +523,23 @@ namespace net.vieapps.Components.Repository
 
 						else if (attribute.IsEnum())
 							value = attribute.IsStringEnum()
-								? strValue.ToEnum(attribute.Type)
-								: value.CastAs<int>();
+								? @string.ToEnum(attribute.Type)
+								: value.CastAs<int>().ToEnum(attribute.Type);
 
 						else if (attribute.IsGenericListOrHashSet())
-							value = strValue != null
+							value = @string != null
 								? attribute.IsGenericList()
-									? strValue.ToList() as object
-									: strValue.ToHashSet()
+									? @string.ToList() as object
+									: @string.ToHashSet()
 								: value;
 
-						else if (attribute.IsStringType() && string.IsNullOrWhiteSpace(strValue) && !attribute.NotNull)
+						else if (attribute.IsStringType() && string.IsNullOrWhiteSpace(@string) && !attribute.NotNull)
 							value = null;
 					}
+					else if (value != null && attribute.IsEnum())
+						value = value.CastAs<int>().ToEnum(attribute.Type);
 
-					@object.SetAttributeValue(attribute, value, true);
+					@object.SetAttributeValue(attribute, value, value != null);
 					changedNotifier?.NotifyPropertyChanged(name);
 				}
 

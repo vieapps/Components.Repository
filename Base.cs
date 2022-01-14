@@ -633,11 +633,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(RepositoryContext context, DataSource dataSource, string id, bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static TEntity Get<TEntity>(RepositoryContext context, DataSource dataSource, string id, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.Get<TEntity>(context, dataSource, id, true, true, processSecondaryWhenNotFound)
+				? RepositoryMediator.Get<TEntity>(context, dataSource, id, true, processCache, processSecondaryWhenNotFound)
 				: null;
 
 		/// <summary>
@@ -646,13 +647,14 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(DataSource dataSource, string id, bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static TEntity Get<TEntity>(DataSource dataSource, string id, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return RepositoryBase<T>.Get<TEntity>(context, dataSource, id, processSecondaryWhenNotFound);
+				return RepositoryBase<T>.Get<TEntity>(context, dataSource, id, processCache, processSecondaryWhenNotFound);
 			}
 		}
 
@@ -663,11 +665,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(RepositoryContext context, string aliasTypeName, string id, bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static TEntity Get<TEntity>(RepositoryContext context, string aliasTypeName, string id, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.Get<TEntity>(context, aliasTypeName, id, true, true, processSecondaryWhenNotFound)
+				? RepositoryMediator.Get<TEntity>(context, aliasTypeName, id, true, processCache, processSecondaryWhenNotFound)
 				: null;
 
 		/// <summary>
@@ -676,11 +679,12 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(string aliasTypeName, string id, bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static TEntity Get<TEntity>(string aliasTypeName, string id, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.Get<TEntity>(aliasTypeName, id, processSecondaryWhenNotFound)
+				? RepositoryMediator.Get<TEntity>(aliasTypeName, id, processCache, processSecondaryWhenNotFound)
 				: null;
 
 		/// <summary>
@@ -688,10 +692,11 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="id">The string that present identity (primary-key)</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static TEntity Get<TEntity>(string id, bool processSecondaryWhenNotFound = true) where TEntity : class
-			=> RepositoryBase<T>.Get<TEntity>("", id, processSecondaryWhenNotFound);
+		public static TEntity Get<TEntity>(string id, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
+			=> RepositoryBase<T>.Get<TEntity>("", id, processCache, processSecondaryWhenNotFound);
 
 		/// <summary>
 		/// Gets an object
@@ -701,11 +706,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.GetAsync<TEntity>(context, dataSource, id, true, cancellationToken, true, processSecondaryWhenNotFound)
+				? RepositoryMediator.GetAsync<TEntity>(context, dataSource, id, true, cancellationToken, processCache, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
 
 		/// <summary>
@@ -715,13 +721,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="dataSource">The repository's data source that use to store object</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
 			{
-				return await RepositoryBase<T>.GetAsync<TEntity>(context, dataSource, id, cancellationToken, processSecondaryWhenNotFound).ConfigureAwait(false);
+				return await RepositoryBase<T>.GetAsync<TEntity>(context, dataSource, id, cancellationToken, processCache, processSecondaryWhenNotFound).ConfigureAwait(false);
 			}
 		}
 
@@ -733,11 +740,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(RepositoryContext context, string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id, true, cancellationToken, true, processSecondaryWhenNotFound)
+				? RepositoryMediator.GetAsync<TEntity>(context, aliasTypeName, id, true, cancellationToken, processCache, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
 
 		/// <summary>
@@ -747,11 +755,12 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
+		public static Task<TEntity> GetAsync<TEntity>(string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 			=> !string.IsNullOrWhiteSpace(id)
-				? RepositoryMediator.GetAsync<TEntity>(aliasTypeName, id, cancellationToken, processSecondaryWhenNotFound)
+				? RepositoryMediator.GetAsync<TEntity>(aliasTypeName, id, cancellationToken, processCache, processSecondaryWhenNotFound)
 				: Task.FromResult<TEntity>(null);
 
 		/// <summary>
@@ -760,10 +769,11 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="id">The string that present identity (primary-key)</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="processCache">true to process cache (first check existed object, then update cache)</param>
 		/// <param name="processSecondaryWhenNotFound">true to process with secondary data source when object is not found</param>
 		/// <returns></returns>
-		public static Task<TEntity> GetAsync<TEntity>(string id, CancellationToken cancellationToken = default, bool processSecondaryWhenNotFound = true) where TEntity : class
-			=> RepositoryBase<T>.GetAsync<TEntity>("", id, cancellationToken, processSecondaryWhenNotFound);
+		public static Task<TEntity> GetAsync<TEntity>(string id, CancellationToken cancellationToken = default, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
+			=> RepositoryBase<T>.GetAsync<TEntity>("", id, cancellationToken, processCache, processSecondaryWhenNotFound);
 		#endregion
 
 		#region [Protected] Get
