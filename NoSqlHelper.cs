@@ -308,19 +308,6 @@ namespace net.vieapps.Components.Repository
 
 		static string AllowPartialResults { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:AllowPartialResults");
 
-		static FindOptions FindOptions
-        {
-			get
-            {
-				var options = new FindOptions();
-				if (!string.IsNullOrWhiteSpace(NoSqlHelper.AllowDiskUse))
-					options.AllowDiskUse = "true".IsEquals(NoSqlHelper.AllowDiskUse);
-				if (!string.IsNullOrWhiteSpace(NoSqlHelper.AllowPartialResults))
-					options.AllowPartialResults = "true".IsEquals(NoSqlHelper.AllowPartialResults);
-				return options;
-			}
-        }
-
 		static FilterDefinition<T> CreateFilterDefinition<T>(this string query) where T : class
 		{
 			var searchTerms = "";
@@ -389,7 +376,15 @@ namespace net.vieapps.Components.Repository
 
 		static IFindFluent<T, T> CreateFindFluent<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
-			var findFluent = collection.Find(session, filter ?? Builders<T>.Filter.Empty, options ?? NoSqlHelper.FindOptions).Sort(sort ?? Builders<T>.Sort.Ascending("_id"));
+			if (options == null)
+			{
+				options = new FindOptions();
+				if (!string.IsNullOrWhiteSpace(NoSqlHelper.AllowDiskUse) && !"(null)".IsEquals(NoSqlHelper.AllowDiskUse))
+					options.AllowDiskUse = "true".IsEquals(NoSqlHelper.AllowDiskUse);
+				if (!string.IsNullOrWhiteSpace(NoSqlHelper.AllowPartialResults) && !"(null)".IsEquals(NoSqlHelper.AllowPartialResults))
+					options.AllowPartialResults = "true".IsEquals(NoSqlHelper.AllowPartialResults);
+			}
+			var findFluent = collection.Find(session, filter ?? Builders<T>.Filter.Empty, options).Sort(sort ?? Builders<T>.Sort.Ascending("_id"));
 			if (pageSize > 0)
 			{
 				if (pageNumber > 1)
@@ -1458,9 +1453,18 @@ namespace net.vieapps.Components.Repository
 		public static List<BsonDocument> Select<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			var selectFluent = collection.CreateSelectFluent(session ?? collection.StartSession(), attributes, filter, sort, pageSize, pageNumber, options);
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Select [{typeof(T).GetTypeName()}]\r\n{selectFluent}");
-			return selectFluent.ToList();
+			try
+			{
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Select [{typeof(T).GetTypeName()}]\r\n{selectFluent}");
+				return selectFluent.ToList();
+			}
+			catch (Exception ex)
+			{
+				throw ex.Message.IsContains("Sort operation used more than")
+					? new RepositoryOperationException(ex.Message + $"{selectFluent}", ex)
+					: new RepositoryOperationException(ex.Message, ex);
+			}
 		}
 
 		/// <summary>
@@ -1516,9 +1520,18 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<BsonDocument>> SelectAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<string> attributes, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var selectFluent = collection.CreateSelectFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), attributes, filter, sort, pageSize, pageNumber, options);
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Select [{typeof(T).GetTypeName()}]\r\n{selectFluent}");
-			return await selectFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+			try
+			{
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Select [{typeof(T).GetTypeName()}]\r\n{selectFluent}");
+				return await selectFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				throw ex.Message.IsContains("Sort operation used more than")
+					? new RepositoryOperationException(ex.Message + $"{selectFluent}", ex)
+					: new RepositoryOperationException(ex.Message, ex);
+			}
 		}
 
 		/// <summary>
@@ -1681,9 +1694,18 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Find<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			var findFluent = collection.CreateFindFluent(session ?? collection.StartSession(), filter, sort, pageSize, pageNumber, options);
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Find [{typeof(T).GetTypeName()}]\r\n{findFluent}");
-			return findFluent.ToList();
+			try
+			{
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Find [{typeof(T).GetTypeName()}]\r\n{findFluent}");
+				return findFluent.ToList();
+			}
+			catch (Exception ex)
+			{
+				throw ex.Message.IsContains("Sort operation used more than")
+					? new RepositoryOperationException(ex.Message + $"{findFluent}", ex)
+					: new RepositoryOperationException(ex.Message, ex);
+			}
 		}
 
 		/// <summary>
@@ -1736,9 +1758,18 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<T>> FindAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var findFluent = collection.CreateFindFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), filter, sort, pageSize, pageNumber, options);
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Find [{typeof(T).GetTypeName()}]\r\n{findFluent}");
-			return await findFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+			try
+			{
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Find [{typeof(T).GetTypeName()}]\r\n{findFluent}");
+				return await findFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				throw ex.Message.IsContains("Sort operation used more than")
+					? new RepositoryOperationException(ex.Message + $"{findFluent}", ex)
+					: new RepositoryOperationException(ex.Message, ex);
+			}
 		}
 
 		/// <summary>
@@ -1880,9 +1911,18 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Search<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), query, filter, sort, scoreProperty, null, pageSize, pageNumber, options);
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Search [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
-			return searchFluent.ToList();
+			try
+			{
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Search [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
+				return searchFluent.ToList();
+			}
+			catch (Exception ex)
+			{
+				throw ex.Message.IsContains("Sort operation used more than")
+					? new RepositoryOperationException(ex.Message + $"{searchFluent}", ex)
+					: new RepositoryOperationException(ex.Message, ex);
+			}
 		}
 
 		/// <summary>
@@ -1966,9 +2006,18 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<T>> SearchAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), query, filter, sort, scoreProperty, null, pageSize, pageNumber, options);
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Search [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
-			return await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+			try
+			{
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Search [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
+				return await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				throw ex.Message.IsContains("Sort operation used more than")
+					? new RepositoryOperationException(ex.Message + $"{searchFluent}", ex)
+					: new RepositoryOperationException(ex.Message, ex);
+			}
 		}
 
 		/// <summary>
@@ -2058,9 +2107,18 @@ namespace net.vieapps.Components.Repository
 		public static List<string> SearchIdentities<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
 			var searchFluent = collection.CreateSearchFluent(session ?? collection.StartSession(), query, filter, sort, scoreProperty, null, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
-			return searchFluent.ToList().Select(doc => doc["_id"].AsString).ToList();
+			try
+			{
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
+				return searchFluent.ToList().Select(doc => doc["_id"].AsString).ToList();
+			}
+			catch (Exception ex)
+			{
+				throw ex.Message.IsContains("Sort operation used more than")
+					? new RepositoryOperationException(ex.Message + $"{searchFluent}", ex)
+					: new RepositoryOperationException(ex.Message, ex);
+			}
 		}
 
 		/// <summary>
@@ -2110,9 +2168,18 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<string>> SearchIdentitiesAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, SortDefinition<T> sort, string scoreProperty, int pageSize, int pageNumber, FindOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
 			var searchFluent = collection.CreateSearchFluent(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), query, filter, sort, scoreProperty, null, pageSize, pageNumber, options).Project(NoSqlHelper.CreateProjectionDefinition<T>(scoreProperty));
-			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
-			return (await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false)).Select(doc => doc["_id"].AsString).ToList();
+			try
+			{
+				if (RepositoryMediator.IsTraceEnabled)
+					RepositoryMediator.WriteLogs($"Search identities [{typeof(T).GetTypeName()}]\r\n{searchFluent}");
+				return (await searchFluent.ToListAsync(cancellationToken).ConfigureAwait(false)).Select(doc => doc["_id"].AsString).ToList();
+			}
+			catch (Exception ex)
+			{
+				throw ex.Message.IsContains("Sort operation used more than")
+					? new RepositoryOperationException(ex.Message + $"{searchFluent}", ex)
+					: new RepositoryOperationException(ex.Message, ex);
+			}
 		}
 
 		/// <summary>
