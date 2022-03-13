@@ -318,10 +318,7 @@ namespace net.vieapps.Components.Repository
 			if (string.IsNullOrWhiteSpace(this.Attribute))
 				return null;
 
-			var field = extendedProperties != null && extendedProperties.ContainsKey(this.Attribute)
-				? "ExtendedProperties." + this.Attribute
-				: this.Attribute;
-
+			var field = (extendedProperties != null && extendedProperties.ContainsKey(this.Attribute) ? "ExtendedProperties." : "") + this.Attribute;
 			FilterDefinition<T> filter = null;
 
 			var parentMappingProperty = definition?.GetParentMappingAttributeName();

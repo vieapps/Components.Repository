@@ -304,6 +304,23 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Helpers (filter, sort, projection, find fluent)
+		static string AllowDiskUse { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:AllowDiskUse", "true");
+
+		static string AllowPartialResults { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:AllowPartialResults");
+
+		static FindOptions FindOptions
+        {
+			get
+            {
+				var options = new FindOptions();
+				if (!string.IsNullOrWhiteSpace(NoSqlHelper.AllowDiskUse))
+					options.AllowDiskUse = "true".IsEquals(NoSqlHelper.AllowDiskUse);
+				if (!string.IsNullOrWhiteSpace(NoSqlHelper.AllowPartialResults))
+					options.AllowPartialResults = "true".IsEquals(NoSqlHelper.AllowPartialResults);
+				return options;
+			}
+        }
+
 		static FilterDefinition<T> CreateFilterDefinition<T>(this string query) where T : class
 		{
 			var searchTerms = "";
@@ -372,7 +389,7 @@ namespace net.vieapps.Components.Repository
 
 		static IFindFluent<T, T> CreateFindFluent<T>(this IMongoCollection<T> collection, IClientSessionHandle session, FilterDefinition<T> filter, SortDefinition<T> sort, int pageSize, int pageNumber, FindOptions options = null) where T : class
 		{
-			var findFluent = collection.Find(session, filter ?? Builders<T>.Filter.Empty, options).Sort(sort ?? Builders<T>.Sort.Ascending("_id"));
+			var findFluent = collection.Find(session, filter ?? Builders<T>.Filter.Empty, options ?? NoSqlHelper.FindOptions).Sort(sort ?? Builders<T>.Sort.Ascending("_id"));
 			if (pageSize > 0)
 			{
 				if (pageNumber > 1)
@@ -394,9 +411,6 @@ namespace net.vieapps.Components.Repository
 			var projection = NoSqlHelper.CreateProjectionDefinition<T>(attributes, scoreProperty);
 			return collection.CreateFindFluent(session, filterBy, sortBy, pageSize, pageNumber, options).Project<T>(projection);
 		}
-
-		static IFindFluent<T, T> CreateSearchFluent<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string scoreProperty, string query, FilterDefinition<T> filter, int pageSize, int pageNumber, FindOptions options = null) where T : class
-			=> collection.CreateSearchFluent(session, query, filter, null, scoreProperty, null, pageSize, pageNumber, options);
 		#endregion
 
 		#region Create
@@ -2301,7 +2315,7 @@ namespace net.vieapps.Components.Repository
 			var collection = NoSqlHelper.GetCollection<BsonDocument>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, definition.CollectionName, true);
 
 			// create indexes
-			await normalIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async (kvp, token) =>
+			await normalIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async kvp =>
 			{
 				IndexKeysDefinition<BsonDocument> index = null;
 				kvp.Value.ForEach(attribute =>
@@ -2312,7 +2326,7 @@ namespace net.vieapps.Components.Repository
 				});
 				try
 				{
-					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true }), null, token).ConfigureAwait(false);
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true }), null, cancellationToken).ConfigureAwait(false);
 					tracker?.Invoke($"Create index of No SQL successful => {kvp.Key}", null);
 					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create index of No SQL successful => {kvp.Key}", null);
@@ -2322,9 +2336,9 @@ namespace net.vieapps.Components.Repository
 					tracker?.Invoke($"Error occurred while creating index of No SQL => {ex.Message}", ex);
 					RepositoryMediator.WriteLogs($"Error occurred while creating index of No SQL => {ex.Message}", ex, LogLevel.Error);
 				}
-			}, cancellationToken, true, false).ConfigureAwait(false);
+			}, true, false).ConfigureAwait(false);
 
-			await uniqueIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async (kvp, token) =>
+			await uniqueIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async kvp =>
 			{
 				IndexKeysDefinition<BsonDocument> index = null;
 				kvp.Value.ForEach(attribute =>
@@ -2335,7 +2349,7 @@ namespace net.vieapps.Components.Repository
 				});
 				try
 				{
-					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, Unique = true }), null, token).ConfigureAwait(false);
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, Unique = true }), null, cancellationToken).ConfigureAwait(false);
 					tracker?.Invoke($"Create unique index of No SQL successful => {kvp.Key}", null);
 					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create unique index of No SQL successful => {kvp.Key}", null);
@@ -2345,7 +2359,7 @@ namespace net.vieapps.Components.Repository
 					tracker?.Invoke($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
 					RepositoryMediator.WriteLogs($"Error occurred while creating unique index of No SQL => {ex.Message}", ex, LogLevel.Error);
 				}
-			}, cancellationToken, true, false).ConfigureAwait(false);
+			}, true, false).ConfigureAwait(false);
 
 			if (textIndexes.Count > 0)
 			{
@@ -2371,7 +2385,7 @@ namespace net.vieapps.Components.Repository
 			}
 
 			// create the blank document for ensuring the collection is created
-			if (await collection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty).ConfigureAwait(false) < 1)
+			if (await collection.CountDocumentsAsync(Builders<BsonDocument>.Filter.Empty, null, cancellationToken).ConfigureAwait(false) < 1)
 				try
 				{
 					var @object = definition.Type.CreateInstance() as RepositoryBase;

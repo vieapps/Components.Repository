@@ -707,10 +707,8 @@ namespace net.vieapps.Components.Repository
 			var mapValues = new List<string>();
 			var command = connection.CreateCommand(dbProviderFactory.PrepareGetMappings(tableName, linkColumn, mapColumn, linkValue));
 			using (var dataReader = command.ExecuteReader())
-			{
 				while (dataReader.Read())
 					mapValues.Add(dataReader[0]?.ToString());
-			}
 			return mapValues;
 		}
 
@@ -731,10 +729,8 @@ namespace net.vieapps.Components.Repository
 			var mapValues = new List<string>();
 			var command = connection.CreateCommand(dbProviderFactory.PrepareGetMappings(tableName, linkColumn, mapColumn, linkValue));
 			using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-			{
 				while (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 					mapValues.Add(dataReader[0]?.ToString());
-			}
 			return mapValues;
 		}
 
@@ -742,12 +738,12 @@ namespace net.vieapps.Components.Repository
 		{
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 			var linkValue = @object is RepositoryBase ? (@object as RepositoryBase).ID : @object.GetEntityID();
-			await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async (attribute, token) =>
+			await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async attribute =>
 			{
 				var mapInfo = attribute.GetMapInfo(definition);
-				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, token).ConfigureAwait(false);
+				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, cancellationToken).ConfigureAwait(false);
 				@object.SetAttributeValue(attribute, attribute.IsGenericHashSet() ? mapValues.ToHashSet() as object : mapValues);
-			}, cancellationToken, true, false).ConfigureAwait(false);
+			}, true, false).ConfigureAwait(false);
 		}
 		#endregion
 
@@ -994,11 +990,7 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					using (var dataReader = command.ExecuteReader())
-					{
-						@object = dataReader.Read()
-							? @object.Copy(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null)
-							: null;
-					}
+						@object = dataReader.Read() ? @object.Copy(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null) : null;
 
 					var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
 
@@ -1007,10 +999,8 @@ namespace net.vieapps.Components.Repository
 						var extendedProperties = context.EntityDefinition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions;
 						command = connection.CreateCommand(@object.PrepareGetExtent(id, dbProviderFactory, extendedProperties));
 						using (var dataReader = command.ExecuteReader())
-						{
 							if (dataReader.Read())
 								@object = @object.Copy(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
-						}
 						if (RepositoryMediator.IsDebugEnabled)
 							info += "\r\n" + command.GetInfo();
 
@@ -1059,11 +1049,7 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-					{
-						@object = await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)
-							? @object.Copy(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null)
-							: null;
-					}
+						@object = await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false) ? @object.Copy(dataReader, context.EntityDefinition.Attributes.ToDictionary(attribute => attribute.Name), null) : null;
 
 					var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
 
@@ -1072,10 +1058,8 @@ namespace net.vieapps.Components.Repository
 						var extendedProperties = context.EntityDefinition.BusinessRepositoryEntities[(@object as IBusinessEntity).RepositoryEntityID].ExtendedPropertyDefinitions;
 						command = connection.CreateCommand(@object.PrepareGetExtent(id, dbProviderFactory, extendedProperties));
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-						{
 							if (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 								@object = @object.Copy(dataReader, null, extendedProperties.ToDictionary(attribute => attribute.Name));
-						}
 						if (RepositoryMediator.IsDebugEnabled)
 							info += "\r\n" + command.GetInfo();
 
@@ -1166,11 +1150,7 @@ namespace net.vieapps.Components.Repository
 				var fields = standardProperties.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Value.Column) ? attribute.Value.Name : attribute.Value.Column + " AS " + attribute.Value.Name));
 				var command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 				using (var dataReader = command.ExecuteReader())
-				{
-					@object = dataReader.Read()
-						? @object.Copy(dataReader, standardProperties, null)
-						: null;
-				}
+					@object = dataReader.Read() ? @object.Copy(dataReader, standardProperties, null) : null;
 
 				if (RepositoryMediator.IsDebugEnabled)
 					info = command.GetInfo();
@@ -1181,10 +1161,8 @@ namespace net.vieapps.Components.Repository
 					fields = extendedProperties.Select(attribute => $"Origin.{attribute.Value.Column} AS {attribute.Value.Name}");
 					command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 					using (var dataReader = command.ExecuteReader())
-					{
 						if (dataReader.Read())
 							@object.Copy(dataReader, null, extendedProperties);
-					}
 
 					if (RepositoryMediator.IsDebugEnabled)
 						info += "\r\n" + command.GetInfo();
@@ -1238,11 +1216,7 @@ namespace net.vieapps.Components.Repository
 				var fields = standardProperties.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Value.Column) ? attribute.Value.Name : attribute.Value.Column + " AS " + attribute.Value.Name));
 				var command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 				using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-				{
-					@object = await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false)
-						? @object.Copy(dataReader, standardProperties, null)
-						: null;
-				}
+					@object = await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false) ? @object.Copy(dataReader, standardProperties, null) : null;
 
 				if (RepositoryMediator.IsDebugEnabled)
 					info = command.GetInfo();
@@ -1253,10 +1227,8 @@ namespace net.vieapps.Components.Repository
 					fields = extendedProperties.Select(attribute => $"Origin.{attribute.Value.Column} AS {attribute.Value.Name}");
 					command = connection.CreateCommand($"SELECT {fields.Join(", ")} FROM {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE Origin.ID='{id.Replace("'", "''")}'");
 					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-					{
 						if (await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false))
 							@object.Copy(dataReader, null, extendedProperties);
-					}
 
 					if (RepositoryMediator.IsDebugEnabled)
 						info += "\r\n" + command.GetInfo();
@@ -2037,8 +2009,8 @@ namespace net.vieapps.Components.Repository
 			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
 
 			// fields/columns (SELECT)
-			var fields = (attributes != null && attributes.Count() > 0
-					? attributes
+			var fields = (attributes != null && attributes.Any()
+                    ? attributes
 					: standardProperties
 						.Select(item => item.Value.Name)
 						.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
@@ -2127,17 +2099,14 @@ namespace net.vieapps.Components.Repository
 
 			else
 				foreach (DataRow info in dataReader.GetSchemaTable().Rows)
-				{
-					var dataColumn = new DataColumn
+					dataTable.Columns.Add(new DataColumn
 					{
 						ColumnName = info["ColumnName"].ToString(),
 						Unique = Convert.ToBoolean(info["IsUnique"]),
 						AllowDBNull = Convert.ToBoolean(info["AllowDBNull"]),
 						ReadOnly = Convert.ToBoolean(info["IsReadOnly"]),
 						DataType = (Type)info["DataType"]
-					};
-					dataTable.Columns.Add(dataColumn);
-				}
+					});
 
 			return dataTable;
 		}
@@ -2206,9 +2175,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						using (var dataReader = command.ExecuteReader())
-						{
 							dataTable = dataReader.ToDataTable<T>();
-						}
 						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 					catch (Exception ex)
@@ -2281,9 +2248,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-						{
 							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
-						}
 						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 					catch (Exception ex)
@@ -2423,9 +2388,7 @@ namespace net.vieapps.Components.Repository
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
-				{
 					results.ForEach(@object => @object.GetMappings(connection, dbProviderFactory));
-				}
 			}
 
 			return results;
@@ -2491,9 +2454,7 @@ namespace net.vieapps.Components.Repository
 			{
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
-				{
 					await results.ForEachAsync(async @object => await @object.GetMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
-				}
 			}
 
 			return results;
@@ -2960,9 +2921,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						using (var dataReader = command.ExecuteReader())
-						{
 							dataTable = dataReader.ToDataTable<T>();
-						}
 						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 					catch (Exception ex)
@@ -3043,9 +3002,7 @@ namespace net.vieapps.Components.Repository
 					try
 					{
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-						{
 							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
-						}
 						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 					catch (Exception ex)
@@ -3088,10 +3045,7 @@ namespace net.vieapps.Components.Repository
 					.ToList();
 
 				if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
-					await results.ForEachAsync(async (@object, token) =>
-					{
-						await @object.GetMappingsAsync(connection, dbProviderFactory, token).ConfigureAwait(false);
-					}, cancellationToken).ConfigureAwait(false);
+					await results.ForEachAsync(async @object => await @object.GetMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 
 				return results;
 			}
@@ -3909,11 +3863,11 @@ namespace net.vieapps.Components.Repository
 					if (definition.Searchable)
 						await context.CreateTableFulltextIndexAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);
 
-					await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async (attribute, token) =>
+					await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async attribute =>
 					{
 						var mapInfo = attribute.GetMapInfo(definition);
-						await context.CreateMapingTableAsync(dataSource, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, tracker, token).ConfigureAwait(false);
-					}, cancellationToken, true, false).ConfigureAwait(false);
+						await context.CreateMapingTableAsync(dataSource, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, tracker, cancellationToken).ConfigureAwait(false);
+					}, true, false).ConfigureAwait(false);
 
 					if (definition.Extendable && definition.RepositoryDefinition != null)
 						await context.CreateExtentTableAsync(dataSource, tracker, cancellationToken).ConfigureAwait(false);

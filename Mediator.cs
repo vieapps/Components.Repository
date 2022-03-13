@@ -634,9 +634,7 @@ namespace net.vieapps.Components.Repository
 		public static void Create<T>(string aliasTypeName, T @object) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryMediator.Create(context, aliasTypeName, @object);
-			}
 		}
 
 		/// <summary>
@@ -727,9 +725,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task CreateAsync<T>(string aliasTypeName, T @object, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryMediator.CreateAsync(context, aliasTypeName, @object, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -878,9 +874,7 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(string aliasTypeName, string id, bool processCache = true, bool processSecondaryWhenNotFound = true) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.Get<T>(context, aliasTypeName, id, processCache, processSecondaryWhenNotFound);
-			}
 		}
 
 		/// <summary>
@@ -1042,9 +1036,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<T> GetAsync<T>(string aliasTypeName, string id, CancellationToken cancellationToken = default, bool processCache = true, bool processSecondaryWhenNotFound = true) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, id, true, cancellationToken, processCache, processSecondaryWhenNotFound).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -1125,9 +1117,7 @@ namespace net.vieapps.Components.Repository
 		public static T Get<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessRepositoryEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.Get<T>(context, aliasTypeName, filter, sort, businessRepositoryEntityID);
-			}
 		}
 
 		/// <summary>
@@ -1216,9 +1206,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<T> GetAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort = null, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.GetAsync<T>(context, aliasTypeName, filter, sort, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -1581,9 +1569,7 @@ namespace net.vieapps.Components.Repository
 		public static void Replace<T>(string aliasTypeName, T @object, bool dontCreateNewVersion = false, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryMediator.Replace<T>(context, aliasTypeName, @object, dontCreateNewVersion, userID);
-			}
 		}
 
 		/// <summary>
@@ -1715,9 +1701,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task ReplaceAsync<T>(string aliasTypeName, T @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryMediator.ReplaceAsync<T>(context, aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -1841,9 +1825,7 @@ namespace net.vieapps.Components.Repository
 		public static void Update<T>(string aliasTypeName, T @object, bool dontCreateNewVersion = false, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryMediator.Update<T>(context, aliasTypeName, @object, dontCreateNewVersion, userID);
-			}
 		}
 
 		/// <summary>
@@ -1974,9 +1956,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task UpdateAsync<T>(string aliasTypeName, T @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryMediator.UpdateAsync<T>(context, aliasTypeName, @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -2065,9 +2045,7 @@ namespace net.vieapps.Components.Repository
 		public static void Delete<T>(string aliasTypeName, string id, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryMediator.Delete<T>(context, aliasTypeName, id, userID);
-			}
 		}
 
 		/// <summary>
@@ -2164,9 +2142,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task DeleteAsync<T>(string aliasTypeName, string id, string userID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryMediator.DeleteAsync<T>(context, aliasTypeName, id, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -2236,9 +2212,7 @@ namespace net.vieapps.Components.Repository
 		public static void DeleteMany<T>(string aliasTypeName, IFilterBy<T> filter, string businessRepositoryEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryMediator.DeleteMany<T>(context, aliasTypeName, filter, businessRepositoryEntityID);
-			}
 		}
 
 		/// <summary>
@@ -2314,9 +2288,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task DeleteManyAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryMediator.DeleteManyAsync<T>(context, aliasTypeName, filter, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -2416,9 +2388,7 @@ namespace net.vieapps.Components.Repository
 		public static List<string> FindIdentities<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.FindIdentities<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
-			}
 		}
 
 		/// <summary>
@@ -2606,9 +2576,7 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Find<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.Find<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
-			}
 		}
 
 		/// <summary>
@@ -2639,7 +2607,7 @@ namespace net.vieapps.Components.Repository
 
 				// find identities
 				var identites = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
-					? await context.EntityDefinition.Cache.GetAsync<List<string>>(cacheKey)
+					? await context.EntityDefinition.Cache.GetAsync<List<string>>(cacheKey, cancellationToken).ConfigureAwait(false)
 					: null;
 
 				if (identites == null)
@@ -2714,9 +2682,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<string>> FindIdentitiesAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -2918,9 +2884,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<T>> FindAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.FindAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -3020,9 +2984,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(string aliasTypeName, IFilterBy<T> filter, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.Count<T>(context, aliasTypeName, filter, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
-			}
 		}
 
 		/// <summary>
@@ -3128,9 +3090,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<T>(string aliasTypeName, IFilterBy<T> filter, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.CountAsync<T>(context, aliasTypeName, filter, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -3301,9 +3261,7 @@ namespace net.vieapps.Components.Repository
 		public static List<T> Search<T>(string aliasTypeName, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.Search<T>(context, aliasTypeName, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID);
-			}
 		}
 
 		/// <summary>
@@ -3480,9 +3438,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<T>> SearchAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.SearchAsync<T>(context, aliasTypeName, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -3566,9 +3522,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<T>(string aliasTypeName, string query, IFilterBy<T> filter, string businessRepositoryEntityID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.Count<T>(context, aliasTypeName, query, filter, businessRepositoryEntityID);
-			}
 		}
 
 		/// <summary>
@@ -3659,9 +3613,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<T>(string aliasTypeName, string query, IFilterBy<T> filter, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.CountAsync<T>(context, aliasTypeName, query, filter, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -3736,9 +3688,7 @@ namespace net.vieapps.Components.Repository
 		public static VersionContent CreateVersion<T>(T @object, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return RepositoryMediator.CreateVersion<T>(context, @object, userID);
-			}
 		}
 
 		/// <summary>
@@ -3819,9 +3769,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<VersionContent> CreateVersionAsync<T>(T @object, string userID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return await RepositoryMediator.CreateVersionAsync<T>(context, @object, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -3915,9 +3863,7 @@ namespace net.vieapps.Components.Repository
 		public static T Rollback<T>(VersionContent version, string userID) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return RepositoryMediator.Rollback<T>(context, version, userID);
-			}
 		}
 
 		/// <summary>
@@ -3950,9 +3896,7 @@ namespace net.vieapps.Components.Repository
 		public static T Rollback<T>(string versionID, string userID) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return RepositoryMediator.Rollback<T>(context, versionID, userID);
-			}
 		}
 
 		/// <summary>
@@ -4051,9 +3995,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<T> RollbackAsync<T>(VersionContent version, string userID, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return await RepositoryMediator.RollbackAsync<T>(context, version, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -4089,9 +4031,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<T> RollbackAsync<T>(string versionID, string userID, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return await RepositoryMediator.RollbackAsync<T>(context, versionID, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -4183,9 +4123,7 @@ namespace net.vieapps.Components.Repository
 		public static long CountVersionContents<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string repositoryEntityID = null, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.CountVersionContents<T>(context, objectID, serviceName, systemID, repositoryID, repositoryEntityID, userID);
-			}
 		}
 
 		/// <summary>
@@ -4262,9 +4200,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountVersionContentsAsync<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string repositoryEntityID = null, string userID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.CountVersionContentsAsync<T>(context, objectID, serviceName, systemID, repositoryID, repositoryEntityID, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -4300,9 +4236,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountVersionContentsAsync<T>(string objectID, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.CountVersionContentsAsync<T>(context, objectID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -4379,9 +4313,7 @@ namespace net.vieapps.Components.Repository
 		public static List<VersionContent> FindVersionContents<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string repositoryEntityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.FindVersionContents<T>(context, objectID, serviceName, systemID, repositoryID, repositoryEntityID, userID, pageSize, pageNumber);
-			}
 		}
 
 		/// <summary>
@@ -4416,9 +4348,7 @@ namespace net.vieapps.Components.Repository
 		public static List<VersionContent> FindVersionContents<T>(string objectID) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.FindVersionContents<T>(context, objectID);
-			}
 		}
 
 		/// <summary>
@@ -4501,9 +4431,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(string objectID, string serviceName = null, string systemID = null, string repositoryID = null, string repositoryEntityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.FindVersionContentsAsync<T>(context, objectID, serviceName, systemID, repositoryID, repositoryEntityID, userID, pageSize, pageNumber, cancellationToken);
-			}
 		}
 
 		/// <summary>
@@ -4541,9 +4469,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<VersionContent>> FindVersionContentsAsync<T>(string objectID, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.FindVersionContentsAsync<T>(context, objectID, cancellationToken);
-			}
 		}
 		#endregion
 
@@ -4583,9 +4509,7 @@ namespace net.vieapps.Components.Repository
 		public static void CleanVersionContents(DataSource dataSource, int days = 30)
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryMediator.CleanVersionContents(context, dataSource, days);
-			}
 		}
 
 		/// <summary>
@@ -4636,9 +4560,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task CleanVersionContentsAsync(DataSource dataSource, int days = 30, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryMediator.CleanVersionContentsAsync(context, dataSource, days, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -4718,9 +4640,7 @@ namespace net.vieapps.Components.Repository
 		public static TrashContent CreateTrashContent<T>(T @object, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return RepositoryMediator.CreateTrashContent(context, @object, userID);
-			}
 		}
 
 		/// <summary>
@@ -4798,9 +4718,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<TrashContent> CreateTrashContentAsync<T>(T @object, string userID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return await RepositoryMediator.CreateTrashContentAsync(context, @object, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -4893,9 +4811,7 @@ namespace net.vieapps.Components.Repository
 		public static T Restore<T>(TrashContent trashContent, string userID) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return RepositoryMediator.Restore<T>(context, trashContent, userID);
-			}
 		}
 
 		/// <summary>
@@ -4928,9 +4844,7 @@ namespace net.vieapps.Components.Repository
 		public static T Restore<T>(string trashContentID, string userID) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return RepositoryMediator.Restore<T>(context, trashContentID, userID);
-			}
 		}
 
 		/// <summary>
@@ -5028,9 +4942,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<T> RestoreAsync<T>(TrashContent trashContent, string userID, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return await RepositoryMediator.RestoreAsync<T>(context, trashContent, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -5065,9 +4977,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<T> RestoreAsync<T>(string trashContentID, string userID, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				return await RepositoryMediator.RestoreAsync<T>(context, trashContentID, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -5151,9 +5061,7 @@ namespace net.vieapps.Components.Repository
 		public static long CountTrashContents<T>(string serviceName = null, string systemID = null, string repositoryID = null, string repositoryEntityID = null, string userID = null) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.CountTrashContents<T>(context, serviceName, systemID, repositoryID, repositoryEntityID, userID);
-			}
 		}
 
 		/// <summary>
@@ -5227,9 +5135,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountTrashContentsAsync<T>(string serviceName = null, string systemID = null, string repositoryID = null, string repositoryEntityID = null, string userID = null, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.CountTrashContentsAsync<T>(context, serviceName, systemID, repositoryID, repositoryEntityID, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -5268,9 +5174,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountTrashContentsAsync<T>(string serviceName, string systemID, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.CountTrashContentsAsync<T>(context, serviceName, systemID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -5344,9 +5248,7 @@ namespace net.vieapps.Components.Repository
 		public static List<TrashContent> FindTrashContents<T>(string serviceName = null, string systemID = null, string repositoryID = null, string repositoryEntityID = null, string userID = null, int pageSize = 0, int pageNumber = 1) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.FindTrashContents<T>(context, serviceName, systemID, repositoryID, repositoryEntityID, userID, pageSize, pageNumber);
-			}
 		}
 
 		/// <summary>
@@ -5390,9 +5292,7 @@ namespace net.vieapps.Components.Repository
 		public static List<TrashContent> FindTrashContents<T>(string serviceName, string systemID, int pageSize = 20, int pageNumber = 1) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryMediator.FindTrashContents<T>(context, serviceName, systemID, pageSize, pageNumber);
-			}
 		}
 
 		/// <summary>
@@ -5472,9 +5372,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<TrashContent>> FindTrashContentsAsync<T>(string serviceName = null, string systemID = null, string repositoryID = null, string repositoryEntityID = null, string userID = null, int pageSize = 0, int pageNumber = 1, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.FindTrashContentsAsync<T>(context, serviceName, systemID, repositoryID, repositoryEntityID, userID, pageSize, pageNumber, cancellationToken);
-			}
 		}
 
 		/// <summary>
@@ -5520,9 +5418,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<TrashContent>> FindTrashContentsAsync<T>(string serviceName, string systemID, int pageSize = 20, int pageNumber = 1, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryMediator.FindTrashContentsAsync<T>(context, serviceName, systemID, pageSize, pageNumber, cancellationToken);
-			}
 		}
 		#endregion
 
@@ -5562,9 +5458,7 @@ namespace net.vieapps.Components.Repository
 		public static void CleanTrashContents(DataSource dataSource, int days = 30)
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryMediator.CleanTrashContents(context, dataSource, days);
-			}
 		}
 
 		/// <summary>
@@ -5615,9 +5509,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task CleanTrashContentsAsync(DataSource dataSource, int days = 30, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryMediator.CleanTrashContentsAsync(context, dataSource, days, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -5633,7 +5525,6 @@ namespace net.vieapps.Components.Repository
 		internal static async Task SyncAsync<T>(IFilterBy<T> filter, string aliasTypeName, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				try
 				{
 					var dataSources = context.GetSyncDataSources().Concat(new[] { context.GetSecondaryDataSource() }).Where(dataSource => dataSource != null).ToList();
@@ -5671,13 +5562,11 @@ namespace net.vieapps.Components.Repository
 					context.Exception = ex;
 					RepositoryMediator.WriteLogs($"SYNC: Error occurred while deleting multiple objects [{typeof(T)}]", ex);
 				}
-			}
 		}
 
 		internal static async Task SyncAsync<T>(T @object, string aliasTypeName, EntityDefinition entityDefinition, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				try
 				{
 					var stopwatch = new Stopwatch();
@@ -5702,13 +5591,11 @@ namespace net.vieapps.Components.Repository
 				{
 					RepositoryMediator.WriteLogs($"SYNC: Error occurred while syncing the object to primary data source [{@object?.GetType()}#{@object?.GetEntityID()}]", ex);
 				}
-			}
 		}
 
 		internal static async Task SyncAsync<T>(T @object, string aliasTypeName, bool checkExisting = true, bool isDelete = false, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(isDelete))
-			{
 				try
 				{
 					var dataSources = context.GetSyncDataSources().Concat(new[] { context.GetSecondaryDataSource() }).Where(dataSource => dataSource != null).ToList();
@@ -5786,7 +5673,6 @@ namespace net.vieapps.Components.Repository
 						context.Exception = ex;
 					RepositoryMediator.WriteLogs($"SYNC: Error occurred while {(isDelete ? "deleting" : "syncing")} the object [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 				}
-			}
 		}
 
 		/// <summary>
@@ -5906,12 +5792,12 @@ namespace net.vieapps.Components.Repository
 
 		static async Task CallPostCreateHandlersAsync<T>(this RepositoryContext context, T @object, bool isRestore = false, CancellationToken cancellationToken = default) where T : class
 			=> await RepositoryMediator.GetHandlers(type => typeof(IPostCreateHandler).IsAssignableFrom(type))
-				.ForEachAsync(async (type, token) =>
+				.ForEachAsync(async type =>
 				{
 					try
 					{
 						var handler = ObjectService.CreateInstance(type) as IPostCreateHandler;
-						await handler.OnPostCreateAsync(context, @object, isRestore, token).ConfigureAwait(false);
+						await handler.OnPostCreateAsync(context, @object, isRestore, cancellationToken).ConfigureAwait(false);
 					}
 					catch (OperationCanceledException)
 					{
@@ -5921,7 +5807,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while running the post-create handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
-				}, cancellationToken, false).ConfigureAwait(false);
+				}, false).ConfigureAwait(false);
 		#endregion
 
 		#region Call handlers of Get event
@@ -5981,12 +5867,12 @@ namespace net.vieapps.Components.Repository
 
 		static async Task CallPostGetHandlersAsync<T>(this RepositoryContext context, T @object, CancellationToken cancellationToken = default) where T : class
 			=> await RepositoryMediator.GetHandlers(type => typeof(IPostGetHandler).IsAssignableFrom(type))
-				.ForEachAsync(async (type, token) =>
+				.ForEachAsync(async type =>
 				{
 					try
 					{
 						var handler = type.CreateInstance() as IPostGetHandler;
-						await handler.OnPostGetAsync(context, @object, token).ConfigureAwait(false);
+						await handler.OnPostGetAsync(context, @object, cancellationToken).ConfigureAwait(false);
 					}
 					catch (OperationCanceledException)
 					{
@@ -5996,7 +5882,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while running the post-get handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
-				}, cancellationToken, false).ConfigureAwait(false);
+				}, false).ConfigureAwait(false);
 		#endregion
 
 		#region Call handlers of Update event
@@ -6056,12 +5942,12 @@ namespace net.vieapps.Components.Repository
 
 		static async Task CallPostUpdateHandlersAsync<T>(this RepositoryContext context, T @object, HashSet<string> changed, bool isRestore = false, CancellationToken cancellationToken = default) where T : class
 			=> await RepositoryMediator.GetHandlers(type => typeof(IPostUpdateHandler).IsAssignableFrom(type))
-				.ForEachAsync(async (type, token) =>
+				.ForEachAsync(async type =>
 				{
 					try
 					{
 						var handler = type.CreateInstance() as IPostUpdateHandler;
-						await handler.OnPostUpdateAsync(context, @object, changed, isRestore, token).ConfigureAwait(false);
+						await handler.OnPostUpdateAsync(context, @object, changed, isRestore, cancellationToken).ConfigureAwait(false);
 					}
 					catch (OperationCanceledException)
 					{
@@ -6071,7 +5957,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while running the post-update handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
-				}, cancellationToken, false).ConfigureAwait(false);
+				}, false).ConfigureAwait(false);
 		#endregion
 
 		#region Call handlers of Delete event
@@ -6131,12 +6017,12 @@ namespace net.vieapps.Components.Repository
 
 		static async Task CallPostDeleteHandlersAsync<T>(this RepositoryContext context, T @object, CancellationToken cancellationToken = default) where T : class
 			=> await RepositoryMediator.GetHandlers(type => typeof(IPostDeleteHandler).IsAssignableFrom(type))
-				.ForEachAsync(async (type, token) =>
+				.ForEachAsync(async type =>
 				{
 					try
 					{
 						var handler = type.CreateInstance() as IPostDeleteHandler;
-						await handler.OnPostDeleteAsync(context, @object, token).ConfigureAwait(false);
+						await handler.OnPostDeleteAsync(context, @object, cancellationToken).ConfigureAwait(false);
 					}
 					catch (OperationCanceledException)
 					{
@@ -6146,7 +6032,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while running the post-delete handler (async) \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
-				}, cancellationToken, false).ConfigureAwait(false);
+				}, false).ConfigureAwait(false);
 		#endregion
 
 		#region JSON/XML/ExpandoObject conversions
