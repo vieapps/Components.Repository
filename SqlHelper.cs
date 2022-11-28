@@ -503,54 +503,52 @@ namespace net.vieapps.Components.Repository
 			{
 				value = value == DBNull.Value ? null : value;
 
-				if (standardAttributes != null && standardAttributes.ContainsKey(name))
+				if (standardAttributes != null && standardAttributes.TryGetValue(name, out var standardAttribute))
 				{
-					var attribute = standardAttributes[name];
 					if (value is string @string)
 					{
-						if (attribute.IsDateTimeType() && attribute.IsStoredAsString())
+						if (standardAttribute.IsDateTimeType() && standardAttribute.IsStoredAsString())
 							value = DateTime.Parse(@string);
 
-						else if (attribute.IsStoredAsJson())
+						else if (standardAttribute.IsStoredAsJson())
 							try
 							{
-								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(@string)), attribute.Type);
+								value = new JsonSerializer().Deserialize(new JTokenReader(JToken.Parse(@string)), standardAttribute.Type);
 							}
 							catch
 							{
 								value = null;
 							}
 
-						else if (attribute.IsEnum())
-							value = attribute.IsStringEnum()
-								? @string.ToEnum(attribute.Type)
-								: value.CastAs<int>().ToEnum(attribute.Type);
+						else if (standardAttribute.IsEnum())
+							value = standardAttribute.IsStringEnum()
+								? @string.ToEnum(standardAttribute.Type)
+								: value.CastAs<int>().ToEnum(standardAttribute.Type);
 
-						else if (attribute.IsGenericListOrHashSet())
+						else if (standardAttribute.IsGenericListOrHashSet())
 							value = @string != null
-								? attribute.IsGenericList()
+								? standardAttribute.IsGenericList()
 									? @string.ToList() as object
 									: @string.ToHashSet()
 								: value;
 
-						else if (attribute.IsStringType() && string.IsNullOrWhiteSpace(@string) && !attribute.NotNull)
+						else if (standardAttribute.IsStringType() && string.IsNullOrWhiteSpace(@string) && !standardAttribute.NotNull)
 							value = null;
 					}
-					else if (value != null && attribute.IsEnum())
-						value = value.CastAs<int>().ToEnum(attribute.Type);
+					else if (value != null && standardAttribute.IsEnum())
+						value = value.CastAs<int>().ToEnum(standardAttribute.Type);
 
-					@object.SetAttributeValue(attribute, value, value != null);
+					@object.SetAttributeValue(standardAttribute, value, value != null);
 					changedNotifier?.NotifyPropertyChanged(name);
 				}
 
-				else if (extendedAttributes != null && extendedAttributes.ContainsKey(name))
+				else if (extendedAttributes != null && extendedAttributes.TryGetValue(name, out var extendedAttribute))
 				{
-					var attribute = extendedAttributes[name];
-					if (value != null && attribute.Type.IsDateTimeType())
+					if (value != null && extendedAttribute.Type.IsDateTimeType())
 						value = value is DateTime datetime
 							? datetime
 							: DateTime.Parse(value.ToString());
-					(@object as IBusinessEntity).ExtendedProperties[attribute.Name] = value?.CastAs(attribute.Type);
+					(@object as IBusinessEntity).ExtendedProperties[extendedAttribute.Name] = value?.CastAs(extendedAttribute.Type);
 					changedNotifier?.NotifyPropertyChanged(name);
 				}
 			}

@@ -8,10 +8,10 @@
 		<DocumentationFile>bin/$(Configuration)/$(TargetFramework)/VIEApps.Components.Repository.xml</DocumentationFile>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
-		<AssemblyVersion>10.6$(ReleaseVersion)</AssemblyVersion>
-		<FileVersion>10.6$(ReleaseVersion)</FileVersion>
-		<InformationalVersion>10.6.$([System.DateTime]::Now.Year).$([System.DateTime]::Now.Month).$([System.DateTime]::Now.Day)@$(TargetFramework)#sn:$(Sign)#$(ReleaseRevision)</InformationalVersion>
-		<Version>10.6$(ReleaseVersion)$(ReleaseSuffix)</Version>
+		<AssemblyVersion>10.7$(ReleaseVersion)</AssemblyVersion>
+		<FileVersion>10.7$(ReleaseVersion)</FileVersion>
+		<InformationalVersion>10.7.$([System.DateTime]::Now.Year).$([System.DateTime]::Now.Month).$([System.DateTime]::Now.Day)@$(TargetFramework)#sn:$(Sign)#$(ReleaseRevision)</InformationalVersion>
+		<Version>10.7$(ReleaseVersion)$(ReleaseSuffix)</Version>
 		<Product>VIEApps NGX</Product>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>A tiny polyglot component to help POCO objects work with both NoSQL and SQL databases at the same time on .NET</Description>
@@ -32,7 +32,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Add supports of .NET 7</PackageReleaseNotes>
+		<PackageReleaseNotes>Add supports of .NET 7 with features of rollback and restore</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -52,13 +52,13 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' != 'true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.6.2211.1" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.6.2211.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.7.2211.1" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.7.2211.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' == 'true'">
-		<PackageReference Include="VIEApps.Components.Caching$(PackageSuffix)" Version="10.6$(ReleaseVersion)" />
-		<PackageReference Include="VIEApps.Components.Security$(PackageSuffix)" Version="10.6$(ReleaseVersion)" />
+		<PackageReference Include="VIEApps.Components.Caching$(PackageSuffix)" Version="10.7$(ReleaseVersion)" />
+		<PackageReference Include="VIEApps.Components.Security$(PackageSuffix)" Version="10.7$(ReleaseVersion)" />
 	</ItemGroup>
 
 </Project>

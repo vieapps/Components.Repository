@@ -311,6 +311,7 @@ namespace net.vieapps.Components.Repository
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public virtual long TotalVersions
 		{
+			set => this._totalVersions = value;
 			get
 			{
 				if (this._totalVersions < 0)
@@ -1922,21 +1923,19 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Counts the number of version contents
 		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="objectID">The identity of object that associates with</param>
 		/// <returns></returns>
-		public static long CountVersions<TEntity>(string objectID) where TEntity : class
-			=> RepositoryMediator.CountVersionContents<TEntity>(objectID);
+		public static long CountVersions(string objectID)
+			=> RepositoryMediator.CountVersionContents(objectID);
 
 		/// <summary>
 		/// Counts the number of version contents
 		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="objectID">The identity of object that associates with</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<long> CountVersionsAsync<TEntity>(string objectID, CancellationToken cancellationToken = default) where TEntity : class
-			=> RepositoryMediator.CountVersionContentsAsync<TEntity>(objectID, cancellationToken);
+		public static Task<long> CountVersionsAsync(string objectID, CancellationToken cancellationToken = default)
+			=> RepositoryMediator.CountVersionContentsAsync(objectID, cancellationToken);
 		#endregion
 
 		#region [Protected] Count versions
@@ -1948,7 +1947,7 @@ namespace net.vieapps.Components.Repository
 		{
 			this._totalVersions = string.IsNullOrWhiteSpace(this.ID)
 				? 0
-				: RepositoryBase<T>.CountVersions<T>(this.ID);
+				: RepositoryBase<T>.CountVersions(this.ID);
 			return this._totalVersions;
 		}
 
@@ -1961,7 +1960,7 @@ namespace net.vieapps.Components.Repository
 		{
 			this._totalVersions = string.IsNullOrWhiteSpace(this.ID)
 				? 0
-				: await RepositoryBase<T>.CountVersionsAsync<T>(this.ID, cancellationToken).ConfigureAwait(false);
+				: await RepositoryBase<T>.CountVersionsAsync(this.ID, cancellationToken).ConfigureAwait(false);
 			return this._totalVersions;
 		}
 		#endregion
@@ -1970,21 +1969,19 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the collection of version contents
 		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="objectID">The identity of object that associates with</param>
 		/// <returns></returns>
-		public static List<VersionContent> FindVersions<TEntity>(string objectID) where TEntity : class
-			=> RepositoryMediator.FindVersionContents<TEntity>(objectID);
+		public static List<VersionContent> FindVersions(string objectID)
+			=> RepositoryMediator.FindVersionContents(objectID);
 
 		/// <summary>
 		/// Gets the collection of version contents
 		/// </summary>
-		/// <typeparam name="TEntity"></typeparam>
 		/// <param name="objectID">The identity of object that associates with</param>
 		/// <param name="cancellationToken">The cancellation token</param>
 		/// <returns></returns>
-		public static Task<List<VersionContent>> FindVersionsAsync<TEntity>(string objectID, CancellationToken cancellationToken = default) where TEntity : class
-			=> RepositoryMediator.FindVersionContentsAsync<TEntity>(objectID, cancellationToken);
+		public static Task<List<VersionContent>> FindVersionsAsync(string objectID, CancellationToken cancellationToken = default)
+			=> RepositoryMediator.FindVersionContentsAsync(objectID, cancellationToken);
 		#endregion
 
 		#region [Protected] Find versions
@@ -1995,7 +1992,7 @@ namespace net.vieapps.Components.Repository
 		protected List<VersionContent> FindVersions()
 			=> string.IsNullOrWhiteSpace(this.ID)
 				? null
-				: RepositoryBase<T>.FindVersions<T>(this.ID);
+				: RepositoryBase<T>.FindVersions(this.ID);
 
 		/// <summary>
 		/// Gets the collection of version contents
@@ -2005,7 +2002,7 @@ namespace net.vieapps.Components.Repository
 		protected Task<List<VersionContent>> FindVersionsAsync(CancellationToken cancellationToken = default)
 			=> string.IsNullOrWhiteSpace(this.ID)
 				? Task.FromResult<List<VersionContent>>(null)
-				: RepositoryBase<T>.FindVersionsAsync<T>(this.ID, cancellationToken);
+				: RepositoryBase<T>.FindVersionsAsync(this.ID, cancellationToken);
 		#endregion
 
 		#region [Static] Delete
@@ -3347,15 +3344,15 @@ namespace net.vieapps.Components.Repository
 			value = null;
 			try
 			{
-				var attributes = this.GetPublicProperties(attribute => attribute.CanRead).ToDictionary(attribute => attribute.Name, StringComparer.OrdinalIgnoreCase);
-				if (attributes.ContainsKey(name))
+				var attributes = this.GetPublicProperties(attr => attr.CanRead).ToDictionary(attr => attr.Name, StringComparer.OrdinalIgnoreCase);
+				if (attributes.TryGetValue(name, out var attribute))
 				{
-					value = this.GetAttributeValue(name);
+					value = this.GetAttributeValue(attribute);
 					return true;
 				}
-				else if (this is IBusinessEntity && this.ExtendedProperties != null && this.ExtendedProperties.ContainsKey(name))
+				else if (this is IBusinessEntity && this.ExtendedProperties != null && this.ExtendedProperties.TryGetValue(name, out var extValue))
 				{
-					value = this.ExtendedProperties[name];
+					value = extValue;
 					return true;
 				}
 			}
@@ -3412,10 +3409,10 @@ namespace net.vieapps.Components.Repository
 		{
 			try
 			{
-				var attributes = this.GetPublicProperties(attribute => attribute.CanWrite).ToDictionary(attribute => attribute.Name);
-				if (attributes.ContainsKey(name))
+				var attributes = this.GetPublicProperties(attr => attr.CanWrite).ToDictionary(attr => attr.Name);
+				if (attributes.TryGetValue(name, out var attribute))
 				{
-					this.SetAttributeValue(attributes[name], value, true);
+					this.SetAttributeValue(attribute, value, true);
 					return true;
 				}
 				else if (this is IBusinessEntity && this.ExtendedProperties != null)
@@ -3680,7 +3677,7 @@ namespace net.vieapps.Components.Repository
 		[JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public object Object
 		{
-			get => this._Object ?? (this._Object = !string.IsNullOrWhiteSpace(this.Data) ? Caching.Helper.Deserialize(this.Data.Base64ToBytes().Decompress()) : null);
+			get => this._Object ?? (this._Object = string.IsNullOrWhiteSpace(this.Data) ? null : Caching.Helper.Deserialize(this.Data.Base64ToBytes().Decompress()));
 			internal set
 			{
 				this._Object = value;
@@ -3838,6 +3835,7 @@ namespace net.vieapps.Components.Repository
 
 		internal static T Create<T>(DataSource dataSource, string name, T @object) where T : class
 		{
+			RepositoryMediator.GetEntityDefinition<T>().Cache.Remove($"{@object.GetCacheKey()}:Versions");
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
@@ -3940,6 +3938,54 @@ namespace net.vieapps.Components.Repository
 			}
 		}
 
+		internal static T GetByID<T>(DataSource dataSource, string name, string id) where T : class
+		{
+			if (dataSource == null)
+				throw new ArgumentNullException(nameof(dataSource), "Data source is invalid");
+
+			var @object = ObjectService.CreateInstance<T>();
+			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+			{
+				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
+				@object = collection.Get(Builders<T>.Filter.Eq("_id", id));
+			}
+			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+			{
+				var dbProviderFactory = dataSource.GetProviderFactory();
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					var command = connection.CreateCommand($"SELECT * T_Data_{name} WHERE ID=@ID", new[] { dbProviderFactory.CreateParameter("ID", DbType.StringFixedLength, id) }.ToList());
+					using (var dataReader = command.ExecuteReader())
+						@object = dataReader.Read() ? @object.Copy(dataReader, @object.GetPublicProperties().ToDictionary(attribute => attribute.Name, attribute => new AttributeInfo(attribute)), null) : null;
+				}
+			}
+			return @object;
+		}
+
+		internal static async Task<T> GetByIDAsync<T>(DataSource dataSource, string name, string id, CancellationToken cancellationToken = default) where T : class
+		{
+			if (dataSource == null)
+				throw new ArgumentNullException(nameof(dataSource), "Data source is invalid");
+
+			var @object = ObjectService.CreateInstance<T>();
+			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+			{
+				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
+				@object = await collection.GetAsync(Builders<T>.Filter.Eq("_id", id), null, null, cancellationToken).ConfigureAwait(false);
+			}
+			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+			{
+				var dbProviderFactory = dataSource.GetProviderFactory();
+				using (var connection = dbProviderFactory.CreateConnection(dataSource))
+				{
+					var command = connection.CreateCommand($"SELECT * T_Data_{name} WHERE ID=@ID", new[] { dbProviderFactory.CreateParameter("ID", DbType.StringFixedLength, id) }.ToList());
+					using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+						@object = await dataReader.ReadAsync(cancellationToken).ConfigureAwait(false) ? @object.Copy(dataReader, @object.GetPublicProperties().ToDictionary(attribute => attribute.Name, attribute => new AttributeInfo(attribute)), null) : null;
+				}
+			}
+			return @object;
+		}
+
 		internal static TrashContent Prepare<T>(T @object, Action<TrashContent> onCompleted = null) where T : class
 		{
 			var serviceName = @object.GetAttributeValue<string>("ServiceName");
@@ -3954,7 +4000,7 @@ namespace net.vieapps.Components.Repository
 
 			var content = new TrashContent
 			{
-				ID = (typeof(T).GetTypeName() + "#" + objectID).GetMD5(),
+				ID = $"{typeof(T).GetTypeName()}#{objectID}".GenerateUUID(),
 				Title = title,
 				ServiceName = serviceName,
 				SystemID = systemID,
