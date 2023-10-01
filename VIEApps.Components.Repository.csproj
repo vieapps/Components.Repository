@@ -1,17 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net7.0;net6.0;net5.0;netstandard2.0</TargetFrameworks>
+		<TargetFrameworks>net7.0;netstandard2.0</TargetFrameworks>
 		<WarningLevel>3</WarningLevel>
 		<NoWarn>IDE0054,IDE0056,IDE0057,IDE0063,IDE0066,IDE0074,IDE0090,CA1068,CA1507,1573,1591</NoWarn>
 		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
 		<DocumentationFile>bin/$(Configuration)/$(TargetFramework)/VIEApps.Components.Repository.xml</DocumentationFile>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
-		<AssemblyVersion>10.7$(ReleaseVersion)</AssemblyVersion>
-		<FileVersion>10.7$(ReleaseVersion)</FileVersion>
-		<InformationalVersion>10.7.$([System.DateTime]::Now.Year).$([System.DateTime]::Now.Month).$([System.DateTime]::Now.Day)@$(TargetFramework)#sn:$(Sign)#$(ReleaseRevision)</InformationalVersion>
-		<Version>10.7$(ReleaseVersion)$(ReleaseSuffix)</Version>
+		<AssemblyVersion>10.8$(ReleaseVersion)</AssemblyVersion>
+		<FileVersion>10.8$(ReleaseVersion)</FileVersion>
+		<InformationalVersion>10.8.$([System.DateTime]::Now.Year).$([System.DateTime]::Now.Month).$([System.DateTime]::Now.Day)@$(TargetFramework)#sn:$(Sign)#$(ReleaseRevision)</InformationalVersion>
+		<Version>10.8$(ReleaseVersion)$(ReleaseSuffix)</Version>
 		<Product>VIEApps NGX</Product>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>A tiny polyglot component to help POCO objects work with both NoSQL and SQL databases at the same time on .NET</Description>
@@ -32,7 +32,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Add supports of .NET 7 with features of rollback and restore</PackageReleaseNotes>
+		<PackageReleaseNotes>Prepare for .NET 8</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -48,17 +48,17 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="2.18.0" />
+		<PackageReference Include="MongoDB.Driver" Version="2.21.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' != 'true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.7.2211.1" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.7.2211.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.8.2310.1" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.8.2310.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' == 'true'">
-		<PackageReference Include="VIEApps.Components.Caching$(PackageSuffix)" Version="10.7$(ReleaseVersion)" />
-		<PackageReference Include="VIEApps.Components.Security$(PackageSuffix)" Version="10.7$(ReleaseVersion)" />
+		<PackageReference Include="VIEApps.Components.Caching$(PackageSuffix)" Version="10.8$(ReleaseVersion)" />
+		<PackageReference Include="VIEApps.Components.Security$(PackageSuffix)" Version="10.8$(ReleaseVersion)" />
 	</ItemGroup>
 
 </Project>

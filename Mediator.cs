@@ -6377,6 +6377,14 @@ namespace net.vieapps.Components.Repository
 						element.Add(new XAttribute("Formatted", number.ToString("###,###,###,###,##0.##", cultureInfo)));
 					else
 						attribute.Value = number.ToString("###,###,###,###,##0.##", cultureInfo);
+					if (!string.IsNullOrWhiteSpace(customFormat))
+					{
+						attribute = element.Attributes().FirstOrDefault(attr => attr.Name.LocalName.Equals("Custom"));
+						if (attribute == null)
+							element.Add(new XAttribute("Custom", number.ToString(customFormat)));
+						else
+							attribute.Value = number.ToString(customFormat);
+					}
 				}
 			}
 			onCompleted?.Invoke(element);
