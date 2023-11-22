@@ -1,6 +1,5 @@
 ﻿#region Related components
 using System;
-using System.Data;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Serialization;
@@ -96,7 +95,7 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="formatting"></param>
 		/// <returns></returns>
-		public string ToString(Newtonsoft.Json.Formatting formatting)
+		public string ToString(Formatting formatting)
 			=> this.ToJson().ToString(formatting);
 
 		/// <summary>
@@ -139,7 +138,7 @@ namespace net.vieapps.Components.Repository
 		[JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
 		public FilterBys<T> Parent { get; internal set; }
 
-		object GetValue(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties)
+		object GetValue(Dictionary<string, AttributeInfo> standardProperties, Dictionary<string, ExtendedPropertyDefinition> extendedProperties, bool extendedDateTimeAsString = true)
 		{
 			try
 			{
@@ -174,9 +173,12 @@ namespace net.vieapps.Components.Repository
 							return this.Value.ToString();
 
 						case ExtendedPropertyMode.DateTime:
-							return this.Value.GetType().IsDateTimeType()
-								? ((DateTime)this.Value).ToDTString()
-								: DateTime.Parse(this.Value.ToString()).ToDTString();
+							var value = this.Value.GetType().IsDateTimeType()
+								? (DateTime)this.Value
+								: DateTime.Parse(this.Value.ToString());
+							return extendedDateTimeAsString
+								? value.ToDTString() as object
+								: value;
 
 						default:
 							return this.Value;
@@ -336,7 +338,7 @@ namespace net.vieapps.Components.Repository
 
 			else
 			{
-				var value = this.GetValue(standardProperties, extendedProperties);
+				var value = this.GetValue(standardProperties, extendedProperties, false);
 				switch (this.Operator)
 				{
 					case CompareOperator.Equals:
