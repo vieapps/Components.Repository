@@ -1089,7 +1089,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Statements of SQL
-		internal static Tuple<Tuple<string, Dictionary<string, object>>, string> PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		internal static ((string Statement, Dictionary<string, object> Parameters) Where, string OrderBy) PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition<T>();
 			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
@@ -1116,12 +1116,12 @@ namespace net.vieapps.Components.Repository
 
 			var sortBy = sort?.GetSqlStatement(standardProperties, extendedProperties);
 
-			return new Tuple<Tuple<string, Dictionary<string, object>>, string>(filterBy, sortBy);
+			return ((filterBy?.Item1, filterBy?.Item2), sortBy);
 		}
 		#endregion
 
 		#region Statements of No SQL
-		internal static Tuple<FilterDefinition<T>, SortDefinition<T>> PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		internal static (FilterDefinition<T> Filter, SortDefinition<T> Sort) PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
 		{
 			definition = definition ?? (autoAssociateWithMultipleParents ? RepositoryMediator.GetEntityDefinition<T>() : null);
 			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
@@ -1143,7 +1143,7 @@ namespace net.vieapps.Components.Repository
 
 			var sortBy = sort?.GetNoSqlStatement(null, standardProperties, extendedProperties);
 
-			return new Tuple<FilterDefinition<T>, SortDefinition<T>>(filterBy, sortBy);
+			return (filterBy, sortBy);
 		}
 		#endregion
 

@@ -2008,7 +2008,7 @@ namespace net.vieapps.Components.Repository
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Any()
-                    ? attributes
+          ? attributes
 					: standardProperties
 						.Select(item => item.Value.Name)
 						.Concat(extendedProperties != null ? extendedProperties.Select(item => item.Value.Name) : new List<string>())
@@ -2032,12 +2032,12 @@ namespace net.vieapps.Components.Repository
 				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {mapInfo.Item1} AS Link ON Origin.{definition.PrimaryKey}=Link.{mapInfo.Item2}" : "");
 
 			// filtering expressions (WHERE)
-			var where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
-				? $" WHERE {statementsInfo.Item1.Item1}"
+			var where = !string.IsNullOrWhiteSpace(statementsInfo.Where.Statement)
+				? $" WHERE {statementsInfo.Where.Statement}"
 				: "";
 
 			// ordering expressions (ORDER BY)
-			var orderby = statementsInfo.Item2;
+			var orderby = statementsInfo.OrderBy;
 
 			// statements
 			var select = $"SELECT {(gotAssociateWithMultipleParents ? "DISTINCT " : "")}" + columns.Join(", ") + tables + where;
@@ -2080,9 +2080,7 @@ namespace net.vieapps.Components.Repository
 					+ (pageSize > 0 ? dbProviderFactory.GetOffsetStatement(pageSize, pageNumber) : "");
 
 			// parameters
-			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
-				? statementsInfo.Item1.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList()
-				: new List<DbParameter>();
+			var parameters = statementsInfo.Where.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
 
 			// return information
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -2514,17 +2512,15 @@ namespace net.vieapps.Components.Repository
 				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {mapInfo.Item1} AS Link ON Origin.{definition.PrimaryKey}=Link.{mapInfo.Item2}" : "");
 
 			// couting expressions (WHERE)
-			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
-				? " WHERE " + statementsInfo.Item1.Item1
+			string where = !string.IsNullOrWhiteSpace(statementsInfo.Where.Statement)
+				? " WHERE " + statementsInfo.Where.Statement
 				: "";
 
 			// statement
 			var statement = $"SELECT COUNT({(gotAssociateWithMultipleParents ? "DISTINCT " : "")}{definition.PrimaryKey}) AS TotalRecords{tables}{where}";
 
 			// parameters
-			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
-				? statementsInfo.Item1.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList()
-				: new List<DbParameter>();
+			var parameters = statementsInfo.Where.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
 
 			// return info
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -2796,8 +2792,8 @@ namespace net.vieapps.Components.Repository
 				+ (extendedProperties != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "");
 
 			// filtering expressions (WHERE)
-			var where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
-				? " WHERE " + statementsInfo.Item1.Item1
+			var where = !string.IsNullOrWhiteSpace(statementsInfo.Where.Statement)
+				? " WHERE " + statementsInfo.Where.Statement
 				: "";
 
 			// ordering expressions (ORDER BY)
@@ -2876,9 +2872,7 @@ namespace net.vieapps.Components.Repository
 					+ (pageSize > 0 ? dbProviderFactory.GetOffsetStatement(pageSize, pageNumber) : "");
 
 			// parameters
-			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
-				? statementsInfo.Item1.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList()
-				: new List<DbParameter>();
+			var parameters = statementsInfo.Where.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
 
 			// return info
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -3235,8 +3229,8 @@ namespace net.vieapps.Components.Repository
 				+ (extendedProperties != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "");
 
 			// filtering expressions (WHERE)
-			string where = statementsInfo.Item1 != null && !string.IsNullOrWhiteSpace(statementsInfo.Item1.Item1)
-				? " WHERE " + statementsInfo.Item1.Item1
+			string where = !string.IsNullOrWhiteSpace(statementsInfo.Where.Statement)
+				? " WHERE " + statementsInfo.Where.Statement
 				: "";
 
 			// searching terms
@@ -3275,9 +3269,7 @@ namespace net.vieapps.Components.Repository
 			var statement = $"SELECT COUNT(Origin.{definition.PrimaryKey}) AS TotalRecords" + tables + where;
 
 			// parameters
-			var parameters = statementsInfo.Item1 != null && statementsInfo.Item1.Item2 != null
-				? statementsInfo.Item1.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList()
-				: new List<DbParameter>();
+			var parameters = statementsInfo.Where.Parameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
 
 			// return info
 			return new Tuple<string, List<DbParameter>>(statement, parameters);

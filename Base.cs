@@ -3692,7 +3692,7 @@ namespace net.vieapps.Components.Repository
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
-				return collection.CountDocuments(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty);
+				return collection.CountDocuments(filter?.GetNoSqlStatement() ?? Builders<T>.Filter.Empty);
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
@@ -3712,7 +3712,7 @@ namespace net.vieapps.Components.Repository
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
-				return await collection.CountDocumentsAsync(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty, null, cancellationToken).ConfigureAwait(false);
+				return await collection.CountDocumentsAsync(filter?.GetNoSqlStatement() ?? Builders<T>.Filter.Empty, null, cancellationToken).ConfigureAwait(false);
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
@@ -3835,7 +3835,6 @@ namespace net.vieapps.Components.Repository
 
 		internal static T Create<T>(DataSource dataSource, string name, T @object) where T : class
 		{
-			RepositoryMediator.GetEntityDefinition<T>().Cache.Remove($"{@object.GetCacheKey()}:Versions");
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
@@ -3896,7 +3895,7 @@ namespace net.vieapps.Components.Repository
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
-				collection.DeleteMany(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty);
+				collection.DeleteMany(filter?.GetNoSqlStatement() ?? Builders<T>.Filter.Empty);
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
@@ -3921,7 +3920,7 @@ namespace net.vieapps.Components.Repository
 			if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
 			{
 				var collection = NoSqlHelper.GetCollection<T>(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName, name);
-				await collection.DeleteManyAsync(filter != null ? filter.GetNoSqlStatement() : Builders<T>.Filter.Empty, cancellationToken).ConfigureAwait(false);
+				await collection.DeleteManyAsync(filter?.GetNoSqlStatement() ?? Builders<T>.Filter.Empty, cancellationToken).ConfigureAwait(false);
 			}
 			else if (dataSource.Mode.Equals(RepositoryMode.SQL))
 			{
@@ -4002,7 +4001,7 @@ namespace net.vieapps.Components.Repository
 			{
 				ID = $"{typeof(T).GetTypeName()}#{objectID}".GenerateUUID(),
 				Title = title,
-				ServiceName = serviceName,
+				ServiceName = serviceName?.ToLower(),
 				SystemID = systemID,
 				RepositoryID = repositoryID,
 				RepositoryEntityID = repositoryEntityID,
