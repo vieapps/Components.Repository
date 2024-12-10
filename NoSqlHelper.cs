@@ -406,6 +406,13 @@ namespace net.vieapps.Components.Repository
 			var projection = NoSqlHelper.CreateProjectionDefinition<T>(attributes, scoreProperty);
 			return collection.CreateFindFluent(session, filterBy, sortBy, pageSize, pageNumber, options).Project<T>(projection);
 		}
+
+		static BsonDocument Render<T>(this FilterDefinition<T> filter) where T : class
+		{
+			var serializerRegistry = BsonSerializer.SerializerRegistry;
+			var documentSerializer = serializerRegistry.GetSerializer<T>();
+			return filter.Render(new RenderArgs<T>(documentSerializer, serializerRegistry));
+		}
 		#endregion
 
 		#region Create
@@ -1867,7 +1874,7 @@ namespace net.vieapps.Components.Repository
 			var (Filter, _) = RepositoryExtensions.PrepareNoSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			var collection = context.GetCollection<T>(dataSource);
 			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{(Filter ?? Builders<T>.Filter.Empty).Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
+				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{(Filter ?? Builders<T>.Filter.Empty).Render()}");
 			return collection.CountDocuments(context.NoSqlSession ?? collection.StartSession(), Filter ?? Builders<T>.Filter.Empty, options);
 		}
 
@@ -1888,7 +1895,7 @@ namespace net.vieapps.Components.Repository
 			var (Filter, _) = RepositoryExtensions.PrepareNoSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents);
 			var collection = context.GetCollection<T>(dataSource);
 			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{(Filter ?? Builders<T>.Filter.Empty).Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
+				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{(Filter ?? Builders<T>.Filter.Empty).Render()}");
 			return await collection.CountDocumentsAsync(context.NoSqlSession ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), Filter ?? Builders<T>.Filter.Empty, options, cancellationToken).ConfigureAwait(false);
 		}
 		#endregion
@@ -2231,7 +2238,7 @@ namespace net.vieapps.Components.Repository
 		{
 			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>();
 			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{filterDefinition.Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
+				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{filterDefinition.Render()}");
 			return collection.CountDocuments(session ?? collection.StartSession(), filterDefinition, options);
 		}
 
@@ -2276,7 +2283,7 @@ namespace net.vieapps.Components.Repository
 		{
 			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>();
 			if (RepositoryMediator.IsTraceEnabled)
-				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{filterDefinition.Render(collection.DocumentSerializer, collection.Settings.SerializerRegistry)}");
+				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{filterDefinition.Render()}");
 			return await collection.CountDocumentsAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), filterDefinition, options, cancellationToken).ConfigureAwait(false);
 		}
 

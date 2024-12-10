@@ -235,7 +235,7 @@ namespace net.vieapps.Components.Repository
 		/// Gets the statement of SQL
 		/// </summary>
 		/// <returns></returns>
-		Tuple<string, Dictionary<string, object>> GetSqlStatement();
+		(string Statement, Dictionary<string, object> Parameters) GetSqlStatement();
 
 		/// <summary>
 		/// Gets the statement of No SQL

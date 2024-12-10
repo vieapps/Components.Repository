@@ -3699,8 +3699,8 @@ namespace net.vieapps.Components.Repository
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
-					var info = filter?.GetSqlStatement();
-					var command = connection.CreateCommand($"COUNT (ID) AS Total FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""), info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+					var (Statement, Parameters) = filter != null ? filter.GetSqlStatement() : (null, null);
+					var command = connection.CreateCommand($"COUNT (ID) AS Total FROM T_Data_{name}" + (Statement != null ? " WHERE " + Statement : ""), Parameters?.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 					return command.ExecuteScalar().CastAs<long>();
 				}
 			}
@@ -3719,8 +3719,8 @@ namespace net.vieapps.Components.Repository
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
-					var info = filter?.GetSqlStatement();
-					var command = connection.CreateCommand($"COUNT (ID) AS Total FROM T_Data_{name}" + (info != null ? " WHERE " + info.Item1 : ""), info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+					var (Statement, Parameters) = filter != null ? filter.GetSqlStatement() : (null, null);
+					var command = connection.CreateCommand($"COUNT (ID) AS Total FROM T_Data_{name}" + (Statement != null ? " WHERE " + Statement : ""), Parameters?.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 					return (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)).CastAs<long>();
 				}
 			}
@@ -3740,13 +3740,13 @@ namespace net.vieapps.Components.Repository
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
-					var info = filter?.GetSqlStatement();
-					var statement = $"SELECT * FROM T_Data_{name}{(info != null ? " WHERE " + info.Item1 : "")}{(sort != null ? " ORDER BY " + sort.GetSqlStatement() : "")}";
+					var (Statement, Parameters) = filter != null ? filter.GetSqlStatement() : (null, null);
+					var statement = $"SELECT * FROM T_Data_{name}{(Statement != null ? " WHERE " + Statement : "")}{(sort != null ? " ORDER BY " + sort.GetSqlStatement() : "")}";
 
 					DataTable dataTable = null;
 					if (pageSize == 0)
 					{
-						var command = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+						var command = connection.CreateCommand(statement, Parameters?.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 						using (var dataReader = command.ExecuteReader())
 						{
 							dataTable = dataReader.ToDataTable<T>();
@@ -3756,7 +3756,7 @@ namespace net.vieapps.Components.Repository
 					{
 						var dataSet = new DataSet();
 						var dataAdapter = dbProviderFactory.CreateDataAdapter();
-						dataAdapter.SelectCommand = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+						dataAdapter.SelectCommand = connection.CreateCommand(statement, Parameters?.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, type.GetTypeName(true));
 						dataTable = dataSet.Tables[0];
 					}
@@ -3793,13 +3793,13 @@ namespace net.vieapps.Components.Repository
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
-					var info = filter?.GetSqlStatement();
-					var statement = $"SELECT * FROM T_Data_{name}{(info != null ? " WHERE " + info.Item1 : "")}{(sort != null ? " ORDER BY " + sort.GetSqlStatement() : "")}";
+					var (Statement, Parameters) = filter != null ? filter.GetSqlStatement() : (null, null);
+					var statement = $"SELECT * FROM T_Data_{name}{(Statement != null ? " WHERE " + Statement : "")}{(sort != null ? " ORDER BY " + sort.GetSqlStatement() : "")}";
 
 					DataTable dataTable = null;
 					if (pageSize == 0)
 					{
-						var command = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+						var command = connection.CreateCommand(statement, Parameters?.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 						using (var dataReader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
 						{
 							dataTable = await dataReader.ToDataTableAsync<T>(cancellationToken).ConfigureAwait(false);
@@ -3809,7 +3809,7 @@ namespace net.vieapps.Components.Repository
 					{
 						var dataSet = new DataSet();
 						var dataAdapter = dbProviderFactory.CreateDataAdapter();
-						dataAdapter.SelectCommand = connection.CreateCommand(statement, info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
+						dataAdapter.SelectCommand = connection.CreateCommand(statement, Parameters?.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList());
 						dataAdapter.Fill(dataSet, pageNumber > 0 ? (pageNumber - 1) * pageSize : 0, pageSize, type.GetTypeName(true));
 						dataTable = dataSet.Tables[0];
 					}
@@ -3902,10 +3902,10 @@ namespace net.vieapps.Components.Repository
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = dbProviderFactory.CreateConnection(dataSource))
 				{
-					var info = filter?.GetSqlStatement();
+					var (Statement, Parameters) = filter != null ? filter.GetSqlStatement() : (null, null);
 					var command = connection.CreateCommand(
-						$"DELETE FROM T_Data_{name}{(info != null ? " WHERE " + info.Item1 : "")}",
-						info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+						$"DELETE FROM T_Data_{name}{(Statement != null ? " WHERE " + Statement : "")}",
+						Parameters?.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					command.ExecuteNonQuery();
 				}
@@ -3927,10 +3927,10 @@ namespace net.vieapps.Components.Repository
 				var dbProviderFactory = dataSource.GetProviderFactory();
 				using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 				{
-					var info = filter?.GetSqlStatement();
+					var (Statement, Parameters) = filter != null ? filter.GetSqlStatement() : (null, null);
 					var command = connection.CreateCommand(
-						$"DELETE FROM T_Data_{name}{(info != null ? " WHERE " + info.Item1 : "")}",
-						info?.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+						$"DELETE FROM T_Data_{name}{(Statement != null ? " WHERE " + Statement : "")}",
+						Parameters?.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 				}

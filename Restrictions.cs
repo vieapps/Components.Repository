@@ -194,10 +194,10 @@ namespace net.vieapps.Components.Repository
 		}
 
 		#region Working with SQL
-		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string suffix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
+		internal (string Statement, Dictionary<string, object> Parameters) GetSqlStatement(string suffix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			if (string.IsNullOrWhiteSpace(this.Attribute))
-				return null;
+				return (null, null);
 
 			var statement = "";
 			var parameters = new Dictionary<string, object>();
@@ -307,10 +307,10 @@ namespace net.vieapps.Components.Repository
 					parameters.Add($"@{name}", value);
 			}
 
-			return new Tuple<string, Dictionary<string, object>>(statement, parameters);
+			return (statement, parameters);
 		}
 
-		public Tuple<string, Dictionary<string, object>> GetSqlStatement()
+		public (string Statement, Dictionary<string, object> Parameters) GetSqlStatement()
 			=> this.GetSqlStatement(null);
 		#endregion
 
@@ -604,41 +604,38 @@ namespace net.vieapps.Components.Repository
 		}
 
 		#region Working with statement of SQL
-		internal Tuple<string, Dictionary<string, object>> GetSqlStatement(string suffix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
+		internal (string Statement, Dictionary<string, object> Parameters) GetSqlStatement(string suffix, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null, EntityDefinition definition = null, List<string> parentIDs = null)
 		{
 			var children = this.Children;
 			if (children == null || children.Count < 1)
-				return null;
+				return (null, null);
 
-			else if (children.Count.Equals(1))
+			if (children.Count.Equals(1))
 				return children[0] is FilterBys<T>
 					? (children[0] as FilterBys<T>).GetSqlStatement(suffix, standardProperties, extendedProperties, definition, parentIDs)
 					: (children[0] as FilterBy<T>).GetSqlStatement(suffix, standardProperties, extendedProperties, definition, parentIDs);
 
-			else
+			var statement = "";
+			var parameters = new Dictionary<string, object>();
+			children.ForEach((child, index) =>
 			{
-				var statement = "";
-				var parameters = new Dictionary<string, object>();
-				children.ForEach((child, index) =>
+				var (Statement, Parameters) = child is FilterBys<T>
+					? (child as FilterBys<T>).GetSqlStatement((!string.IsNullOrEmpty(suffix) ? suffix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs)
+					: (child as FilterBy<T>).GetSqlStatement((!string.IsNullOrEmpty(suffix) ? suffix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs);
+
+				if (Statement != null && Parameters != null)
 				{
-					var data = child is FilterBys<T>
-						? (child as FilterBys<T>).GetSqlStatement((!string.IsNullOrEmpty(suffix) ? suffix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs)
-						: (child as FilterBy<T>).GetSqlStatement((!string.IsNullOrEmpty(suffix) ? suffix : "") + "_" + index.ToString(), standardProperties, extendedProperties, definition, parentIDs);
+					statement += (statement.Equals("") ? "" : this.Operator.Equals(GroupOperator.And) ? " AND " : " OR ") + Statement;
+					Parameters.ForEach(parameter => parameters.Add(parameter.Key, parameter.Value));
+				}
+			});
 
-					if (data != null)
-					{
-						statement += (statement.Equals("") ? "" : this.Operator.Equals(GroupOperator.And) ? " AND " : " OR ") + data.Item1;
-						data.Item2.ForEach(parameter => parameters.Add(parameter.Key, parameter.Value));
-					}
-				});
-
-				return !statement.Equals("") && parameters.Count > 0
-					? new Tuple<string, Dictionary<string, object>>((!string.IsNullOrEmpty(suffix) ? "(" : "") + statement + (!string.IsNullOrEmpty(suffix) ? ")" : ""), parameters)
-					: null;
-			}
+			return statement.Equals("") || parameters.Count < 1
+				? (null, null)
+				: ((string.IsNullOrWhiteSpace(suffix) ? "" : "(") + statement + (string.IsNullOrWhiteSpace(suffix) ? "" : ")"), parameters);
 		}
 
-		public Tuple<string, Dictionary<string, object>> GetSqlStatement()
+		public (string Statement, Dictionary<string, object> Parameters) GetSqlStatement()
 			=> this.GetSqlStatement(null);
 		#endregion
 
@@ -1102,13 +1099,13 @@ namespace net.vieapps.Components.Repository
 				? filter is FilterBys<T>
 					? (filter as FilterBys<T>).GetSqlStatement(null, standardProperties, extendedProperties, definition, parentIDs)
 					: (filter as FilterBy<T>).GetSqlStatement(null, standardProperties, extendedProperties, definition, parentIDs)
-				: null;
+				: (null, null);
 
 			if (!string.IsNullOrWhiteSpace(businessRepositoryEntityID) && extendedProperties != null)
-				filterBy = new Tuple<string, Dictionary<string, object>>
+				filterBy =
 				(
-					"Origin.RepositoryEntityID=@RepositoryEntityID" + (filterBy != null ? " AND " + filterBy.Item1 : ""),
-					new Dictionary<string, object>(filterBy != null ? filterBy.Item2 : new Dictionary<string, object>())
+					"Origin.RepositoryEntityID=@RepositoryEntityID" + (filterBy.Statement != null ? " AND " + filterBy.Statement : ""),
+					new Dictionary<string, object>(filterBy.Parameters ?? new Dictionary<string, object>())
 					{
 						{ "@RepositoryEntityID", businessRepositoryEntityID }
 					}
@@ -1116,7 +1113,7 @@ namespace net.vieapps.Components.Repository
 
 			var sortBy = sort?.GetSqlStatement(standardProperties, extendedProperties);
 
-			return ((filterBy?.Item1, filterBy?.Item2), sortBy);
+			return ((filterBy.Statement, filterBy.Parameters), sortBy);
 		}
 		#endregion
 
