@@ -3908,7 +3908,8 @@ namespace net.vieapps.Components.Repository
 					}
 					catch (Exception ex)
 					{
-						RepositoryMediator.WriteLogs($"Error occurred while constructing a SQL Provider [{providerName}] => {ex.Message}", ex);
+						tracker?.Invoke($"Error occurred while constructing a SQL Provider [{providerName} ({providerType})] => {ex.Message}", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while constructing a SQL Provider [{providerName} ({providerType})] => {ex.Message}", ex);
 					}
 
 				if (type != null)
