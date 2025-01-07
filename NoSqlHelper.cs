@@ -22,6 +22,15 @@ namespace net.vieapps.Components.Repository
 	/// </summary>
 	public static class NoSqlHelper
 	{
+		static string AllowDiskUse => UtilityService.GetAppSetting("Components:Repository:NoSql:AllowDiskUse", "true");
+
+		static string AllowPartialResults => UtilityService.GetAppSetting("Components:Repository:NoSql:AllowPartialResults");
+
+		static string MinConnectionPoolSize => UtilityService.GetAppSetting("Components:Repository:NoSql:MinConnectionPoolSize");
+
+		static string MaxConnectionPoolSize => UtilityService.GetAppSetting("Components:Repository:NoSql:MaxConnectionPoolSize");
+
+		static string MaxConnecting => UtilityService.GetAppSetting("Components:Repository:NoSql:MaxConnecting");
 
 		#region Client
 		internal static ConcurrentDictionary<string, IMongoClient> Clients { get; } = new ConcurrentDictionary<string, IMongoClient>();
@@ -92,7 +101,14 @@ namespace net.vieapps.Components.Repository
 				{
 					if (!NoSqlHelper.Clients.TryGetValue(key, out client))
 					{
-						client = new MongoClient(connectionString);
+						var settings = MongoClientSettings.FromConnectionString(connectionString);
+						if (Int32.TryParse(NoSqlHelper.MinConnectionPoolSize, out var minConnectionPoolSize))
+							settings.MinConnectionPoolSize = minConnectionPoolSize;
+						if (Int32.TryParse(NoSqlHelper.MaxConnectionPoolSize, out var maxConnectionPoolSize))
+							settings.MaxConnectionPoolSize = maxConnectionPoolSize;
+						if (Int32.TryParse(NoSqlHelper.MaxConnecting, out var maxConnecting))
+							settings.MaxConnecting = maxConnecting;
+						client = new MongoClient(settings);
 						NoSqlHelper.Clients.TryAdd(key, client);
 					}
 				}
@@ -304,10 +320,6 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Helpers (filter, sort, projection, find fluent)
-		static string AllowDiskUse { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:AllowDiskUse", "true");
-
-		static string AllowPartialResults { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:AllowPartialResults");
-
 		static FilterDefinition<T> CreateFilterDefinition<T>(this string query) where T : class
 		{
 			var searchTerms = "";
