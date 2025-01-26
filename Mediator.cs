@@ -2318,7 +2318,7 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
-		#region Find
+		#region Find (identities)
 		/// <summary>
 		/// Finds the identity of objects
 		/// </summary>
@@ -2433,6 +2433,131 @@ namespace net.vieapps.Components.Repository
 		public static List<string> FindIdentities<T>(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0) where T : class
 			=> RepositoryMediator.FindIdentities<T>(null, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 
+		/// <summary>
+		/// Finds the identity of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
+		{
+			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
+			try
+			{
+				// prepare
+				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
+				// find identities
+				var identites = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
+					? await context.EntityDefinition.Cache.GetAsync<List<string>>(cacheKey, cancellationToken).ConfigureAwait(false)
+					: null;
+
+				if (identites == null)
+				{
+					identites = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken)
+							: new List<string>();
+					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
+						context.EntityDefinition.Cache.SetAsync(cacheKey, identites, cacheTime).Run();
+				}
+
+				return identites;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				RepositoryMediator.WriteLogs(ex);
+				throw;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				RepositoryMediator.WriteLogs(ex);
+				throw new RepositoryOperationException("Error occurred while finding identities of objects", ex);
+			}
+		}
+
+		/// <summary>
+		/// Finds the identity of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
+		{
+			context.AliasTypeName = aliasTypeName;
+			return await RepositoryMediator.FindIdentitiesAsync<T>(context, context.GetPrimaryDataSource(), filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+		}
+
+		/// <summary>
+		/// Finds the identity of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static async Task<List<string>> FindIdentitiesAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
+		{
+			using (var context = new RepositoryContext(false))
+				return await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+		}
+
+		/// <summary>
+		/// Finds the identity of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="filter">Filter expression</param>
+		/// <param name="sort">Sort expression</param>
+		/// <param name="pageSize">The integer number that presents size of one page</param>
+		/// <param name="pageNumber">The integer number that presents the number of page</param>
+		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
+		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
+		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
+		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task<List<string>> FindIdentitiesAsync<T>(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
+			=> RepositoryMediator.FindIdentitiesAsync<T>(null, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
+		#endregion
+
+		#region Find (objects)
 		/// <summary>
 		/// Finds objects
 		/// </summary>
@@ -2607,129 +2732,6 @@ namespace net.vieapps.Components.Repository
 			using (var context = new RepositoryContext(false))
 				return RepositoryMediator.Find<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
 		}
-
-		/// <summary>
-		/// Finds the identity of objects
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="sort">Sort expression</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
-		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, DataSource dataSource, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
-		{
-			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
-			try
-			{
-				// prepare
-				dataSource = dataSource ?? context.GetPrimaryDataSource();
-				if (dataSource == null)
-					throw new InformationInvalidException("Data source is invalid, please check the configuration");
-
-				// find identities
-				var identites = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
-					? await context.EntityDefinition.Cache.GetAsync<List<string>>(cacheKey, cancellationToken).ConfigureAwait(false)
-					: null;
-
-				if (identites == null)
-				{
-					identites = dataSource.Mode.Equals(RepositoryMode.NoSQL)
-						? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
-						: dataSource.Mode.Equals(RepositoryMode.SQL)
-							? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken)
-							: new List<string>();
-					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
-						context.EntityDefinition.Cache.SetAsync(cacheKey, identites, cacheTime).Run();
-				}
-
-				return identites;
-			}
-			catch (OperationCanceledException ex)
-			{
-				context.Exception = ex;
-				throw;
-			}
-			catch (RepositoryOperationException ex)
-			{
-				context.Exception = ex;
-				RepositoryMediator.WriteLogs(ex);
-				throw;
-			}
-			catch (Exception ex)
-			{
-				context.Exception = ex;
-				RepositoryMediator.WriteLogs(ex);
-				throw new RepositoryOperationException("Error occurred while finding identities of objects", ex);
-			}
-		}
-
-		/// <summary>
-		/// Finds the identity of objects
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="context">The repository's context that hold the transaction and state data</param>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="sort">Sort expression</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
-		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<List<string>> FindIdentitiesAsync<T>(RepositoryContext context, string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
-		{
-			context.AliasTypeName = aliasTypeName;
-			return await RepositoryMediator.FindIdentitiesAsync<T>(context, context.GetPrimaryDataSource(), filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-		}
-
-		/// <summary>
-		/// Finds the identity of objects
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="sort">Sort expression</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
-		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static async Task<List<string>> FindIdentitiesAsync<T>(string aliasTypeName, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
-		{
-			using (var context = new RepositoryContext(false))
-				return await RepositoryMediator.FindIdentitiesAsync<T>(context, aliasTypeName, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-		}
-
-		/// <summary>
-		/// Finds the identity of objects
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="filter">Filter expression</param>
-		/// <param name="sort">Sort expression</param>
-		/// <param name="pageSize">The integer number that presents size of one page</param>
-		/// <param name="pageNumber">The integer number that presents the number of page</param>
-		/// <param name="businessRepositoryEntityID">The identity of a business repository entity for working with extended properties/seperated data of a business content-type</param>
-		/// <param name="autoAssociateWithMultipleParents">true to auto associate with multiple parents (if has - default is true)</param>
-		/// <param name="cacheKey">The string that presents key for fetching/storing cache of identities</param>
-		/// <param name="cacheTime">The number that presents the time for caching (in minutes)</param>
-		/// <param name="cancellationToken">The cancellation token</param>
-		/// <returns></returns>
-		public static Task<List<string>> FindIdentitiesAsync<T>(IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, bool autoAssociateWithMultipleParents = true, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where T : class
-			=> RepositoryMediator.FindIdentitiesAsync<T>(null, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken);
 
 		/// <summary>
 		/// Finds objects
