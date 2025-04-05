@@ -40,7 +40,7 @@ namespace net.vieapps.Components.Repository
 				var connectionStringSettings = dataSource != null && dataSource.Mode.Equals(RepositoryMode.SQL)
 					? RepositoryMediator.GetConnectionStringSettings(dataSource)
 					: null;
-				providerName = connectionStringSettings?.ProviderName ?? "System.Data.SqlClient";
+				providerName = connectionStringSettings?.ProviderName ?? "Microsoft.Data.SqlClient";
 			}
 			return DbProvider.GetFactory(providerName);
 		}
@@ -3972,9 +3972,7 @@ namespace net.vieapps.Components.Repository
 				{
 					if (!DbProvider.DbProviderFactories.TryGetValue(name, out dbProviderFactory))
 					{
-						var provider = DbProvider.GetProvider(name);
-						if (provider == null)
-							throw new NotImplementedException($"The SQL Provider Factory ({name}) is not found");
+						var provider = DbProvider.GetProvider(name) ?? throw new NotImplementedException($"The SQL Provider Factory ({name}) is not found");
 						if (provider.Type == null)
 							throw new InformationInvalidException($"The SQL Provider Factory ({name}) is invalid");
 
