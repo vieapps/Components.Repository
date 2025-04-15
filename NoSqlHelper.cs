@@ -22,15 +22,15 @@ namespace net.vieapps.Components.Repository
 	/// </summary>
 	public static class NoSqlHelper
 	{
-		static string AllowDiskUse => UtilityService.GetAppSetting("Components:Repository:NoSql:AllowDiskUse", "true");
+		static string AllowDiskUse { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:AllowDiskUse", "true");
 
-		static string AllowPartialResults => UtilityService.GetAppSetting("Components:Repository:NoSql:AllowPartialResults");
+		static string AllowPartialResults { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:AllowPartialResults");
 
-		static string MinConnectionPoolSize => UtilityService.GetAppSetting("Components:Repository:NoSql:MinConnectionPoolSize");
+		static string MinConnectionPoolSize { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:MinConnectionPoolSize");
 
-		static string MaxConnectionPoolSize => UtilityService.GetAppSetting("Components:Repository:NoSql:MaxConnectionPoolSize");
+		static string MaxConnectionPoolSize { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:MaxConnectionPoolSize");
 
-		static string MaxConnecting => UtilityService.GetAppSetting("Components:Repository:NoSql:MaxConnecting");
+		static string MaxConnecting { get; } = UtilityService.GetAppSetting("Components:Repository:NoSql:MaxConnecting");
 
 		#region Client
 		internal static ConcurrentDictionary<string, IMongoClient> Clients { get; } = new ConcurrentDictionary<string, IMongoClient>();
@@ -335,9 +335,7 @@ namespace net.vieapps.Components.Repository
 
 		static FilterDefinition<T> CreateFilterDefinition<T>(this IFilterBy<T> filter, string businessRepositoryEntityID = null) where T : class
 		{
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID);
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
+			var(standardProperties, extendedProperties) = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID);
 			var filterDefinition = filter != null
 				? filter is FilterBys<T>
 					? (filter as FilterBys<T>).GetNoSqlStatement(standardProperties, extendedProperties)
@@ -2248,7 +2246,9 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static long Count<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, CountOptions options = null) where T : class
 		{
-			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>();
+			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty)
+				? query.CreateFilterDefinition<T>() & filter
+				: query.CreateFilterDefinition<T>();
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{filterDefinition.Render()}");
 			return collection.CountDocuments(session ?? collection.StartSession(), filterDefinition, options);
@@ -2293,7 +2293,9 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<long> CountAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, string query, FilterDefinition<T> filter, CountOptions options = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty) ? query.CreateFilterDefinition<T>() & filter : query.CreateFilterDefinition<T>();
+			var filterDefinition = filter != null && !filter.Equals(Builders<T>.Filter.Empty)
+				? query.CreateFilterDefinition<T>() & filter
+				: query.CreateFilterDefinition<T>();
 			if (RepositoryMediator.IsTraceEnabled)
 				RepositoryMediator.WriteLogs($"Count [{typeof(T).GetTypeName()}]\r\n{filterDefinition.Render()}");
 			return await collection.CountDocumentsAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), filterDefinition, options, cancellationToken).ConfigureAwait(false);

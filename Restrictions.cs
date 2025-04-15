@@ -205,7 +205,7 @@ namespace net.vieapps.Components.Repository
 			var parentMappingProperty = definition?.GetParentMappingAttributeName();
 			if (definition != null && definition.IsGotMultipleParentMappings() && this.Attribute.Equals(parentMappingProperty) && (this.Operator.Equals(CompareOperator.Equals) || this.Operator.Equals(CompareOperator.Contains)))
 			{
-				var multipleParentMapColumn = definition.GetMultiParentMappingsAttribute().GetMapInfo(definition).Item3;
+				var (_, _, multipleParentMapColumn) = definition.GetMultiParentMappingsAttribute().GetMapInfo(definition);
 				parentIDs?.ForEach((id, index) =>
 				{
 					suffix = $"{(string.IsNullOrWhiteSpace(suffix) ? "" : suffix)}_{index}";
@@ -221,12 +221,12 @@ namespace net.vieapps.Components.Repository
 
 			else
 			{
-				var column = extendedProperties != null && extendedProperties.ContainsKey(this.Attribute)
-					? extendedProperties[this.Attribute].Column
-					: standardProperties != null && standardProperties.ContainsKey(this.Attribute)
-						? !string.IsNullOrWhiteSpace(standardProperties[this.Attribute].Column)
-							? standardProperties[this.Attribute].Column
-							: standardProperties[this.Attribute].Name
+				var column = extendedProperties != null && extendedProperties.TryGetValue(this.Attribute, out var extProperty)
+					? extProperty.Column
+					: standardProperties != null && standardProperties.TryGetValue(this.Attribute, out var stdProperty)
+						? !string.IsNullOrWhiteSpace(stdProperty.Column)
+							? stdProperty.Column
+							: stdProperty.Name
 						: this.Attribute;
 
 				var name = this.Attribute + (string.IsNullOrEmpty(suffix) ? "" : suffix);
@@ -1086,14 +1086,17 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Statements of SQL
-		internal static ((string Statement, Dictionary<string, object> Parameters) Where, string OrderBy) PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		internal static ((string Statement, Dictionary<string, object> Parameters) Where, string OrderBy) PrepareSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition<T>();
-			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
 			parentIDs = parentIDs ?? (definition != null && autoAssociateWithMultipleParents && filter != null ? filter.GetAssociatedParentIDs(definition) : null);
 
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
+			if (standardProperties == null || extendedProperties == null)
+			{
+				var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
+				standardProperties = standardProperties ?? propertiesInfo.StandardProperties;
+				extendedProperties = extendedProperties ?? propertiesInfo.ExtendedProperties;
+			}
 
 			var filterBy = filter != null
 				? filter is FilterBys<T>
@@ -1118,14 +1121,17 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Statements of No SQL
-		internal static (FilterDefinition<T> Filter, SortDefinition<T> Sort) PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> propertiesInfo = null) where T : class
+		internal static (FilterDefinition<T> Filter, SortDefinition<T> Sort) PrepareNoSqlStatements<T>(IFilterBy<T> filter, SortBy<T> sort, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, EntityDefinition definition = null, List<string> parentIDs = null, Dictionary<string, AttributeInfo> standardProperties = null, Dictionary<string, ExtendedPropertyDefinition> extendedProperties = null) where T : class
 		{
 			definition = definition ?? (autoAssociateWithMultipleParents ? RepositoryMediator.GetEntityDefinition<T>() : null);
-			propertiesInfo = propertiesInfo ?? RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
 			parentIDs = parentIDs ?? (definition != null && autoAssociateWithMultipleParents && filter != null ? filter.GetAssociatedParentIDs(definition) : null);
 
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
+			if (standardProperties == null || extendedProperties == null)
+			{
+				var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
+				standardProperties = standardProperties ?? propertiesInfo.StandardProperties;
+				extendedProperties = extendedProperties ?? propertiesInfo.ExtendedProperties;
+			}
 
 			var filterBy = filter != null
 				? filter is FilterBys<T>

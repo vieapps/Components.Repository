@@ -3140,6 +3140,11 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Search<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
 		{
+			// find by identity
+			if (!string.IsNullOrWhiteSpace(query) && query.Trim().IsValidUUID())
+				return RepositoryMediator.Find(context, dataSource, Filters<T>.Equals("ID", query.Trim().ToLower()), null, pageSize, pageNumber, businessRepositoryEntityID, true, null, 0);
+
+			// search
 			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
@@ -3310,6 +3315,11 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> SearchAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
+			// find by identity
+			if (!string.IsNullOrWhiteSpace(query) && query.Trim().IsValidUUID())
+				return await RepositoryMediator.FindAsync(context, dataSource, Filters<T>.Equals("ID", query.Trim().ToLower()), null, pageSize, pageNumber, businessRepositoryEntityID, true, null, 0, cancellationToken).ConfigureAwait(false);
+
+			// search
 			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
@@ -3485,6 +3495,11 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
 		public static long Count<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessRepositoryEntityID = null) where T : class
 		{
+			// count by identity
+			if (!string.IsNullOrWhiteSpace(query) && query.Trim().IsValidUUID())
+				return RepositoryMediator.Count(context, dataSource, Filters<T>.Equals("ID", query.Trim().ToLower()), businessRepositoryEntityID, true, null, 0);
+
+			// count by search terms
 			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
@@ -3568,6 +3583,11 @@ namespace net.vieapps.Components.Repository
 		/// <returns>The integer number that presents total of objects that matched with searching query (and filter expression)</returns>
 		public static async Task<long> CountAsync<T>(RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
+			// count by identity
+			if (!string.IsNullOrWhiteSpace(query) && query.Trim().IsValidUUID())
+				return await RepositoryMediator.CountAsync(context, dataSource, Filters<T>.Equals("ID", query.Trim().ToLower()), businessRepositoryEntityID, true, null, 0, cancellationToken).ConfigureAwait(false);
+
+			// count by search terms
 			context.Prepare<T>(RepositoryOperation.Query, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
 			try
 			{
@@ -7230,7 +7250,7 @@ namespace net.vieapps.Components.Repository
 		internal static List<ObjectService.AttributeInfo> GetPublicProperties(this object @object, Func<ObjectService.AttributeInfo, bool> predicate = null)
 			=> RepositoryMediator.GetPublicProperties(@object?.GetType(), predicate);
 
-		internal static Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>> GetProperties<T>(string businessRepositoryEntityID, EntityDefinition definition = null, bool lowerCaseKeys = false) where T : class
+		internal static (Dictionary<string, AttributeInfo> StandardProperties, Dictionary<string, ExtendedPropertyDefinition> ExtendedProperties) GetProperties<T>(string businessRepositoryEntityID, EntityDefinition definition = null, bool lowerCaseKeys = false) where T : class
 		{
 			definition = definition ?? RepositoryMediator.GetEntityDefinition(typeof(T));
 
@@ -7242,7 +7262,7 @@ namespace net.vieapps.Components.Repository
 				? definition.BusinessRepositoryEntities[businessRepositoryEntityID].ExtendedPropertyDefinitions.ToDictionary(attribute => lowerCaseKeys ? attribute.Name.ToLower() : attribute.Name)
 				: null;
 
-			return new Tuple<Dictionary<string, AttributeInfo>, Dictionary<string, ExtendedPropertyDefinition>>(standardProperties, extendedProperties);
+			return (standardProperties, extendedProperties);
 		}
 
 		internal static List<string> GetAssociatedParentIDs<T>(this IFilterBy<T> filter, EntityDefinition definition = null) where T : class
@@ -7315,17 +7335,17 @@ namespace net.vieapps.Components.Repository
 			return attributes != null && attributes.Count > 0;
 		}
 
-		internal static Tuple<string, string, string> GetMapInfo(this AttributeInfo attribute, EntityDefinition definition)
+		internal static (string TableName, string LinkColumn, string MapColumn) GetMapInfo(this AttributeInfo attribute, EntityDefinition definition)
 		{
 			var info = attribute?.GetCustomAttribute<MappingsAttribute>();
 			return info != null
-				? new Tuple<string, string, string>
+				? 
 				(
 					string.IsNullOrWhiteSpace(info.TableName) ? $"{definition.TableName}_{attribute.Name}_Mappings" : info.TableName,
 					string.IsNullOrWhiteSpace(info.LinkColumn) ? $"{definition.Type.GetTypeName(true)}ID" : info.LinkColumn,
 					string.IsNullOrWhiteSpace(info.MapColumn) ? $"{attribute.Name}ID" : info.MapColumn
 				)
-				: null;
+				: (null, null, null);
 		}
 
 		internal static AttributeInfo GetParentMappingAttribute(this EntityDefinition definition)

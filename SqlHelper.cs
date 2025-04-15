@@ -150,10 +150,13 @@ namespace net.vieapps.Components.Repository
 			return command;
 		}
 
-		internal static DbCommand CreateCommand(this DbConnection connection, Tuple<string, List<DbParameter>> info)
-			=> info != null && !string.IsNullOrWhiteSpace(info.Item1)
-				? connection.CreateCommand(info.Item1, info.Item2)
+		internal static DbCommand CreateCommand(this DbConnection connection, (string Text, List<DbParameter> Parameters) info)
+			=> !string.IsNullOrWhiteSpace(info.Text)
+				? connection.CreateCommand(info.Text, info.Parameters)
 				: null;
+
+		internal static DbCommand CreateCommand(this DbConnection connection, Tuple<string, List<DbParameter>> info)
+			=> connection.CreateCommand(info?.Item1, info?.Item2);
 
 		internal static string GetInfo(this DbCommand command, bool addInfo = true)
 		{
@@ -1995,16 +1998,13 @@ namespace net.vieapps.Components.Repository
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
-
 			var parentIDs = definition != null && autoAssociateWithMultipleParents && filter != null
 				? filter.GetAssociatedParentIDs(definition)
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var (standardProperties, extendedProperties) = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
+			var (sqlWHERE, sqlORDERBY) = RepositoryExtensions.PrepareSqlStatements(filter, sort, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, standardProperties, extendedProperties);
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Any()
@@ -2016,28 +2016,29 @@ namespace net.vieapps.Components.Repository
 				.Where(attribute => standardProperties.ContainsKey(attribute.ToLower()) || (extendedProperties != null && extendedProperties.ContainsKey(attribute.ToLower())))
 				.ToList();
 
-			var columns = fields.Select(field =>
-				extendedProperties != null && extendedProperties.ContainsKey(field.ToLower())
-					? "Extent." + extendedProperties[field.ToLower()].Column + " AS " + extendedProperties[field.ToLower()].Name
-					: "Origin." + (string.IsNullOrWhiteSpace(standardProperties[field.ToLower()].Column)
-						? standardProperties[field.ToLower()].Name
-						: standardProperties[field.ToLower()].Column + " AS " + standardProperties[field.ToLower()].Name)
+			var columns = fields.Select(field => extendedProperties != null && extendedProperties.TryGetValue(field.ToLower(), out var extProperty)
+				? $"Extent.{extProperty.Column} AS {extProperty.Name}"
+				: standardProperties.TryGetValue(field.ToLower(), out var stdProperty)
+					? $"Origin.{(string.IsNullOrWhiteSpace(stdProperty.Column) ? ""	: $"{stdProperty.Column} AS ")}{stdProperty.Name}"
+					: ""
 				)
+				.Where(column => !string.IsNullOrWhiteSpace(column))
 				.ToList();
 
 			// tables (FROM)
-			var mapInfo = definition.GetMultiParentMappingsAttribute()?.GetMapInfo(definition);
+			var multiParentMappingsAttribute = definition.GetMultiParentMappingsAttribute();
+			var (tableName, linkColumn, _) = multiParentMappingsAttribute != null ? multiParentMappingsAttribute.GetMapInfo(definition) : (null, null, null);
 			var tables = $" FROM {definition.TableName} AS Origin"
 				+ (extendedProperties != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "")
-				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {mapInfo.Item1} AS Link ON Origin.{definition.PrimaryKey}=Link.{mapInfo.Item2}" : "");
+				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {tableName} AS Link ON Origin.{definition.PrimaryKey}=Link.{linkColumn}" : "");
 
 			// filtering expressions (WHERE)
-			var where = !string.IsNullOrWhiteSpace(statementsInfo.Where.Statement)
-				? $" WHERE {statementsInfo.Where.Statement}"
+			var where = !string.IsNullOrWhiteSpace(sqlWHERE.Statement)
+				? $" WHERE {sqlWHERE.Statement}"
 				: "";
 
 			// ordering expressions (ORDER BY)
-			var orderby = statementsInfo.OrderBy;
+			var orderby = sqlORDERBY;
 
 			// statements
 			var select = $"SELECT {(gotAssociateWithMultipleParents ? "DISTINCT " : "")}" + columns.Join(", ") + tables + where;
@@ -2080,7 +2081,7 @@ namespace net.vieapps.Components.Repository
 					+ (pageSize > 0 ? dbProviderFactory.GetOffsetStatement(pageSize, pageNumber) : "");
 
 			// parameters
-			var parameters = statementsInfo.Where.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
+			var parameters = sqlWHERE.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
 
 			// return information
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -2496,31 +2497,31 @@ namespace net.vieapps.Components.Repository
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
-
 			var parentIDs = definition != null && autoAssociateWithMultipleParents && filter != null
 				? filter.GetAssociatedParentIDs(definition)
 				: null;
 			var gotAssociateWithMultipleParents = parentIDs != null && parentIDs.Count > 0;
 
-			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, propertiesInfo);
+			var (standardProperties, extendedProperties) = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition);
+			var (sqlWHERE, _) = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, autoAssociateWithMultipleParents, definition, parentIDs, standardProperties, extendedProperties);
 
 			// tables (FROM)
-			var mapInfo = definition.GetMultiParentMappingsAttribute()?.GetMapInfo(definition);
+			var multiParentMappingsAttribute = definition.GetMultiParentMappingsAttribute();
+			var (tableName, linkColumn, _) = multiParentMappingsAttribute != null ? multiParentMappingsAttribute.GetMapInfo(definition) : (null, null, null);
 			var tables = $" FROM {definition.TableName} AS Origin"
-				+ (propertiesInfo.Item2 != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "")
-				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {mapInfo.Item1} AS Link ON Origin.{definition.PrimaryKey}=Link.{mapInfo.Item2}" : "");
+				+ (extendedProperties != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "")
+				+ (gotAssociateWithMultipleParents ? $" LEFT JOIN {tableName} AS Link ON Origin.{definition.PrimaryKey}=Link.{linkColumn}" : "");
 
 			// couting expressions (WHERE)
-			string where = !string.IsNullOrWhiteSpace(statementsInfo.Where.Statement)
-				? " WHERE " + statementsInfo.Where.Statement
+			string where = !string.IsNullOrWhiteSpace(sqlWHERE.Statement)
+				? " WHERE " + sqlWHERE.Statement
 				: "";
 
 			// statement
 			var statement = $"SELECT COUNT({(gotAssociateWithMultipleParents ? "DISTINCT " : "")}{definition.PrimaryKey}) AS TotalRecords{tables}{where}";
 
 			// parameters
-			var parameters = statementsInfo.Where.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
+			var parameters = sqlWHERE.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
 
 			// return info
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -2762,11 +2763,8 @@ namespace net.vieapps.Components.Repository
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
-
-			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, false, definition, null, propertiesInfo);
+			var (standardProperties, extendedProperties) = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
+			var (sqlWHERE, _) = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, false, definition, null, standardProperties, extendedProperties);
 
 			// fields/columns (SELECT)
 			var fields = (attributes != null && attributes.Any()
@@ -2792,8 +2790,8 @@ namespace net.vieapps.Components.Repository
 				+ (extendedProperties != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "");
 
 			// filtering expressions (WHERE)
-			var where = !string.IsNullOrWhiteSpace(statementsInfo.Where.Statement)
-				? " WHERE " + statementsInfo.Where.Statement
+			var where = !string.IsNullOrWhiteSpace(sqlWHERE.Statement)
+				? " WHERE " + sqlWHERE.Statement
 				: "";
 
 			// ordering expressions (ORDER BY)
@@ -2872,7 +2870,7 @@ namespace net.vieapps.Components.Repository
 					+ (pageSize > 0 ? dbProviderFactory.GetOffsetStatement(pageSize, pageNumber) : "");
 
 			// parameters
-			var parameters = statementsInfo.Where.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
+			var parameters = sqlWHERE.Parameters?.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
 
 			// return info
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
@@ -2893,12 +2891,11 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static List<T> Search<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null) where T : class
 		{
-			var stopwatch = Stopwatch.StartNew();
-			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
+			var stopwatch = Stopwatch.StartNew();
+
+			var (standardProperties, extendedProperties) = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
@@ -2974,12 +2971,11 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static async Task<List<T>> SearchAsync<T>(this RepositoryContext context, DataSource dataSource, string query, IFilterBy<T> filter, SortBy<T> sort, int pageSize, int pageNumber, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where T : class
 		{
-			var stopwatch = Stopwatch.StartNew();
-			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var info = "";
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
+			var stopwatch = Stopwatch.StartNew();
+			
+			var (standardProperties, extendedProperties) = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
 
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
@@ -3036,7 +3032,7 @@ namespace net.vieapps.Components.Repository
 					.Select(dataRow => ObjectService.CreateInstance<T>().Copy(dataRow, standardProperties, extendedProperties))
 					.ToList();
 
-				if (results.Count > 0 && context.EntityDefinition.Attributes.Count(attribute => attribute.IsMappings()) > 0)
+				if (results.Count > 0 && context.EntityDefinition.Attributes.Any(attribute => attribute.IsMappings()))
 					await results.ForEachAsync(async @object => await @object.GetMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 
 				return results;
@@ -3218,19 +3214,16 @@ namespace net.vieapps.Components.Repository
 			// prepare
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
-			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
-
-			var statementsInfo = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, false, definition, null, propertiesInfo);
+			var (standardProperties, extendedProperties) = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, definition, true);
+			var (sqlWHERE, _) = RepositoryExtensions.PrepareSqlStatements(filter, null, businessRepositoryEntityID, false, definition, null, standardProperties, extendedProperties);
 
 			// tables (FROM)
 			var tables = $" FROM {definition.TableName} AS Origin"
 				+ (extendedProperties != null ? $" LEFT JOIN {definition.RepositoryDefinition.ExtendedPropertiesTableName} AS Extent ON Origin.{definition.PrimaryKey}=Extent.ID" : "");
 
 			// filtering expressions (WHERE)
-			string where = !string.IsNullOrWhiteSpace(statementsInfo.Where.Statement)
-				? " WHERE " + statementsInfo.Where.Statement
+			string where = !string.IsNullOrWhiteSpace(sqlWHERE.Statement)
+				? " WHERE " + sqlWHERE.Statement
 				: "";
 
 			// searching terms
@@ -3269,7 +3262,7 @@ namespace net.vieapps.Components.Repository
 			var statement = $"SELECT COUNT(Origin.{definition.PrimaryKey}) AS TotalRecords" + tables + where;
 
 			// parameters
-			var parameters = statementsInfo.Where.Parameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
+			var parameters = sqlWHERE.Parameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList() ?? new List<DbParameter>();
 
 			// return info
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
