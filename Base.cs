@@ -114,8 +114,8 @@ namespace net.vieapps.Components.Repository
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore]
 		public byte[] MsgPackExtendedProperties
 		{
-			get => this.ExtendedProperties != null && this.ExtendedProperties.Any() ? Caching.Helper.SerializeBson(this.ExtendedProperties) : Array.Empty<byte>();
-			set => this.ExtendedProperties = value != null && value.Any() ? Caching.Helper.DeserializeBson<Dictionary<string, object>>(value) : null;
+			get => this.ExtendedProperties != null && this.ExtendedProperties.Count > 0 ? Caching.Helper.SerializeBson(this.ExtendedProperties) : Array.Empty<byte>();
+			set => this.ExtendedProperties = value != null && value.Length > 0 ? Caching.Helper.DeserializeBson<Dictionary<string, object>>(value) : null;
 		}
 
 		/// <summary>
@@ -132,7 +132,7 @@ namespace net.vieapps.Components.Repository
 			get => this.OriginalPrivileges != null ? Caching.Helper.SerializeBson(this.OriginalPrivileges) : Array.Empty<byte>();
 			set
 			{
-				this.OriginalPrivileges = value != null && value.Any() ? Caching.Helper.DeserializeBson<Privileges>(value) : null;
+				this.OriginalPrivileges = value != null && value.Length > 0 ? Caching.Helper.DeserializeBson<Privileges>(value) : null;
 				if (RepositoryMediator.IsTraceEnabled)
 					Task.Run(async () =>
 					{
@@ -326,15 +326,18 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="data">The data to fill into this object</param>
 		/// <param name="excluded">The excluded properties</param>
+		/// <param name="nullable">The nullable properties</param>
 		/// <param name="onCompleted">The action to run when completed</param>
-		public T Fill(ExpandoObject data, HashSet<string> excluded = null, Action<T> onCompleted = null)
+		/// <param name="onError">The action to run when got any error</param>
+		public T Fill(ExpandoObject data, HashSet<string> excluded, HashSet<string> nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
 		{
 			// standard properties
-			this.CopyFrom(data, excluded).TrimAll().OriginalPrivileges = this.OriginalPrivileges?.Normalize();
+			this.CopyFrom(data, excluded, nullable, null, onError).TrimAll().OriginalPrivileges = this.OriginalPrivileges?.Normalize();
 			if (RepositoryMediator.IsTraceEnabled)
 			{
 				var attributes = new JObject();
-				this.GetPublicAttributes(attribute => !attribute.IsStatic && attribute.CanWrite && (excluded == null || !excluded.Contains(attribute.Name))).ForEach(attribute =>
+				var excludedAttributes = new HashSet<string>(excluded ?? new HashSet<string>(), StringComparer.OrdinalIgnoreCase);
+				this.GetPublicAttributes(attribute => !attribute.IsStatic && attribute.CanWrite && !excludedAttributes.Contains(attribute.Name)).ForEach(attribute =>
 				{
 					if (data.TryGet(attribute.Name, out var expandoValue))
 						try
@@ -360,7 +363,8 @@ namespace net.vieapps.Components.Repository
 			if (this is IBusinessEntity && !string.IsNullOrWhiteSpace(this.RepositoryEntityID) && RepositoryMediator.GetEntityDefinition<T>().BusinessRepositoryEntities.TryGetValue(this.RepositoryEntityID, out var repositoryEntity) && repositoryEntity?.ExtendedPropertyDefinitions != null)
 			{
 				this.ExtendedProperties = this.ExtendedProperties ?? new Dictionary<string, object>();
-				repositoryEntity.ExtendedPropertyDefinitions.ForEach(definition =>
+				var excludedAttributes = new HashSet<string>(excluded ?? new HashSet<string>(), StringComparer.OrdinalIgnoreCase);
+				repositoryEntity.ExtendedPropertyDefinitions.Where(definition => !excludedAttributes.Contains(definition.Name)).ForEach(definition =>
 				{
 					var value = data?.Get(definition.Name);
 					if (value != null)
@@ -442,8 +446,49 @@ namespace net.vieapps.Components.Repository
 		/// <param name="data">The data to fill into this object</param>
 		/// <param name="excluded">The excluded properties</param>
 		/// <param name="onCompleted">The action to run when completed</param>
+		public T Fill(ExpandoObject data, HashSet<string> excluded = null, Action<T> onCompleted = null)
+			=> this.Fill(data, excluded, null, onCompleted);
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="nullable">The nullable properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <param name="onError">The action to run when got any error</param>
+		public T Fill(ExpandoObject data, string excluded, string nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
+			=> this.Fill(data, excluded?.ToHashSet(), nullable?.ToHashSet(), onCompleted, onError);
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="nullable">The nullable properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		public T Fill(JToken data, HashSet<string> excluded, HashSet<string> nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
+			=> this.Fill(data?.ToExpandoObject(), excluded, nullable, onCompleted, onError);
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
 		public T Fill(JToken data, HashSet<string> excluded = null, Action<T> onCompleted = null)
-			=> this.Fill(data?.ToExpandoObject(), excluded, onCompleted);
+			=> this.Fill(data, excluded, null, onCompleted);
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="nullable">The nullable properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <param name="onError">The action to run when got any error</param>
+		public T Fill(JToken data, string excluded, string nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
+			=> this.Fill(data, excluded?.ToHashSet(), nullable?.ToHashSet(), onCompleted, onError);
 		#endregion
 
 		#region [Static] Create new an instance
@@ -452,10 +497,46 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="data">The data to fill into this object</param>
 		/// <param name="excluded">The excluded properties</param>
+		/// <param name="nullable">The nullable properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <param name="onError">The action to run when got any error</param>
+		/// <returns></returns>
+		public static T CreateInstance(ExpandoObject data, HashSet<string> excluded, HashSet<string> nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, nullable, onCompleted, onError);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
 		/// <param name="onCompleted">The action to run when completed</param>
 		/// <returns></returns>
 		public static T CreateInstance(ExpandoObject data, HashSet<string> excluded = null, Action<T> onCompleted = null)
-			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, onCompleted);
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, null, onCompleted);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="nullable">The nullable properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <param name="onError">The action to run when got any error</param>
+		/// <returns></returns>
+		public static T CreateInstance(ExpandoObject data, string excluded, string nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded?.ToHashSet(), nullable?.ToHashSet(), onCompleted, onError);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="nullable">The nullable properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <param name="onError">The action to run when got any error</param>
+		/// <returns></returns>
+		public static T CreateInstance(JToken data, HashSet<string> excluded, HashSet<string> nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, nullable, onCompleted, onError);
 
 		/// <summary>
 		/// Create new an instance and fill data into objects' properties
@@ -465,7 +546,19 @@ namespace net.vieapps.Components.Repository
 		/// <param name="onCompleted">The action to run when completed</param>
 		/// <returns></returns>
 		public static T CreateInstance(JToken data, HashSet<string> excluded = null, Action<T> onCompleted = null)
-			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, onCompleted);
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, null, onCompleted);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="nullable">The nullable properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <param name="onError">The action to run when got any error</param>
+		/// <returns></returns>
+		public static T CreateInstance(JToken data, string excluded, string nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded?.ToHashSet(), nullable?.ToHashSet(), onCompleted, onError);
 		#endregion
 
 		#region [Static] Create
@@ -488,9 +581,7 @@ namespace net.vieapps.Components.Repository
 		public static void Create<TEntity>(DataSource dataSource, TEntity @object) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryBase<T>.Create<TEntity>(context, dataSource, @object);
-			}
 		}
 
 		/// <summary>
@@ -541,9 +632,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task CreateAsync<TEntity>(DataSource dataSource, TEntity @object, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryBase<T>.CreateAsync<TEntity>(context, dataSource, @object, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -596,9 +685,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual void Create(string aliasTypeName = null)
 		{
 			using (var context = new RepositoryContext())
-			{
 				this.Create(context, aliasTypeName);
-			}
 		}
 
 		/// <summary>
@@ -620,9 +707,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual async Task CreateAsync(string aliasTypeName = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
-			{
 				await this.CreateAsync(context, aliasTypeName, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -654,9 +739,7 @@ namespace net.vieapps.Components.Repository
 		public static TEntity Get<TEntity>(DataSource dataSource, string id, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryBase<T>.Get<TEntity>(context, dataSource, id, processCache, processSecondaryWhenNotFound);
-			}
 		}
 
 		/// <summary>
@@ -728,9 +811,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, string id, CancellationToken cancellationToken = default, bool processCache = true, bool processSecondaryWhenNotFound = true) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryBase<T>.GetAsync<TEntity>(context, dataSource, id, cancellationToken, processCache, processSecondaryWhenNotFound).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -800,9 +881,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual void Get(string aliasTypeName = null)
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				this.Get(context, aliasTypeName);
-			}
 		}
 
 		/// <summary>
@@ -831,9 +910,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual async Task GetAsync(string aliasTypeName = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				await this.GetAsync(context, aliasTypeName, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -863,9 +940,7 @@ namespace net.vieapps.Components.Repository
 		public static TEntity Get<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessRepositoryEntityID = null) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryBase<T>.Get<TEntity>(context, dataSource, filter, sort, businessRepositoryEntityID);
-			}
 		}
 
 		/// <summary>
@@ -952,9 +1027,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<TEntity> GetAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort = null, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryBase<T>.GetAsync<TEntity>(context, dataSource, filter, sort, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -1055,9 +1128,7 @@ namespace net.vieapps.Components.Repository
 		public static void Replace<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryBase<T>.Replace<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID);
-			}
 		}
 
 		/// <summary>
@@ -1173,9 +1244,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task ReplaceAsync<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryBase<T>.ReplaceAsync<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -1313,9 +1382,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual void Replace(string aliasTypeName = null, string userID = null)
 		{
 			using (var context = new RepositoryContext())
-			{
 				this.Replace(context, aliasTypeName, userID);
-			}
 		}
 
 		/// <summary>
@@ -1362,9 +1429,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual async Task ReplaceAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
-			{
 				await this.ReplaceAsync(context, aliasTypeName, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -1403,9 +1468,7 @@ namespace net.vieapps.Components.Repository
 		public static void Update<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryBase<T>.Update<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID);
-			}
 		}
 
 		/// <summary>
@@ -1521,9 +1584,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task UpdateAsync<TEntity>(DataSource dataSource, TEntity @object, bool dontCreateNewVersion = false, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryBase<T>.UpdateAsync<TEntity>(context, dataSource, @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -1651,9 +1712,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual void Update(string aliasTypeName = null, string userID = null)
 		{
 			using (var context = new RepositoryContext())
-			{
 				this.Update(context, aliasTypeName, userID);
-			}
 		}
 
 		/// <summary>
@@ -1701,9 +1760,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual async Task UpdateAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
-			{
 				await this.UpdateAsync(context, aliasTypeName, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -2027,9 +2084,7 @@ namespace net.vieapps.Components.Repository
 		public static void Delete<TEntity>(DataSource dataSource, string id, string userID = null) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryBase<T>.Delete<TEntity>(context, dataSource, id, userID);
-			}
 		}
 
 		/// <summary>
@@ -2087,9 +2142,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task DeleteAsync<TEntity>(DataSource dataSource, string id, string userID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryBase<T>.DeleteAsync<TEntity>(context, dataSource, id, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -2150,9 +2203,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual void Delete(string aliasTypeName = null, string userID = null)
 		{
 			using (var context = new RepositoryContext())
-			{
 				this.Delete(context, aliasTypeName, userID);
-			}
 		}
 
 		/// <summary>
@@ -2178,9 +2229,7 @@ namespace net.vieapps.Components.Repository
 		protected virtual async Task DeleteAsync(string aliasTypeName = null, string userID = null, CancellationToken cancellationToken = default)
 		{
 			using (var context = new RepositoryContext())
-			{
 				await this.DeleteAsync(context, aliasTypeName, userID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 		#endregion
 
@@ -2206,9 +2255,7 @@ namespace net.vieapps.Components.Repository
 		public static void DeleteMany<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessRepositoryEntityID = null) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				RepositoryBase<T>.DeleteMany<TEntity>(context, dataSource, filter, businessRepositoryEntityID);
-			}
 		}
 
 		/// <summary>
@@ -2293,9 +2340,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task DeleteManyAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessRepositoryEntityID = null, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext())
-			{
 				await RepositoryBase<T>.DeleteManyAsync<TEntity>(context, dataSource, filter, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -2404,9 +2449,7 @@ namespace net.vieapps.Components.Repository
 		public static List<TEntity> Find<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryBase<T>.Find<TEntity>(context, dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
-			}
 		}
 
 		/// <summary>
@@ -2535,9 +2578,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<TEntity>> FindAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryBase<T>.FindAsync<TEntity>(context, dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -2666,9 +2707,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryBase<T>.Count<TEntity>(context, dataSource, filter, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime);
-			}
 		}
 
 		/// <summary>
@@ -2777,9 +2816,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<TEntity>(DataSource dataSource, IFilterBy<TEntity> filter, string businessRepositoryEntityID, bool autoAssociateWithMultipleParents, string cacheKey = null, int cacheTime = 0, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryBase<T>.CountAsync<TEntity>(context, dataSource, filter, businessRepositoryEntityID, autoAssociateWithMultipleParents, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -2902,9 +2939,7 @@ namespace net.vieapps.Components.Repository
 		public static List<TEntity> Search<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryBase<T>.Search<TEntity>(context, dataSource, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID);
-			}
 		}
 
 		/// <summary>
@@ -2992,9 +3027,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<List<TEntity>> SearchAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, SortBy<TEntity> sort, int pageSize, int pageNumber, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryBase<T>.SearchAsync<TEntity>(context, dataSource, query, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>
@@ -3093,9 +3126,7 @@ namespace net.vieapps.Components.Repository
 		public static long Count<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessRepositoryEntityID) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return RepositoryBase<T>.Count<TEntity>(context, dataSource, query, filter, businessRepositoryEntityID);
-			}
 		}
 
 		/// <summary>
@@ -3165,9 +3196,7 @@ namespace net.vieapps.Components.Repository
 		public static async Task<long> CountAsync<TEntity>(DataSource dataSource, string query, IFilterBy<TEntity> filter, string businessRepositoryEntityID, CancellationToken cancellationToken = default) where TEntity : class
 		{
 			using (var context = new RepositoryContext(false))
-			{
 				return await RepositoryBase<T>.CountAsync<TEntity>(context, dataSource, query, filter, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
-			}
 		}
 
 		/// <summary>

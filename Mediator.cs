@@ -2345,22 +2345,22 @@ namespace net.vieapps.Components.Repository
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find identities
-				var identites = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
+				var identities = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
 					? context.EntityDefinition.Cache.Get<List<string>>(cacheKey)
 					: null;
 
-				if (identites == null)
+				if (identities == null)
 				{
-					identites = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					identities = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? context.SelectIdentities(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, null)
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? context.SelectIdentities(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
 							: new List<string>();
 					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
-						context.EntityDefinition.Cache.SetAsync(cacheKey, identites, cacheTime).Run();
+						context.EntityDefinition.Cache.SetAsync(cacheKey, identities, cacheTime).Run();
 				}
 
-				return identites;
+				return identities;
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2460,22 +2460,22 @@ namespace net.vieapps.Components.Repository
 					throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find identities
-				var identites = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
+				var identities = !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
 					? await context.EntityDefinition.Cache.GetAsync<List<string>>(cacheKey, cancellationToken).ConfigureAwait(false)
 					: null;
 
-				if (identites == null)
+				if (identities == null)
 				{
-					identites = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+					identities = dataSource.Mode.Equals(RepositoryMode.NoSQL)
 						? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, null, cancellationToken)
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken)
 							: new List<string>();
 					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
-						context.EntityDefinition.Cache.SetAsync(cacheKey, identites, cacheTime).Run();
+						context.EntityDefinition.Cache.SetAsync(cacheKey, identities, cacheTime).Run();
 				}
 
-				return identites;
+				return identities;
 			}
 			catch (OperationCanceledException ex)
 			{
@@ -2640,13 +2640,13 @@ namespace net.vieapps.Components.Repository
 									: new List<T>();
 
 							// update results & cache
-							missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-							if (context.EntityDefinition.Cache != null)
+							missing.Where(@object => @object != null).ForEach(@object =>
 							{
-								context.EntityDefinition.Cache.SetAsync(missing, 0).Run();
-								if (RepositoryMediator.IsDebugEnabled)
-									RepositoryMediator.WriteLogs($"FIND: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
-							}
+								results[@object.GetEntityID()] = @object;
+								context.EntityDefinition.Cache.SetAsync(@object).Run();
+							});
+							if (RepositoryMediator.IsDebugEnabled)
+								RepositoryMediator.WriteLogs($"FIND: Add {missing.Count(@object => @object != null)} missing object(s) into cache storage successful [{missing.Where(@object => @object != null).Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
 						}
 
 						// update the collection of objects
@@ -2668,9 +2668,9 @@ namespace net.vieapps.Components.Repository
 					// update results & cache
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
 					{
+						objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Run());
 						if (!string.IsNullOrWhiteSpace(cacheKey))
 							context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(@object => @object.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Run();
-						context.EntityDefinition.Cache.SetAsync(objects, 0).Run();
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 					}
@@ -2818,13 +2818,13 @@ namespace net.vieapps.Components.Repository
 									: new List<T>();
 
 							// update results & cache
-							missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-							if (context.EntityDefinition.Cache != null)
+							missing.Where(@object => @object != null).ForEach(@object =>
 							{
-								context.EntityDefinition.Cache.SetAsync(missing, 0).Run();
-								if (RepositoryMediator.IsDebugEnabled)
-									RepositoryMediator.WriteLogs($"FIND: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
-							}
+								results[@object.GetEntityID()] = @object;
+								context.EntityDefinition.Cache.SetAsync(@object).Run();
+							});
+							if (RepositoryMediator.IsDebugEnabled)
+								RepositoryMediator.WriteLogs($"FIND: Add {missing.Count(@object => @object != null)} missing object(s) into cache storage successful [{missing.Where(@object => @object != null).Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
 						}
 
 						// update the collection of objects
@@ -2845,9 +2845,9 @@ namespace net.vieapps.Components.Repository
 
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
 					{
+						objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Run());
 						if (!string.IsNullOrWhiteSpace(cacheKey))
 							context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(@object => @object.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Run();
-						context.EntityDefinition.Cache.SetAsync(objects, 0).Run();
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 					}
@@ -3218,14 +3218,17 @@ namespace net.vieapps.Components.Repository
 								: new List<T>();
 
 						// update results & cache
-						missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-						context.EntityDefinition.Cache.SetAsync(missing, 0).Run();
+						missing.Where(@object => @object != null).ForEach(@object =>
+						{
+							results[@object.GetEntityID()] = @object;
+							context.EntityDefinition.Cache.SetAsync(@object).Run();
+						});
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
+							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count(@object => @object != null)} missing object(s) into cache storage successful [{missing.Where(@object => @object != null).Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
 					}
 
 					// return the collection of objects
-					return results.Where(kvp => kvp.Value != null).Select(kvp => kvp.Value as T).ToList();
+					return results.Where(kvp => kvp.Value != null).Select(kvp => kvp.Value).ToList();
 				}
 				else if (RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"SEARCH: No cached object is found => search raw objects");
@@ -3239,7 +3242,7 @@ namespace net.vieapps.Components.Repository
 
 				if (objects.Count > 0)
 				{
-					context.EntityDefinition.Cache.SetAsync(objects, 0).Run();
+					objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Run());
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 				}
@@ -3393,14 +3396,17 @@ namespace net.vieapps.Components.Repository
 								: new List<T>();
 
 						// update results & cache
-						missing.Where(@object => @object != null).ForEach(@object => results[@object.GetEntityID()] = @object);
-						context.EntityDefinition.Cache.SetAsync(missing, 0).Run();
+						missing.Where(@object => @object != null).ForEach(@object =>
+						{
+							results[@object.GetEntityID()] = @object;
+							context.EntityDefinition.Cache.SetAsync(@object).Run();
+						});
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count} missing object(s) into cache storage successful [{missing.Select(o => o.GetCacheKey()).ToString(" - ")}]");
+							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count(@object => @object != null)} missing object(s) into cache storage successful [{missing.Where(@object => @object != null).Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
 					}
 
 					// return the collection of objects
-					return results.Where(kvp => kvp.Value != null).Select(kvp => kvp.Value as T).ToList();
+					return results.Where(kvp => kvp.Value != null).Select(kvp => kvp.Value).ToList();
 				}
 				else if (RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"SEARCH: No cached object is found => search raw objects");
@@ -3414,7 +3420,7 @@ namespace net.vieapps.Components.Repository
 
 				if (objects.Count > 0)
 				{
-					context.EntityDefinition.Cache.SetAsync(objects, 0).Run();
+					objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Run());
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 				}
@@ -7098,63 +7104,6 @@ namespace net.vieapps.Components.Repository
 		/// <param name="object">The object to update into cache storage</param>
 		public static Task<bool> ReplaceAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken) where T : class
 			=> cache.ReplaceAsync(@object, 0, cancellationToken);
-
-		/// <summary>
-		/// Adds the collection of objects into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="objects">The collection of objects</param>
-		public static void Set<T>(this ICache cache, List<T> objects) where T : class
-		{
-			if (objects != null)
-				cache.Set(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()));
-		}
-
-		/// <summary>
-		/// Adds the collection of objects into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="objects">The collection of objects</param>
-		public static Task SetAsync<T>(this ICache cache, List<T> objects, CancellationToken cancellationToken = default) where T : class
-			=> objects != null
-				? cache.SetAsync(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()), null, 0, cancellationToken)
-				: Task.CompletedTask;
-
-		/// <summary>
-		/// Adds the collection of objects into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="objects">The collection of objects</param>
-		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static void Set<T>(this ICache cache, IEnumerable<T> objects, int expirationTime = 0) where T : class
-		{
-			if (objects != null)
-				cache.Set(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()), null, expirationTime);
-		}
-
-		/// <summary>
-		/// Adds the collection of objects into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="objects">The collection of objects</param>
-		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static Task SetAsync<T>(this ICache cache, IEnumerable<T> objects, int expirationTime = 0, CancellationToken cancellationToken = default) where T : class
-			=> objects != null
-				? cache.SetAsync(objects.Where(@object => @object != null).ToDictionary(@object => @object.GetCacheKey()), null, expirationTime, cancellationToken)
-				: Task.CompletedTask;
-
-		/// <summary>
-		/// Adds the collection of objects into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="objects">The collection of objects</param>
-		public static Task SetAsync<T>(this ICache cache, IEnumerable<T> objects, CancellationToken cancellationToken) where T : class
-			=> cache.SetAsync(objects, 0, cancellationToken);
 
 		/// <summary>
 		/// Fetchs an object from cache storage
