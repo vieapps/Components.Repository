@@ -145,6 +145,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// The privileges that are combined from original privileges and parent privileges
 		/// </summary>
+		[MessagePackIgnore]
 		protected Privileges _workingPrivileges = null;
 
 		/// <summary>
@@ -465,6 +466,23 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="data">The data to fill into this object</param>
 		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		public T Fill(ExpandoObject data, string excluded, Action<T> onCompleted)
+			=> this.Fill(data, excluded, null, onCompleted, null);
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		public T Fill(ExpandoObject data, Action<T> onCompleted)
+			=> this.Fill(data, "", "", onCompleted, null);
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
 		/// <param name="nullable">The nullable properties</param>
 		/// <param name="onCompleted">The action to run when completed</param>
 		public T Fill(JToken data, HashSet<string> excluded, HashSet<string> nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
@@ -489,6 +507,23 @@ namespace net.vieapps.Components.Repository
 		/// <param name="onError">The action to run when got any error</param>
 		public T Fill(JToken data, string excluded, string nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
 			=> this.Fill(data, excluded?.ToHashSet(), nullable?.ToHashSet(), onCompleted, onError);
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		public T Fill(JToken data, string excluded, Action<T> onCompleted)
+			=> this.Fill(data, excluded, null, onCompleted, null);
+
+		/// <summary>
+		/// Fills data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		public T Fill(JToken data, Action<T> onCompleted)
+			=> this.Fill(data, "", "", onCompleted, null);
 		#endregion
 
 		#region [Static] Create new an instance
@@ -531,6 +566,25 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <param name="data">The data to fill into this object</param>
 		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <returns></returns>
+		public static T CreateInstance(ExpandoObject data, string excluded, Action<T> onCompleted)
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, null, onCompleted, null);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <returns></returns>
+		public static T CreateInstance(ExpandoObject data, Action<T> onCompleted)
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, "", "", onCompleted, null);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
 		/// <param name="nullable">The nullable properties</param>
 		/// <param name="onCompleted">The action to run when completed</param>
 		/// <param name="onError">The action to run when got any error</param>
@@ -559,6 +613,25 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static T CreateInstance(JToken data, string excluded, string nullable, Action<T> onCompleted = null, Action<Exception> onError = null)
 			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded?.ToHashSet(), nullable?.ToHashSet(), onCompleted, onError);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="excluded">The excluded properties</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <returns></returns>
+		public static T CreateInstance(JToken data, string excluded, Action<T> onCompleted)
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, excluded, null, onCompleted, null);
+
+		/// <summary>
+		/// Create new an instance and fill data into objects' properties
+		/// </summary>
+		/// <param name="data">The data to fill into this object</param>
+		/// <param name="onCompleted">The action to run when completed</param>
+		/// <returns></returns>
+		public static T CreateInstance(JToken data, Action<T> onCompleted)
+			=> typeof(T).CreateInstance<RepositoryBase<T>>().Fill(data, "", "", onCompleted, null);
 		#endregion
 
 		#region [Static] Create
