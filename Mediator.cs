@@ -1474,7 +1474,7 @@ namespace net.vieapps.Components.Repository
 			{
 				// check state
 				var previousInstance = @object != null
-					? RepositoryMediator.Get<T>(context, dataSource, @object?.GetEntityID(), false)
+					? RepositoryMediator.Get<T>(context, dataSource, @object?.GetEntityID(), false, context.EntityDefinition.Cache == null || !context.EntityDefinition.Cache.UseL1Cache)
 					: null;
 
 				var previousState = previousInstance != null
@@ -1601,7 +1601,7 @@ namespace net.vieapps.Components.Repository
 			{
 				// check state
 				var previousInstance = @object != null
-					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
+					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false, cancellationToken, context.EntityDefinition.Cache == null || !context.EntityDefinition.Cache.UseL1Cache).ConfigureAwait(false)
 					: null;
 
 				var previousState = previousInstance != null
@@ -1736,7 +1736,7 @@ namespace net.vieapps.Components.Repository
 			{
 				// check state
 				var previousInstance = @object != null
-					? RepositoryMediator.Get<T>(context, dataSource, @object?.GetEntityID(), false)
+					? RepositoryMediator.Get<T>(context, dataSource, @object?.GetEntityID(), false, context.EntityDefinition.Cache == null || !context.EntityDefinition.Cache.UseL1Cache)
 					: null;
 
 				var previousState = previousInstance != null
@@ -1863,7 +1863,7 @@ namespace net.vieapps.Components.Repository
 			{
 				// check state
 				var previousInstance = @object != null
-					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false, cancellationToken).ConfigureAwait(false)
+					? await RepositoryMediator.GetAsync<T>(context, dataSource, @object?.GetEntityID(), false, cancellationToken, context.EntityDefinition.Cache == null || !context.EntityDefinition.Cache.UseL1Cache).ConfigureAwait(false)
 					: null;
 
 				var previousState = previousInstance != null

@@ -477,7 +477,7 @@ namespace net.vieapps.Components.Repository
 		/// <summary>
 		/// Gets the caching object for processing with caching data of this entity
 		/// </summary>
-		public ICache Cache { get; private set; }
+		public Cache Cache { get; private set; }
 
 		/// <summary>
 		/// Gets the type of the type that presents the repository definition of this repository entity definition
@@ -744,7 +744,7 @@ namespace net.vieapps.Components.Repository
 			if (info.CacheClass != null && !string.IsNullOrWhiteSpace(info.CacheName))
 			{
 				var cache = info.CacheClass.GetStaticObject(info.CacheName);
-				definition.Cache = cache != null && cache is ICache ? cache as ICache : null;
+				definition.Cache = cache != null && cache is Cache thiscache ? thiscache : null;
 			}
 
 			// type of repository definition
@@ -818,25 +818,8 @@ namespace net.vieapps.Components.Repository
 				? data
 				: null;
 
-			// individual caching storage
-			if (settings["cacheRegion"] != null)
-			{
-				var cacheRegion = (settings["cacheRegion"] as JValue).Value as string;
-				var cacheExpirationTime = 30;
-				if (settings["cacheExpirationTime"] != null)
-					try
-					{
-						cacheExpirationTime = Convert.ToInt32((settings["cacheExpirationTime"] as JValue).Value);
-						if (cacheExpirationTime < 0)
-							cacheExpirationTime = 30;
-					}
-					catch { }
-				var cacheActiveSynchronize = settings["cacheActiveSynchronize"] != null && ((settings["cacheActiveSynchronize"] as JValue).Value as string).IsEquals("true");
-				var cacheProvider = settings["cacheProvider"] != null
-					? (settings["cacheProvider"] as JValue).Value as string
-					: null;
-				definition.Cache = new Cache(cacheRegion, cacheExpirationTime, cacheActiveSynchronize, cacheProvider);
-			}
+			if (settings["cacheRegion"] != null && definition.Cache == null)
+				definition.Cache = new Cache((settings["cacheRegion"] as JValue).Value as string);
 
 			definition.AutoSync = settings["autoSync"] != null
 				? "true".IsEquals((settings["autoSync"] as JValue).Value as string)
