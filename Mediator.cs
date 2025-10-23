@@ -4125,7 +4125,7 @@ namespace net.vieapps.Components.Repository
 					await context.ReplaceAsync(dataSource, version.Object as T, cancellationToken).ConfigureAwait(false);
 
 				// update into cache storage
-				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(version.Object as T, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
+				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(version.Object as T, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"ROLLBACK: Add the object into the cache storage successful [{(version.Object as T).GetCacheKey(false)}]");
 
 				// call post-handlers
@@ -5153,7 +5153,7 @@ namespace net.vieapps.Components.Repository
 					await context.CreateAsync(dataSource, trashContent.Object as T, cancellationToken).ConfigureAwait(false);
 
 				// update into cache storage
-				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T, 0, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
+				if (context.EntityDefinition.Cache != null && await context.EntityDefinition.Cache.SetAsync(trashContent.Object as T, cancellationToken).ConfigureAwait(false) && RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs($"RESTORE: Add the object into the cache storage successful [{(trashContent.Object as T).GetCacheKey(false)}]");
 
 				// call post-handlers
@@ -7018,9 +7018,8 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static bool Set<T>(this ICache cache, T @object, int expirationTime = 0) where T : class
-			=> @object != null && cache.Set(@object.GetCacheKey(), @object, expirationTime);
+		public static bool Set<T>(this ICache cache, T @object) where T : class
+			=> @object != null && cache.Set(@object.GetCacheKey(), @object);
 
 		/// <summary>
 		/// Adds an object into cache storage
@@ -7028,41 +7027,9 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static Task<bool> SetAsync<T>(this ICache cache, T @object, int expirationTime = 0, CancellationToken cancellationToken = default) where T : class
+		public static Task<bool> SetAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
 			=> @object != null
-				? cache.SetAsync(@object.GetCacheKey(), @object, expirationTime, cancellationToken)
-				: Task.FromResult(false);
-
-		/// <summary>
-		/// Adds an object into cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> SetAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken) where T : class
-			=> cache.SetAsync(@object, 0, cancellationToken);
-
-		/// <summary>
-		/// Adds an object into cache storage (when its no cached)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static bool Add<T>(this ICache cache, T @object, int expirationTime = 0) where T : class
-			=> @object != null && cache.Add(@object.GetCacheKey(), @object, expirationTime);
-
-		/// <summary>
-		/// Adds an object into cache storage (when its no cached)
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static Task<bool> AddAsync<T>(this ICache cache, T @object, int expirationTime = 0, CancellationToken cancellationToken = default) where T : class
-			=> @object != null
-				? cache.AddAsync(@object.GetCacheKey(), @object, expirationTime, cancellationToken)
+				? cache.SetAsync(@object.GetCacheKey(), @object, cancellationToken)
 				: Task.FromResult(false);
 
 		/// <summary>
@@ -7071,29 +7038,18 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> AddAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken) where T : class
-			=> cache.AddAsync(@object, 0, cancellationToken);
+		public static bool Add<T>(this ICache cache, T @object) where T : class
+			=> @object != null && cache.Add(@object.GetCacheKey(), @object);
 
 		/// <summary>
-		/// Replaces an object in the cache storage
+		/// Adds an object into cache storage (when its no cached)
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static bool Replace<T>(this ICache cache, T @object, int expirationTime = 0) where T : class
-			=> @object != null && cache.Replace(@object.GetCacheKey(), @object, expirationTime);
-
-		/// <summary>
-		/// Replaces an object in the cache storage
-		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="cache">The cache storage</param>
-		/// <param name="object">The object to update into cache storage</param>
-		/// <param name="expirationTime">The number that presents time for caching (in minutes)</param>
-		public static Task<bool> ReplaceAsync<T>(this ICache cache, T @object, int expirationTime = 0, CancellationToken cancellationToken = default) where T : class
+		public static Task<bool> AddAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
 			=> @object != null
-				? cache.ReplaceAsync(@object.GetCacheKey(), @object, expirationTime, cancellationToken)
+				? cache.AddAsync(@object.GetCacheKey(), @object, cancellationToken)
 				: Task.FromResult(false);
 
 		/// <summary>
@@ -7102,8 +7058,19 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> ReplaceAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken) where T : class
-			=> cache.ReplaceAsync(@object, 0, cancellationToken);
+		public static bool Replace<T>(this ICache cache, T @object) where T : class
+			=> @object != null && cache.Replace(@object.GetCacheKey(), @object);
+
+		/// <summary>
+		/// Replaces an object in the cache storage
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cache">The cache storage</param>
+		/// <param name="object">The object to update into cache storage</param>
+		public static Task<bool> ReplaceAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
+			=> @object != null
+				? cache.ReplaceAsync(@object.GetCacheKey(), @object, cancellationToken)
+				: Task.FromResult(false);
 
 		/// <summary>
 		/// Fetchs an object from cache storage
