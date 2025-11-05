@@ -592,7 +592,7 @@ namespace net.vieapps.Components.Repository
 				// update in cache storage
 				if (context.EntityDefinition.Cache != null)
 				{
-					context.EntityDefinition.Cache.SetAsync(@object).Run();
+					context.EntityDefinition.Cache.SetAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -626,7 +626,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (RepositoryMediator.Create<T>(context, context.GetPrimaryDataSource(), @object))
-				RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false).Run();
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false).Execute();
 		}
 
 		/// <summary>
@@ -679,7 +679,7 @@ namespace net.vieapps.Components.Repository
 				// update in cache storage
 				if (context.EntityDefinition.Cache != null)
 				{
-					context.EntityDefinition.Cache.SetAsync(@object).Run();
+					context.EntityDefinition.Cache.SetAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"CREATE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -719,7 +719,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (await RepositoryMediator.CreateAsync<T>(context, context.GetPrimaryDataSource(), @object, cancellationToken).ConfigureAwait(false))
-				RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false).Run();
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false).Execute();
 		}
 
 		/// <summary>
@@ -776,7 +776,7 @@ namespace net.vieapps.Components.Repository
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"GET: The cached object is found [{@object.GetCacheKey()}]");
 					if (context.EntityDefinition.AutoSync)
-						RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+						RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 				}
 
 				// load from data store if got no cached
@@ -796,7 +796,7 @@ namespace net.vieapps.Components.Repository
 					if (@object != null)
 					{
 						if (context.EntityDefinition.AutoSync)
-							RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+							RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 					}
 
 					// when not found in primary, then get instance from secondary source
@@ -814,7 +814,7 @@ namespace net.vieapps.Components.Repository
 
 								// re-create object at primary data source
 								if (@object != null)
-									RepositoryMediator.SyncAsync(@object, context.AliasTypeName, context.EntityDefinition).Run();
+									RepositoryMediator.SyncAsync(@object, context.AliasTypeName, context.EntityDefinition).Execute();
 							}
 						}
 						catch (Exception ex)
@@ -825,7 +825,7 @@ namespace net.vieapps.Components.Repository
 					// update into cache storage
 					if (@object != null && processCache && context.EntityDefinition.Cache != null)
 					{
-						context.EntityDefinition.Cache.SetAsync(@object).Run();
+						context.EntityDefinition.Cache.SetAsync(@object).Execute();
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"GET: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 					}
@@ -928,7 +928,7 @@ namespace net.vieapps.Components.Repository
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"GET: The cached object is found [{@object.GetCacheKey()}]");
 					if (context.EntityDefinition.AutoSync)
-						RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+						RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 				}
 
 				// load from data store if got no cached
@@ -949,7 +949,7 @@ namespace net.vieapps.Components.Repository
 					if (@object != null)
 					{
 						if (context.EntityDefinition.AutoSync)
-							RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+							RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 					}
 
 					// when not found in primary, then get instance from secondary source
@@ -967,7 +967,7 @@ namespace net.vieapps.Components.Repository
 
 								// re-create object at primary data source
 								if (@object != null)
-									RepositoryMediator.SyncAsync(@object, context.AliasTypeName, context.EntityDefinition).Run();
+									RepositoryMediator.SyncAsync(@object, context.AliasTypeName, context.EntityDefinition).Execute();
 							}
 						}
 						catch (Exception ex)
@@ -978,7 +978,7 @@ namespace net.vieapps.Components.Repository
 					// update into cache storage
 					if (@object != null && processCache && context.EntityDefinition.Cache != null)
 					{
-						context.EntityDefinition.Cache.SetAsync(@object).Run();
+						context.EntityDefinition.Cache.SetAsync(@object).Execute();
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"GET: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 					}
@@ -1078,7 +1078,7 @@ namespace net.vieapps.Components.Repository
 
 				// auto sync
 				if (@object != null && context.EntityDefinition.AutoSync)
-					RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+					RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 
 				// return
 				return @object;
@@ -1158,7 +1158,7 @@ namespace net.vieapps.Components.Repository
 
 				// auto sync
 				if (@object != null && context.EntityDefinition.AutoSync)
-					RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+					RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 
 				// return
 				return @object;
@@ -1251,7 +1251,7 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs($"GET (by definition): The cached object is found [{@object.GetCacheKey()}]");
 
 				if (definition.AutoSync)
-					RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).Run();
+					RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).Execute();
 			}
 
 			// load from data store if got no cached
@@ -1271,7 +1271,7 @@ namespace net.vieapps.Components.Repository
 				if (@object != null)
 				{
 					if (definition.AutoSync)
-						RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).Run();
+						RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).Execute();
 				}
 
 				// when not found in primary, then get instance from secondary source
@@ -1289,7 +1289,7 @@ namespace net.vieapps.Components.Repository
 
 							// re-create object at primary data source
 							if (@object != null)
-								RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, definition).Run();
+								RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, definition).Execute();
 						}
 					}
 					catch (Exception ex)
@@ -1300,7 +1300,7 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (@object != null && definition.Cache != null)
 				{
-					definition.Cache.SetAsync(@object).Run();
+					definition.Cache.SetAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"GET (by definition): Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -1369,7 +1369,7 @@ namespace net.vieapps.Components.Repository
 					RepositoryMediator.WriteLogs($"GET (by definition): The cached object is found [{@object.GetCacheKey()}]");
 
 				if (definition.AutoSync)
-					RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).Run();
+					RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).Execute();
 			}
 
 			// load from data store if got no cached
@@ -1389,7 +1389,7 @@ namespace net.vieapps.Components.Repository
 				if (@object != null)
 				{
 					if (definition.AutoSync)
-						RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).Run();
+						RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null).Execute();
 				}
 
 				// when not found in primary, then get instance from secondary source
@@ -1407,7 +1407,7 @@ namespace net.vieapps.Components.Repository
 
 							// re-create object at primary data source
 							if (@object != null)
-								RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, definition).Run();
+								RepositoryMediator.SyncAsync(@object, definition.RepositoryDefinition.IsAlias ? definition.RepositoryDefinition.Type.GetTypeName() : null, definition).Execute();
 						}
 					}
 					catch (OperationCanceledException)
@@ -1422,7 +1422,7 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (@object != null && definition.Cache != null)
 				{
-					definition.Cache.SetAsync(@object).Run();
+					definition.Cache.SetAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"GET (by definition): Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -1531,7 +1531,7 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 				{
-					context.EntityDefinition.Cache.SetAsync(@object).Run();
+					context.EntityDefinition.Cache.SetAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -1567,7 +1567,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (RepositoryMediator.Replace<T>(context, context.GetPrimaryDataSource(), @object, dontCreateNewVersion, userID))
-				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 		}
 
 		/// <summary>
@@ -1658,7 +1658,7 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 				{
-					context.EntityDefinition.Cache.SetAsync(@object).Run();
+					context.EntityDefinition.Cache.SetAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"REPLACE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -1700,7 +1700,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (await RepositoryMediator.ReplaceAsync<T>(context, context.GetPrimaryDataSource(), @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false))
-				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 		}
 
 		/// <summary>
@@ -1777,7 +1777,7 @@ namespace net.vieapps.Components.Repository
 					}
 
 					if (createNewVersion)
-						RepositoryMediator.CreateVersionAsync<T>(context, previousInstance, userID).Run();
+						RepositoryMediator.CreateVersionAsync<T>(context, previousInstance, userID).Execute();
 				}
 
 				// update
@@ -1793,7 +1793,7 @@ namespace net.vieapps.Components.Repository
 				// update into cache storage
 				if (context.EntityDefinition.Cache != null)
 				{
-					context.EntityDefinition.Cache.SetAsync(@object).Run();
+					context.EntityDefinition.Cache.SetAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"UPDATE: Add the object into the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -1829,7 +1829,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (RepositoryMediator.Update<T>(context, context.GetPrimaryDataSource(), @object, dontCreateNewVersion, userID))
-				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 		}
 
 		/// <summary>
@@ -1961,7 +1961,7 @@ namespace net.vieapps.Components.Repository
 		{
 			context.AliasTypeName = aliasTypeName;
 			if (await RepositoryMediator.UpdateAsync<T>(context, context.GetPrimaryDataSource(), @object, dontCreateNewVersion, userID, cancellationToken).ConfigureAwait(false))
-				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Run();
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 		}
 
 		/// <summary>
@@ -2020,7 +2020,7 @@ namespace net.vieapps.Components.Repository
 				// remove from cache storage
 				if (context.EntityDefinition.Cache != null)
 				{
-					context.EntityDefinition.Cache.RemoveAsync(@object).Run();
+					context.EntityDefinition.Cache.RemoveAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -2056,7 +2056,7 @@ namespace net.vieapps.Components.Repository
 			context.AliasTypeName = aliasTypeName;
 			var @object = RepositoryMediator.Delete<T>(context, context.GetPrimaryDataSource(), id, userID);
 			if (@object != null)
-				RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, true).Run();
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, true).Execute();
 		}
 
 		/// <summary>
@@ -2112,7 +2112,7 @@ namespace net.vieapps.Components.Repository
 				// remove from cache storage
 				if (context.EntityDefinition.Cache != null)
 				{
-					context.EntityDefinition.Cache.RemoveAsync(@object).Run();
+					context.EntityDefinition.Cache.RemoveAsync(@object).Execute();
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"DELETE: Remove the cached object from the cache storage successful [{@object.GetCacheKey()}]");
 				}
@@ -2154,7 +2154,7 @@ namespace net.vieapps.Components.Repository
 			context.AliasTypeName = aliasTypeName;
 			var @object = await RepositoryMediator.DeleteAsync<T>(context, context.GetPrimaryDataSource(), id, userID, cancellationToken).ConfigureAwait(false);
 			if (@object != null)
-				RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, true).Run();
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false, true).Execute();
 		}
 
 		/// <summary>
@@ -2198,7 +2198,7 @@ namespace net.vieapps.Components.Repository
 					context.DeleteMany(dataSource, filter, businessRepositoryEntityID);
 
 				// delete other data sources
-				RepositoryMediator.SyncAsync(filter, context.AliasTypeName, businessRepositoryEntityID).Run();
+				RepositoryMediator.SyncAsync(filter, context.AliasTypeName, businessRepositoryEntityID).Execute();
 			}
 			catch (RepositoryOperationException ex)
 			{
@@ -2267,7 +2267,7 @@ namespace net.vieapps.Components.Repository
 					await context.DeleteManyAsync(dataSource, filter, businessRepositoryEntityID, cancellationToken).ConfigureAwait(false);
 
 				// delete other data sources
-				RepositoryMediator.SyncAsync(filter, context.AliasTypeName, businessRepositoryEntityID).Run();
+				RepositoryMediator.SyncAsync(filter, context.AliasTypeName, businessRepositoryEntityID).Execute();
 			}
 			catch (OperationCanceledException ex)
 			{
@@ -2357,7 +2357,7 @@ namespace net.vieapps.Components.Repository
 							? context.SelectIdentities(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
 							: new List<string>();
 					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
-						context.EntityDefinition.Cache.SetAsync(cacheKey, identities, cacheTime).Run();
+						context.EntityDefinition.Cache.SetAsync(cacheKey, identities, cacheTime).Execute();
 				}
 
 				return identities;
@@ -2472,7 +2472,7 @@ namespace net.vieapps.Components.Repository
 							? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken)
 							: new List<string>();
 					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
-						context.EntityDefinition.Cache.SetAsync(cacheKey, identities, cacheTime).Run();
+						context.EntityDefinition.Cache.SetAsync(cacheKey, identities, cacheTime).Execute();
 				}
 
 				return identities;
@@ -2643,7 +2643,7 @@ namespace net.vieapps.Components.Repository
 							missing.Where(@object => @object != null).ForEach(@object =>
 							{
 								results[@object.GetEntityID()] = @object;
-								context.EntityDefinition.Cache.SetAsync(@object).Run();
+								context.EntityDefinition.Cache.SetAsync(@object).Execute();
 							});
 							if (RepositoryMediator.IsDebugEnabled)
 								RepositoryMediator.WriteLogs($"FIND: Add {missing.Count(@object => @object != null)} missing object(s) into cache storage successful [{missing.Where(@object => @object != null).Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
@@ -2668,9 +2668,9 @@ namespace net.vieapps.Components.Repository
 					// update results & cache
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
 					{
-						objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Run());
+						objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Execute());
 						if (!string.IsNullOrWhiteSpace(cacheKey))
-							context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(@object => @object.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Run();
+							context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(@object => @object.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Execute();
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 					}
@@ -2821,7 +2821,7 @@ namespace net.vieapps.Components.Repository
 							missing.Where(@object => @object != null).ForEach(@object =>
 							{
 								results[@object.GetEntityID()] = @object;
-								context.EntityDefinition.Cache.SetAsync(@object).Run();
+								context.EntityDefinition.Cache.SetAsync(@object).Execute();
 							});
 							if (RepositoryMediator.IsDebugEnabled)
 								RepositoryMediator.WriteLogs($"FIND: Add {missing.Count(@object => @object != null)} missing object(s) into cache storage successful [{missing.Where(@object => @object != null).Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
@@ -2845,9 +2845,9 @@ namespace net.vieapps.Components.Repository
 
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
 					{
-						objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Run());
+						objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Execute());
 						if (!string.IsNullOrWhiteSpace(cacheKey))
-							context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(@object => @object.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Run();
+							context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(@object => @object.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Execute();
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 					}
@@ -2964,7 +2964,7 @@ namespace net.vieapps.Components.Repository
 
 				// update cache and return
 				if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
-					context.EntityDefinition.Cache.SetAsync(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Run();
+					context.EntityDefinition.Cache.SetAsync(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Execute();
 
 				return total;
 			}
@@ -3063,7 +3063,7 @@ namespace net.vieapps.Components.Repository
 
 				// update cache and return
 				if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
-					context.EntityDefinition.Cache.SetAsync(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Run();
+					context.EntityDefinition.Cache.SetAsync(cacheKey, total, cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Execute();
 
 				return total;
 			}
@@ -3221,7 +3221,7 @@ namespace net.vieapps.Components.Repository
 						missing.Where(@object => @object != null).ForEach(@object =>
 						{
 							results[@object.GetEntityID()] = @object;
-							context.EntityDefinition.Cache.SetAsync(@object).Run();
+							context.EntityDefinition.Cache.SetAsync(@object).Execute();
 						});
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count(@object => @object != null)} missing object(s) into cache storage successful [{missing.Where(@object => @object != null).Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
@@ -3242,7 +3242,7 @@ namespace net.vieapps.Components.Repository
 
 				if (objects.Count > 0)
 				{
-					objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Run());
+					objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Execute());
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 				}
@@ -3399,7 +3399,7 @@ namespace net.vieapps.Components.Repository
 						missing.Where(@object => @object != null).ForEach(@object =>
 						{
 							results[@object.GetEntityID()] = @object;
-							context.EntityDefinition.Cache.SetAsync(@object).Run();
+							context.EntityDefinition.Cache.SetAsync(@object).Execute();
 						});
 						if (RepositoryMediator.IsDebugEnabled)
 							RepositoryMediator.WriteLogs($"SEARCH: Add {missing.Count(@object => @object != null)} missing object(s) into cache storage successful [{missing.Where(@object => @object != null).Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
@@ -3420,7 +3420,7 @@ namespace net.vieapps.Components.Repository
 
 				if (objects.Count > 0)
 				{
-					objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Run());
+					objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Execute());
 					if (RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"SEARCH: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
 				}
@@ -4003,7 +4003,7 @@ namespace net.vieapps.Components.Repository
 				context.CallPostUpdateHandlers(version.Object as T, changed, true);
 
 				// update other data sources
-				Task.Run(() => RepositoryMediator.SyncAsync(version.Object as T, context.AliasTypeName)).ConfigureAwait(false);
+				RepositoryMediator.SyncAsync(version.Object as T, context.AliasTypeName).Execute();
 
 				// notify changed
 				(version.Object as RepositoryBase)?.NotifyPropertyChanged("_Restored");
@@ -4132,7 +4132,7 @@ namespace net.vieapps.Components.Repository
 				await context.CallPostUpdateHandlersAsync(version.Object as T, changed, true, cancellationToken).ConfigureAwait(false);
 
 				// update other data sources
-				var sync = Task.Run(() => RepositoryMediator.SyncAsync(version.Object as T, context.AliasTypeName, true, false, cancellationToken)).ConfigureAwait(false);
+				RepositoryMediator.SyncAsync(version.Object as T, context.AliasTypeName, true, false, cancellationToken).Execute();
 
 				// notify changed
 				(version.Object as RepositoryBase)?.NotifyPropertyChanged("_Restored");
@@ -5038,7 +5038,7 @@ namespace net.vieapps.Components.Repository
 				TrashContent.Delete(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID));
 
 				// update other data sources
-				Task.Run(() => RepositoryMediator.SyncAsync(trashContent.Object as T, context.AliasTypeName, false)).ConfigureAwait(false);
+				RepositoryMediator.SyncAsync(trashContent.Object as T, context.AliasTypeName, false).Execute();
 
 				// return the original object
 				return trashContent.Object as T;
@@ -5163,7 +5163,7 @@ namespace net.vieapps.Components.Repository
 				await TrashContent.DeleteAsync(RepositoryMediator.GetTrashDataSource(context), "Trashs", Filters<TrashContent>.Equals("ID", trashContent.ID), cancellationToken).ConfigureAwait(false);
 
 				// update other data sources
-				var sync = Task.Run(() => RepositoryMediator.SyncAsync(trashContent.Object as T, context.AliasTypeName, false, false, cancellationToken)).ConfigureAwait(false);
+				RepositoryMediator.SyncAsync(trashContent.Object as T, context.AliasTypeName, false, false, cancellationToken).Execute();
 
 				// return the original object
 				return trashContent.Object as T;
@@ -5940,7 +5940,7 @@ namespace net.vieapps.Components.Repository
 		public static void Sync<T>(this RepositoryContext context, T @object) where T : class
 		{
 			if (@object != null)
-				Task.Run(() => RepositoryMediator.SyncAsync(@object, context.AliasTypeName)).ConfigureAwait(false);
+				RepositoryMediator.SyncAsync(@object, context.AliasTypeName).Execute();
 			else
 				throw new ArgumentNullException(nameof(@object), "The syncing object is null");
 		}
@@ -5954,7 +5954,7 @@ namespace net.vieapps.Components.Repository
 		public static void Sync<T>(string aliasTypeName, T @object) where T : class
 		{
 			if (@object != null)
-				Task.Run(() => RepositoryMediator.SyncAsync(@object, aliasTypeName)).ConfigureAwait(false);
+				RepositoryMediator.SyncAsync(@object, aliasTypeName).Execute();
 			else
 				throw new ArgumentNullException(nameof(@object), "The syncing object is null");
 		}
@@ -6032,7 +6032,7 @@ namespace net.vieapps.Components.Repository
 
 		static void CallPostCreateHandlers<T>(this RepositoryContext context, T @object, bool isRestore = false) where T : class
 			=> RepositoryMediator.GetHandlers(type => typeof(IPostCreateHandler).IsAssignableFrom(type))
-				.Select(type => Task.Run(() =>
+				.ForEach(type => 
 				{
 					try
 					{
@@ -6043,8 +6043,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while running the post-create handler \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
-				}))
-				.ToList();
+				});
 
 		static async Task CallPostCreateHandlersAsync<T>(this RepositoryContext context, T @object, bool isRestore = false, CancellationToken cancellationToken = default) where T : class
 			=> await RepositoryMediator.GetHandlers(type => typeof(IPostCreateHandler).IsAssignableFrom(type))
@@ -6107,7 +6106,7 @@ namespace net.vieapps.Components.Repository
 
 		static void CallPostGetHandlers<T>(this RepositoryContext context, T @object) where T : class
 			=> RepositoryMediator.GetHandlers(type => typeof(IPostGetHandler).IsAssignableFrom(type))
-				.Select(type => Task.Run(() =>
+				.ForEach(type =>
 				{
 					try
 					{
@@ -6118,8 +6117,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while running the post-get handler \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
-				}))
-				.ToList();
+				});
 
 		static async Task CallPostGetHandlersAsync<T>(this RepositoryContext context, T @object, CancellationToken cancellationToken = default) where T : class
 			=> await RepositoryMediator.GetHandlers(type => typeof(IPostGetHandler).IsAssignableFrom(type))
@@ -6182,7 +6180,7 @@ namespace net.vieapps.Components.Repository
 
 		static void CallPostUpdateHandlers<T>(this RepositoryContext context, T @object, HashSet<string> changed, bool isRestore = false) where T : class
 			=> RepositoryMediator.GetHandlers(type => typeof(IPostUpdateHandler).IsAssignableFrom(type))
-				.Select(type => Task.Run(() =>
+				.ForEach(type =>
 				{
 					try
 					{
@@ -6193,8 +6191,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while running the post-update handler \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
-				}))
-				.ToList();
+				});
 
 		static async Task CallPostUpdateHandlersAsync<T>(this RepositoryContext context, T @object, HashSet<string> changed, bool isRestore = false, CancellationToken cancellationToken = default) where T : class
 			=> await RepositoryMediator.GetHandlers(type => typeof(IPostUpdateHandler).IsAssignableFrom(type))
@@ -6257,7 +6254,7 @@ namespace net.vieapps.Components.Repository
 
 		static void CallPostDeleteHandlers<T>(this RepositoryContext context, T @object) where T : class
 			=> RepositoryMediator.GetHandlers(type => typeof(IPostDeleteHandler).IsAssignableFrom(type))
-				.Select(type => Task.Run(() =>
+				.ForEach(type =>
 				{
 					try
 					{
@@ -6268,8 +6265,7 @@ namespace net.vieapps.Components.Repository
 					{
 						RepositoryMediator.WriteLogs($"Error occurred while running the post-delete handler \"{type}\" [{typeof(T)}#{@object?.GetEntityID()}]", ex);
 					}
-				}))
-				.ToList();
+				});
 
 		static async Task CallPostDeleteHandlersAsync<T>(this RepositoryContext context, T @object, CancellationToken cancellationToken = default) where T : class
 			=> await RepositoryMediator.GetHandlers(type => typeof(IPostDeleteHandler).IsAssignableFrom(type))

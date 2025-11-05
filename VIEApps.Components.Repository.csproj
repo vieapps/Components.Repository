@@ -8,10 +8,10 @@
 		<DocumentationFile>bin/$(Configuration)/$(TargetFramework)/VIEApps.Components.Repository.xml</DocumentationFile>
 		<AssemblyName>VIEApps.Components.Repository</AssemblyName>
 		<AssemblyTitle>VIEApps NGX Repository</AssemblyTitle>
-		<AssemblyVersion>10.10$(ReleaseVersion)</AssemblyVersion>
-		<FileVersion>10.10$(ReleaseVersion)</FileVersion>
-		<InformationalVersion>10.10.$([System.DateTime]::Now.Year).$([System.DateTime]::Now.Month).$([System.DateTime]::Now.Day)@$(TargetFramework)#sn:$(Sign)#$(ReleaseRevision)</InformationalVersion>
-		<Version>10.10$(ReleaseVersion)$(ReleaseSuffix)</Version>
+		<AssemblyVersion>10.9$(ReleaseVersion)</AssemblyVersion>
+		<FileVersion>10.9$(ReleaseVersion)</FileVersion>
+		<InformationalVersion>10.9.$([System.DateTime]::Now.Year).$([System.DateTime]::Now.Month).$([System.DateTime]::Now.Day)@$(TargetFramework)#sn:$(Sign)#$(ReleaseRevision)</InformationalVersion>
+		<Version>10.9$(ReleaseVersion)$(ReleaseSuffix)</Version>
 		<Product>VIEApps NGX</Product>
 		<Title>VIEApps NGX Repository</Title>
 		<Description>A tiny polyglot component to help POCO objects work with both NoSQL and SQL databases at the same time on .NET</Description>
@@ -53,13 +53,13 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' != 'true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.9.2510.2" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.9.2510.2" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.9.2511.1" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.9.2511.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' == 'true'">
-		<PackageReference Include="VIEApps.Components.Caching$(PackageSuffix)" Version="10.10$(ReleaseVersion)" />
-		<PackageReference Include="VIEApps.Components.Security$(PackageSuffix)" Version="10.10$(ReleaseVersion)" />
+		<PackageReference Include="VIEApps.Components.Caching$(PackageSuffix)" Version="10.9$(ReleaseVersion)" />
+		<PackageReference Include="VIEApps.Components.Security$(PackageSuffix)" Version="10.9$(ReleaseVersion)" />
 	</ItemGroup>
 
 </Project>
