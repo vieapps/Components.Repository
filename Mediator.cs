@@ -6767,7 +6767,7 @@ namespace net.vieapps.Components.Repository
 			return label;
 		}
 
-		static JToken GenerateFormControl(this Type type, AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null)
+		static JObject GenerateFormControl(this Type type, AttributeInfo attribute, int index = 0, string parentName = null, string parentLabel = null, string parentDescription = null, string parentPlaceHolder = null)
 		{
 			var info = attribute.GetCustomAttribute<FormControlAttribute>();
 
