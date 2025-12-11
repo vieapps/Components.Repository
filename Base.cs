@@ -784,6 +784,114 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region [Static] Create many
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		public static void CreateMany<TEntity>(RepositoryContext context, DataSource dataSource, IEnumerable<TEntity> objects) where TEntity : class
+			=> RepositoryMediator.CreateMany(context, dataSource, objects);
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		public static void CreateMany<TEntity>(DataSource dataSource, IEnumerable<TEntity> objects) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+				RepositoryBase<T>.CreateMany<TEntity>(context, dataSource, objects);
+		}
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		public static void CreateMany<TEntity>(RepositoryContext context, string aliasTypeName, IEnumerable<TEntity> objects) where TEntity : class
+			=> RepositoryMediator.CreateMany(context, aliasTypeName, objects);
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		public static void CreateMany<TEntity>(string aliasTypeName, IEnumerable<TEntity> objects) where TEntity : class
+			=> RepositoryMediator.CreateMany(aliasTypeName, objects);
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		public static void CreateMany<TEntity>(IEnumerable<TEntity> objects) where TEntity : class
+			=> RepositoryBase<T>.CreateMany<TEntity>("", objects);
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static Task CreateManyAsync<TEntity>(RepositoryContext context, DataSource dataSource, IEnumerable<TEntity> objects, CancellationToken cancellationToken = default) where TEntity : class
+			=> RepositoryMediator.CreateManyAsync(context, dataSource, objects, cancellationToken);
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task CreateManyAsync<TEntity>(DataSource dataSource, IEnumerable<TEntity> objects, CancellationToken cancellationToken = default) where TEntity : class
+		{
+			using (var context = new RepositoryContext())
+				await RepositoryBase<T>.CreateManyAsync<TEntity>(context, dataSource, objects, cancellationToken).ConfigureAwait(false);
+		}
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task CreateManyAsync<TEntity>(RepositoryContext context, string aliasTypeName, IEnumerable<TEntity> objects, CancellationToken cancellationToken = default) where TEntity : class
+			=> RepositoryMediator.CreateManyAsync(context, aliasTypeName, objects, cancellationToken);
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task CreateManyAsync<TEntity>(string aliasTypeName, IEnumerable<TEntity> objects, CancellationToken cancellationToken = default) where TEntity : class
+			=> RepositoryMediator.CreateManyAsync(aliasTypeName, objects, cancellationToken);
+
+		/// <summary>
+		/// Creates new collection of objects
+		/// </summary>
+		/// <typeparam name="TEntity"></typeparam>
+		/// <param name="objects">The collection of objects to create new instance in the repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		/// <returns></returns>
+		public static Task CreateManyAsync<TEntity>(IEnumerable<TEntity> objects, CancellationToken cancellationToken = default) where TEntity : class
+			=> RepositoryBase<T>.CreateManyAsync<TEntity>("", objects, cancellationToken);
+		#endregion
+
 		#region [Static] Get
 		/// <summary>
 		/// Gets an object

@@ -735,6 +735,196 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Create (many)
+		/// <summary>
+		/// Creates new instance of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		public static bool CreateMany<T>(RepositoryContext context, DataSource dataSource, IEnumerable<T> objects) where T : class
+		{
+			context.Prepare<T>(RepositoryOperation.Create, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
+			try
+			{
+				// validate & re-update object
+				objects.ForEach(@object =>
+				{
+					var currentState = context.SetCurrentState(@object);
+					if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
+					{
+						@object.UpdateObject(currentState);
+						context.SetCurrentState(@object, currentState);
+					}
+				});
+
+				// call pre-create handlers
+				var handlerStates = objects.Select(@object => context.CallPreCreateHandlers(@object, false)).ToList();
+				if (handlerStates.Any(state => state == true))
+					return false;
+
+				// create
+				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					context.CreateMany(dataSource, objects, null);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					context.CreateMany(dataSource, objects);
+
+				// update in cache storage
+				if (context.EntityDefinition.Cache != null)
+				{
+					objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Execute());
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Create: Add the objects into the cache storage successful");
+				}
+
+				// call post-handlers
+				objects.ForEach(@object => context.CallPostCreateHandlers(@object, false));
+				return true;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				RepositoryMediator.WriteLogs(ex);
+				throw;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				RepositoryMediator.WriteLogs(ex);
+				throw new RepositoryOperationException($"Error occurred while creating new many", ex.Message.IsContains("duplicate key") ? new InformationExistedException("A key was existed", ex) : ex);
+			}
+		}
+
+		/// <summary>
+		/// Creates new instance of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		public static void CreateMany<T>(RepositoryContext context, string aliasTypeName, IEnumerable<T> objects) where T : class
+		{
+			context.AliasTypeName = aliasTypeName;
+			if (RepositoryMediator.CreateMany<T>(context, context.GetPrimaryDataSource(), objects))
+				objects.ForEach(@object => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false).Execute());
+		}
+
+		/// <summary>
+		/// Creates new instance of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		public static void CreateMany<T>(string aliasTypeName, IEnumerable<T> objects) where T : class
+		{
+			using (var context = new RepositoryContext())
+				RepositoryMediator.CreateMany(context, aliasTypeName, objects);
+		}
+
+		/// <summary>
+		/// Creates new instance of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="dataSource">The repository's data source that use to store object</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task<bool> CreateManyAsync<T>(RepositoryContext context, DataSource dataSource, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
+		{
+			context.Prepare<T>(RepositoryOperation.Create, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
+			try
+			{
+				// validate & re-update object
+				objects.ForEach(@object =>
+				{
+					var currentState = context.SetCurrentState(@object);
+					if (RepositoryMediator.Validate(context.EntityDefinition, currentState))
+					{
+						@object.UpdateObject(currentState);
+						context.SetCurrentState(@object, currentState);
+					}
+				});
+
+				// call pre-create handlers
+				var handlerStates = new List<bool>();
+				await objects.ForEachAsync(async @object => handlerStates.Add(await context.CallPreCreateHandlersAsync(@object, false, cancellationToken).ConfigureAwait(false)), true, false).ConfigureAwait(false);
+				if (handlerStates.Any(state => state == true))
+					return false;
+
+				// CreateMany
+				dataSource = dataSource ?? context.GetPrimaryDataSource();
+				if (dataSource == null)
+					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+
+				if (dataSource.Mode.Equals(RepositoryMode.NoSQL))
+					await context.CreateManyAsync(dataSource, objects, null, cancellationToken).ConfigureAwait(false);
+				else if (dataSource.Mode.Equals(RepositoryMode.SQL))
+					await context.CreateManyAsync(dataSource, objects, cancellationToken).ConfigureAwait(false);
+
+				// update in cache storage
+				if (context.EntityDefinition.Cache != null)
+				{
+					objects.ForEach(@object => context.EntityDefinition.Cache.SetAsync(@object).Execute());
+					if (RepositoryMediator.IsDebugEnabled)
+						RepositoryMediator.WriteLogs($"Create: Add the object into the cache storage successful");
+				}
+
+				// call post-handlers
+				await objects.ForEachAsync(@object => context.CallPostCreateHandlersAsync(@object, false, cancellationToken), true, false).ConfigureAwait(false);
+				return true;
+			}
+			catch (OperationCanceledException ex)
+			{
+				context.Exception = ex;
+				throw;
+			}
+			catch (RepositoryOperationException ex)
+			{
+				context.Exception = ex;
+				RepositoryMediator.WriteLogs(ex);
+				throw;
+			}
+			catch (Exception ex)
+			{
+				context.Exception = ex;
+				RepositoryMediator.WriteLogs(ex);
+				throw new RepositoryOperationException($"Error occurred while creating new many", ex.Message.IsContains("duplicate key") ? new InformationExistedException("A key was existed", ex) : ex);
+			}
+		}
+
+		/// <summary>
+		/// Creates new instance of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The repository's context that hold the transaction and state data</param>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		/// <param name="cancellationToken">The cancellation token</param>
+		public static async Task CreateManyAsync<T>(RepositoryContext context, string aliasTypeName, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
+		{
+			context.AliasTypeName = aliasTypeName;
+			if (await RepositoryMediator.CreateManyAsync<T>(context, context.GetPrimaryDataSource(), objects, cancellationToken).ConfigureAwait(false))
+				objects.ForEach(@object => RepositoryMediator.SyncAsync(@object, context.AliasTypeName, false).Execute());
+		}
+
+		/// <summary>
+		/// Creates new instance of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		public static async Task CreateManyAsync<T>(string aliasTypeName, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
+		{
+			using (var context = new RepositoryContext())
+				await RepositoryMediator.CreateManyAsync(context, aliasTypeName, objects, cancellationToken).ConfigureAwait(false);
+		}
+		#endregion
+
 		#region Get
 		/// <summary>
 		/// Gets the instance of an object

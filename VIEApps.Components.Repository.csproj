@@ -33,7 +33,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Support .NET 10</PackageReleaseNotes>
+		<PackageReleaseNotes>Support .NET 10 with CreateMany</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -49,12 +49,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="3.5.0" />
+		<PackageReference Include="MongoDB.Driver" Version="3.5.2" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' != 'true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.10.2511.1" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.10.2511.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.10.2512.2" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.10.2512.2" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' == 'true'">

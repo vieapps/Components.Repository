@@ -656,7 +656,7 @@ namespace net.vieapps.Components.Repository
 					? values.IsGenericList() ? values as List<string> : (values as HashSet<string>).ToList()
 					: new List<string>();
 				var mapInfo = attribute.GetMapInfo(definition);
-				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, mapValues)).ToList();
+				statements = statements.Concat(dbProviderFactory.PrepareUpdateMappings(mapInfo.TableName, mapInfo.LinkColumn, mapInfo.MapColumn, linkValue, mapValues)).ToList();
 			});
 
 			return statements;
@@ -720,7 +720,7 @@ namespace net.vieapps.Components.Repository
 			definition.Attributes.Where(attribute => attribute.IsMappings()).ForEach(attribute =>
 			{
 				var mapInfo = attribute.GetMapInfo(definition);
-				var mapValues = dbProviderFactory.GetMappings(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue);
+				var mapValues = dbProviderFactory.GetMappings(connection, mapInfo.TableName, mapInfo.LinkColumn, mapInfo.MapColumn, linkValue);
 				@object.SetAttributeValue(attribute, attribute.IsGenericHashSet() ? mapValues.ToHashSet() as object : mapValues);
 			});
 		}
@@ -742,7 +742,7 @@ namespace net.vieapps.Components.Repository
 			await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async attribute =>
 			{
 				var mapInfo = attribute.GetMapInfo(definition);
-				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, linkValue, cancellationToken).ConfigureAwait(false);
+				var mapValues = await dbProviderFactory.GetMappingsAsync(connection, mapInfo.TableName, mapInfo.LinkColumn, mapInfo.MapColumn, linkValue, cancellationToken).ConfigureAwait(false);
 				@object.SetAttributeValue(attribute, attribute.IsGenericHashSet() ? mapValues.ToHashSet() as object : mapValues);
 			}, true, false).ConfigureAwait(false);
 		}
@@ -802,6 +802,28 @@ namespace net.vieapps.Components.Repository
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
 
+		static string Create<T>(this DbProviderFactory dbProviderFactory, DbConnection connection, T @object) where T : class
+		{
+			var command = connection.CreateCommand(@object.PrepareCreateOrigin(dbProviderFactory));
+			try
+			{
+				command.ExecuteNonQuery();
+				var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
+				if (@object.IsGotExtendedProperties())
+				{
+					command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
+					command.ExecuteNonQuery();
+					if (RepositoryMediator.IsDebugEnabled)
+						info += "\r\n" + command.GetInfo();
+				}
+				return info;
+			}
+			catch (Exception ex)
+			{
+				throw new RepositoryOperationException($"Could not perform CREATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
+			}
+		}
+
 		/// <summary>
 		/// Creates new the record of an object
 		/// </summary>
@@ -819,35 +841,16 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = dbProviderFactory.CreateConnection(dataSource))
 			{
-				var command = connection.CreateCommand(@object.PrepareCreateOrigin(dbProviderFactory));
-				try
-				{
-					command.ExecuteNonQuery();
-					var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
-
-					if (@object.IsGotExtendedProperties())
+				var info = dbProviderFactory.Create(connection, @object);
+				info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
+				stopwatch.Stop();
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new[]
 					{
-						command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
-						command.ExecuteNonQuery();
-						if (RepositoryMediator.IsDebugEnabled)
-							info += "\r\n" + command.GetInfo();
-					}
-
-					info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
-
-					stopwatch.Stop();
-					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new[]
-						{
-							$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-							$"Execution times: {stopwatch.GetElapsedTimes()}",
-							info
-						});
-				}
-				catch (Exception ex)
-				{
-					throw new RepositoryOperationException($"Could not perform CREATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
-				}
+						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 			}
 		}
 
@@ -864,6 +867,28 @@ namespace net.vieapps.Components.Repository
 				context.Operation = RepositoryOperation.Create;
 				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
 				context.Create(dataSource, @object);
+			}
+		}
+
+		static async Task<string> CreateAsync<T>(this DbProviderFactory dbProviderFactory, DbConnection connection, T @object, CancellationToken cancellationToken = default) where T : class
+		{
+			var command = connection.CreateCommand(@object.PrepareCreateOrigin(dbProviderFactory));
+			try
+			{
+				await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+				var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
+				if (@object.IsGotExtendedProperties())
+				{
+					command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
+					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+					if (RepositoryMediator.IsDebugEnabled)
+						info += "\r\n" + command.GetInfo();
+				}
+				return info;
+			}
+			catch (Exception ex)
+			{
+				throw new RepositoryOperationException($"Could not perform CREATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
 			}
 		}
 
@@ -886,35 +911,16 @@ namespace net.vieapps.Components.Repository
 			var dbProviderFactory = dataSource.GetProviderFactory();
 			using (var connection = await dbProviderFactory.CreateConnectionAsync(dataSource, cancellationToken).ConfigureAwait(false))
 			{
-				var command = connection.CreateCommand(@object.PrepareCreateOrigin(dbProviderFactory));
-				try
-				{
-					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-					var info = !RepositoryMediator.IsDebugEnabled ? "" : command.GetInfo();
-
-					if (@object.IsGotExtendedProperties())
+				var info = await dbProviderFactory.CreateAsync(connection, @object, cancellationToken).ConfigureAwait(false);
+				info += "\r\n" + @object.UpdateMappings(connection, dbProviderFactory);
+				stopwatch.Stop();
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new[]
 					{
-						command = connection.CreateCommand(@object.PrepareCreateExtent(dbProviderFactory));
-						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-						if (RepositoryMediator.IsDebugEnabled)
-							info += "\r\n" + command.GetInfo();
-					}
-
-					info += "\r\n" + await @object.UpdateMappingsAsync(connection, dbProviderFactory, cancellationToken).ConfigureAwait(false);
-
-					stopwatch.Stop();
-					if (RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs(new[]
-						{
-							$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
-							$"Execution times: {stopwatch.GetElapsedTimes()}",
-							info
-						});
-				}
-				catch (Exception ex)
-				{
-					throw new RepositoryOperationException($"Could not perform CREATE command [{typeof(T)}#{@object?.GetEntityID()}]", command.GetInfo(), ex);
-				}
+						$"SQL: Perform CREATE command successful [{typeof(T)}#{@object?.GetEntityID()}] @ {dataSource.Name}",
+						$"Execution times: {stopwatch.GetElapsedTimes()}",
+						info
+					});
 			}
 		}
 
@@ -937,6 +943,96 @@ namespace net.vieapps.Components.Repository
 		}
 		#endregion
 
+		#region Create (many)
+		/// <summary>
+		/// Creates new the records of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="objects">The collection of objects for creating new instance in storage</param>
+		public static void CreateMany<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<T> objects) where T : class
+		{
+			if (objects == null)
+				throw new ArgumentNullException(nameof(objects), "The objects are null");
+
+			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
+			var dbProviderFactory = dataSource.GetProviderFactory();
+			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			{
+				objects.ForEach(@object => dbProviderFactory.Create(connection, @object));
+				stopwatch.Stop();
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new[]
+					{
+						$"NoSQL: Perform CREATE command on multiple objects successful [{typeof(T)}]",
+						$"{(objects != null ? "Objects' IDs: " + objects.Select(@object => @object.GetEntityID()).Join(" - ") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+					});
+			}
+		}
+
+		/// <summary>
+		/// Creates new the records of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource"></param>
+		/// <param name="objects"></param>
+		public static void CreateMany<T>(DataSource dataSource, IEnumerable<T> objects) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				context.Operation = RepositoryOperation.Create;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				context.CreateMany(dataSource, objects);
+			}
+		}
+
+		/// <summary>
+		/// Creates new the records of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="objects">The collection of objects for creating new instance in storage</param>
+		public static async Task CreateManyAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
+		{
+			if (objects == null)
+				throw new ArgumentNullException(nameof(objects), "The objects are null");
+
+			var stopwatch = Stopwatch.StartNew();
+			dataSource = dataSource ?? context.GetPrimaryDataSource();
+			var dbProviderFactory = dataSource.GetProviderFactory();
+			using (var connection = dbProviderFactory.CreateConnection(dataSource))
+			{
+				await objects.ForEachAsync(@object => dbProviderFactory.CreateAsync(connection, @object, cancellationToken), true, false).ConfigureAwait(false);
+				stopwatch.Stop();
+				if (RepositoryMediator.IsDebugEnabled)
+					RepositoryMediator.WriteLogs(new[]
+					{
+						$"NoSQL: Perform CREATE command on multiple objects successful [{typeof(T)}]",
+						$"{(objects != null ? "Objects' IDs: " + objects.Select(@object => @object.GetEntityID()).Join(" - ") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+					});
+			}
+		}
+
+		/// <summary>
+		/// Creates new the records of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource"></param>
+		/// <param name="objects"></param>
+		public static async Task CreateManyAsync<T>(DataSource dataSource, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
+		{
+			using (var context = new RepositoryContext())
+			{
+				context.Operation = RepositoryOperation.Create;
+				context.EntityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+				await context.CreateManyAsync(dataSource, objects, cancellationToken).ConfigureAwait(false);
+			}
+		}
+		#endregion
+
 		#region Get
 		static Tuple<string, List<DbParameter>> PrepareGetOrigin<T>(this T @object, string id, DbProviderFactory dbProviderFactory) where T : class
 		{
@@ -949,8 +1045,8 @@ namespace net.vieapps.Components.Repository
 				.ToList();
 
 			var info = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
-			var statement = $"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE {info.Item1}";
-			var parameters = info.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
+			var statement = $"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE {info.Statement}";
+			var parameters = info.Parameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -962,8 +1058,8 @@ namespace net.vieapps.Components.Repository
 				.ToList();
 
 			var info = Filters<T>.Equals("ID", id).GetSqlStatement();
-			var statement = $"SELECT {fields.Join(", ")} FROM {RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE {info.Item1}";
-			var parameters = info.Item2.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
+			var statement = $"SELECT {fields.Join(", ")} FROM {RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE {info.Statement}";
+			var parameters = info.Parameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
 
 			return new Tuple<string, List<DbParameter>>(statement, parameters);
 		}
@@ -1903,16 +1999,16 @@ namespace net.vieapps.Components.Repository
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID IN "
-								+ $"(SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")})",
-							statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+								+ $"(SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Statement.Replace("Origin.", "")})",
+							statement.Parameters.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 						);
 						command.ExecuteNonQuery();
 						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 
 					command = connection.CreateCommand(
-						$"DELETE FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")}",
-						statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+						$"DELETE FROM {context.EntityDefinition.TableName} WHERE {statement.Statement.Replace("Origin.", "")}",
+						statement.Parameters.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					command.ExecuteNonQuery();
 					info += "\r\n" + command.GetInfo();
@@ -1962,16 +2058,16 @@ namespace net.vieapps.Components.Repository
 					{
 						command = connection.CreateCommand(
 							$"DELETE FROM {context.EntityDefinition.RepositoryDefinition.ExtendedPropertiesTableName} WHERE ID IN "
-								+ $"SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")}",
-							statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+								+ $"SELECT {context.EntityDefinition.PrimaryKey} FROM {context.EntityDefinition.TableName} WHERE {statement.Statement.Replace("Origin.", "")}",
+							statement.Parameters.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 						);
 						await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 						info = RepositoryMediator.IsDebugEnabled ? command.GetInfo() : "";
 					}
 
 					command = connection.CreateCommand(
-						$"DELETE FROM {context.EntityDefinition.TableName} WHERE {statement.Item1.Replace("Origin.", "")}",
-						statement.Item2.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
+						$"DELETE FROM {context.EntityDefinition.TableName} WHERE {statement.Statement.Replace("Origin.", "")}",
+						statement.Parameters.Select(kvp => dbProviderFactory.CreateParameter(kvp)).ToList()
 					);
 					await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 					info += "\r\n" + command.GetInfo();
@@ -3059,8 +3155,8 @@ namespace net.vieapps.Components.Repository
 			var stopwatch = Stopwatch.StartNew();
 			var info = "";
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
+			var standardProperties = propertiesInfo.StandardProperties;
+			var extendedProperties = propertiesInfo.ExtendedProperties;
 
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
@@ -3142,8 +3238,8 @@ namespace net.vieapps.Components.Repository
 			var stopwatch = Stopwatch.StartNew();
 			var info = "";
 			var propertiesInfo = RepositoryMediator.GetProperties<T>(businessRepositoryEntityID, context.EntityDefinition);
-			var standardProperties = propertiesInfo.Item1;
-			var extendedProperties = propertiesInfo.Item2;
+			var standardProperties = propertiesInfo.StandardProperties;
+			var extendedProperties = propertiesInfo.ExtendedProperties;
 
 			dataSource = dataSource ?? context.GetPrimaryDataSource();
 			var dbProviderFactory = dataSource.GetProviderFactory();
@@ -3849,7 +3945,7 @@ namespace net.vieapps.Components.Repository
 					await definition.Attributes.Where(attribute => attribute.IsMappings()).ForEachAsync(async attribute =>
 					{
 						var mapInfo = attribute.GetMapInfo(definition);
-						await context.CreateMapingTableAsync(dataSource, mapInfo.Item1, mapInfo.Item2, mapInfo.Item3, tracker, cancellationToken).ConfigureAwait(false);
+						await context.CreateMapingTableAsync(dataSource, mapInfo.TableName, mapInfo.LinkColumn, mapInfo.MapColumn, tracker, cancellationToken).ConfigureAwait(false);
 					}, true, false).ConfigureAwait(false);
 
 					if (definition.Extendable && definition.RepositoryDefinition != null)

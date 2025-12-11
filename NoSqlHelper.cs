@@ -560,6 +560,141 @@ namespace net.vieapps.Components.Repository
 			=> context.GetCollection<T>(dataSource).CreateAsync(context.NoSqlSession, @object, options, cancellationToken);
 		#endregion
 
+		#region Create (many)
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="collection"></param>
+		/// <param name="session">The working session</param>
+		/// <param name="objects"></param>
+		/// <param name="options"></param>
+		public static void CreateMany<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<T> objects, InsertManyOptions options = null) where T : class
+		{
+			if (objects == null)
+				throw new ArgumentNullException(nameof(objects), "The objects are null");
+
+			var stopwatch = Stopwatch.StartNew();
+			collection.InsertMany(session ?? collection.StartSession(), objects, options);
+			stopwatch.Stop();
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(new[]
+				{
+					$"NoSQL: Perform CREATE command on multiple objects successful [{typeof(T)}] @ {collection.CollectionNamespace.CollectionName}",
+					$"{(objects != null ? "Objects' IDs: " + objects.Select(@object => @object.GetEntityID()).Join(" - ") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+				});
+		}
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="collection"></param>
+		/// <param name="objects"></param>
+		/// <param name="options"></param>
+		public static void CreateMany<T>(this IMongoCollection<T> collection, IEnumerable<T> objects, InsertManyOptions options = null) where T : class
+			=> collection.CreateMany(null, objects, options);
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="objects">The collection of objects for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static void CreateMany<T>(DataSource dataSource, IEnumerable<T> objects, InsertManyOptions options = null) where T : class
+			=> NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).CreateMany(objects, options);
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objects">The collection of objects for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static void CreateMany<T>(IEnumerable<T> objects, InsertManyOptions options = null) where T : class
+			=> NoSqlHelper.CreateMany(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), objects, options);
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="objects">The object for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static void CreateMany<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<T> objects, InsertManyOptions options = null) where T : class
+			=> context.GetCollection<T>(dataSource).CreateMany(context.NoSqlSession, objects, options);
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="collection"></param>
+		/// <param name="session">The working session</param>
+		/// <param name="objects">The collection of objects for creating new instance in storage</param>
+		/// <param name="options"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static async Task CreateManyAsync<T>(this IMongoCollection<T> collection, IClientSessionHandle session, IEnumerable<T> objects, InsertManyOptions options = null, CancellationToken cancellationToken = default) where T : class
+		{
+			if (objects == null)
+				throw new ArgumentNullException(nameof(objects), "The objects are null");
+
+			var stopwatch = Stopwatch.StartNew();
+			await collection.InsertManyAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), objects, options, cancellationToken).ConfigureAwait(false);
+			stopwatch.Stop();
+			if (RepositoryMediator.IsDebugEnabled)
+				RepositoryMediator.WriteLogs(new[]
+				{
+					$"NoSQL: Perform CREATE command on multiple objects successful [{typeof(T)}] @ {collection.CollectionNamespace.CollectionName}",
+					$"{(objects != null ? "Objects' IDs: " + objects.Select(@object => @object.GetEntityID()).Join(" - ") + "\r\n" : "")}Execution times: {stopwatch.GetElapsedTimes()}"
+				});
+		}
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="collection"></param>
+		/// <param name="objects"></param>
+		/// <param name="options"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static Task CreateManyAsync<T>(this IMongoCollection<T> collection, IEnumerable<T> objects, InsertManyOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> collection.CreateManyAsync(null, objects, options, cancellationToken);
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="objects">The collection of objects for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static Task CreateManyAsync<T>(DataSource dataSource, IEnumerable<T> objects, InsertManyOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> NoSqlHelper.GetCollection<T>(dataSource, RepositoryMediator.GetEntityDefinition<T>()).CreateManyAsync(objects, options, cancellationToken);
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="objects">The collection of objects for creating new instance in storage</param>
+		/// <param name="options"></param>
+		public static Task CreateManyAsync<T>(IEnumerable<T> objects, InsertManyOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> NoSqlHelper.CreateManyAsync(RepositoryMediator.GetEntityDefinition<T>().GetPrimaryDataSource(), objects, options, cancellationToken);
+
+		/// <summary>
+		/// Creates new document of collection of objects
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="context">The working context</param>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="objects">The collection of objects for creating new instance in storage</param>
+		/// <param name="options"></param>
+		/// <param name="cancellationToken"></param>
+		public static Task CreateManyAsync<T>(this RepositoryContext context, DataSource dataSource, IEnumerable<T> objects, InsertManyOptions options = null, CancellationToken cancellationToken = default) where T : class
+			=> context.GetCollection<T>(dataSource).CreateManyAsync(context.NoSqlSession, objects, options, cancellationToken);
+		#endregion
+
 		#region Get
 		/// <summary>
 		/// Gets document of an object
