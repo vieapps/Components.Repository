@@ -997,7 +997,7 @@ namespace net.vieapps.Components.Repository
 		public DbType DbType => this.Type.GetDbType();
 		#endregion
 
-		#region Validations
+		#region Validations & Helpers
 		/// <summary>
 		/// Gets the collection of reserved words (means the excluded attributes)
 		/// </summary>
@@ -1022,11 +1022,18 @@ namespace net.vieapps.Components.Repository
 			if (ExtendedPropertyDefinition.ReservedWords.Contains(name.ToLower()))
 				throw new InformationInvalidException("The name is system reserved word");
 		}
-		#endregion
 
-		#region Helper methods
 		public object GetDefaultValue()
-			=> this.DefaultValue?.CastAs(this.Type);
+		{
+			try
+			{
+				return this.DefaultValue?.CastAs(this.Type);
+			}
+			catch
+			{
+				return this.Type.IsValueType ? this.Type.CreateInstance() : null;
+			}
+		}
 
 		public override string ToString()
 			=> this.ToJson().ToString(Formatting.None);
