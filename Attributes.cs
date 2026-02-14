@@ -287,6 +287,21 @@ namespace net.vieapps.Components.Repository
 		/// Gets or Sets the name of the unique index (for ensuring schemas)
 		/// </summary>
 		public string UniqueIndexName { get; set; }
+
+		/// <summary>
+		/// Gets or Sets the name of the compound index (for ensuring schemas)
+		/// </summary>
+		public string CompoundIndexName { get; set; }
+
+		/// <summary>
+		/// Gets or Sets the reverse index state (means descending index)
+		/// </summary>
+		public bool Reverse { get; set; } = false;
+
+		/// <summary>
+		/// Gets or Sets TTL index (seconds)
+		/// </summary>
+		public long ExpireAfter { get; set; } = 0;
 	}
 
 	// ------------------------------------------

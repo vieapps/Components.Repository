@@ -2488,9 +2488,9 @@ namespace net.vieapps.Components.Repository
 					else
 						uniqueIndexes.Add(name, new List<AttributeInfo> { attribute });
 
-					if (!string.IsNullOrWhiteSpace(sortInfo.IndexName))
+					if (!string.IsNullOrWhiteSpace(sortInfo.IndexName) || !string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName))
 					{
-						name = $"{prefix}_{sortInfo.IndexName}";
+						name = $"{prefix}_{sortInfo.IndexName ?? sortInfo.CompoundIndexName}";
 						if (normalIndexes.TryGetValue(name, out indexes))
 							indexes.Add(attribute);
 						else
@@ -2499,7 +2499,7 @@ namespace net.vieapps.Components.Repository
 				}
 				else
 				{
-					var name = prefix + (string.IsNullOrWhiteSpace(sortInfo.IndexName) ? "" : $"_{sortInfo.IndexName}");
+					var name = prefix + (string.IsNullOrWhiteSpace(sortInfo.IndexName) && string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName) ? "" : $"_{sortInfo.IndexName ?? sortInfo.CompoundIndexName}");
 					if (normalIndexes.TryGetValue(name, out var indexes))
 						indexes.Add(attribute);
 					else
@@ -2541,15 +2541,19 @@ namespace net.vieapps.Components.Repository
 			await normalIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async kvp =>
 			{
 				IndexKeysDefinition<BsonDocument> index = null;
+				TimeSpan? expireAfter = null;
 				kvp.Value.ForEach(attribute =>
 				{
+					var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
 					index = index == null
-						? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
-						: index.Ascending(attribute.Name);
+						? sortInfo.Reverse ? Builders<BsonDocument>.IndexKeys.Descending(attribute.Name) : Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
+						: sortInfo.Reverse ? index.Descending(attribute.Name) : index.Ascending(attribute.Name);
+					if (expireAfter == null && sortInfo.ExpireAfter > 0)
+						expireAfter = TimeSpan.FromSeconds(sortInfo.ExpireAfter);
 				});
 				try
 				{
-					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true }), null, cancellationToken).ConfigureAwait(false);
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, ExpireAfter = expireAfter }), null, cancellationToken).ConfigureAwait(false);
 					tracker?.Invoke($"Create index of No SQL successful => {kvp.Key}", null);
 					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create index of No SQL successful => {kvp.Key}", null);
@@ -2564,15 +2568,19 @@ namespace net.vieapps.Components.Repository
 			await uniqueIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async kvp =>
 			{
 				IndexKeysDefinition<BsonDocument> index = null;
+				TimeSpan? expireAfter = null;
 				kvp.Value.ForEach(attribute =>
 				{
+					var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
 					index = index == null
-						? Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
-						: index.Ascending(attribute.Name);
+						? sortInfo.Reverse ? Builders<BsonDocument>.IndexKeys.Descending(attribute.Name) : Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
+						: sortInfo.Reverse ? index.Descending(attribute.Name) : index.Ascending(attribute.Name);
+					if (expireAfter == null && sortInfo.ExpireAfter > 0)
+						expireAfter = TimeSpan.FromSeconds(sortInfo.ExpireAfter);
 				});
 				try
 				{
-					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, Unique = true }), null, cancellationToken).ConfigureAwait(false);
+					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, Unique = true, ExpireAfter = expireAfter }), null, cancellationToken).ConfigureAwait(false);
 					tracker?.Invoke($"Create unique index of No SQL successful => {kvp.Key}", null);
 					if (tracker == null && RepositoryMediator.IsDebugEnabled)
 						RepositoryMediator.WriteLogs($"Create unique index of No SQL successful => {kvp.Key}", null);
