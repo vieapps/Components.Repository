@@ -1023,15 +1023,20 @@ namespace net.vieapps.Components.Repository
 				throw new InformationInvalidException("The name is system reserved word");
 		}
 
-		public object GetDefaultValue()
+		/// <summary>
+		/// Gets the default value
+		/// </summary>
+		/// <param name="allowNull"></param>
+		/// <returns></returns>
+		public object GetDefaultValue(bool allowNull = false)
 		{
 			try
 			{
-				return this.DefaultValue?.CastAs(this.Type);
+				return ObjectService.CastAs(this.DefaultValue, this.Type, allowNull);
 			}
 			catch
 			{
-				return this.Type.IsValueType ? this.Type.CreateInstance() : null;
+				return this.Type.IsValueType ? this.Type.CreateInstance(true) : null;
 			}
 		}
 

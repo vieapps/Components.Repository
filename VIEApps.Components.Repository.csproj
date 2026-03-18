@@ -33,7 +33,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>CreateMany with latest components</PackageReleaseNotes>
+		<PackageReleaseNotes>Default Value</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -53,8 +53,8 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' != 'true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.10.2603.3" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.10.2603.3" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.10.2603.7" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.10.2603.7" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' == 'true'">
