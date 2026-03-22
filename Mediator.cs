@@ -1,6 +1,5 @@
 ﻿#region Related components
 using System;
-using System.Data;
 using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
@@ -745,7 +744,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="objects">The collection of objects for creating new instance in repository</param>
 		public static bool CreateMany<T>(RepositoryContext context, DataSource dataSource, IEnumerable<T> objects) where T : class
 		{
-			context.Prepare<T>(RepositoryOperation.Create, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
+			context.Prepare<T>(RepositoryOperation.Create, context.UseTransaction ? (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>() : null);
 			try
 			{
 				// validate & re-update object
@@ -820,9 +819,10 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="objects">The collection of objects for creating new instance in repository</param>
-		public static void CreateMany<T>(string aliasTypeName, IEnumerable<T> objects) where T : class
+		/// <param name="useTransaction">true to use transaction while creating new many</param>
+		public static void CreateMany<T>(string aliasTypeName, IEnumerable<T> objects, bool useTransaction = false) where T : class
 		{
-			using (var context = new RepositoryContext())
+			using (var context = new RepositoryContext(useTransaction))
 				RepositoryMediator.CreateMany(context, aliasTypeName, objects);
 		}
 
@@ -836,7 +836,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cancellationToken">The cancellation token</param>
 		public static async Task<bool> CreateManyAsync<T>(RepositoryContext context, DataSource dataSource, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
 		{
-			context.Prepare<T>(RepositoryOperation.Create, (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>());
+			context.Prepare<T>(RepositoryOperation.Create, context.UseTransaction ? (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>() : null);
 			try
 			{
 				// validate & re-update object
@@ -918,9 +918,10 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="objects">The collection of objects for creating new instance in repository</param>
-		public static async Task CreateManyAsync<T>(string aliasTypeName, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
+		/// <param name="useTransaction">true to use transaction while creating new many</param>
+		public static async Task CreateManyAsync<T>(string aliasTypeName, IEnumerable<T> objects, CancellationToken cancellationToken = default, bool useTransaction = false) where T : class
 		{
-			using (var context = new RepositoryContext())
+			using (var context = new RepositoryContext(useTransaction))
 				await RepositoryMediator.CreateManyAsync(context, aliasTypeName, objects, cancellationToken).ConfigureAwait(false);
 		}
 		#endregion

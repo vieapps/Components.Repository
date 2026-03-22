@@ -575,7 +575,10 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(objects), "The objects are null");
 
 			var stopwatch = Stopwatch.StartNew();
-			collection.InsertMany(session ?? collection.StartSession(), objects, options);
+			if (session != null)
+				collection.InsertMany(session, objects, options);
+			else
+				collection.InsertMany(objects, options);
 			stopwatch.Stop();
 			if (RepositoryMediator.IsDebugEnabled)
 				RepositoryMediator.WriteLogs(new[]
@@ -641,7 +644,7 @@ namespace net.vieapps.Components.Repository
 				throw new ArgumentNullException(nameof(objects), "The objects are null");
 
 			var stopwatch = Stopwatch.StartNew();
-			await collection.InsertManyAsync(session ?? await collection.StartSessionAsync(cancellationToken).ConfigureAwait(false), objects, options, cancellationToken).ConfigureAwait(false);
+			await (session != null ? collection.InsertManyAsync(session, objects, options, cancellationToken) : collection.InsertManyAsync(objects, options, cancellationToken)).ConfigureAwait(false);
 			stopwatch.Stop();
 			if (RepositoryMediator.IsDebugEnabled)
 				RepositoryMediator.WriteLogs(new[]
