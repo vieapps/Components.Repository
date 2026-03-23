@@ -1,20 +1,18 @@
 ﻿#region Related components
+using System;
+using System.Linq;
+using System.Diagnostics;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
-using MongoDB.Driver;
 using net.vieapps.Components.Utility;
-using System;
-using System.Collections;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-
 #endregion
 
 namespace net.vieapps.Components.Repository
@@ -2568,14 +2566,12 @@ namespace net.vieapps.Components.Repository
 				{ prefix, new List<AttributeInfo>() }
 			};
 			var uniqueIndexes = new Dictionary<string, List<AttributeInfo>>(StringComparer.OrdinalIgnoreCase);
+			var sortables = definition.Attributes.Where(attribute => attribute.IsSortable()).ToList();
 
-			// sortables
-			definition.Attributes.Where(attribute => attribute.IsSortable()).ForEach(attribute =>
+			// prepare unique indexes
+			sortables.ForEach(attribute =>
 			{
-				// get info
 				var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
-
-				// unique index
 				if (!string.IsNullOrWhiteSpace(sortInfo.UniqueIndexName))
 				{
 					var name = $"{prefix}_{sortInfo.UniqueIndexName}";
@@ -2584,18 +2580,12 @@ namespace net.vieapps.Components.Repository
 					else
 						uniqueIndexes.Add(name, new List<AttributeInfo> { attribute });
 				}
+			});
 
-				// compound index
-				if (!string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName))
-				{
-					var name = $"{prefix}_{sortInfo.CompoundIndexName}";
-					if (normalIndexes.TryGetValue(name, out var indexes))
-						indexes.Add(attribute);
-					else
-						normalIndexes.Add(name, new List<AttributeInfo> { attribute });
-				}
-
-				// normal index
+			// prepare normal indexes
+			sortables.ForEach(attribute =>
+			{
+				var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
 				if (!string.IsNullOrWhiteSpace(sortInfo.IndexName))
 				{
 					var name = $"{prefix}_{sortInfo.IndexName}";
@@ -2606,8 +2596,22 @@ namespace net.vieapps.Components.Repository
 				}
 			});
 
-			// mappings
-			definition.Attributes.Where(attribute => !attribute.IsSortable() && (attribute.IsMappings() || attribute.IsParentMapping())).ForEach(attribute =>
+			// prepare compound indexes
+			sortables.ForEach(attribute =>
+			{
+				var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
+				if (!string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName))
+				{
+					var name = $"{prefix}_{sortInfo.CompoundIndexName}";
+					if (normalIndexes.TryGetValue(name, out var indexes))
+						indexes.Add(attribute);
+					else
+						normalIndexes.Add(name, new List<AttributeInfo> { attribute });
+				}
+			});
+
+			// prepare indexes of mappings
+			definition.Attributes.Except(sortables).Where(attribute => attribute.IsMappings() || attribute.IsParentMapping()).ForEach(attribute =>
 			{
 				var name = $"{prefix}_{attribute.Name}";
 				if (normalIndexes.TryGetValue(name, out var indexes))
@@ -2616,7 +2620,7 @@ namespace net.vieapps.Components.Repository
 					normalIndexes.Add(name, new List<AttributeInfo> { attribute });
 			});
 
-			// alias
+			// prepare indexes of alias
 			definition.Attributes.Where(attribute => attribute.IsAlias()).ForEach(attribute =>
 			{
 				var aliasProps = attribute.GetCustomAttribute<AliasAttribute>().Properties.ToHashSet(",", true);
@@ -2628,7 +2632,7 @@ namespace net.vieapps.Components.Repository
 					uniqueIndexes.Add(name, index);
 			});
 
-			// text indexes
+			// prepare full-text indexes
 			var textIndexes = definition.Searchable
 				? definition.Attributes.Where(attribute => attribute.IsSearchable()).Select(attribute => string.IsNullOrWhiteSpace(attribute.Column) ? attribute.Name : attribute.Column).ToList()
 				: new List<string>();
