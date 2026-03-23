@@ -820,7 +820,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
 		/// <param name="objects">The collection of objects for creating new instance in repository</param>
 		/// <param name="useTransaction">true to use transaction while creating new many</param>
-		public static void CreateMany<T>(string aliasTypeName, IEnumerable<T> objects, bool useTransaction = false) where T : class
+		public static void CreateMany<T>(string aliasTypeName, IEnumerable<T> objects, bool useTransaction) where T : class
 		{
 			using (var context = new RepositoryContext(useTransaction))
 				RepositoryMediator.CreateMany(context, aliasTypeName, objects);
@@ -830,10 +830,19 @@ namespace net.vieapps.Components.Repository
 		/// Creates new instance of object
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		public static void CreateMany<T>(string aliasTypeName, IEnumerable<T> objects) where T : class
+			=> RepositoryMediator.CreateMany<T>(aliasTypeName, objects, false);
+
+		/// <summary>
+		/// Creates new instance of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
 		/// <param name="context">The repository's context that hold the transaction and state data</param>
 		/// <param name="dataSource">The repository's data source that use to store object</param>
-		/// <param name="objects">The collection of objects for creating new instance in repository</param>
 		/// <param name="cancellationToken">The cancellation token</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
 		public static async Task<bool> CreateManyAsync<T>(RepositoryContext context, DataSource dataSource, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
 		{
 			context.Prepare<T>(RepositoryOperation.Create, context.UseTransaction ? (dataSource ?? context.GetPrimaryDataSource())?.StartSession<T>() : null);
@@ -917,13 +926,22 @@ namespace net.vieapps.Components.Repository
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
-		/// <param name="objects">The collection of objects for creating new instance in repository</param>
 		/// <param name="useTransaction">true to use transaction while creating new many</param>
-		public static async Task CreateManyAsync<T>(string aliasTypeName, IEnumerable<T> objects, CancellationToken cancellationToken = default, bool useTransaction = false) where T : class
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		public static async Task CreateManyAsync<T>(string aliasTypeName, IEnumerable<T> objects, bool useTransaction, CancellationToken cancellationToken = default) where T : class
 		{
 			using (var context = new RepositoryContext(useTransaction))
 				await RepositoryMediator.CreateManyAsync(context, aliasTypeName, objects, cancellationToken).ConfigureAwait(false);
 		}
+
+		/// <summary>
+		/// Creates new instance of object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="aliasTypeName">The string that presents type name of an alias</param>
+		/// <param name="objects">The collection of objects for creating new instance in repository</param>
+		public static Task CreateManyAsync<T>(string aliasTypeName, IEnumerable<T> objects, CancellationToken cancellationToken = default) where T : class
+			=> RepositoryMediator.CreateManyAsync<T>(aliasTypeName, objects, false, cancellationToken);
 		#endregion
 
 		#region Get
