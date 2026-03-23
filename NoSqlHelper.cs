@@ -1,18 +1,20 @@
 ﻿#region Related components
-using System;
-using System.Linq;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Driver;
 using net.vieapps.Components.Utility;
+using System;
+using System.Collections;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Xml.Linq;
+
 #endregion
 
 namespace net.vieapps.Components.Repository
@@ -195,6 +197,9 @@ namespace net.vieapps.Components.Repository
 		#region Collection
 		internal static ConcurrentDictionary<string, object> Collections { get; } = new ConcurrentDictionary<string, object>();
 
+		static string GetCollectionKey(string connectionString, string databaseName, string collectionName)
+			=> collectionName.Trim() + "#" + (databaseName.Trim() + "#" + connectionString.Trim()).ToLower().GetMD5();
+
 		/// <summary>
 		/// Gets a collection of MongoDB
 		/// </summary>
@@ -227,7 +232,7 @@ namespace net.vieapps.Components.Repository
 			if (disableCache)
 				return NoSqlHelper.GetCollection<T>(NoSqlHelper.GetDatabase(connectionString, databaseName, databaseSettings), collectionName, collectionSettings);
 
-			var key = collectionName.Trim() + "#" + (databaseName.Trim() + "#" + connectionString.Trim()).ToLower().GetMD5();
+			var key = GetCollectionKey(connectionString, databaseName, collectionName);
 			if (!NoSqlHelper.Collections.TryGetValue(key, out var collection))
 				lock (NoSqlHelper.Collections)
 				{
@@ -268,6 +273,83 @@ namespace net.vieapps.Components.Repository
 		/// <returns></returns>
 		public static IMongoCollection<T> GetCollection<T>(this RepositoryContext context, DataSource dataSource) where T : class
 			=> NoSqlHelper.GetCollection<T>(dataSource, context.EntityDefinition);
+
+		/// <summary>
+		/// Drops a collection in NoSQL database (MongoDB collection)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="entityDefinition">The entity definition</param>
+		/// <returns></returns>
+		public static bool DropCollection<T>(this DataSource dataSource, EntityDefinition entityDefinition) where T : class
+		{
+			entityDefinition = entityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+			var connectionString = RepositoryMediator.GetConnectionString(dataSource);
+			var database = NoSqlHelper.GetDatabase(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName);
+			database.DropCollection(entityDefinition.CollectionName);
+			return NoSqlHelper.Collections.TryRemove(GetCollectionKey(connectionString, dataSource.DatabaseName, entityDefinition.CollectionName), out var _);
+		}
+
+		/// <summary>
+		/// Gets a collection in NoSQL database (MongoDB collection)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <returns></returns>
+		public static bool DropCollection<T>(this DataSource dataSource) where T : class
+			=> dataSource.DropCollection<T>(RepositoryMediator.GetEntityDefinition<T>());
+
+		/// <summary>
+		/// Gets a collection in NoSQL database (MongoDB collection)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		public static bool DropCollection<T>() where T : class
+		{
+			var entityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			var dataSource = entityDefinition.GetPrimaryDataSource();
+			return dataSource != null && dataSource.DropCollection<T>(entityDefinition);
+		}
+
+		/// <summary>
+		/// Drops a collection in NoSQL database (MongoDB collection)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="entityDefinition">The entity definition</param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static async Task<bool> DropCollectionAsync<T>(this DataSource dataSource, EntityDefinition entityDefinition, CancellationToken cancellationToken = default) where T : class
+		{
+			entityDefinition = entityDefinition ?? RepositoryMediator.GetEntityDefinition<T>();
+			var connectionString = RepositoryMediator.GetConnectionString(dataSource);
+			var database = NoSqlHelper.GetDatabase(RepositoryMediator.GetConnectionString(dataSource), dataSource.DatabaseName);
+			await database.DropCollectionAsync(entityDefinition.CollectionName, cancellationToken).ConfigureAwait(false);
+			return NoSqlHelper.Collections.TryRemove(GetCollectionKey(connectionString, dataSource.DatabaseName, entityDefinition.CollectionName), out var _);
+		}
+
+		/// <summary>
+		/// Gets a collection in NoSQL database (MongoDB collection)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="dataSource">The data source</param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static Task<bool> DropCollectionAsync<T>(this DataSource dataSource, CancellationToken cancellationToken = default) where T : class
+			=> dataSource.DropCollectionAsync<T>(RepositoryMediator.GetEntityDefinition<T>());
+
+		/// <summary>
+		/// Gets a collection in NoSQL database (MongoDB collection)
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static Task<bool> DropCollectionAsync<T>(CancellationToken cancellationToken = default) where T : class
+		{
+			var entityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			var dataSource = entityDefinition.GetPrimaryDataSource();
+			return dataSource != null ? dataSource.DropCollectionAsync<T>(entityDefinition) : Task.FromResult<bool>(false);
+		}
 
 		/// <summary>
 		/// Starts a client session of this collection
@@ -2469,7 +2551,15 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Schemas & Indexes
-		internal static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
+		/// <summary>
+		/// Ensures the indexes of an entity-definition
+		/// </summary>
+		/// <param name="definition"></param>
+		/// <param name="dataSource"></param>
+		/// <param name="tracker"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public static async Task EnsureIndexesAsync(this EntityDefinition definition, DataSource dataSource, Action<string, Exception> tracker = null, CancellationToken cancellationToken = default)
 		{
 			// prepare
 			var prefix = "IDX_" + definition.CollectionName;
@@ -2482,7 +2572,10 @@ namespace net.vieapps.Components.Repository
 			// sortables
 			definition.Attributes.Where(attribute => attribute.IsSortable()).ForEach(attribute =>
 			{
+				// get info
 				var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
+
+				// unique index
 				if (!string.IsNullOrWhiteSpace(sortInfo.UniqueIndexName))
 				{
 					var name = $"{prefix}_{sortInfo.UniqueIndexName}";
@@ -2490,19 +2583,22 @@ namespace net.vieapps.Components.Repository
 						indexes.Add(attribute);
 					else
 						uniqueIndexes.Add(name, new List<AttributeInfo> { attribute });
-
-					if (!string.IsNullOrWhiteSpace(sortInfo.IndexName) || !string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName))
-					{
-						name = $"{prefix}_{sortInfo.IndexName ?? sortInfo.CompoundIndexName}";
-						if (normalIndexes.TryGetValue(name, out indexes))
-							indexes.Add(attribute);
-						else
-							normalIndexes.Add(name, new List<AttributeInfo> { attribute });
-					}
 				}
-				else
+
+				// compound index
+				if (!string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName))
 				{
-					var name = prefix + (string.IsNullOrWhiteSpace(sortInfo.IndexName) && string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName) ? "" : $"_{sortInfo.IndexName ?? sortInfo.CompoundIndexName}");
+					var name = $"{prefix}_{sortInfo.CompoundIndexName}";
+					if (normalIndexes.TryGetValue(name, out var indexes))
+						indexes.Add(attribute);
+					else
+						normalIndexes.Add(name, new List<AttributeInfo> { attribute });
+				}
+
+				// normal index
+				if (!string.IsNullOrWhiteSpace(sortInfo.IndexName))
+				{
+					var name = $"{prefix}_{sortInfo.IndexName}";
 					if (normalIndexes.TryGetValue(name, out var indexes))
 						indexes.Add(attribute);
 					else
@@ -2551,7 +2647,7 @@ namespace net.vieapps.Components.Repository
 					index = index == null
 						? sortInfo.Reverse ? Builders<BsonDocument>.IndexKeys.Descending(attribute.Name) : Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
 						: sortInfo.Reverse ? index.Descending(attribute.Name) : index.Ascending(attribute.Name);
-					if (expireAfter == null && sortInfo.ExpireAfter > 0)
+					if (expireAfter == null && sortInfo.ExpireAfter > 0 && (string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName) || !kvp.Key.EndsWith(sortInfo.CompoundIndexName)))
 						expireAfter = TimeSpan.FromSeconds(sortInfo.ExpireAfter);
 				});
 				try
@@ -2624,13 +2720,15 @@ namespace net.vieapps.Components.Repository
 				{
 					var @object = definition.Type.CreateInstance() as RepositoryBase;
 					@object.ID = UtilityService.BlankUUID;
-					await collection.InsertOneAsync(@object.ToBsonDocument(), null, cancellationToken).ContinueWith(async _ =>
-					{
-						await Task.Delay(456, cancellationToken).ConfigureAwait(false);
-						await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUUID), null, cancellationToken).ConfigureAwait(false);
-					}, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current).ConfigureAwait(false);
+					await collection.InsertOneAsync(@object.ToBsonDocument(), null, cancellationToken).ConfigureAwait(false);
+					await Task.Delay(456, cancellationToken).ConfigureAwait(false);
+					await collection.DeleteOneAsync(Builders<BsonDocument>.Filter.Eq("_id", UtilityService.BlankUUID), null, cancellationToken).ConfigureAwait(false);
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					tracker?.Invoke($"Error occurred while try to create blank document to eunsure index of No SQL => {ex.Message}", ex);
+					RepositoryMediator.WriteLogs($"Error occurred while try to create blank document to eunsure index of No SQL => {ex.Message}", ex, LogLevel.Error);
+				}
 		}
 		#endregion
 
