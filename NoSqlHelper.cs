@@ -2648,24 +2648,28 @@ namespace net.vieapps.Components.Repository
 				kvp.Value.ForEach(attribute =>
 				{
 					var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
-					index = index == null
-						? sortInfo.Reverse ? Builders<BsonDocument>.IndexKeys.Descending(attribute.Name) : Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
-						: sortInfo.Reverse ? index.Descending(attribute.Name) : index.Ascending(attribute.Name);
-					if (expireAfter == null && sortInfo.ExpireAfter > 0 && (string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName) || !kvp.Key.EndsWith(sortInfo.CompoundIndexName)))
-						expireAfter = TimeSpan.FromSeconds(sortInfo.ExpireAfter);
+					if (sortInfo != null)
+					{
+						index = index == null
+							? sortInfo.Reverse ? Builders<BsonDocument>.IndexKeys.Descending(attribute.Name) : Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
+							: sortInfo.Reverse ? index.Descending(attribute.Name) : index.Ascending(attribute.Name);
+						if (expireAfter == null && sortInfo.ExpireAfter > 0 && (string.IsNullOrWhiteSpace(sortInfo.CompoundIndexName) || !kvp.Key.IsEndsWith(sortInfo.CompoundIndexName)))
+							expireAfter = TimeSpan.FromSeconds(sortInfo.ExpireAfter);
+					}
 				});
-				try
-				{
-					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, ExpireAfter = expireAfter }), null, cancellationToken).ConfigureAwait(false);
-					tracker?.Invoke($"Create index of No SQL successful => {kvp.Key}", null);
-					if (tracker == null && RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"Create index of No SQL successful => {kvp.Key}", null);
-				}
-				catch (Exception ex)
-				{
-					tracker?.Invoke($"Error occurred while creating index of No SQL => {ex.Message}", ex);
-					RepositoryMediator.WriteLogs($"Error occurred while creating index of No SQL => {ex.Message}", ex, LogLevel.Error);
-				}
+				if (index != null)
+					try
+					{
+						await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, ExpireAfter = expireAfter }), null, cancellationToken).ConfigureAwait(false);
+						tracker?.Invoke($"Create index of No SQL successful => {kvp.Key}", null);
+						if (tracker == null && RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs($"Create index of No SQL successful => {kvp.Key}", null);
+					}
+					catch (Exception ex)
+					{
+						tracker?.Invoke($"Error occurred while creating index of No SQL => {ex.Message}", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while creating index of No SQL => {ex.Message}", ex, LogLevel.Error);
+					}
 			}, true, false).ConfigureAwait(false);
 
 			await uniqueIndexes.Where(kvp => kvp.Value.Count > 0).ForEachAsync(async kvp =>
@@ -2675,24 +2679,28 @@ namespace net.vieapps.Components.Repository
 				kvp.Value.ForEach(attribute =>
 				{
 					var sortInfo = attribute.GetCustomAttribute<SortableAttribute>();
-					index = index == null
-						? sortInfo.Reverse ? Builders<BsonDocument>.IndexKeys.Descending(attribute.Name) : Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
-						: sortInfo.Reverse ? index.Descending(attribute.Name) : index.Ascending(attribute.Name);
-					if (expireAfter == null && sortInfo.ExpireAfter > 0)
-						expireAfter = TimeSpan.FromSeconds(sortInfo.ExpireAfter);
+					if (sortInfo != null)
+					{
+						index = index == null
+							? sortInfo.Reverse ? Builders<BsonDocument>.IndexKeys.Descending(attribute.Name) : Builders<BsonDocument>.IndexKeys.Ascending(attribute.Name)
+							: sortInfo.Reverse ? index.Descending(attribute.Name) : index.Ascending(attribute.Name);
+						if (expireAfter == null && sortInfo.ExpireAfter > 0)
+							expireAfter = TimeSpan.FromSeconds(sortInfo.ExpireAfter);
+					}
 				});
-				try
-				{
-					await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Background = true, Unique = true, ExpireAfter = expireAfter }), null, cancellationToken).ConfigureAwait(false);
-					tracker?.Invoke($"Create unique index of No SQL successful => {kvp.Key}", null);
-					if (tracker == null && RepositoryMediator.IsDebugEnabled)
-						RepositoryMediator.WriteLogs($"Create unique index of No SQL successful => {kvp.Key}", null);
-				}
-				catch (Exception ex)
-				{
-					tracker?.Invoke($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
-					RepositoryMediator.WriteLogs($"Error occurred while creating unique index of No SQL => {ex.Message}", ex, LogLevel.Error);
-				}
+				if (index != null)
+					try
+					{
+						await collection.Indexes.CreateOneAsync(new CreateIndexModel<BsonDocument>(index, new CreateIndexOptions { Name = kvp.Key, Unique = true, Background = true, ExpireAfter = expireAfter }), null, cancellationToken).ConfigureAwait(false);
+						tracker?.Invoke($"Create unique index of No SQL successful => {kvp.Key}", null);
+						if (tracker == null && RepositoryMediator.IsDebugEnabled)
+							RepositoryMediator.WriteLogs($"Create unique index of No SQL successful => {kvp.Key}", null);
+					}
+					catch (Exception ex)
+					{
+						tracker?.Invoke($"Error occurred while creating unique index of No SQL => {ex.Message}", ex);
+						RepositoryMediator.WriteLogs($"Error occurred while creating unique index of No SQL => {ex.Message}", ex, LogLevel.Error);
+					}
 			}, true, false).ConfigureAwait(false);
 
 			if (textIndexes.Count > 0)
