@@ -7582,7 +7582,19 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		public static bool Set<T>(this ICache cache, T @object) where T : class
-			=> @object != null && cache.Set(@object.GetCacheKey(), @object);
+		{
+			if (@object is IDictionary<string, object> items)
+			{
+				cache.Set(items, null, cache.ExpirationTime);
+				return true;
+			}
+			if (@object is IDictionary<string, T> objects)
+			{
+				cache.Set(objects, null, cache.ExpirationTime);
+				return true;
+			}
+			return @object != null && cache.Set(@object.GetCacheKey(), @object);
+		}
 
 		/// <summary>
 		/// Adds an object into cache storage
@@ -7590,10 +7602,20 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> SetAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
-			=> @object != null
-				? cache.SetAsync(@object.GetCacheKey(), @object, cancellationToken)
-				: Task.FromResult(false);
+		public static async Task<bool> SetAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
+		{
+			if (@object is IDictionary<string, object> items)
+			{
+				await cache.SetAsync(items, null, cache.ExpirationTime, cancellationToken).ConfigureAwait(false);
+				return true;
+			}
+			if (@object is IDictionary<string, T> objects)
+			{
+				await cache.SetAsync(objects, null, cache.ExpirationTime, cancellationToken).ConfigureAwait(false);
+				return true;
+			}
+			return @object != null && await cache.SetAsync(@object.GetCacheKey(), @object, cancellationToken).ConfigureAwait(false);
+		}
 
 		/// <summary>
 		/// Adds an object into cache storage (when its no cached)
@@ -7602,7 +7624,19 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		public static bool Add<T>(this ICache cache, T @object) where T : class
-			=> @object != null && cache.Add(@object.GetCacheKey(), @object);
+		{
+			if (@object is IDictionary<string, object> items)
+			{
+				cache.Set(items, null, cache.ExpirationTime);
+				return true;
+			}
+			if (@object is IDictionary<string, T> objects)
+			{
+				cache.Set(objects, null, cache.ExpirationTime);
+				return true;
+			}
+			return @object != null && cache.Add(@object.GetCacheKey(), @object);
+		}
 
 		/// <summary>
 		/// Adds an object into cache storage (when its no cached)
@@ -7610,10 +7644,20 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> AddAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
-			=> @object != null
-				? cache.AddAsync(@object.GetCacheKey(), @object, cancellationToken)
-				: Task.FromResult(false);
+		public static async Task<bool> AddAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
+		{
+			if (@object is IDictionary<string, object> items)
+			{
+				await cache.SetAsync(items, null, cache.ExpirationTime, cancellationToken).ConfigureAwait(false);
+				return true;
+			}
+			if (@object is IDictionary<string, T> objects)
+			{
+				await cache.SetAsync(objects, null, cache.ExpirationTime, cancellationToken).ConfigureAwait(false);
+				return true;
+			}
+			return @object != null && await cache.AddAsync(@object.GetCacheKey(), @object, cancellationToken).ConfigureAwait(false);
+		}
 
 		/// <summary>
 		/// Replaces an object in the cache storage
@@ -7622,7 +7666,19 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
 		public static bool Replace<T>(this ICache cache, T @object) where T : class
-			=> @object != null && cache.Replace(@object.GetCacheKey(), @object);
+		{
+			if (@object is IDictionary<string, object> items)
+			{
+				cache.Set(items, null, cache.ExpirationTime);
+				return true;
+			}
+			if (@object is IDictionary<string, T> objects)
+			{
+				cache.Set(objects, null, cache.ExpirationTime);
+				return true;
+			}
+			return @object != null && cache.Replace(@object.GetCacheKey(), @object);
+		}
 
 		/// <summary>
 		/// Replaces an object in the cache storage
@@ -7630,10 +7686,20 @@ namespace net.vieapps.Components.Repository
 		/// <typeparam name="T"></typeparam>
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object to update into cache storage</param>
-		public static Task<bool> ReplaceAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
-			=> @object != null
-				? cache.ReplaceAsync(@object.GetCacheKey(), @object, cancellationToken)
-				: Task.FromResult(false);
+		public static async Task<bool> ReplaceAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
+		{
+			if (@object is IDictionary<string, object> items)
+			{
+				await cache.SetAsync(items, null, cache.ExpirationTime, cancellationToken).ConfigureAwait(false);
+				return true;
+			}
+			if (@object is IDictionary<string, T> objects)
+			{
+				await cache.SetAsync(objects, null, cache.ExpirationTime, cancellationToken).ConfigureAwait(false);
+				return true;
+			}
+			return @object != null && await cache.ReplaceAsync(@object.GetCacheKey(), @object, cancellationToken).ConfigureAwait(false);
+		}
 
 		/// <summary>
 		/// Fetchs an object from cache storage
@@ -7666,7 +7732,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object need to delete from cache storage</param>
 		public static bool Remove<T>(this ICache cache, T @object) where T : class
-			=> @object != null && (cache.Remove(@object.GetCacheKey()) || cache.Remove(@object.GetCacheKey() + ":Versions"));
+		{
+			if (@object is IEnumerable<string> keys)
+			{
+				cache.RemoveAsync(keys, null);
+				return true;
+			}
+			return @object != null && (cache.Remove(@object.GetCacheKey()) || cache.Remove(@object.GetCacheKey() + ":Versions"));
+		}
 
 		/// <summary>
 		/// Removes a cached object from cache storage
@@ -7684,7 +7757,14 @@ namespace net.vieapps.Components.Repository
 		/// <param name="cache">The cache storage</param>
 		/// <param name="object">The object need to delete from cache storage</param>
 		public static async Task<bool> RemoveAsync<T>(this ICache cache, T @object, CancellationToken cancellationToken = default) where T : class
-			=> @object != null && (await cache.RemoveAsync(@object.GetCacheKey(), cancellationToken).ConfigureAwait(false) || await cache.RemoveAsync(@object.GetCacheKey() + ":Versions", cancellationToken).ConfigureAwait(false));
+		{
+			if (@object is IEnumerable<string> keys)
+			{
+				await cache.RemoveAsync(keys, null, cancellationToken).ConfigureAwait(false);
+				return true;
+			}
+			return @object != null && (await cache.RemoveAsync(@object.GetCacheKey(), cancellationToken).ConfigureAwait(false) || await cache.RemoveAsync(@object.GetCacheKey() + ":Versions", cancellationToken).ConfigureAwait(false));
+		}
 
 		/// <summary>
 		/// Removes a cached object from cache storage
