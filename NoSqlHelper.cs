@@ -2060,8 +2060,8 @@ namespace net.vieapps.Components.Repository
 		{
 			if (identities == null || identities.Count < 1)
 				return new List<T>();
-			var info = RepositoryExtensions.PrepareNoSqlStatements(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessRepositoryEntityID, false);
-			return context.GetCollection<T>(dataSource).Find(context.NoSqlSession, info.Item1, info.Item2, 0, 1, options);
+			var (Filter, Sort) = RepositoryExtensions.PrepareNoSqlStatements(Filters<T>.Or(identities.Select(id => Filters<T>.Equals("ID", id))), sort, businessRepositoryEntityID, false);
+			return context.GetCollection<T>(dataSource).Find(context.NoSqlSession, Filter, Sort, 0, 1, options);
 		}
 
 		/// <summary>

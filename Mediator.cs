@@ -2753,9 +2753,7 @@ namespace net.vieapps.Components.Repository
 			try
 			{
 				// prepare
-				dataSource = dataSource ?? context.GetPrimaryDataSource();
-				if (dataSource == null)
-					throw new InformationInvalidException("Data source is invalid, please check the configuration");
+				dataSource = dataSource ?? context.GetPrimaryDataSource() ?? throw new InformationInvalidException("Data source is invalid, please check the configuration");
 
 				// find identities
 				List<string> identities = null;
@@ -2905,14 +2903,11 @@ namespace net.vieapps.Components.Repository
 			try
 			{
 				// prepare
-				dataSource = dataSource ?? context.GetPrimaryDataSource();
-				if (dataSource == null)
-					throw new InformationInvalidException("Data source is invalid, please check the configuration");
-
+				dataSource = dataSource ?? context.GetPrimaryDataSource() ?? throw new InformationInvalidException("Data source is invalid, please check the configuration");
 				List<T> objects = null;
 
 				// find identities
-				var identities = context.EntityDefinition.Cache == null
+				var identities = !processCache || context.EntityDefinition.Cache == null
 					? null
 					: RepositoryMediator.FindIdentities<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, processCache, cacheKey, cacheTime);
 
@@ -3007,7 +3002,7 @@ namespace net.vieapps.Components.Repository
 						if (!string.IsNullOrWhiteSpace(cacheKey))
 							context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(@object => @object.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Execute(ex => RepositoryMediator.WriteLogs($"Error occurred while working with cache => {ex.Message}", ex));
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
+							RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
 					}
 				}
 
@@ -3146,14 +3141,11 @@ namespace net.vieapps.Components.Repository
 			try
 			{
 				// prepare
-				dataSource = dataSource ?? context.GetPrimaryDataSource();
-				if (dataSource == null)
-					throw new InformationInvalidException("Data source is invalid, please check the configuration");
-
+				dataSource = dataSource ?? context.GetPrimaryDataSource() ?? throw new InformationInvalidException("Data source is invalid, please check the configuration");
 				List<T> objects = null;
 
 				// find identities
-				var identities = context.EntityDefinition.Cache == null
+				var identities = !processCache || context.EntityDefinition.Cache == null
 					? null
 					: await RepositoryMediator.FindIdentitiesAsync<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, processCache, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
 
@@ -3249,7 +3241,7 @@ namespace net.vieapps.Components.Repository
 						if (!string.IsNullOrWhiteSpace(cacheKey))
 							context.EntityDefinition.Cache.SetAsync(cacheKey, objects.Select(@object => @object.GetEntityID()).ToList(), cacheTime < 1 ? context.EntityDefinition.Cache.ExpirationTime / 2 : cacheTime).Execute(ex => RepositoryMediator.WriteLogs($"Error occurred while working with cache => {ex.Message}", ex));
 						if (RepositoryMediator.IsDebugEnabled)
-							RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(o => o.GetCacheKey()).ToString(" - ")}]");
+							RepositoryMediator.WriteLogs($"FIND: Add {objects.Count} raw object(s) into cache storage successful [{objects.Select(@object => @object.GetCacheKey()).ToString(" - ")}]");
 					}
 				}
 
