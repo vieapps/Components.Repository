@@ -49,12 +49,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="3.7.1" />
+		<PackageReference Include="MongoDB.Driver" Version="3.8.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' != 'true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.10.2604.24" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.10.2604.24" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.10.2605.1" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.10.2605.1" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' == 'true'">
