@@ -2619,7 +2619,7 @@ namespace net.vieapps.Components.Repository
 				List<string> identities = null;
 				try
 				{
-					identities = processCache && !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
+					identities = processCache && context.EntityDefinition.Cache != null && !string.IsNullOrWhiteSpace(cacheKey)
 						? context.EntityDefinition.Cache.Get<List<string>>(cacheKey)
 						: null;
 				}
@@ -2635,7 +2635,7 @@ namespace net.vieapps.Components.Repository
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? context.SelectIdentities(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
 							: new List<string>();
-					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
+					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null && identities.Count > 0)
 						context.EntityDefinition.Cache.SetAsync(cacheKey, identities, cacheTime).Execute(ex => RepositoryMediator.WriteLogs($"Error occurred while working with cache => {ex.Message}", ex));
 				}
 
@@ -2759,7 +2759,7 @@ namespace net.vieapps.Components.Repository
 				List<string> identities = null;
 				try
 				{
-					identities = processCache && !string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null
+					identities = processCache && context.EntityDefinition.Cache != null && !string.IsNullOrWhiteSpace(cacheKey)
 						? await context.EntityDefinition.Cache.GetAsync<List<string>>(cacheKey, cancellationToken).ConfigureAwait(false)
 						: null;
 				}
@@ -2775,7 +2775,7 @@ namespace net.vieapps.Components.Repository
 						: dataSource.Mode.Equals(RepositoryMode.SQL)
 							? await context.SelectIdentitiesAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken)
 							: new List<string>();
-					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null)
+					if (!string.IsNullOrWhiteSpace(cacheKey) && context.EntityDefinition.Cache != null && identities.Count > 0)
 						context.EntityDefinition.Cache.SetAsync(cacheKey, identities, cacheTime).Execute(ex => RepositoryMediator.WriteLogs($"Error occurred while working with cache => {ex.Message}", ex));
 				}
 
@@ -2907,9 +2907,9 @@ namespace net.vieapps.Components.Repository
 				List<T> objects = null;
 
 				// find identities
-				var identities = !processCache || context.EntityDefinition.Cache == null
-					? null
-					: RepositoryMediator.FindIdentities<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, processCache, cacheKey, cacheTime);
+				var identities = processCache && context.EntityDefinition.Cache != null && !string.IsNullOrWhiteSpace(cacheKey)
+					? RepositoryMediator.FindIdentities<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, processCache, cacheKey, cacheTime)
+					: null;
 
 				if (RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs(
@@ -2984,16 +2984,14 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-				// find missing objects
+				// find if has no cache
 				if (objects == null)
 				{
-					objects = identities == null || identities.Count > 0
-						? dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? context.Find(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, null)
-							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? context.Find(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
-								: new List<T>()
-						: new List<T>();
+					objects = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? context.Find(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, null)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? context.Find(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents)
+							: new List<T>();
 
 					// update results & cache
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
@@ -3145,9 +3143,9 @@ namespace net.vieapps.Components.Repository
 				List<T> objects = null;
 
 				// find identities
-				var identities = !processCache || context.EntityDefinition.Cache == null
-					? null
-					: await RepositoryMediator.FindIdentitiesAsync<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, processCache, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false);
+				var identities = processCache && context.EntityDefinition.Cache != null && !string.IsNullOrWhiteSpace(cacheKey)
+					?	await RepositoryMediator.FindIdentitiesAsync<T>(context, dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, processCache, cacheKey, cacheTime, cancellationToken).ConfigureAwait(false)
+					:	null;
 
 				if (RepositoryMediator.IsDebugEnabled)
 					RepositoryMediator.WriteLogs(
@@ -3224,16 +3222,14 @@ namespace net.vieapps.Components.Repository
 					}
 				}
 
-				// fetch objects if has no cache
+				// find if has no cache
 				if (objects == null)
 				{
-					objects = identities == null || identities.Count > 0
-						? dataSource.Mode.Equals(RepositoryMode.NoSQL)
-							? await context.FindAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
-							: dataSource.Mode.Equals(RepositoryMode.SQL)
-								? await context.FindAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false)
-								: new List<T>()
-						: new List<T>();
+					objects = dataSource.Mode.Equals(RepositoryMode.NoSQL)
+						? await context.FindAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, null, cancellationToken).ConfigureAwait(false)
+						: dataSource.Mode.Equals(RepositoryMode.SQL)
+							? await context.FindAsync(dataSource, filter, sort, pageSize, pageNumber, businessRepositoryEntityID, autoAssociateWithMultipleParents, cancellationToken).ConfigureAwait(false)
+							: new List<T>();
 
 					if (context.EntityDefinition.Cache != null && objects.Count > 0)
 					{
@@ -7961,17 +7957,17 @@ namespace net.vieapps.Components.Repository
 		public static bool IsDebugEnabled
 			=> RepositoryMediator.Logger != null && RepositoryMediator.Logger.IsEnabled(LogLevel.Debug);
 
-		internal static void WriteLogs(IEnumerable<string> logs, Exception ex = null, LogLevel logLevel = LogLevel.Debug)
+		internal static void WriteLogs(IEnumerable<string> logs, Exception ex = null, LogLevel logLevel = LogLevel.Information)
 		{
 			logs?.Where(log => !string.IsNullOrWhiteSpace(log))?.ForEach(log => RepositoryMediator.Logger?.Log(logLevel, log));
 			if (ex != null)
 				RepositoryMediator.Logger?.LogError(ex.Message, ex);
 		}
 
-		internal static void WriteLogs(string log, Exception ex = null, LogLevel logLevel = LogLevel.Debug)
+		internal static void WriteLogs(string log, Exception ex = null, LogLevel logLevel = LogLevel.Information)
 			=> RepositoryMediator.WriteLogs(string.IsNullOrWhiteSpace(log) ? null : new[] { log }, ex, logLevel);
 
-		internal static void WriteLogs(Exception ex, LogLevel logLevel = LogLevel.Debug)
+		internal static void WriteLogs(Exception ex, LogLevel logLevel = LogLevel.Information)
 			=> RepositoryMediator.WriteLogs(new List<string>(), ex, logLevel);
 		#endregion
 
