@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0;net8.0;netstandard2.0</TargetFrameworks>
+		<TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
 		<WarningLevel>3</WarningLevel>
 		<NoWarn>IDE0028,IDE0054,IDE0056,IDE0057,IDE0063,IDE0066,IDE0074,IDE0090,IDE0305,CA1068,CA1507,NU1701,1573,1591</NoWarn>
 		<RootNamespace>net.vieapps.Components.Repository</RootNamespace>
@@ -33,7 +33,7 @@
 		<PackageIcon>Icon.png</PackageIcon>
 		<PackageOutputPath>../</PackageOutputPath>
 		<PackageTags>polyglot;repository;orm;activerecord;database;sql;nosql;vieapps;vieapps.components</PackageTags>
-		<PackageReleaseNotes>Default Value, Indexes</PackageReleaseNotes>
+		<PackageReleaseNotes>Newtonsoft JSON serializer</PackageReleaseNotes>
 		<PackageProjectUrl>https://vieapps.net</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/vieapps/Components.Repository</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -49,12 +49,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="MongoDB.Driver" Version="3.8.0" />
+		<PackageReference Include="MongoDB.Driver" Version="3.9.0" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' != 'true'">
-		<PackageReference Include="VIEApps.Components.Caching" Version="10.10.2605.1" />
-		<PackageReference Include="VIEApps.Components.Security" Version="10.10.2605.1" />
+		<PackageReference Include="VIEApps.Components.Caching" Version="10.10.2606.2" />
+		<PackageReference Include="VIEApps.Components.Security" Version="10.10.2606.2" />
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(GeneratePackage)' == 'true'">

@@ -464,7 +464,7 @@ namespace net.vieapps.Components.Repository
 			=> dbProviderFactory.CreateParameter(attribute.Name, attribute.GetDbType(), attribute.IsStoredAsJson()
 				? value == null
 					? ""
-					: value.ToJson().ToString(Newtonsoft.Json.Formatting.None)
+					: value.ToJson().AsString()
 				: attribute.IsStoredAsString()
 					? value == null
 						? ""
@@ -1034,7 +1034,7 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Get
-		static Tuple<string, List<DbParameter>> PrepareGetOrigin<T>(this T @object, string id, DbProviderFactory dbProviderFactory) where T : class
+		static (string Statement, List<DbParameter> Parameters) PrepareGetOrigin<T>(this T @object, string id, DbProviderFactory dbProviderFactory) where T : class
 		{
 			var definition = RepositoryMediator.GetEntityDefinition<T>();
 
@@ -1044,24 +1044,24 @@ namespace net.vieapps.Components.Repository
 				.Select(attribute => "Origin." + (string.IsNullOrEmpty(attribute.Column) ? attribute.Name : $"{attribute.Column} AS {attribute.Name}"))
 				.ToList();
 
-			var info = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
-			var statement = $"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE {info.Statement}";
-			var parameters = info.Parameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
+			var (sqlStatement, sqlParameters) = Filters<T>.Equals(definition.PrimaryKey, id).GetSqlStatement();
+			var statement = $"SELECT {fields.Join(", ")} FROM {definition.TableName} AS Origin WHERE {sqlStatement}";
+			var parameters = sqlParameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
 
-			return new Tuple<string, List<DbParameter>>(statement, parameters);
+			return (statement, parameters);
 		}
 
-		static Tuple<string, List<DbParameter>> PrepareGetExtent<T>(this T @object, string id, DbProviderFactory dbProviderFactory, List<ExtendedPropertyDefinition> extendedProperties) where T : class
+		static (string Statement, List<DbParameter> Parameters) PrepareGetExtent<T>(this T @object, string id, DbProviderFactory dbProviderFactory, List<ExtendedPropertyDefinition> extendedProperties) where T : class
 		{
 			var fields = extendedProperties.Select(attribute => $"Origin.{attribute.Column} AS {attribute.Name}")
 				.Concat(new[] { "Origin.ID" })
 				.ToList();
 
-			var info = Filters<T>.Equals("ID", id).GetSqlStatement();
-			var statement = $"SELECT {fields.Join(", ")} FROM {RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE {info.Statement}";
-			var parameters = info.Parameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
+			var (sqlStatement, sqlParameters) = Filters<T>.Equals("ID", id).GetSqlStatement();
+			var statement = $"SELECT {fields.Join(", ")} FROM {RepositoryMediator.GetEntityDefinition<T>().RepositoryDefinition.ExtendedPropertiesTableName} AS Origin WHERE {sqlStatement}";
+			var parameters = sqlParameters.Select(param => dbProviderFactory.CreateParameter(param)).ToList();
 
-			return new Tuple<string, List<DbParameter>>(statement, parameters);
+			return (statement, parameters);
 		}
 
 		/// <summary>

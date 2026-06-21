@@ -8,10 +8,13 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
 using MongoDB.Bson;
+using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Serializers;
+using MongoDB.Driver;
+using Newtonsoft.Json.Linq;
 using net.vieapps.Components.Utility;
 #endregion
 
@@ -2745,4 +2748,144 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 	}
+
+	#region Newtonsoft JSON Conversions
+	public sealed class JTokenBsonSerializer : SerializerBase<JToken>
+	{
+		public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, JToken value)
+			=> JTokenBsonSerializer.WriteJToken(context.Writer, value);
+
+		static void WriteJToken(IBsonWriter writer, JToken token)
+		{
+			if (token == null || token.Type == JTokenType.Null)
+			{
+				writer.WriteNull();
+				return;
+			}
+
+			switch (token.Type)
+			{
+				case JTokenType.Object:
+					var obj = (JObject)token;
+					writer.WriteStartDocument();
+					foreach (var prop in obj.Properties())
+					{
+						writer.WriteName(prop.Name);
+						JTokenBsonSerializer.WriteJToken(writer, prop.Value);
+					}
+					writer.WriteEndDocument();
+					break;
+
+				case JTokenType.Array:
+					writer.WriteStartArray();
+					foreach (var item in (JArray)token)
+						JTokenBsonSerializer.WriteJToken(writer, item);
+					writer.WriteEndArray();
+					break;
+
+				case JTokenType.Integer:
+					writer.WriteInt64(token.Value<long>());
+					break;
+
+				case JTokenType.Float:
+					writer.WriteDouble(token.Value<double>());
+					break;
+
+				case JTokenType.String:
+					writer.WriteString(token.Value<string>());
+					break;
+
+				case JTokenType.Boolean:
+					writer.WriteBoolean(token.Value<bool>());
+					break;
+
+				case JTokenType.Date:
+					var dt = token.Value<DateTime>();
+					writer.WriteDateTime(dt.ToUnixTimestamp());
+					break;
+
+				case JTokenType.Bytes:
+					writer.WriteBytes(token.Value<byte[]>());
+					break;
+
+				case JTokenType.Guid:
+					writer.WriteGuid(token.Value<Guid>());
+					break;
+
+				case JTokenType.Uri:
+					writer.WriteString(token.Value<Uri>().ToString());
+					break;
+
+				case JTokenType.TimeSpan:
+					writer.WriteInt64(token.Value<TimeSpan>().Ticks);
+					break;
+
+				case JTokenType.Undefined:
+					writer.WriteUndefined();
+					break;
+
+				default:
+					writer.WriteNull();
+					break;
+			}
+		}
+
+		public override JToken Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+		{
+			var bsonValue = BsonValueSerializer.Instance.Deserialize(context, args);
+			return JTokenBsonSerializer.BsonToJToken(bsonValue);
+		}
+
+		static JToken BsonToJToken(BsonValue bson)
+		{
+			if (bson == null || bson.IsBsonNull) return JValue.CreateNull();
+
+			switch (bson.BsonType)
+			{
+				case BsonType.Document:
+					var obj = new JObject();
+					foreach (var elem in bson.AsBsonDocument)
+						obj.Add(elem.Name, JTokenBsonSerializer.BsonToJToken(elem.Value));
+					return obj;
+
+				case BsonType.Array:
+					var arr = new JArray();
+					foreach (var item in bson.AsBsonArray)
+						arr.Add(JTokenBsonSerializer.BsonToJToken(item));
+					return arr;
+
+				case BsonType.String:
+					return new JValue(bson.AsString);
+
+				case BsonType.Int32:
+					return new JValue((long)bson.AsInt32);
+
+				case BsonType.Int64:
+					return new JValue(bson.AsInt64);
+
+				case BsonType.Double:
+					return new JValue(bson.AsDouble);
+
+				case BsonType.Boolean:
+					return new JValue(bson.AsBoolean);
+
+				case BsonType.DateTime:
+					return new JValue(bson.ToUniversalTime());
+
+				case BsonType.Binary:
+					return new JValue(bson.AsByteArray);
+
+				case BsonType.ObjectId:
+					return new JValue(bson.AsObjectId.ToString());
+
+				case BsonType.Undefined:
+					return JValue.CreateUndefined();
+
+				default:
+					return JValue.CreateNull();
+			}
+		}
+	}
+	#endregion
+
 }

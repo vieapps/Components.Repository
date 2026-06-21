@@ -7,6 +7,9 @@ using System.Configuration;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
+using Newtonsoft.Json.Linq;
 using net.vieapps.Components.Utility;
 #endregion
 
@@ -14,6 +17,15 @@ namespace net.vieapps.Components.Repository
 {
 	public static class RepositoryStarter
 	{
+		static JTokenBsonSerializer JTokenSerializer { get; } = new JTokenBsonSerializer();
+
+		static RepositoryStarter()
+		{
+			BsonSerializer.RegisterSerializer<JToken>(RepositoryStarter.JTokenSerializer);
+			BsonSerializer.RegisterSerializer(typeof(JObject), RepositoryStarter.JTokenSerializer);
+			BsonSerializer.RegisterSerializer(typeof(JArray), RepositoryStarter.JTokenSerializer);
+		}
+
 		/// <summary>
 		/// Initializes all types of the assembly
 		/// </summary>
