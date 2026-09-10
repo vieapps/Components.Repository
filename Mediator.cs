@@ -48,6 +48,12 @@ namespace net.vieapps.Components.Repository
 
 		#region Repositories & Entities
 		/// <summary>
+		/// Gets the collection of all available entity definitions
+		/// </summary>
+		public static Dictionary<Type, EntityDefinition> GetEntityDefinitions()
+			=> RepositoryMediator.EntityDefinitions.Select(kvp => kvp).ToDictionary();
+
+		/// <summary>
 		/// Gets the repository definition that matched with the type
 		/// </summary>
 		/// <param name="type">The type of the definition</param>
@@ -7199,7 +7205,7 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					if (attribute.IsIntegralType())
-						options["MinValue"] = minValue.CastAs<int>();
+						options["MinValue"] = minValue.CastAs<long>();
 					else if (attribute.IsFloatingPointType())
 						options["MinValue"] = minValue.CastAs<double>();
 					else
@@ -7215,7 +7221,7 @@ namespace net.vieapps.Components.Repository
 				try
 				{
 					if (attribute.IsIntegralType())
-						options["MaxValue"] = maxValue.CastAs<int>();
+						options["MaxValue"] = maxValue.CastAs<long>();
 					else if (attribute.IsFloatingPointType())
 						options["MaxValue"] = maxValue.CastAs<double>();
 					else

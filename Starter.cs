@@ -176,7 +176,11 @@ namespace net.vieapps.Components.Repository
 
 					// ensure indexes (NoSQL)
 					if ("true".IsEquals(config.Attributes["ensureIndexes"]?.Value))
-						RepositoryMediator.EntityDefinitions.ForEachAsync(async definition =>
+						RepositoryMediator.EntityDefinitions.Where(kvp =>
+						{
+							var entityInfo = kvp.Key.GetCustomAttribute<EntityAttribute>();
+							return entityInfo == null || entityInfo.EnsureIndexes;
+						}).Select(kvp => kvp.Value).ToList().ForEachAsync(async definition =>
 						{
 							var primaryDataSource = RepositoryMediator.GetPrimaryDataSource(null, definition);
 							primaryDataSource = primaryDataSource != null && primaryDataSource.Mode.Equals(RepositoryMode.NoSQL)

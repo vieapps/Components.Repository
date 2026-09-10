@@ -144,6 +144,11 @@ namespace net.vieapps.Components.Repository
 		/// Gets or Sets the state to specify that content-type got some instances of portlet (default is true)
 		/// </summary>
 		public bool Portlets { get; set; } = true;
+
+		/// <summary>
+		/// Gets or Sets the state to specify that entity need to ensure indexes (default is true)
+		/// </summary>
+		public bool EnsureIndexes { get; set; } = true;
 	}
 
 	// ------------------------------------------

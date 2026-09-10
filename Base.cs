@@ -62,13 +62,13 @@ namespace net.vieapps.Components.Repository
 		/// Gets the name of the service that associates with this entity
 		/// </summary>
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
-		public virtual string ServiceName => RepositoryMediator.GetEntityDefinition(this.GetType())?.RepositoryDefinition?.ServiceName;
+		public virtual string ServiceName => this.GetType().GetEntityDefinition()?.RepositoryDefinition?.ServiceName;
 
 		/// <summary>
 		/// Gets the name of the service's object that associates with this entity
 		/// </summary>
 		[Ignore, JsonIgnore, XmlIgnore, BsonIgnore, MessagePackIgnore]
-		public virtual string ObjectName => RepositoryMediator.GetEntityDefinition(this.GetType())?.ObjectName ?? this.GetType().GetTypeName(true);
+		public virtual string ObjectName => this.GetType().GetEntityDefinition()?.ObjectName ?? this.GetType().GetTypeName(true);
 		#endregion
 
 		#region IBusinessEntity properties
@@ -256,7 +256,7 @@ namespace net.vieapps.Components.Repository
 		/// <param name="formatting"></param>
 		/// <returns></returns>
 		public virtual string ToString(Formatting formatting)
-			=> this.ToJson().ToString(formatting);
+			=> this.ToJson().AsString(formatting);
 
 		/// <summary>
 		/// Converts this object to string (JSON format)
@@ -3474,13 +3474,19 @@ namespace net.vieapps.Components.Repository
 
 			// system management properties
 			if (!string.IsNullOrWhiteSpace(this.SystemID))
-				json["SystemID"] = new JValue(this.SystemID);
+				json["SystemID"] = this.SystemID;
 
 			if (!string.IsNullOrWhiteSpace(this.RepositoryID))
-				json["RepositoryID"] = new JValue(this.RepositoryID);
+				json["RepositoryID"] = this.RepositoryID;
 
 			if (!string.IsNullOrWhiteSpace(this.RepositoryEntityID))
-				json["RepositoryEntityID"] = new JValue(this.RepositoryEntityID);
+				json["RepositoryEntityID"] = this.RepositoryEntityID;
+
+			// URI
+			var serviceName = this.ServiceName?.ToLower();
+			var objectName = this.ObjectName?.ToLower();
+			if (!string.IsNullOrWhiteSpace(serviceName) && !string.IsNullOrWhiteSpace(objectName) && !string.IsNullOrWhiteSpace(this.ID))
+				json["URI"] = $"{serviceName}://{objectName}/{this.ID}";
 
 			onCompleted?.Invoke(json);
 			return json;
