@@ -206,42 +206,9 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region State data
-		internal Dictionary<string, object> GetStateData<T>(T @object) where T : class
-		{
-			// initialize
-			var stateData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-			if (@object == null)
-				return stateData;
-
-
-			// standard properties && fields
-			var entityDefinition = RepositoryMediator.GetEntityDefinition<T>();
-			entityDefinition.Attributes.ForEach(attribute =>
-			{
-				try
-				{
-					stateData[attribute.Name] = @object.GetAttributeValue(attribute);
-				}
-				catch { }
-			});
-
-			// extended properties
-			if (@object is IBusinessEntity businessEntity)
-				businessEntity?.ExtendedProperties?.ForEach(kvp =>
-				{
-					try
-					{
-						stateData[$"ExtendedProperties.{kvp.Key}"] = kvp.Value;
-					}
-					catch { }
-				});
-
-			return stateData;
-		}
-
 		internal Dictionary<string, object> SetPreviousState<T>(T @object, Dictionary<string, object> stateData = null) where T : class
 		{
-			stateData = stateData ?? this.GetStateData(@object);
+			stateData = stateData ?? @object.GetStateData();
 			this.PreviousStateData[@object.GetCacheKey(true)] = stateData;
 			return stateData;
 		}
@@ -256,7 +223,7 @@ namespace net.vieapps.Components.Repository
 
 		internal Dictionary<string, object> SetCurrentState<T>(T @object, Dictionary<string, object> stateData = null) where T : class
 		{
-			stateData = stateData ?? this.GetStateData(@object);
+			stateData = stateData ?? @object.GetStateData();
 			this.CurrentStateData[@object.GetCacheKey(true)] = stateData;
 			return stateData;
 		}
@@ -279,34 +246,8 @@ namespace net.vieapps.Components.Repository
 		/// <param name="previousStateData">The previous state</param>
 		/// <param name="currentStateData">The current state</param>
 		/// <returns>The collection of dirty attributes (means the collection of changed attributes)</returns>
-		public HashSet<string> FindDirty(Dictionary<string, object> previousStateData, Dictionary<string, object> currentStateData)
-		{
-			if (currentStateData == null || currentStateData.Count < 0)
-				return new HashSet<string>();
-
-			else if (previousStateData == null || previousStateData.Count < 0)
-				return currentStateData.Keys.ToHashSet(false);
-
-			var dirtyAttributes = new HashSet<string>();
-			currentStateData.ForEach(kvp =>
-			{
-				previousStateData.TryGetValue(kvp.Key, out var previousState);
-				if (kvp.Value == null)
-				{
-					if (previousState != null)
-						dirtyAttributes.Add(kvp.Key);
-				}
-				else
-				{
-					if (previousState == null)
-						dirtyAttributes.Add(kvp.Key);
-					else if (!kvp.Value.Equals(previousState))
-						dirtyAttributes.Add(kvp.Key);
-				}
-			});
-
-			return dirtyAttributes;
-		}
+		internal HashSet<string> FindDirty(Dictionary<string, object> previousStateData, Dictionary<string, object> currentStateData)
+			=> RepositoryMediator.FindDirty(previousStateData, currentStateData);
 		#endregion
 
 	}

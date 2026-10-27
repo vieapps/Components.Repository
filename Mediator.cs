@@ -477,7 +477,100 @@ namespace net.vieapps.Components.Repository
 		#endregion
 
 		#region Validate & Update object with state data
-		internal static bool Validate(EntityDefinition definition, Dictionary<string, object> stateData)
+		/// <summary>
+		/// Gets the state data of this Repository's object
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="object"></param>
+		/// <returns></returns>
+		public static Dictionary<string, object> GetStateData<T>(this T @object) where T : class
+		{
+			// initialize
+			var stateData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+			if (@object == null)
+				return stateData;
+
+			// get definition
+			var entityDefinition = RepositoryMediator.GetEntityDefinition<T>();
+			if (entityDefinition == null)
+				return stateData;
+
+			// standard properties & fields
+			entityDefinition.Attributes.ForEach(attribute =>
+			{
+				try
+				{
+					stateData[attribute.Name] = @object.GetAttributeValue(attribute);
+				}
+				catch { }
+			});
+
+			// extended properties
+			if (@object is IBusinessEntity businessEntity)
+				businessEntity?.ExtendedProperties?.ForEach(kvp =>
+				{
+					try
+					{
+						stateData[$"ExtendedProperties.{kvp.Key}"] = kvp.Value;
+					}
+					catch { }
+				});
+
+			return stateData;
+		}
+
+		internal static HashSet<string> FindDirty(this Dictionary<string, object> previousStateData, Dictionary<string, object> currentStateData)
+		{
+			if (currentStateData == null || currentStateData.Count < 1)
+				return new HashSet<string>();
+
+			else if (previousStateData == null || previousStateData.Count < 1)
+				return currentStateData.Keys.ToHashSet(false);
+
+			var dirtyAttributes = new HashSet<string>();
+			currentStateData.ForEach(kvp =>
+			{
+				previousStateData.TryGetValue(kvp.Key, out var previousState);
+				if (kvp.Value == null)
+				{
+					if (previousState != null)
+						dirtyAttributes.Add(kvp.Key);
+				}
+				else
+				{
+					if (previousState == null)
+						dirtyAttributes.Add(kvp.Key);
+					else if (!kvp.Value.Equals(previousState))
+						dirtyAttributes.Add(kvp.Key);
+				}
+			});
+
+			return dirtyAttributes;
+		}
+
+		/// <summary>
+		/// Finds the changed attributes
+		/// </summary>
+		/// <param name="previousState">The previous state</param>
+		/// <param name="currentState">The current state</param>
+		/// <returns>The collection of dirty attributes (means the collection of changed attributes)</returns>
+		public static HashSet<string> FindChangedAttributes<T>(this Dictionary<string, object> previousState, Dictionary<string, object> currentState) where T : class
+			=> RepositoryMediator.GetEntityDefinition<T>() == null ? new HashSet<string>() : RepositoryMediator.FindDirty(previousState, currentState);
+
+		/// <summary>
+		/// Gets the changed attributes
+		/// </summary>
+		/// <param name="previousState">The previous state</param>
+		/// <param name="currentState">The current state</param>
+		/// <returns>The collection of dirty attributes (means the collection of changed attributes)</returns>
+		public static Dictionary<string, (object Previous, object Current)> GetChangedAttributes<T>(this Dictionary<string, object> previousState, Dictionary<string, object> currentState, bool normalizeNames = true) where T : class
+		{
+			var changedAttributes = new Dictionary<string, (object Previous, object Current)>();
+			previousState.FindChangedAttributes<T>(currentState).ForEach(name => changedAttributes[normalizeNames ? name.Replace("ExtendedProperties.", "") : name] = (previousState.TryGetValue(name, out var previousValue) ? previousValue : null, currentState.TryGetValue(name, out var currentValue) ? currentValue : null));
+			return changedAttributes;
+		}
+
+		internal static bool Validate(this EntityDefinition definition, Dictionary<string, object> stateData)
 		{
 			var changed = false;
 
